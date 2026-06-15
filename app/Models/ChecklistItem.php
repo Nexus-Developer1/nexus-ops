@@ -15,6 +15,7 @@ class ChecklistItem extends Model
         'intervencao_id',
         'descricao',
         'concluido',
+        'observacao',
         'ordem',
     ];
 
