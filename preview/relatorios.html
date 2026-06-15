@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Ops — Relatórios</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./app.css">
+</head>
+<body class="min-h-screen">
+
+<div class="flex min-h-screen">
+
+    <div data-sidebar></div>
+
+    <div class="flex min-w-0 flex-1 flex-col">
+
+        <!-- Topbar -->
+        <header class="flex items-center justify-between border-b border-borda bg-white px-10 py-5 shadow-topbar">
+            <nav class="flex items-center gap-2 text-sm">
+                <span class="text-texto-medio">Início</span>
+                <span class="text-texto-fraco">/</span>
+                <span class="font-medium text-texto-forte">Relatórios</span>
+            </nav>
+            <div class="flex items-center gap-3">
+                <button class="botao-secundario">Exportar</button>
+                <a href="formulario.html" class="botao-primario">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
+                    Novo Relatório
+                </a>
+            </div>
+        </header>
+
+        <main class="flex-1 px-10 py-9">
+            <div class="mx-auto max-w-6xl">
+
+                <!-- Cabecalho -->
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Relatórios</h1>
+                        <p class="mt-2 text-sm text-texto-medio">Folhas de obra das intervenções, prontas a enviar ao cliente.</p>
+                    </div>
+                </div>
+
+                <!-- Pesquisa + filtros -->
+                <div class="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="relative w-full max-w-sm">
+                        <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <input type="text" class="campo-input pl-10" placeholder="Pesquisar por nº, cliente ou técnico...">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="rounded-lg bg-verde-600 px-3.5 py-2 text-sm font-medium text-white">Todos</button>
+                        <button class="rounded-lg border border-borda bg-white px-3.5 py-2 text-sm font-medium text-texto-medio hover:bg-fundo">Rascunho</button>
+                        <button class="rounded-lg border border-borda bg-white px-3.5 py-2 text-sm font-medium text-texto-medio hover:bg-fundo">Em curso</button>
+                        <button class="rounded-lg border border-borda bg-white px-3.5 py-2 text-sm font-medium text-texto-medio hover:bg-fundo">Enviado</button>
+                    </div>
+                </div>
+
+                <!-- Tabela -->
+                <div class="cartao mt-6 overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="border-b border-borda bg-fundo text-xs uppercase tracking-wide text-texto-medio">
+                                <th class="px-6 py-3.5 font-semibold">Nº</th>
+                                <th class="px-6 py-3.5 font-semibold">Cliente / Equipamento</th>
+                                <th class="px-6 py-3.5 font-semibold">Tipo</th>
+                                <th class="px-6 py-3.5 font-semibold">Técnico</th>
+                                <th class="px-6 py-3.5 font-semibold">Data</th>
+                                <th class="px-6 py-3.5 font-semibold">Estado</th>
+                                <th class="px-6 py-3.5"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-borda transition hover:bg-fundo">
+                                <td class="px-6 py-4 font-medium text-texto-forte">2026/0042</td>
+                                <td class="px-6 py-4">
+                                    <div class="text-texto-forte">Central Elétrica Norte</div>
+                                    <div class="text-xs text-texto-fraco">UPS-404-B</div>
+                                </td>
+                                <td class="px-6 py-4 text-texto-medio">Preventiva</td>
+                                <td class="px-6 py-4 text-texto-medio">João Matos</td>
+                                <td class="px-6 py-4 text-texto-medio">12 jun 2026</td>
+                                <td class="px-6 py-4"><span class="etiqueta bg-aviso-100 text-aviso-500">Em curso</span></td>
+                                <td class="px-6 py-4 text-right">
+                                    <a href="formulario.html" class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-texto-fraco transition hover:bg-white hover:text-verde-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-borda transition hover:bg-fundo">
+                                <td class="px-6 py-4 font-medium text-texto-forte">2026/0041</td>
+                                <td class="px-6 py-4">
+                                    <div class="text-texto-forte">Datacenter Lisboa</div>
+                                    <div class="text-xs text-texto-fraco">PDU-12</div>
+                                </td>
+                                <td class="px-6 py-4 text-texto-medio">Corretiva</td>
+                                <td class="px-6 py-4 text-texto-medio">Rui Silva</td>
+                                <td class="px-6 py-4 text-texto-medio">11 jun 2026</td>
+                                <td class="px-6 py-4"><span class="etiqueta bg-verde-50 text-verde-700">Enviado</span></td>
+                                <td class="px-6 py-4 text-right">
+                                    <a href="formulario.html" class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-texto-fraco transition hover:bg-white hover:text-verde-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-borda transition hover:bg-fundo">
+                                <td class="px-6 py-4 font-medium text-texto-forte">2026/0040</td>
+                                <td class="px-6 py-4">
+                                    <div class="text-texto-forte">Hospital Sul</div>
+                                    <div class="text-xs text-texto-fraco">Gerador G-7</div>
+                                </td>
+                                <td class="px-6 py-4 text-texto-medio">Preventiva</td>
+                                <td class="px-6 py-4 text-texto-medio">João Matos</td>
+                                <td class="px-6 py-4 text-texto-medio">09 jun 2026</td>
+                                <td class="px-6 py-4"><span class="etiqueta bg-verde-50 text-verde-700">Enviado</span></td>
+                                <td class="px-6 py-4 text-right">
+                                    <a href="formulario.html" class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-texto-fraco transition hover:bg-white hover:text-verde-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-borda transition hover:bg-fundo">
+                                <td class="px-6 py-4 font-medium text-texto-forte">2026/0039</td>
+                                <td class="px-6 py-4">
+                                    <div class="text-texto-forte">Fábrica Aveiro</div>
+                                    <div class="text-xs text-texto-fraco">UPS-880</div>
+                                </td>
+                                <td class="px-6 py-4 text-texto-medio">Instalação</td>
+                                <td class="px-6 py-4 text-texto-medio">Rui Silva</td>
+                                <td class="px-6 py-4 text-texto-medio">05 jun 2026</td>
+                                <td class="px-6 py-4"><span class="etiqueta bg-info-100 text-info-600">Finalizado</span></td>
+                                <td class="px-6 py-4 text-right">
+                                    <a href="formulario.html" class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-texto-fraco transition hover:bg-white hover:text-verde-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
+                                </td>
+                            </tr>
+                            <tr class="transition hover:bg-fundo">
+                                <td class="px-6 py-4 font-medium text-texto-forte">2026/0038</td>
+                                <td class="px-6 py-4">
+                                    <div class="text-texto-forte">Banco Central</div>
+                                    <div class="text-xs text-texto-fraco">UPS-203</div>
+                                </td>
+                                <td class="px-6 py-4 text-texto-medio">Corretiva</td>
+                                <td class="px-6 py-4 text-texto-medio">João Matos</td>
+                                <td class="px-6 py-4 text-texto-medio">03 jun 2026</td>
+                                <td class="px-6 py-4"><span class="etiqueta bg-slate-100 text-texto-medio">Rascunho</span></td>
+                                <td class="px-6 py-4 text-right">
+                                    <a href="formulario.html" class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-texto-fraco transition hover:bg-white hover:text-verde-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="flex items-center justify-between border-t border-borda px-6 py-4 text-sm text-texto-medio">
+                        <span>A mostrar 1–5 de 42</span>
+                        <div class="flex items-center gap-1.5">
+                            <button class="rounded-lg border border-borda bg-white px-3 py-1.5 font-medium text-texto-medio hover:bg-fundo">Anterior</button>
+                            <button class="rounded-lg border border-borda bg-white px-3 py-1.5 font-medium text-texto-forte hover:bg-fundo">Seguinte</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="./shell.js"></script>
+<script>renderSidebar('relatorios');</script>
+</body>
+</html>

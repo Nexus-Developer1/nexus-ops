@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Ops — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./app.css">
+</head>
+<body class="min-h-screen">
+
+<div class="flex min-h-screen">
+
+    <!-- SIDEBAR (injetada pelo shell.js) -->
+    <div data-sidebar></div>
+
+    <div class="flex min-w-0 flex-1 flex-col">
+
+        <!-- Topbar -->
+        <header class="flex items-center justify-between border-b border-borda bg-white px-10 py-5 shadow-topbar">
+            <nav class="flex items-center gap-2 text-sm">
+                <span class="text-texto-medio">Início</span>
+                <span class="text-texto-fraco">/</span>
+                <span class="font-medium text-texto-forte">Dashboard</span>
+            </nav>
+            <div class="flex items-center gap-3">
+                <button class="botao-secundario">Exportar</button>
+                <a href="formulario.html" class="botao-primario">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
+                    Novo Relatório
+                </a>
+            </div>
+        </header>
+
+        <main class="flex-1 px-10 py-9">
+            <div class="mx-auto max-w-6xl">
+
+                <!-- Cabecalho -->
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Bom dia, Admin Nexus</h1>
+                        <p class="mt-2 text-sm text-texto-medio">Resumo da operação · sexta-feira, 12 de junho de 2026</p>
+                    </div>
+                </div>
+
+                <!-- KPIs -->
+                <div class="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+
+                    <div class="cartao p-5">
+                        <div class="flex items-center justify-between">
+                            <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-verde-50 text-verde-600">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            </span>
+                            <span class="text-xs font-medium text-verde-600">3 hoje</span>
+                        </div>
+                        <div class="mt-4 text-3xl font-semibold text-texto-forte">14</div>
+                        <div class="mt-1 text-sm text-texto-medio">Intervenções esta semana</div>
+                    </div>
+
+                    <div class="cartao p-5">
+                        <div class="flex items-center justify-between">
+                            <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-aviso-100 text-aviso-500">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            </span>
+                            <span class="text-xs font-medium text-aviso-500">30 dias</span>
+                        </div>
+                        <div class="mt-4 text-3xl font-semibold text-texto-forte">3</div>
+                        <div class="mt-1 text-sm text-texto-medio">Contratos a expirar</div>
+                    </div>
+
+                    <div class="cartao p-5">
+                        <div class="flex items-center justify-between">
+                            <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-perigo-100 text-perigo-500">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            </span>
+                            <span class="text-xs font-medium text-perigo-500">Urgente</span>
+                        </div>
+                        <div class="mt-4 text-3xl font-semibold text-texto-forte">2</div>
+                        <div class="mt-1 text-sm text-texto-medio">SLA em risco</div>
+                    </div>
+
+                    <div class="cartao p-5">
+                        <div class="flex items-center justify-between">
+                            <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-info-100 text-info-500">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            </span>
+                            <span class="text-xs font-medium text-info-500">60 dias</span>
+                        </div>
+                        <div class="mt-4 text-3xl font-semibold text-texto-forte">5</div>
+                        <div class="mt-1 text-sm text-texto-medio">Baterias a trocar</div>
+                    </div>
+                </div>
+
+                <!-- Duas colunas: proximas intervencoes + alertas -->
+                <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+
+                    <!-- Proximas intervencoes -->
+                    <section class="cartao lg:col-span-2">
+                        <div class="flex items-center justify-between px-6 py-5">
+                            <h2 class="text-lg font-semibold text-texto-forte">Próximas Intervenções</h2>
+                            <a href="manutencao.html" class="text-sm font-medium text-verde-600 hover:text-verde-700">Ver agenda</a>
+                        </div>
+
+                        <div class="flex items-center gap-4 border-t border-borda px-6 py-4">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-verde-100 text-sm font-semibold text-verde-700">JM</div>
+                            <div class="min-w-0 flex-1">
+                                <div class="truncate text-sm font-medium text-texto-forte">Central Elétrica Norte</div>
+                                <div class="truncate text-xs text-texto-medio">UPS-404-B · Preventiva trimestral</div>
+                            </div>
+                            <div class="hidden text-sm text-texto-medio sm:block">Hoje, 14:30</div>
+                            <span class="inline-flex items-center rounded-md bg-verde-50 px-2.5 py-1 text-xs font-medium text-verde-700">Confirmado</span>
+                        </div>
+
+                        <div class="flex items-center gap-4 border-t border-borda px-6 py-4">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-info-100 text-sm font-semibold text-info-600">RS</div>
+                            <div class="min-w-0 flex-1">
+                                <div class="truncate text-sm font-medium text-texto-forte">Datacenter Lisboa</div>
+                                <div class="truncate text-xs text-texto-medio">PDU-12 · Corretiva</div>
+                            </div>
+                            <div class="hidden text-sm text-texto-medio sm:block">Hoje, 16:00</div>
+                            <span class="inline-flex items-center rounded-md bg-aviso-100 px-2.5 py-1 text-xs font-medium text-aviso-500">Em curso</span>
+                        </div>
+
+                        <div class="flex items-center gap-4 border-t border-borda px-6 py-4">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-verde-100 text-sm font-semibold text-verde-700">JM</div>
+                            <div class="min-w-0 flex-1">
+                                <div class="truncate text-sm font-medium text-texto-forte">Hospital Sul</div>
+                                <div class="truncate text-xs text-texto-medio">Gerador G-7 · Preventiva semestral</div>
+                            </div>
+                            <div class="hidden text-sm text-texto-medio sm:block">Amanhã, 09:00</div>
+                            <span class="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-texto-medio">Planeado</span>
+                        </div>
+
+                        <div class="flex items-center gap-4 border-t border-borda px-6 py-4">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-info-100 text-sm font-semibold text-info-600">RS</div>
+                            <div class="min-w-0 flex-1">
+                                <div class="truncate text-sm font-medium text-texto-forte">Fábrica Aveiro</div>
+                                <div class="truncate text-xs text-texto-medio">UPS-880 · Preventiva trimestral</div>
+                            </div>
+                            <div class="hidden text-sm text-texto-medio sm:block">Seg, 11:00</div>
+                            <span class="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-texto-medio">Planeado</span>
+                        </div>
+                    </section>
+
+                    <!-- Alertas -->
+                    <section class="cartao">
+                        <div class="px-6 py-5">
+                            <h2 class="text-lg font-semibold text-texto-forte">Alertas</h2>
+                        </div>
+
+                        <div class="flex gap-3 border-t border-borda px-6 py-4">
+                            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-perigo-100 text-perigo-500">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            </span>
+                            <div>
+                                <div class="text-sm font-medium text-texto-forte">SLA em risco — Hospital Sul</div>
+                                <div class="mt-0.5 text-xs text-texto-medio">Restam 2h para o tempo de resposta.</div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 border-t border-borda px-6 py-4">
+                            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-aviso-100 text-aviso-500">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            </span>
+                            <div>
+                                <div class="text-sm font-medium text-texto-forte">Contrato a expirar — Datacenter Lisboa</div>
+                                <div class="mt-0.5 text-xs text-texto-medio">Expira em 12 dias. Renovação pendente.</div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 border-t border-borda px-6 py-4">
+                            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-info-100 text-info-500">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            </span>
+                            <div>
+                                <div class="text-sm font-medium text-texto-forte">Troca de baterias — Gerador Porto</div>
+                                <div class="mt-0.5 text-xs text-texto-medio">Ciclo de 4 anos atingido. Sugerir visita.</div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="./shell.js"></script>
+<script>renderSidebar('dashboard');</script>
+</body>
+</html>

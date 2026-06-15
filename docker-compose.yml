@@ -1,0 +1,85 @@
+# Stack de desenvolvimento — Nexus Ops (CMMS)
+# Serviços: app (PHP-FPM), fila, scheduler, caddy, postgres, redis, minio.
+
+services:
+  # ---- Aplicação Laravel (PHP-FPM) ----
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    image: nexus-ops-app
+    restart: unless-stopped
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      redis:
+        condition: service_started
+    env_file: [.env]
+
+  # ---- Worker da fila (PDF, emails, geração de visitas) ----
+  queue:
+    image: nexus-ops-app
+    restart: unless-stopped
+    command: php artisan queue:work --tries=3 --timeout=120 --sleep=3
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - app
+      - redis
+    env_file: [.env]
+
+  # ---- Scheduler (sync ERP agendado, alertas) ----
+  scheduler:
+    image: nexus-ops-app
+    restart: unless-stopped
+    command: php artisan schedule:work
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - app
+    env_file: [.env]
+
+  # ---- Reverse proxy / servidor web ----
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - .:/var/www/html
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+  # ---- Base de dados ----
+  # A BD da aplicação é agora o PostgreSQL nativo do host (host.docker.internal,
+  # ver .env). O serviço Postgres do Docker foi abandonado (2026-06-15).
+
+  # ---- Fila / cache ----
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  # ---- Object storage (S3-compatível) para anexos ----
+  minio:
+    image: minio/minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-nexus}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-secret_minio_123}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9100:9000"
+      - "9101:9001"
+
+volumes:
+  db_data:
+  minio_data:
+  caddy_data:
+  caddy_config:

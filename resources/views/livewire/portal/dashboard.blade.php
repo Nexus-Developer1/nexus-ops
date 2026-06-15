@@ -1,0 +1,63 @@
+<div>
+    <x-topbar :breadcrumb="['Portal', 'Início']" />
+
+    <main class="flex-1 px-10 py-9">
+        <div class="mx-auto max-w-5xl">
+            <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Olá, {{ auth()->user()->cliente?->nome }}</h1>
+            <p class="mt-2 text-sm text-texto-medio">Os seus equipamentos, visitas planeadas e relatórios de intervenção.</p>
+
+            <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
+                <div class="cartao p-6">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Equipamentos</div>
+                    <div class="mt-2 text-3xl font-semibold text-texto-forte">{{ $numEquipamentos }}</div>
+                </div>
+                <div class="cartao p-6">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Próximas visitas</div>
+                    <div class="mt-2 text-3xl font-semibold text-texto-forte">{{ $proximasVisitas->count() }}</div>
+                </div>
+                <div class="cartao p-6">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Relatórios</div>
+                    <div class="mt-2 text-3xl font-semibold text-texto-forte">{{ $relatoriosRecentes->count() }}</div>
+                </div>
+            </div>
+
+            <div class="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
+                {{-- Próximas visitas --}}
+                <section class="cartao">
+                    <div class="px-6 py-5"><h2 class="text-lg font-semibold text-texto-forte">Próximas visitas</h2></div>
+                    <ul class="border-t border-borda">
+                        @forelse ($proximasVisitas as $v)
+                            <li class="border-b border-borda px-6 py-3.5 last:border-0">
+                                <div class="text-sm font-medium text-texto-forte">{{ $v->titulo }}</div>
+                                <div class="text-xs text-texto-fraco">{{ $v->inicio->translatedFormat('d M Y · H:i') }}</div>
+                            </li>
+                        @empty
+                            <li class="px-6 py-8 text-center text-sm text-texto-medio">Sem visitas planeadas.</li>
+                        @endforelse
+                    </ul>
+                </section>
+
+                {{-- Relatórios recentes --}}
+                <section class="cartao">
+                    <div class="flex items-center justify-between px-6 py-5">
+                        <h2 class="text-lg font-semibold text-texto-forte">Relatórios recentes</h2>
+                        <a href="{{ route('portal.relatorios') }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">Ver todos</a>
+                    </div>
+                    <ul class="border-t border-borda">
+                        @forelse ($relatoriosRecentes as $r)
+                            <li class="flex items-center justify-between border-b border-borda px-6 py-3.5 last:border-0">
+                                <div>
+                                    <div class="text-sm font-medium text-texto-forte">{{ $r->numero }}</div>
+                                    <div class="text-xs text-texto-fraco">{{ $r->data->translatedFormat('d M Y') }}</div>
+                                </div>
+                                <a href="{{ route('portal.relatorios.pdf', $r) }}" target="_blank" class="text-sm font-medium text-verde-600 hover:underline">PDF</a>
+                            </li>
+                        @empty
+                            <li class="px-6 py-8 text-center text-sm text-texto-medio">Sem relatórios.</li>
+                        @endforelse
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </main>
+</div>

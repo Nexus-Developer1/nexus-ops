@@ -1,0 +1,23 @@
+# Reverse proxy / servidor web — serve public/ e passa PHP ao php-fpm (app:9000).
+# Em dev usamos HTTP em :80 (mapeado para 8080 no host).
+# Em produção, trocar ":80" por um domínio real e o Caddy trata do TLS automaticamente.
+
+:80 {
+	root * /var/www/html/public
+
+	encode gzip zstd
+
+	# Passa os pedidos PHP ao container da aplicação
+	php_fastcgi app:9000
+
+	# Servir ficheiros estáticos (incluindo os assets compilados pelo Vite)
+	file_server
+
+	# Cabeçalhos de segurança base
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}
