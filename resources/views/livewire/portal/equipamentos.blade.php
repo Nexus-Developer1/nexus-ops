@@ -1,7 +1,7 @@
 <div>
     <x-topbar :breadcrumb="['Portal', 'Equipamentos']" />
 
-    <main class="flex-1 px-10 py-9">
+    <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-5xl">
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Os meus equipamentos</h1>
             <p class="mt-2 text-sm text-texto-medio">Ativos cobertos sob a sua gestão.</p>
@@ -12,7 +12,7 @@
             </div>
 
             <div class="cartao mt-6 overflow-hidden" wire:loading.class="opacity-60">
-                <table class="w-full text-left text-sm">
+                <div class="overflow-x-auto"><table class="w-full min-w-[640px] text-left text-sm">
                     <thead>
                         <tr class="border-b border-borda bg-fundo text-xs uppercase tracking-wide text-texto-medio">
                             <th class="px-6 py-3.5 font-semibold">Equipamento</th>
@@ -38,7 +38,7 @@
                             <tr><td colspan="5" class="px-6 py-12 text-center text-sm text-texto-medio">Nenhum equipamento encontrado.</td></tr>
                         @endforelse
                     </tbody>
-                </table>
+                </table></div>
             </div>
 
             <div class="mt-4">{{ $equipamentos->links() }}</div>

@@ -1,7 +1,7 @@
 <div>
     <x-topbar :breadcrumb="['Portal', 'Início']" />
 
-    <main class="flex-1 px-10 py-9">
+    <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-5xl">
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Olá, {{ auth()->user()->cliente?->nome }}</h1>
             <p class="mt-2 text-sm text-texto-medio">Os seus equipamentos, visitas planeadas e relatórios de intervenção.</p>

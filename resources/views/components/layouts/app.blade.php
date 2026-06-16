@@ -14,10 +14,23 @@
     @livewireStyles
 </head>
 <body class="min-h-screen">
-    <div class="flex min-h-screen">
+    <div class="flex min-h-screen" x-data="{ sidebarAberta: false }" @keydown.escape.window="sidebarAberta = false">
         <x-sidebar :ativo="$ativo" />
 
+        {{-- Fundo escuro (só mobile, quando o menu está aberto) --}}
+        <div x-show="sidebarAberta" x-cloak x-transition.opacity @click="sidebarAberta = false"
+             class="fixed inset-0 z-30 bg-black/40 lg:hidden"></div>
+
         <div class="flex min-w-0 flex-1 flex-col">
+            {{-- Barra superior mobile com botão de menu --}}
+            <header class="flex items-center gap-3 border-b border-borda bg-white px-4 py-3 lg:hidden">
+                <button @click="sidebarAberta = true" aria-label="Abrir menu"
+                        class="flex h-10 w-10 items-center justify-center rounded-lg text-texto-medio transition hover:bg-fundo">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <span class="text-lg font-bold text-verde-600">Nexus Ops</span>
+            </header>
+
             {{ $slot }}
         </div>
     </div>

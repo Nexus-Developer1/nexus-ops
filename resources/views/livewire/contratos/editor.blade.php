@@ -1,7 +1,7 @@
 <div>
     <x-topbar :breadcrumb="['Manutenção', 'Contratos', $contrato ? 'Editar' : 'Novo']" />
 
-    <main class="flex-1 px-10 py-9">
+    <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <form wire:submit="guardar" class="mx-auto max-w-4xl">
 
             <div class="flex items-center justify-between">
@@ -18,7 +18,7 @@
             {{-- Dados gerais --}}
             <section class="cartao mt-8">
                 <div class="px-6 py-5"><h2 class="text-lg font-semibold text-texto-forte">Dados gerais</h2></div>
-                <div class="grid grid-cols-2 gap-x-8 gap-y-6 border-t border-borda px-6 py-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 border-t border-borda px-6 py-6">
                     <div>
                         <label class="campo-label">Nº do contrato</label>
                         <input wire:model="numero" type="text" class="campo-input" placeholder="2026/0007">
@@ -129,7 +129,7 @@
                 </div>
                 <div class="border-t border-borda px-6 py-6">
                     @forelse ($planos as $i => $plano)
-                        <div class="mb-3 grid grid-cols-12 items-start gap-3 last:mb-0" wire:key="plano-{{ $i }}">
+                        <div class="mb-3 grid grid-cols-1 sm:grid-cols-12 items-start gap-3 last:mb-0" wire:key="plano-{{ $i }}">
                             <div class="col-span-4">
                                 <select wire:model="planos.{{ $i }}.equipamento_tipo" class="campo-select">
                                     <option value="">Tipo...</option>
@@ -171,7 +171,7 @@
                 </div>
                 <div class="border-t border-borda px-6 py-6">
                     @forelse ($slas as $i => $sla)
-                        <div class="mb-3 grid grid-cols-12 items-start gap-3 last:mb-0" wire:key="sla-{{ $i }}">
+                        <div class="mb-3 grid grid-cols-1 sm:grid-cols-12 items-start gap-3 last:mb-0" wire:key="sla-{{ $i }}">
                             <div class="col-span-3">
                                 <select wire:model="slas.{{ $i }}.prioridade" class="campo-select">
                                     <option value="">Prioridade...</option>

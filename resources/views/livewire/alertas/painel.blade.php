@@ -1,7 +1,7 @@
 <div>
     <x-topbar :breadcrumb="['Alertas']" />
 
-    <main class="flex-1 px-10 py-9">
+    <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-5xl">
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Alertas</h1>
             <p class="mt-2 text-sm text-texto-medio">Renovações, baterias, visitas em atraso e SLA em risco — o que precisa de atenção.</p>

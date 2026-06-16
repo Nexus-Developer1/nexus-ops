@@ -6,7 +6,7 @@
         </a>
     </x-topbar>
 
-    <main class="flex-1 px-10 py-9">
+    <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-6xl">
 
             @if (session('sucesso'))
@@ -48,7 +48,7 @@
 
             {{-- Tabela --}}
             <div class="cartao mt-6 overflow-hidden" wire:loading.class="opacity-60">
-                <table class="w-full text-left text-sm">
+                <div class="overflow-x-auto"><table class="w-full min-w-[640px] text-left text-sm">
                     <thead>
                         <tr class="border-b border-borda bg-fundo text-xs uppercase tracking-wide text-texto-medio">
                             <th class="px-6 py-3.5 font-semibold">Nº</th>
@@ -88,7 +88,7 @@
                             </tr>
                         @endforelse
                     </tbody>
-                </table>
+                </table></div>
             </div>
 
             <div class="mt-4">{{ $contratos->links() }}</div>

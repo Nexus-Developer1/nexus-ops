@@ -1,7 +1,7 @@
 <div>
     <x-topbar :breadcrumb="['Manutenção', 'Agenda']" />
 
-    <main class="flex-1 px-10 py-9">
+    <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-6xl" x-data="agendaCalendario">
 
             <div class="flex flex-wrap items-center justify-between gap-4">
@@ -155,7 +155,7 @@
                                 @error('formTecnicoId') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
 
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="campo-label">Início</label>
                                     <input wire:model="formInicio" type="datetime-local" class="campo-input">

@@ -7,7 +7,7 @@
         </button>
     </x-topbar>
 
-    <main class="flex-1 px-10 py-9">
+    <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-5xl">
 
             {{-- Cabeçalho --}}
@@ -38,7 +38,7 @@
                         </span>
                         <svg :class="aberto && 'rotate-180'" class="h-5 w-5 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                     </button>
-                    <div x-show="aberto" x-transition class="grid grid-cols-2 gap-x-8 gap-y-6 px-6 pb-7">
+                    <div x-show="aberto" x-transition class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 px-6 pb-7">
                         <div>
                             <label class="campo-label">Equipamento <span class="text-perigo-500">*</span></label>
                             <select wire:model="equipamento_id" class="campo-select">
@@ -144,7 +144,7 @@
                         </label>
 
                         @if ($fotos)
-                            <div class="mt-4 grid grid-cols-4 gap-4">
+                            <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
                                 @foreach ($fotos as $foto)
                                     <div class="aspect-square overflow-hidden rounded-xl bg-zinc-800" wire:key="foto-{{ $loop->index }}">
                                         <img src="{{ $foto->temporaryUrl() }}" class="h-full w-full object-cover">
@@ -164,7 +164,7 @@
                         <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
                         <h2 class="text-lg font-semibold text-texto-forte">Diagnóstico do Equipamento</h2>
                     </div>
-                    <div class="grid grid-cols-2 gap-x-8 gap-y-6 border-t border-borda px-6 py-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 border-t border-borda px-6 py-6">
                         <div>
                             <label class="campo-label">Estado geral</label>
                             <select wire:model="estado_geral" class="campo-select">
@@ -191,7 +191,7 @@
                     </div>
                     <div class="border-t border-borda px-6 py-6">
                         @if ($fotos)
-                            <div class="grid grid-cols-4 gap-4">
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                 @foreach ($fotos as $foto)
                                     <div class="aspect-square overflow-hidden rounded-xl bg-zinc-800" wire:key="fotog-{{ $loop->index }}">
                                         <img src="{{ $foto->temporaryUrl() }}" class="h-full w-full object-cover">

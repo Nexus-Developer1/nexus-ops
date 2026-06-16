@@ -14,7 +14,7 @@
         @endif
     </x-topbar>
 
-    <main class="flex-1 px-10 py-9">
+    <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-6xl">
 
             @if (session('sucesso'))
@@ -112,7 +112,7 @@
             {{-- SLAs --}}
             <section class="cartao mt-8">
                 <div class="px-6 py-5"><h2 class="text-lg font-semibold text-texto-forte">SLAs</h2></div>
-                <table class="w-full text-left text-sm">
+                <div class="overflow-x-auto"><table class="w-full min-w-[640px] text-left text-sm">
                     <thead>
                         <tr class="border-y border-borda bg-fundo text-xs uppercase tracking-wide text-texto-medio">
                             <th class="px-6 py-3 font-semibold">Prioridade</th>
@@ -133,7 +133,7 @@
                             <tr><td colspan="4" class="px-6 py-8 text-center text-sm text-texto-medio">Sem SLAs definidos.</td></tr>
                         @endforelse
                     </tbody>
-                </table>
+                </table></div>
             </section>
 
         </div>

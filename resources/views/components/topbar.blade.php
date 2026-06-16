@@ -1,7 +1,7 @@
 @props(['breadcrumb' => []])
 
 {{-- Barra superior reutilizável: breadcrumb + ações (slot). --}}
-<header class="flex items-center justify-between border-b border-borda bg-white px-10 py-5 shadow-topbar">
+<header class="flex items-center justify-between border-b border-borda bg-white px-4 py-4 sm:px-10 sm:py-5 shadow-topbar">
     <nav class="flex items-center gap-2 text-sm">
         @foreach ($breadcrumb as $item)
             @if (! $loop->first)

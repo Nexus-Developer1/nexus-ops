@@ -7,7 +7,7 @@
         </button>
     </x-topbar>
 
-    <main class="flex-1 px-10 py-9">
+    <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-4xl">
 
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ $equipamento ? 'Editar equipamento' : 'Novo equipamento' }}</h1>
@@ -19,7 +19,7 @@
                     <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3"/></svg></span>
                     <h2 class="text-lg font-semibold text-texto-forte">Dados Gerais</h2>
                 </div>
-                <div class="grid grid-cols-2 gap-x-8 gap-y-6 border-t border-borda px-6 py-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 border-t border-borda px-6 py-6">
                     <div class="col-span-2">
                         <label class="campo-label">Local</label>
                         <select wire:model="local_id" class="campo-select">
@@ -77,7 +77,7 @@
                     <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
                     <h2 class="text-lg font-semibold text-texto-forte">Especificações</h2>
                 </div>
-                <div class="grid grid-cols-2 gap-x-8 gap-y-6 border-t border-borda px-6 py-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 border-t border-borda px-6 py-6">
 
                     @if ($tipo === 'ups')
                         <div><label class="campo-label">Potência (kVA)</label><input wire:model="atributos.potencia_kva" type="number" class="campo-input" placeholder="Ex: 40"></div>

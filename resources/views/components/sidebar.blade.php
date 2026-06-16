@@ -38,10 +38,16 @@
         : '–';
 @endphp
 
-<aside class="bg-sidebar-grad sticky top-0 flex h-screen w-sidebar shrink-0 flex-col px-5 py-7">
-    <div class="px-2">
-        <div class="text-2xl font-bold leading-none text-verde-400">Nexus Ops</div>
-        <div class="mt-1 text-[11px] font-medium uppercase tracking-[0.22em] text-white/40">Technical Suite</div>
+<aside class="bg-sidebar-grad fixed inset-y-0 left-0 z-40 flex h-screen w-sidebar shrink-0 flex-col px-5 py-7 transition-transform duration-200 ease-out -translate-x-full lg:sticky lg:top-0 lg:z-auto lg:translate-x-0"
+       :class="sidebarAberta && '!translate-x-0'">
+    <div class="flex items-start justify-between px-2">
+        <div>
+            <div class="text-2xl font-bold leading-none text-verde-400">Nexus Ops</div>
+            <div class="mt-1 text-[11px] font-medium uppercase tracking-[0.22em] text-white/40">Technical Suite</div>
+        </div>
+        <button @click="sidebarAberta = false" aria-label="Fechar menu" class="flex h-9 w-9 items-center justify-center rounded-lg text-white/60 transition hover:bg-white/10 hover:text-white lg:hidden">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
     </div>
 
     <nav class="mt-10 flex flex-1 flex-col gap-1.5">
