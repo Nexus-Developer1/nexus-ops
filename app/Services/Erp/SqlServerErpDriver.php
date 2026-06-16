@@ -17,15 +17,19 @@ class SqlServerErpDriver implements ErpSyncDriver
         //
         // return DB::connection('erp')
         //     ->table('vw_clientes')              // view dedicada, nunca a tabela bruta
-        //     ->select('id_erp', 'nome', 'nif', 'email', 'telefone', 'morada')
+        //     ->select('no', 'nome', 'ncont', 'email', 'telefone', 'tlmvl', 'morada', 'codpost', 'vendedor', 'vendnm')
         //     ->cursor()
         //     ->map(fn ($r) => new ClienteErp(
-        //         idErp: (string) $r->id_erp,
+        //         idErp: (string) $r->no,        // PHC cl.no (número de cliente)
         //         nome: $r->nome,
-        //         nif: $r->nif,
+        //         nif: $r->ncont,                // PHC cl.ncont
         //         email: $r->email,
         //         telefone: $r->telefone,
         //         morada: $r->morada,
+        //         codpost: $r->codpost,
+        //         tlmvl: $r->tlmvl,
+        //         vendedor: $r->vendedor !== null ? (int) $r->vendedor : null,
+        //         vendnm: $r->vendnm,
         //     ));
 
         throw new \RuntimeException(

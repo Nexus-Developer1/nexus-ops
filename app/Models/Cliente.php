@@ -21,7 +21,11 @@ class Cliente extends Model
         'nif',
         'email',
         'telefone',
+        'tlmvl',
         'morada',
+        'codpost',
+        'vendedor',
+        'vendnm',
         'ativo',
     ];
 
@@ -29,6 +33,7 @@ class Cliente extends Model
     protected function casts(): array
     {
         return [
+            'vendedor' => 'integer',
             'ativo' => 'boolean',
         ];
     }

@@ -29,7 +29,11 @@ class SincronizarClientesErp extends Command
                     'nif' => $clienteErp->nif,
                     'email' => $clienteErp->email,
                     'telefone' => $clienteErp->telefone,
+                    'tlmvl' => $clienteErp->tlmvl,
                     'morada' => $clienteErp->morada,
+                    'codpost' => $clienteErp->codpost,
+                    'vendedor' => $clienteErp->vendedor,
+                    'vendnm' => $clienteErp->vendnm,
                 ],
             );
 

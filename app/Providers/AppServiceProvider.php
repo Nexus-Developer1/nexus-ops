@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Services\Erp\ErpSyncDriver;
 use App\Services\Erp\FakeErpDriver;
+use App\Services\Erp\NullErpDriver;
 use App\Services\Erp\SqlServerErpDriver;
 use Illuminate\Support\ServiceProvider;
 
@@ -15,7 +16,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ErpSyncDriver::class, function () {
             return match (config('erp.driver')) {
                 'sqlsrv' => new SqlServerErpDriver(),
-                default => new FakeErpDriver(),
+                'fake' => new FakeErpDriver(),
+                // Default seguro (ERP_DRIVER vazio): não injeta dados fictícios.
+                default => new NullErpDriver(),
             };
         });
     }
