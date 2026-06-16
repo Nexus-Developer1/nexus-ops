@@ -9,6 +9,10 @@ Route::get('/', fn () => redirect()->route('dashboard'));
 // Autenticação
 Route::middleware('guest')->group(function () {
     Route::get('/login', Login::class)->name('login');
+
+    // Recuperação de palavra-passe (broker nativo do Laravel).
+    Route::get('/esqueci-password', \App\Livewire\Auth\EsqueciPassword::class)->name('password.request');
+    Route::get('/redefinir-password/{token}', \App\Livewire\Auth\RedefinirPassword::class)->name('password.reset');
 });
 
 // Feed iCal de um técnico — URL assinada, acessível por apps de calendário
