@@ -6,7 +6,7 @@ namespace App\Services\Erp;
 // está configurado (ERP_DRIVER vazio): o sync corre sem injetar dados fictícios.
 class NullErpDriver implements ErpSyncDriver
 {
-    public function obterClientes(): iterable
+    public function obterClientes(?int $limite = null): iterable
     {
         return [];
     }

@@ -9,7 +9,8 @@ interface ErpSyncDriver
     /**
      * Devolve os clientes existentes no ERP.
      *
+     * @param  int|null  $limite  Nº máximo de clientes a devolver (null = decisão do driver).
      * @return iterable<ClienteErp>
      */
-    public function obterClientes(): iterable;
+    public function obterClientes(?int $limite = null): iterable;
 }

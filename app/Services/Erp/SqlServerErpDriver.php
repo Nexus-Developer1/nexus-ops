@@ -11,18 +11,32 @@ use Illuminate\Support\Facades\DB;
 // acesso ao ERP. Requer a extensão pdo_sqlsrv no container.
 class SqlServerErpDriver implements ErpSyncDriver
 {
-    public function obterClientes(): iterable
+    public function obterClientes(?int $limite = null): iterable
     {
-        // Exemplo da forma final (a ligação 'erp' fica definida em config/database.php):
+        // Forma final quando houver acesso ao PHC. A ligação 'erp' (sqlsrv, read-only)
+        // fica definida em config/database.php e lê de uma VIEW dedicada, nunca da
+        // tabela bruta. Mapeamento PHC (tabela cl) → campos da aplicação:
+        //
+        //   cl.no       → id_erp      (nº de cliente; chave de correlação do upsert)
+        //   cl.nome     → nome
+        //   cl.ncont    → nif
+        //   cl.morada   → morada
+        //   cl.codpost  → codpost
+        //   cl.email    → email
+        //   cl.telefone → telefone
+        //   cl.tlmvl    → tlmvl
+        //   cl.vendedor → vendedor
+        //   cl.vendnm   → vendnm
         //
         // return DB::connection('erp')
-        //     ->table('vw_clientes')              // view dedicada, nunca a tabela bruta
-        //     ->select('no', 'nome', 'ncont', 'email', 'telefone', 'tlmvl', 'morada', 'codpost', 'vendedor', 'vendnm')
+        //     ->table('vw_clientes')             // view dedicada, nunca a tabela bruta
+        //     ->select('no', 'nome', 'ncont', 'morada', 'codpost', 'email', 'telefone', 'tlmvl', 'vendedor', 'vendnm')
+        //     ->when($limite, fn ($q) => $q->limit($limite))
         //     ->cursor()
         //     ->map(fn ($r) => new ClienteErp(
-        //         idErp: (string) $r->no,        // PHC cl.no (número de cliente)
+        //         idErp: (string) $r->no,
         //         nome: $r->nome,
-        //         nif: $r->ncont,                // PHC cl.ncont
+        //         nif: $r->ncont,
         //         email: $r->email,
         //         telefone: $r->telefone,
         //         morada: $r->morada,

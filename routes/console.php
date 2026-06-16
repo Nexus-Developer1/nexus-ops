@@ -8,11 +8,14 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Sincronização periódica dos clientes do ERP (periodicidade em config/erp.php).
+// Sincronização diária dos clientes do ERP (hora em config/erp.php). Só sincroniza
+// a sério quando há um driver ERP configurado — com ERP_DRIVER vazio resolve o
+// NullErpDriver, por isso evitamos correr o comando à toa.
 Schedule::command('erp:sincronizar-clientes')
-    ->cron(config('erp.sync_cron'))
+    ->dailyAt(config('erp.sync_hora'))
     ->withoutOverlapping()
-    ->onOneServer();
+    ->onOneServer()
+    ->when(fn () => filled(config('erp.driver')));
 
 // Resumo diário de alertas proativos aos administradores (CLAUDE.md §9).
 Schedule::command('alertas:verificar')

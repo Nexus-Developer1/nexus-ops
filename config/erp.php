@@ -8,8 +8,8 @@ return [
     // Vazio/ausente => driver inativo (NullErpDriver), não injeta dados fictícios.
     'driver' => env('ERP_DRIVER'),
 
-    // Periodicidade do sync (formato cron).
-    'sync_cron' => env('ERP_SYNC_CRON', '0 */4 * * *'),
+    // Hora do sync diário de clientes (HH:MM). O comando corre 1x/dia a esta hora.
+    'sync_hora' => env('ERP_SYNC_HORA', '03:00'),
 
     // Ligação read-only ao SQL Server do ERP (apenas a views dedicadas).
     'connections' => [
