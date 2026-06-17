@@ -117,7 +117,7 @@ class Formulario extends Component
         $this->validate(['fotos.*' => 'image|max:8192']); // 8 MB
 
         foreach ($this->fotos as $foto) {
-            $key = $foto->store('anexos/intervencoes/' . $this->intervencao->id, 's3');
+            $key = $foto->store('anexos/intervencoes/' . $this->intervencao->id);
 
             $this->intervencao->anexos()->create([
                 'nome_ficheiro' => $foto->getClientOriginalName(),
@@ -137,7 +137,7 @@ class Formulario extends Component
         $anexo = $this->intervencao->anexos()->find($id);
 
         if ($anexo) {
-            Storage::disk('s3')->delete($anexo->storage_key);
+            Storage::disk()->delete($anexo->storage_key);
             $anexo->delete();
         }
 

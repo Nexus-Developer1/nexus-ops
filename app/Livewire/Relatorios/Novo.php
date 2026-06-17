@@ -119,7 +119,7 @@ class Novo extends Component
 
             // Fotos: persistidas no object storage só agora (a intervenção já existe).
             foreach ($this->fotos as $foto) {
-                $key = $foto->store('anexos/intervencoes/' . $intervencao->id, 's3');
+                $key = $foto->store('anexos/intervencoes/' . $intervencao->id);
 
                 $intervencao->anexos()->create([
                     'nome_ficheiro' => $foto->getClientOriginalName(),

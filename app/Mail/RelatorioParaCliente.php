@@ -45,7 +45,7 @@ class RelatorioParaCliente extends Mailable
         // PDF lido do object storage (nunca da BD — ver CLAUDE.md §2).
         return [
             Attachment::fromData(
-                fn () => Storage::disk('s3')->get($this->relatorio->pdf_path),
+                fn () => Storage::disk()->get($this->relatorio->pdf_path),
                 str_replace('/', '-', $this->relatorio->numero) . '.pdf',
             )->withMime('application/pdf'),
         ];

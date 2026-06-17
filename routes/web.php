@@ -33,7 +33,7 @@ Route::post('/logout', function () {
 
 // Função partilhada: serve o PDF de um relatório (gera-o on-demand se necessário).
 $servirPdf = function (\App\Models\Relatorio $relatorio, \App\Services\GeradorRelatorio $gerador) {
-    $disco = \Illuminate\Support\Facades\Storage::disk('s3');
+    $disco = \Illuminate\Support\Facades\Storage::disk();
 
     if (! $relatorio->pdf_path || ! $disco->exists($relatorio->pdf_path)) {
         $gerador->gerarPdf($relatorio);
@@ -86,7 +86,7 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
 
     // Proxy aos anexos no object storage (evita expor o MinIO ao browser).
     Route::get('/anexos/{anexo}', function (\App\Models\Anexo $anexo) {
-        $disco = \Illuminate\Support\Facades\Storage::disk('s3');
+        $disco = \Illuminate\Support\Facades\Storage::disk();
         abort_unless($disco->exists($anexo->storage_key), 404);
 
         return response($disco->get($anexo->storage_key))
@@ -104,7 +104,7 @@ Route::middleware(['auth', 'papel:cliente'])->prefix('portal')->name('portal.')-
     // PDF do relatório — o route-model-binding aplica o global scope: um cliente
     // só resolve relatórios seus (os de outro cliente dão 404).
     Route::get('/relatorios/{relatorio}/pdf', function (\App\Models\Relatorio $relatorio, \App\Services\GeradorRelatorio $gerador) {
-        $disco = \Illuminate\Support\Facades\Storage::disk('s3');
+        $disco = \Illuminate\Support\Facades\Storage::disk();
 
         if (! $relatorio->pdf_path || ! $disco->exists($relatorio->pdf_path)) {
             $gerador->gerarPdf($relatorio);

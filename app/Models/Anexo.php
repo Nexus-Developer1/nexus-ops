@@ -39,6 +39,6 @@ class Anexo extends Model
 
     public function conteudo(): string
     {
-        return Storage::disk('s3')->get($this->storage_key);
+        return Storage::disk()->get($this->storage_key);
     }
 }

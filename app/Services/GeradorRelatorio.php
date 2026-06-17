@@ -64,7 +64,7 @@ class GeradorRelatorio
         ])->setPaper('a4');
 
         $caminho = 'relatorios/' . str_replace('/', '-', $relatorio->numero) . '.pdf';
-        Storage::disk('s3')->put($caminho, $pdf->output());
+        Storage::disk()->put($caminho, $pdf->output());
 
         $relatorio->update(['pdf_path' => $caminho]);
     }
