@@ -104,7 +104,7 @@ Route::middleware(['auth', 'papel:cliente'])->prefix('portal')->name('portal.')-
     // PDF do relatório — o route-model-binding aplica o global scope: um cliente
     // só resolve relatórios seus (os de outro cliente dão 404).
     Route::get('/relatorios/{relatorio}/pdf', function (\App\Models\Relatorio $relatorio, \App\Services\GeradorRelatorio $gerador) {
-        $disco = \Illuminate\Support\Facades\Storage::disk();
+        $disco = \Illuminate\Support\Facades\Storage::disk('local');
 
         if (! $relatorio->pdf_path || ! $disco->exists($relatorio->pdf_path)) {
             $gerador->gerarPdf($relatorio);
