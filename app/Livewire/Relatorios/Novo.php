@@ -83,7 +83,7 @@ class Novo extends Component
     {
         $this->validate();
 
-        $relatorio = DB::transaction(function () {
+        $relatorio = DB::transaction(function () use ($gerador) {
             $intervencao = Intervencao::create([
                 'equipamento_id' => $this->equipamento_id,
                 'tecnico_id' => auth()->id(),
