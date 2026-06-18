@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Contratos;
 
-use App\Enums\ModeloFaturacao;
 use App\Enums\Periodicidade;
 use App\Enums\PrioridadeSla;
 use App\Enums\TipoContrato;
@@ -10,6 +9,7 @@ use App\Enums\TipoEquipamento;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
+use App\Models\ModeloFaturacao;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -25,7 +25,7 @@ class Editor extends Component
     public string $data_inicio = '';
     public string $data_fim = '';
     public string $tipo = '';
-    public string $modelo_faturacao = '';
+    public ?int $modelo_faturacao_id = null;
     public ?string $valor = null;
     public string $periodo_faturacao = '';
     public string $coberturas = '';
@@ -52,7 +52,7 @@ class Editor extends Component
             $this->data_inicio = $contrato->data_inicio->toDateString();
             $this->data_fim = $contrato->data_fim->toDateString();
             $this->tipo = $contrato->tipo->value;
-            $this->modelo_faturacao = $contrato->modelo_faturacao->value;
+            $this->modelo_faturacao_id = $contrato->modelo_faturacao_id;
             $this->valor = $contrato->valor;
             $this->periodo_faturacao = $contrato->periodo_faturacao ?? '';
             $this->coberturas = $contrato->coberturas ?? '';
@@ -109,6 +109,36 @@ class Editor extends Component
         $this->slas = array_values($this->slas);
     }
 
+    // Cria um novo modelo de faturação (persistido) e seleciona-o. Rejeita duplicados
+    // (case-insensitive, sem acentos). Devolve true em caso de sucesso.
+    public function adicionarModelo(string $nome): bool
+    {
+        $nome = trim(preg_replace('/\s+/', ' ', $nome));
+
+        if ($nome === '') {
+            $this->addError('novoModelo', 'Indique o nome do modelo de faturação.');
+
+            return false;
+        }
+
+        if (ModeloFaturacao::where('nome_normalizado', ModeloFaturacao::normalizar($nome))->exists()) {
+            $this->addError('novoModelo', 'Já existe um modelo de faturação com esse nome.');
+
+            return false;
+        }
+
+        $modelo = ModeloFaturacao::create(['nome' => $nome]);
+        $this->modelo_faturacao_id = $modelo->id;
+        $this->resetErrorBag('novoModelo');
+
+        return true;
+    }
+
+    public function cancelarModelo(): void
+    {
+        $this->resetErrorBag('novoModelo');
+    }
+
     /** @return array<string, mixed> */
     protected function rules(): array
     {
@@ -118,7 +148,7 @@ class Editor extends Component
             'data_inicio' => ['required', 'date'],
             'data_fim' => ['required', 'date', 'after:data_inicio'],
             'tipo' => ['required', Rule::enum(TipoContrato::class)],
-            'modelo_faturacao' => ['required', Rule::enum(ModeloFaturacao::class)],
+            'modelo_faturacao_id' => ['required', 'integer', 'exists:modelos_faturacao,id'],
             'valor' => ['nullable', 'numeric', 'min:0'],
             'periodo_faturacao' => ['nullable', 'string', 'max:255'],
             'coberturas' => ['nullable', 'string'],
@@ -148,7 +178,7 @@ class Editor extends Component
             'data_inicio' => $this->data_inicio,
             'data_fim' => $this->data_fim,
             'tipo' => $this->tipo,
-            'modelo_faturacao' => $this->modelo_faturacao,
+            'modelo_faturacao_id' => $this->modelo_faturacao_id,
             'valor' => $this->valor !== '' ? $this->valor : null,
             'periodo_faturacao' => $this->periodo_faturacao ?: null,
             'coberturas' => $this->coberturas ?: null,
@@ -197,7 +227,7 @@ class Editor extends Component
             'clientes' => Cliente::orderBy('nome')->get(),
             'equipamentos' => $equipamentos,
             'tiposContrato' => TipoContrato::cases(),
-            'modelosFaturacao' => ModeloFaturacao::cases(),
+            'modelosFaturacao' => ModeloFaturacao::orderBy('nome')->get(),
             'tiposEquipamento' => TipoEquipamento::cases(),
             'periodicidades' => Periodicidade::cases(),
             'prioridades' => PrioridadeSla::cases(),

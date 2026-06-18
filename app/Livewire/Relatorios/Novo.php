@@ -9,6 +9,7 @@ use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Services\GeradorRelatorio;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -28,8 +29,9 @@ class Novo extends Component
     // ---- Constatações ----
     public string $resumo = '';
 
-    // ---- Checklist (itens predefinidos, editáveis) ----
-    public array $checklist = [];
+    // ---- Checklist em etapas ----
+    // Estrutura: [['uid','titulo','itens'=>[['uid','descricao','concluido','observacao'],...]], ...]
+    public array $etapas = [];
 
     // ---- Recomendações ----
     public string $recomendacao = '';
@@ -49,12 +51,23 @@ class Novo extends Component
     {
         $this->data = now()->format('Y-m-d');
 
-        // Itens de checklist iniciais (preventiva genérica).
-        $this->checklist = [
-            ['descricao' => 'Inspeção visual', 'concluido' => false, 'observacao' => ''],
-            ['descricao' => 'Verificação de funcionamento', 'concluido' => false, 'observacao' => ''],
-            ['descricao' => 'Limpeza geral', 'concluido' => false, 'observacao' => ''],
+        // Etapa inicial com itens predefinidos (preventiva genérica).
+        $this->etapas = [
+            [
+                'uid' => $this->novoUid(),
+                'titulo' => 'Inspeção',
+                'itens' => [
+                    ['uid' => $this->novoUid(), 'descricao' => 'Inspeção visual', 'concluido' => false, 'observacao' => ''],
+                    ['uid' => $this->novoUid(), 'descricao' => 'Verificação de funcionamento', 'concluido' => false, 'observacao' => ''],
+                    ['uid' => $this->novoUid(), 'descricao' => 'Limpeza geral', 'concluido' => false, 'observacao' => ''],
+                ],
+            ],
         ];
+    }
+
+    private function novoUid(): string
+    {
+        return (string) Str::uuid();
     }
 
     protected function rules(): array
@@ -67,15 +80,81 @@ class Novo extends Component
         ];
     }
 
-    public function adicionarItem(): void
+    // ---- Etapas ----
+    public function adicionarEtapa(): void
     {
-        $this->checklist[] = ['descricao' => '', 'concluido' => false, 'observacao' => ''];
+        $this->etapas[] = ['uid' => $this->novoUid(), 'titulo' => '', 'itens' => []];
     }
 
-    public function removerItem(int $i): void
+    public function removerEtapa(string $uid): void
     {
-        unset($this->checklist[$i]);
-        $this->checklist = array_values($this->checklist);
+        $this->etapas = array_values(array_filter($this->etapas, fn ($e) => $e['uid'] !== $uid));
+    }
+
+    // ---- Itens ----
+    public function adicionarItem(string $etapaUid): void
+    {
+        foreach ($this->etapas as $i => $etapa) {
+            if ($etapa['uid'] === $etapaUid) {
+                $this->etapas[$i]['itens'][] = ['uid' => $this->novoUid(), 'descricao' => '', 'concluido' => false, 'observacao' => ''];
+
+                return;
+            }
+        }
+    }
+
+    public function removerItem(string $etapaUid, string $itemUid): void
+    {
+        foreach ($this->etapas as $i => $etapa) {
+            if ($etapa['uid'] === $etapaUid) {
+                $this->etapas[$i]['itens'] = array_values(array_filter($etapa['itens'], fn ($it) => $it['uid'] !== $itemUid));
+
+                return;
+            }
+        }
+    }
+
+    // ---- Reordenação (drag-and-drop) ----
+    // Recebe do SortableJS a nova sequência: [['etapa'=>uid, 'itens'=>[itemUid,...]], ...].
+    // Reconstrói $etapas por uid, preservando os valores (título, descrição, etc.) e
+    // suportando mover itens entre etapas.
+    public function reordenar(array $estrutura): void
+    {
+        $etapasPorUid = [];
+        $itensPorUid = [];
+        foreach ($this->etapas as $etapa) {
+            $etapasPorUid[$etapa['uid']] = $etapa;
+            foreach ($etapa['itens'] as $item) {
+                $itensPorUid[$item['uid']] = $item;
+            }
+        }
+
+        $novas = [];
+        foreach ($estrutura as $entrada) {
+            $etapaUid = $entrada['etapa'] ?? null;
+            if (! $etapaUid || ! isset($etapasPorUid[$etapaUid])) {
+                continue;
+            }
+
+            $itens = [];
+            foreach (($entrada['itens'] ?? []) as $itemUid) {
+                if (isset($itensPorUid[$itemUid])) {
+                    $itens[] = $itensPorUid[$itemUid];
+                }
+            }
+
+            $novas[] = [
+                'uid' => $etapaUid,
+                'titulo' => $etapasPorUid[$etapaUid]['titulo'],
+                'itens' => $itens,
+            ];
+        }
+
+        // Salvaguarda: só aplica se o payload cobrir todas as etapas e itens (sem perdas).
+        $totalItensDepois = array_sum(array_map(fn ($e) => count($e['itens']), $novas));
+        if (count($novas) === count($this->etapas) && $totalItensDepois === count($itensPorUid)) {
+            $this->etapas = $novas;
+        }
     }
 
     // Cria a folha de obra, conclui-a e emite o relatório (PDF em job assíncrono §12).
@@ -103,18 +182,32 @@ class Novo extends Component
                 ]),
             ]);
 
-            // Itens de checklist preenchidos (ignora linhas sem descrição).
-            foreach (array_values($this->checklist) as $ordem => $item) {
-                if (trim($item['descricao'] ?? '') === '') {
+            // Etapas + itens, com a ordem preservada. Ignora etapas sem título nem itens.
+            foreach (array_values($this->etapas) as $ordemEtapa => $etapa) {
+                $titulo = trim($etapa['titulo'] ?? '');
+                $itens = array_values(array_filter(
+                    $etapa['itens'] ?? [],
+                    fn ($it) => trim($it['descricao'] ?? '') !== '',
+                ));
+
+                if ($titulo === '' && count($itens) === 0) {
                     continue;
                 }
 
-                $intervencao->checklistItens()->create([
-                    'descricao' => trim($item['descricao']),
-                    'concluido' => (bool) ($item['concluido'] ?? false),
-                    'observacao' => trim($item['observacao'] ?? '') ?: null,
-                    'ordem' => $ordem,
+                $etapaModel = $intervencao->checklistEtapas()->create([
+                    'titulo' => $titulo !== '' ? $titulo : 'Sem título',
+                    'ordem' => $ordemEtapa,
                 ]);
+
+                foreach ($itens as $ordemItem => $it) {
+                    $etapaModel->itens()->create([
+                        'intervencao_id' => $intervencao->id,
+                        'descricao' => trim($it['descricao']),
+                        'concluido' => (bool) ($it['concluido'] ?? false),
+                        'observacao' => trim($it['observacao'] ?? '') ?: null,
+                        'ordem' => $ordemItem,
+                    ]);
+                }
             }
 
             // Fotos: persistidas no object storage só agora (a intervenção já existe).

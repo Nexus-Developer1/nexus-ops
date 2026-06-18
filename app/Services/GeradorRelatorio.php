@@ -46,6 +46,7 @@ class GeradorRelatorio
                     'equipamento' => fn ($q) => $q->withoutGlobalScopes()->with('local.cliente'),
                     'tecnico',
                     'checklistItens',
+                    'checklistEtapas.itens',
                     'anexos',
                 ]),
             ])

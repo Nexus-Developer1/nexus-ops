@@ -34,7 +34,7 @@ class Listagem extends Component
     public function render()
     {
         $contratos = Contrato::query()
-            ->with('cliente')
+            ->with('cliente', 'modeloFaturacao')
             ->withCount('equipamentos')
             ->when($this->estado === 'a_expirar', fn ($q) => $q->aExpirar())
             ->when($this->estado && $this->estado !== 'a_expirar', fn ($q) => $q->where('estado', $this->estado))

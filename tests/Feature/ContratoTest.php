@@ -11,6 +11,7 @@ use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\Local;
+use App\Models\ModeloFaturacao;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -28,6 +29,12 @@ class ContratoTest extends TestCase
         ]);
     }
 
+    // Os modelos de faturação são semeados na migração; usamos o primeiro disponível.
+    private function modeloFaturacaoId(): int
+    {
+        return ModeloFaturacao::query()->value('id');
+    }
+
     private function clienteComEquipamento(): array
     {
         $cliente = Cliente::create(['nome' => 'ACME', 'email' => 'acme@x.pt', 'ativo' => true]);
@@ -43,7 +50,7 @@ class ContratoTest extends TestCase
         Contrato::create([
             'numero' => '2026/0001', 'cliente_id' => $cliente->id,
             'data_inicio' => now(), 'data_fim' => now()->addYear(),
-            'estado' => EstadoContrato::Ativo, 'tipo' => 'preventiva', 'modelo_faturacao' => 'avenca',
+            'estado' => EstadoContrato::Ativo, 'tipo' => 'preventiva', 'modelo_faturacao_id' => $this->modeloFaturacaoId(),
         ]);
 
         $this->actingAs($this->admin())
@@ -64,7 +71,7 @@ class ContratoTest extends TestCase
             ->set('data_inicio', now()->toDateString())
             ->set('data_fim', now()->addYear()->toDateString())
             ->set('tipo', 'full_service')
-            ->set('modelo_faturacao', 'avenca')
+            ->set('modelo_faturacao_id', $this->modeloFaturacaoId())
             ->set('equipamentoIds', [$equip->id])
             ->set('planos', [['equipamento_tipo' => 'ups', 'periodicidade' => 'trimestral', 'duracao_estimada_min' => 90]])
             ->set('slas', [['prioridade' => 'critica', 'tempo_resposta_horas' => 4, 'tempo_resolucao_horas' => 24, 'horario_cobertura' => '24x7']])
@@ -85,7 +92,7 @@ class ContratoTest extends TestCase
         $contrato = Contrato::create([
             'numero' => '2026/0009', 'cliente_id' => $cliente->id,
             'data_inicio' => now(), 'data_fim' => now()->addYear(),
-            'estado' => EstadoContrato::Rascunho, 'tipo' => 'preventiva', 'modelo_faturacao' => 'avenca',
+            'estado' => EstadoContrato::Rascunho, 'tipo' => 'preventiva', 'modelo_faturacao_id' => $this->modeloFaturacaoId(),
         ]);
 
         Livewire::actingAs($this->admin())
@@ -101,7 +108,7 @@ class ContratoTest extends TestCase
         $contrato = Contrato::create([
             'numero' => '2026/0010', 'cliente_id' => $cliente->id,
             'data_inicio' => now(), 'data_fim' => now()->addYear(),
-            'estado' => EstadoContrato::Rascunho, 'tipo' => 'preventiva', 'modelo_faturacao' => 'avenca',
+            'estado' => EstadoContrato::Rascunho, 'tipo' => 'preventiva', 'modelo_faturacao_id' => $this->modeloFaturacaoId(),
         ]);
         $contrato->equipamentos()->sync([$equip->id]);
         $contrato->planosVisita()->create(['equipamento_tipo' => 'ups', 'periodicidade' => 'trimestral']);

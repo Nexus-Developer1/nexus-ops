@@ -49,7 +49,7 @@ class AgendaTest extends TestCase
         $contrato = Contrato::create([
             'numero' => $numero, 'cliente_id' => $cliente->id,
             'data_inicio' => $inicio, 'data_fim' => $fim,
-            'estado' => EstadoContrato::Rascunho, 'tipo' => 'preventiva', 'modelo_faturacao' => 'avenca',
+            'estado' => EstadoContrato::Rascunho, 'tipo' => 'preventiva', 'modelo_faturacao_id' => \App\Models\ModeloFaturacao::query()->value('id'),
         ]);
         $contrato->equipamentos()->sync([$equip->id]);
         $contrato->planosVisita()->create(['equipamento_tipo' => 'ups', 'periodicidade' => 'trimestral', 'duracao_estimada_min' => 90]);

@@ -74,7 +74,7 @@
                                     <span class="text-texto-fraco">→</span>
                                     {{ $c->data_fim->translatedFormat('d M Y') }}
                                 </td>
-                                <td class="px-6 py-4 text-texto-medio">{{ $c->modelo_faturacao->rotulo() }}</td>
+                                <td class="px-6 py-4 text-texto-medio">{{ $c->modeloFaturacao?->nome ?? '—' }}</td>
                                 <td class="px-6 py-4"><span class="etiqueta {{ $c->estado->classesEtiqueta() }}">{{ $c->estado->rotulo() }}</span></td>
                                 <td class="px-6 py-4 text-right">
                                     <a href="{{ route('contratos.ficha', $c) }}" wire:navigate class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-texto-fraco transition hover:bg-white hover:text-verde-600">

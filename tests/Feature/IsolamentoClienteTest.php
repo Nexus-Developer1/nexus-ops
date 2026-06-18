@@ -30,7 +30,7 @@ class IsolamentoClienteTest extends TestCase
         $interv = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'preventiva', 'estado' => 'concluida']);
         Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/' . $cliente->id, 'data' => now(), 'estado' => 'finalizado']);
         Contrato::create(['numero' => 'C-' . $cliente->id, 'cliente_id' => $cliente->id, 'data_inicio' => now(),
-            'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'preventiva', 'modelo_faturacao' => 'avenca']);
+            'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'preventiva', 'modelo_faturacao_id' => \App\Models\ModeloFaturacao::query()->value('id')]);
         EventoAgenda::create(['tipo' => 'visita_preventiva', 'titulo' => 'V', 'estado' => 'planeado',
             'inicio' => Carbon::parse('2026-07-06 09:00'), 'fim' => Carbon::parse('2026-07-06 10:00'),
             'cliente_id' => $cliente->id, 'equipamento_id' => $equip->id]);

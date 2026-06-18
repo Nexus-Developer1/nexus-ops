@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\EstadoContrato;
-use App\Enums\ModeloFaturacao;
 use App\Enums\TipoContrato;
 use App\Models\Concerns\RestritoAoCliente;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -37,7 +36,7 @@ class Contrato extends Model
         'data_fim',
         'estado',
         'tipo',
-        'modelo_faturacao',
+        'modelo_faturacao_id',
         'valor',
         'periodo_faturacao',
         'coberturas',
@@ -54,7 +53,6 @@ class Contrato extends Model
             'data_fim' => 'date',
             'estado' => EstadoContrato::class,
             'tipo' => TipoContrato::class,
-            'modelo_faturacao' => ModeloFaturacao::class,
             'valor' => 'decimal:2',
             'renovacao_automatica' => 'boolean',
         ];
@@ -63,6 +61,11 @@ class Contrato extends Model
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    public function modeloFaturacao(): BelongsTo
+    {
+        return $this->belongsTo(ModeloFaturacao::class, 'modelo_faturacao_id');
     }
 
     public function equipamentos(): BelongsToMany

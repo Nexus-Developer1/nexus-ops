@@ -54,7 +54,7 @@ class DashboardTest extends TestCase
     {
         $equip = $this->equip();
         $contrato = Contrato::create(['numero' => 'C-1', 'cliente_id' => $equip->local->cliente_id, 'data_inicio' => now()->subYear(),
-            'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'corretiva', 'modelo_faturacao' => 'avenca']);
+            'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'corretiva', 'modelo_faturacao_id' => \App\Models\ModeloFaturacao::query()->value('id')]);
         $contrato->slas()->create(['prioridade' => 'critica', 'tempo_resolucao_horas' => 8, 'horario_cobertura' => '24x7']);
 
         // Uma dentro do prazo (4h <= 8h), outra fora (20h > 8h).

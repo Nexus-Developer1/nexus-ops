@@ -13,6 +13,7 @@ class ChecklistItem extends Model
     /** @var list<string> */
     protected $fillable = [
         'intervencao_id',
+        'etapa_id',
         'descricao',
         'concluido',
         'observacao',
@@ -30,5 +31,10 @@ class ChecklistItem extends Model
     public function intervencao(): BelongsTo
     {
         return $this->belongsTo(Intervencao::class);
+    }
+
+    public function etapa(): BelongsTo
+    {
+        return $this->belongsTo(ChecklistEtapa::class, 'etapa_id');
     }
 }

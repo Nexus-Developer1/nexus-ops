@@ -87,6 +87,12 @@ class Intervencao extends Model
         return $this->hasMany(ChecklistItem::class)->orderBy('ordem');
     }
 
+    // Etapas (secções) da checklist, ordenadas; cada uma com os seus itens.
+    public function checklistEtapas(): HasMany
+    {
+        return $this->hasMany(ChecklistEtapa::class)->orderBy('ordem');
+    }
+
     public function anexos(): MorphMany
     {
         return $this->morphMany(Anexo::class, 'anexavel');

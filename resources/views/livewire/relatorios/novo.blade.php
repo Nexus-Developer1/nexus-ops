@@ -40,13 +40,75 @@
                     </button>
                     <div x-show="aberto" x-transition class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 px-6 pb-7">
                         <div>
-                            <label class="campo-label">Equipamento <span class="text-perigo-500">*</span></label>
-                            <select wire:model="equipamento_id" class="campo-select">
-                                <option value="">— Selecione —</option>
-                                @foreach ($equipamentos as $e)
-                                    <option value="{{ $e->id }}">{{ $e->local?->cliente?->nome }} · {{ $e->tipo->rotulo() }} {{ $e->modelo }} ({{ $e->numero_serie }})</option>
-                                @endforeach
-                            </select>
+                            <label class="campo-label" for="equip-combo">Equipamento <span class="text-perigo-500">*</span></label>
+                            {{-- Combobox com pesquisa à medida que se escreve (filtragem client-side em Alpine).
+                                 A seleção guarda o id em $wire.equipamento_id — a mesma propriedade que o <select> usava. --}}
+                            <div
+                                x-data="{
+                                    equipamentos: @js($equipamentos->map(fn ($e) => ['id' => $e->id, 'label' => ($e->local?->cliente?->nome ?? '—') . ' · ' . trim($e->tipo->rotulo() . ' ' . $e->modelo) . ' (' . ($e->numero_serie ?? '—') . ')'])->values()),
+                                    inicial: @js((string) $equipamento_id),
+                                    query: '',
+                                    aberto: false,
+                                    destaque: 0,
+                                    norm(s) { return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); },
+                                    get filtrados() {
+                                        const n = this.norm(this.query);
+                                        if (n === '') return this.equipamentos;
+                                        return this.equipamentos.filter(e => this.norm(e.label).includes(n));
+                                    },
+                                    init() {
+                                        const sel = this.equipamentos.find(e => String(e.id) === String(this.inicial));
+                                        if (sel) this.query = sel.label;
+                                    },
+                                    abrir() { this.aberto = true; this.destaque = 0; },
+                                    fechar() { this.aberto = false; },
+                                    mover(d) {
+                                        if (!this.aberto) { this.abrir(); return; }
+                                        const n = this.filtrados.length;
+                                        if (n === 0) return;
+                                        this.destaque = (this.destaque + d + n) % n;
+                                    },
+                                    escolherDestaque() {
+                                        const e = this.filtrados[this.destaque];
+                                        if (e) this.escolher(e);
+                                    },
+                                    escolher(e) {
+                                        this.query = e.label;
+                                        this.aberto = false;
+                                        this.$wire.set('equipamento_id', e.id, false);
+                                    },
+                                }"
+                                @click.outside="fechar()"
+                                @keydown.escape.stop="fechar()"
+                                class="relative"
+                            >
+                                <input
+                                    id="equip-combo"
+                                    type="text"
+                                    x-model="query"
+                                    @focus="abrir()"
+                                    @click="abrir()"
+                                    @input="abrir()"
+                                    @keydown.arrow-down.prevent="mover(1)"
+                                    @keydown.arrow-up.prevent="mover(-1)"
+                                    @keydown.enter.prevent="escolherDestaque()"
+                                    class="campo-input pr-10"
+                                    placeholder="— Selecione —"
+                                    autocomplete="off"
+                                    role="combobox"
+                                    aria-autocomplete="list"
+                                    :aria-expanded="aberto"
+                                >
+                                <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
+                                    <template x-for="(e, i) in filtrados" :key="e.id">
+                                        <li @click="escolher(e)" @mouseenter="destaque = i" :class="i === destaque ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'" class="cursor-pointer px-4 py-2 text-sm" role="option">
+                                            <span x-text="e.label"></span>
+                                        </li>
+                                    </template>
+                                    <li x-show="filtrados.length === 0" class="px-4 py-2 text-sm text-texto-medio">Nenhum equipamento encontrado.</li>
+                                </ul>
+                            </div>
                             @error('equipamento_id') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                         </div>
                         <div>
@@ -90,18 +152,55 @@
                         </span>
                         <svg :class="aberto && 'rotate-180'" class="h-5 w-5 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                     </button>
-                    <div x-show="aberto" x-transition class="space-y-3 px-6 pb-7">
-                        @foreach ($checklist as $i => $item)
-                            <div class="flex items-center gap-3" wire:key="chk-{{ $i }}">
-                                <input wire:model="checklist.{{ $i }}.concluido" type="checkbox" class="h-4 w-4 shrink-0 rounded border-borda text-verde-600 focus:ring-verde-500">
-                                <input wire:model="checklist.{{ $i }}.descricao" type="text" class="campo-input flex-1" placeholder="Item de verificação...">
-                                <input wire:model="checklist.{{ $i }}.observacao" type="text" class="campo-input w-48" placeholder="Observação">
-                                <button type="button" wire:click="removerItem({{ $i }})" class="shrink-0 text-texto-fraco hover:text-perigo-500"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
-                            </div>
-                        @endforeach
-                        <button type="button" wire:click="adicionarItem" class="inline-flex items-center gap-1.5 text-sm font-medium text-verde-600 hover:text-verde-700">
+                    <div x-show="aberto" x-transition class="space-y-4 px-6 pb-7" x-data="checklist">
+                        {{-- Contentor das etapas (SortableJS — reordenar etapas) --}}
+                        <div data-etapas-root class="space-y-4">
+                            @foreach ($etapas as $ei => $etapa)
+                                @php($total = count($etapa['itens']))
+                                @php($feitos = collect($etapa['itens'])->where('concluido', true)->count())
+                                <div wire:key="etapa-{{ $etapa['uid'] }}" data-etapa="{{ $etapa['uid'] }}" x-data="{ aberta: true }" class="rounded-lg border border-borda bg-fundo/40">
+                                    {{-- Cabeçalho da etapa --}}
+                                    <div class="flex items-center gap-2 px-3 py-2.5">
+                                        <span class="pega-etapa cursor-grab text-texto-fraco transition hover:text-texto-medio" title="Arrastar etapa">
+                                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01"/></svg>
+                                        </span>
+                                        <input wire:model="etapas.{{ $ei }}.titulo" type="text" class="campo-input flex-1 font-medium" placeholder="Título da etapa (ex.: Inspeção)">
+                                        <span class="shrink-0 whitespace-nowrap text-xs text-texto-fraco">{{ $feitos }}/{{ $total }} concluídos</span>
+                                        <button type="button" @click="aberta=!aberta" class="shrink-0 text-texto-fraco transition hover:text-texto-medio" title="Colapsar/expandir">
+                                            <svg :class="aberta && 'rotate-180'" class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                        </button>
+                                        <button type="button" wire:click="removerEtapa('{{ $etapa['uid'] }}')" @if ($total) wire:confirm="Remover esta etapa e os seus {{ $total }} {{ \Illuminate\Support\Str::plural('item', $total) }}?" @endif class="shrink-0 text-texto-fraco transition hover:text-perigo-500" title="Remover etapa">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                    </div>
+
+                                    {{-- Itens da etapa --}}
+                                    <div x-show="aberta" x-transition class="space-y-2 px-3 pb-3">
+                                        <div data-itens="{{ $etapa['uid'] }}" class="space-y-2">
+                                            @foreach ($etapa['itens'] as $ii => $item)
+                                                <div wire:key="item-{{ $item['uid'] }}" data-item="{{ $item['uid'] }}" class="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5">
+                                                    <span class="pega-item cursor-grab text-texto-fraco transition hover:text-texto-medio" title="Arrastar item">
+                                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01"/></svg>
+                                                    </span>
+                                                    <input wire:model.live="etapas.{{ $ei }}.itens.{{ $ii }}.concluido" type="checkbox" class="h-4 w-4 shrink-0 rounded border-borda text-verde-600 focus:ring-verde-500">
+                                                    <input wire:model="etapas.{{ $ei }}.itens.{{ $ii }}.descricao" type="text" class="campo-input flex-1" placeholder="Item de verificação...">
+                                                    <input wire:model="etapas.{{ $ei }}.itens.{{ $ii }}.observacao" type="text" class="campo-input w-48" placeholder="Observação">
+                                                    <button type="button" wire:click="removerItem('{{ $etapa['uid'] }}', '{{ $item['uid'] }}')" class="shrink-0 text-texto-fraco transition hover:text-perigo-500" title="Remover item"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                        <button type="button" wire:click="adicionarItem('{{ $etapa['uid'] }}')" class="inline-flex items-center gap-1.5 text-sm font-medium text-verde-600 hover:text-verde-700">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
+                                            Adicionar item
+                                        </button>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <button type="button" wire:click="adicionarEtapa" class="inline-flex items-center gap-1.5 text-sm font-medium text-verde-600 hover:text-verde-700">
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
-                            Adicionar item
+                            Adicionar etapa
                         </button>
                     </div>
                 </section>

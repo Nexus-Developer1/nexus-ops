@@ -54,15 +54,35 @@
                         </select>
                         @error('tipo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
-                    <div>
+                    <div x-data="{ adicionando: false, novo: '' }">
                         <label class="campo-label">Modelo de faturação</label>
-                        <select wire:model="modelo_faturacao" class="campo-select">
+
+                        {{-- Seleção de um modelo existente --}}
+                        <select x-show="!adicionando" wire:model="modelo_faturacao_id" class="campo-select">
                             <option value="">Selecione...</option>
                             @foreach ($modelosFaturacao as $m)
-                                <option value="{{ $m->value }}">{{ $m->rotulo() }}</option>
+                                <option value="{{ $m->id }}">{{ $m->nome }}</option>
                             @endforeach
                         </select>
-                        @error('modelo_faturacao') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+
+                        {{-- Adicionar um novo modelo (fica guardado na BD) --}}
+                        <div x-show="adicionando" x-cloak class="flex gap-2">
+                            <input x-model="novo" type="text" class="campo-input flex-1" placeholder="Nome do novo modelo"
+                                @keydown.enter.prevent="$wire.adicionarModelo(novo).then(ok => { if (ok) { adicionando = false; novo = ''; } })">
+                            <button type="button" class="botao-primario shrink-0"
+                                @click="$wire.adicionarModelo(novo).then(ok => { if (ok) { adicionando = false; novo = ''; } })">Guardar</button>
+                            <button type="button" class="botao-secundario shrink-0"
+                                @click="adicionando = false; novo = ''; $wire.cancelarModelo()">Cancelar</button>
+                        </div>
+
+                        <button type="button" x-show="!adicionando" @click="adicionando = true"
+                            class="mt-1.5 inline-flex items-center gap-1.5 text-sm font-medium text-verde-600 hover:text-verde-700">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
+                            Adicionar outro registo
+                        </button>
+
+                        @error('modelo_faturacao_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                        @error('novoModelo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="campo-label">Valor (€)</label>

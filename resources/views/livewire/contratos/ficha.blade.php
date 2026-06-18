@@ -50,7 +50,7 @@
                 <dl class="grid grid-cols-2 gap-x-8 gap-y-5 border-t border-borda px-6 py-6 sm:grid-cols-4">
                     <div><dt class="text-xs uppercase tracking-wide text-texto-fraco">Início</dt><dd class="mt-1 text-sm text-texto-forte">{{ $contrato->data_inicio->translatedFormat('d M Y') }}</dd></div>
                     <div><dt class="text-xs uppercase tracking-wide text-texto-fraco">Fim</dt><dd class="mt-1 text-sm text-texto-forte">{{ $contrato->data_fim->translatedFormat('d M Y') }}</dd></div>
-                    <div><dt class="text-xs uppercase tracking-wide text-texto-fraco">Faturação</dt><dd class="mt-1 text-sm text-texto-forte">{{ $contrato->modelo_faturacao->rotulo() }}</dd></div>
+                    <div><dt class="text-xs uppercase tracking-wide text-texto-fraco">Faturação</dt><dd class="mt-1 text-sm text-texto-forte">{{ $contrato->modeloFaturacao?->nome ?? '—' }}</dd></div>
                     <div><dt class="text-xs uppercase tracking-wide text-texto-fraco">Valor</dt><dd class="mt-1 text-sm text-texto-forte">{{ $contrato->valor ? number_format((float) $contrato->valor, 2, ',', '.') . ' €' : '—' }}</dd></div>
                     <div><dt class="text-xs uppercase tracking-wide text-texto-fraco">Período faturação</dt><dd class="mt-1 text-sm text-texto-forte">{{ $contrato->periodo_faturacao ?: '—' }}</dd></div>
                     <div><dt class="text-xs uppercase tracking-wide text-texto-fraco">Renovação automática</dt><dd class="mt-1 text-sm text-texto-forte">{{ $contrato->renovacao_automatica ? 'Sim' : 'Não' }}</dd></div>

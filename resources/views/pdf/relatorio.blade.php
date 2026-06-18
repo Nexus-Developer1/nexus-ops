@@ -16,9 +16,12 @@
         table { width: 100%; border-collapse: collapse; }
         .grelha td { padding: 4px 0; vertical-align: top; width: 50%; }
         .texto { color: #374151; line-height: 1.5; }
-        .item { padding: 3px 0; }
+        .item { padding: 3px 0 3px 10px; }
         .marca-check { color: #16A34A; font-weight: bold; }
         .marca-vazio { color: #9ca3af; }
+        .etapa-titulo { margin-top: 8px; font-weight: bold; color: #374151; font-size: 11px; }
+        .etapa-contador { color: #9ca3af; font-weight: normal; font-size: 9px; }
+        .item-obs { color: #6b7280; }
         .foto { width: 150px; height: 110px; object-fit: cover; border: 1px solid #e5e7eb; margin: 0 6px 6px 0; }
         .rodape { margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 8px; text-align: center; color: #9ca3af; font-size: 8px; letter-spacing: 1px; }
         .etiqueta { background: #ECFDF3; color: #166534; font-size: 9px; padding: 2px 6px; border-radius: 3px; }
@@ -94,7 +97,20 @@
         </table>
     @endif
 
-    @if ($i->checklistItens->count())
+    @if ($i->checklistEtapas->count())
+        <h2>Checklist</h2>
+        @foreach ($i->checklistEtapas as $etapa)
+            @php($tot = $etapa->itens->count())
+            @php($fei = $etapa->itens->where('concluido', true)->count())
+            <div class="etapa-titulo">{{ $etapa->titulo }} <span class="etapa-contador">({{ $fei }}/{{ $tot }} concluídos)</span></div>
+            @foreach ($etapa->itens as $item)
+                <div class="item">
+                    <span class="{{ $item->concluido ? 'marca-check' : 'marca-vazio' }}">{{ $item->concluido ? '[X]' : '[ ]' }}</span>
+                    {{ $item->descricao }}@if ($item->observacao)<span class="item-obs"> — {{ $item->observacao }}</span>@endif
+                </div>
+            @endforeach
+        @endforeach
+    @elseif ($i->checklistItens->count())
         <h2>Checklist</h2>
         @foreach ($i->checklistItens as $item)
             <div class="item">

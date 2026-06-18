@@ -50,8 +50,8 @@ Route::middleware(['auth', 'papel:admin'])->group(function () {
     Route::get('/dashboard', \App\Livewire\DashboardGestao::class)->name('dashboard');
 
     Route::get('/ativos', \App\Livewire\Equipamentos\Listagem::class)->name('ativos');
-    Route::get('/ativos/novo', \App\Livewire\Equipamentos\Editor::class)->name('equipamentos.novo');
-    Route::get('/ativos/{equipamento}/editar', \App\Livewire\Equipamentos\Editor::class)->name('equipamentos.editar');
+    // Associar um equipamento existente a um local (rota literal ANTES de /ativos/{equipamento}).
+    Route::get('/ativos/associar/{equipamento?}', \App\Livewire\Equipamentos\Associar::class)->name('equipamentos.associar');
 
     // Contratos (rota /novo declarada ANTES de /{contrato} para não colidir).
     Route::get('/contratos', \App\Livewire\Contratos\Listagem::class)->name('contratos');
@@ -71,6 +71,9 @@ Route::middleware(['auth', 'papel:tecnico'])->group(function () {
 // ---- Operação de campo (admin + técnico) — agenda, intervenções, relatórios ----
 // Para técnicos, os dados são filtrados aos seus (global scopes RestritoAoTecnico).
 Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($servirPdf) {
+    // Consulta de clientes (só leitura — origem ERP).
+    Route::get('/clientes', \App\Livewire\Clientes\Index::class)->name('clientes');
+
     // Ficha de equipamento (leitura em campo — ex.: QR code).
     Route::get('/ativos/{equipamento}', \App\Livewire\Equipamentos\Ficha::class)->name('equipamentos.ficha');
 
