@@ -3,23 +3,32 @@
 namespace App\Livewire\Relatorios;
 
 use App\Enums\EstadoIntervencao;
+use App\Enums\EstadoRelatorio;
 use App\Enums\TipoIntervencao;
 use App\Jobs\GerarRelatorioPdf;
+use App\Models\Anexo;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
+use App\Models\Relatorio;
 use App\Services\GeradorRelatorio;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
-// "Novo Relatório": formulário de criação. Cria a intervenção (folha de obra),
-// conclui-a e emite o relatório — cadeia do CLAUDE.md §6 (intervenção -> relatório).
-#[Layout('components.layouts.app', ['ativo' => 'relatorios', 'titulo' => 'Novo relatório'])]
+// "Relatório de Intervenção Técnica": criar/retomar. Dois modos de gravação —
+// Guardar rascunho (valida só o equipamento, sem PDF) e Finalizar (validação
+// completa + gera o PDF). Sem auto-save: só grava quando o utilizador carrega.
+#[Layout('components.layouts.app', ['ativo' => 'relatorios', 'titulo' => 'Relatório'])]
 class Novo extends Component
 {
     use WithFileUploads;
+
+    // Edição/retomar (null = novo).
+    public ?int $relatorioId = null;
+    public ?int $intervencaoId = null;
 
     // ---- Dados gerais ----
     public ?int $equipamento_id = null;
@@ -44,14 +53,52 @@ class Novo extends Component
     public string $tensao_saida = '';
     public string $anomalias = '';
 
-    // ---- Fotos (uploads temporários até submeter) ----
+    // ---- Fotos (novos uploads temporários até gravar) ----
     public array $fotos = [];
 
-    public function mount(): void
+    public function mount(?Relatorio $relatorio = null): void
     {
-        $this->data = now()->format('Y-m-d');
+        if ($relatorio && $relatorio->exists) {
+            // Só rascunhos são editáveis aqui; finalizados vão para a lista.
+            if ($relatorio->estado !== EstadoRelatorio::Rascunho) {
+                $this->redirectRoute('relatorios', navigate: true);
 
-        // Etapa inicial com itens predefinidos (preventiva genérica).
+                return;
+            }
+
+            $intervencao = $relatorio->intervencao()->with('checklistEtapas.itens')->firstOrFail();
+            $this->relatorioId = $relatorio->id;
+            $this->intervencaoId = $intervencao->id;
+            $this->equipamento_id = $intervencao->equipamento_id;
+            $this->tipo = $intervencao->tipo->value;
+            $this->data = $intervencao->data_inicio?->format('Y-m-d') ?? '';
+            $this->resumo = $intervencao->trabalho_realizado ?? '';
+            $this->recomendacao = $intervencao->observacoes ?? '';
+
+            $d = $intervencao->diagnostico ?? [];
+            $this->estado_geral = $d['estado_geral'] ?? '';
+            $this->carga = $d['carga'] ?? '';
+            $this->tensao_entrada = $d['tensao_entrada'] ?? '';
+            $this->tensao_saida = $d['tensao_saida'] ?? '';
+            $this->anomalias = $d['anomalias'] ?? '';
+            $this->prioridade = $d['prioridade'] ?? 'Normal';
+
+            $this->etapas = $intervencao->checklistEtapas->map(fn ($et) => [
+                'uid' => $this->novoUid(),
+                'titulo' => $et->titulo,
+                'itens' => $et->itens->map(fn ($it) => [
+                    'uid' => $this->novoUid(),
+                    'descricao' => $it->descricao,
+                    'concluido' => (bool) $it->concluido,
+                    'observacao' => $it->observacao ?? '',
+                ])->all(),
+            ])->all();
+
+            return;
+        }
+
+        // Novo relatório.
+        $this->data = now()->format('Y-m-d');
         $this->etapas = [
             [
                 'uid' => $this->novoUid(),
@@ -65,11 +112,17 @@ class Novo extends Component
         ];
     }
 
+    public function ehRascunho(): bool
+    {
+        return true; // este formulário só edita rascunhos / cria novos (que nascem rascunho)
+    }
+
     private function novoUid(): string
     {
         return (string) Str::uuid();
     }
 
+    // Validação COMPLETA (finalizar).
     protected function rules(): array
     {
         return [
@@ -115,9 +168,6 @@ class Novo extends Component
     }
 
     // ---- Reordenação (drag-and-drop) ----
-    // Recebe do SortableJS a nova sequência: [['etapa'=>uid, 'itens'=>[itemUid,...]], ...].
-    // Reconstrói $etapas por uid, preservando os valores (título, descrição, etc.) e
-    // suportando mover itens entre etapas.
     public function reordenar(array $estrutura): void
     {
         $etapasPorUid = [];
@@ -150,26 +200,61 @@ class Novo extends Component
             ];
         }
 
-        // Salvaguarda: só aplica se o payload cobrir todas as etapas e itens (sem perdas).
         $totalItensDepois = array_sum(array_map(fn ($e) => count($e['itens']), $novas));
         if (count($novas) === count($this->etapas) && $totalItensDepois === count($itensPorUid)) {
             $this->etapas = $novas;
         }
     }
 
-    // Cria a folha de obra, conclui-a e emite o relatório (PDF em job assíncrono §12).
-    public function submeter(GeradorRelatorio $gerador)
+    // ---- Fotos já guardadas (em edição) ----
+    public function removerAnexoExistente(int $id): void
     {
-        $this->validate();
+        if (! $this->intervencaoId) {
+            return;
+        }
 
-        $relatorio = DB::transaction(function () use ($gerador) {
-            $intervencao = Intervencao::create([
+        $anexo = Anexo::where('anexavel_type', Intervencao::class)
+            ->where('anexavel_id', $this->intervencaoId)
+            ->find($id);
+
+        if ($anexo) {
+            Storage::disk()->delete($anexo->storage_key);
+            $anexo->delete();
+        }
+    }
+
+    // ---- Gravação ----
+    public function guardarRascunho(GeradorRelatorio $gerador)
+    {
+        return $this->persistir($gerador, false);
+    }
+
+    public function finalizar(GeradorRelatorio $gerador)
+    {
+        return $this->persistir($gerador, true);
+    }
+
+    private function persistir(GeradorRelatorio $gerador, bool $finalizar)
+    {
+        if ($finalizar) {
+            // Validação completa.
+            $this->validate();
+        } else {
+            // Rascunho: o único obrigatório é o equipamento.
+            $this->validate([
+                'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
+                'fotos.*' => ['image', 'max:8192'],
+            ]);
+        }
+
+        $relatorio = DB::transaction(function () use ($gerador, $finalizar) {
+            $dados = [
                 'equipamento_id' => $this->equipamento_id,
                 'tecnico_id' => auth()->id(),
                 'tipo' => $this->tipo,
-                'estado' => EstadoIntervencao::Concluida,
-                'data_inicio' => $this->data,
-                'data_fim' => now(),
+                'estado' => $finalizar ? EstadoIntervencao::Concluida : EstadoIntervencao::EmCurso,
+                'data_inicio' => $this->data ?: null,
+                'data_fim' => $finalizar ? now() : null,
                 'trabalho_realizado' => $this->resumo ?: null,
                 'observacoes' => $this->recomendacao ?: null,
                 'diagnostico' => array_filter([
@@ -180,9 +265,18 @@ class Novo extends Component
                     'anomalias' => $this->anomalias ?: null,
                     'prioridade' => $this->prioridade ?: null,
                 ]),
-            ]);
+            ];
 
-            // Etapas + itens, com a ordem preservada. Ignora etapas sem título nem itens.
+            if ($this->intervencaoId) {
+                $intervencao = Intervencao::findOrFail($this->intervencaoId);
+                $intervencao->update($dados);
+            } else {
+                $intervencao = Intervencao::create($dados);
+                $this->intervencaoId = $intervencao->id;
+            }
+
+            // Etapas + itens: substitui o conjunto, com a ordem.
+            $intervencao->checklistEtapas()->delete();
             foreach (array_values($this->etapas) as $ordemEtapa => $etapa) {
                 $titulo = trim($etapa['titulo'] ?? '');
                 $itens = array_values(array_filter(
@@ -210,10 +304,9 @@ class Novo extends Component
                 }
             }
 
-            // Fotos: persistidas no object storage só agora (a intervenção já existe).
+            // Fotos novas (anexa às existentes).
             foreach ($this->fotos as $foto) {
                 $key = $foto->store('anexos/intervencoes/' . $intervencao->id);
-
                 $intervencao->anexos()->create([
                     'nome_ficheiro' => $foto->getClientOriginalName(),
                     'storage_key' => $key,
@@ -222,27 +315,47 @@ class Novo extends Component
                     'criado_por' => auth()->id(),
                 ]);
             }
+            $this->fotos = [];
 
-            return $gerador->criarParaIntervencao($intervencao);
+            // Relatório: cria/atualiza. O número só é atribuído ao finalizar.
+            $relatorio = Relatorio::firstOrNew(['intervencao_id' => $intervencao->id]);
+            if (! $relatorio->exists) {
+                $relatorio->data = now();
+            }
+            $relatorio->estado = $finalizar ? EstadoRelatorio::Finalizado : EstadoRelatorio::Rascunho;
+            if ($finalizar && blank($relatorio->numero)) {
+                $relatorio->numero = $gerador->proximoNumero();
+            }
+            $relatorio->save();
+            $this->relatorioId = $relatorio->id;
+
+            return $relatorio;
         });
 
-        GerarRelatorioPdf::dispatch($relatorio);
-
-        session()->flash('sucesso', "Relatório {$relatorio->numero} criado. O PDF está a ser gerado.");
+        if ($finalizar) {
+            GerarRelatorioPdf::dispatch($relatorio);
+            session()->flash('sucesso', "Relatório {$relatorio->numero} finalizado. O PDF está a ser gerado.");
+        } else {
+            session()->flash('sucesso', 'Rascunho guardado.');
+        }
 
         return redirect()->route('relatorios');
     }
 
     public function render()
     {
-        // Equipamentos disponíveis para o utilizador (global scopes aplicam isolamento).
         $equipamentos = Equipamento::with('local.cliente')
             ->orderBy('numero_serie')
             ->get();
 
+        $anexosExistentes = $this->intervencaoId
+            ? Intervencao::find($this->intervencaoId)?->anexos()->get() ?? collect()
+            : collect();
+
         return view('livewire.relatorios.novo', [
             'equipamentos' => $equipamentos,
             'tipos' => TipoIntervencao::cases(),
+            'anexosExistentes' => $anexosExistentes,
         ]);
     }
 }

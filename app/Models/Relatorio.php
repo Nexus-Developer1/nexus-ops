@@ -8,11 +8,12 @@ use App\Models\Concerns\RestritoAoTecnico;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 // Relatório gerado de uma intervenção (com numeração sequencial).
 class Relatorio extends Model
 {
-    use RestritoAoCliente, RestritoAoTecnico;
+    use RestritoAoCliente, RestritoAoTecnico, SoftDeletes;
 
     protected $table = 'relatorios';
 

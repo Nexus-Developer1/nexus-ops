@@ -1,9 +1,13 @@
 <div x-data="{ tab: 'gerais' }">
-    <x-topbar :breadcrumb="['Relatórios', 'Novo']">
+    <x-topbar :breadcrumb="['Relatórios', $relatorioId ? 'Rascunho' : 'Novo']">
         <a href="{{ route('relatorios') }}" class="botao-secundario">Cancelar</a>
-        <button wire:click="submeter" wire:loading.attr="disabled" wire:target="submeter" class="botao-primario">
-            <span wire:loading.remove wire:target="submeter">Gerar Relatório</span>
-            <span wire:loading wire:target="submeter">A gerar…</span>
+        <button wire:click="guardarRascunho" wire:loading.attr="disabled" wire:target="guardarRascunho" class="botao-secundario">
+            <span wire:loading.remove wire:target="guardarRascunho">Guardar rascunho</span>
+            <span wire:loading wire:target="guardarRascunho">A guardar…</span>
+        </button>
+        <button wire:click="finalizar" wire:loading.attr="disabled" wire:target="finalizar" wire:confirm="Finalizar o relatório? Gera o PDF e fica como documento oficial." class="botao-primario">
+            <span wire:loading.remove wire:target="finalizar">Finalizar relatório</span>
+            <span wire:loading wire:target="finalizar">A finalizar…</span>
         </button>
     </x-topbar>
 
@@ -16,7 +20,7 @@
                     <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Relatório de Intervenção Técnica</h1>
                     <p class="mt-2 text-sm text-texto-medio">Preencha todos os campos obrigatórios para submeter a folha de obra.</p>
                 </div>
-                <span class="etiqueta bg-aviso-100 text-aviso-500 uppercase tracking-wide">Em curso</span>
+                <span class="etiqueta {{ \App\Enums\EstadoRelatorio::Rascunho->classesEtiqueta() }} uppercase tracking-wide">Rascunho</span>
             </div>
 
             {{-- Tabs --}}
@@ -241,6 +245,19 @@
                             <span class="text-xs font-medium" wire:loading.remove wire:target="fotos">Carregar fotos (pode selecionar várias)</span>
                             <span class="text-xs font-medium" wire:loading wire:target="fotos">A enviar…</span>
                         </label>
+
+                        @if ($anexosExistentes->count())
+                            <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                @foreach ($anexosExistentes as $ax)
+                                    <div class="group relative aspect-square overflow-hidden rounded-xl bg-zinc-800" wire:key="ax-{{ $ax->id }}">
+                                        <img src="{{ route('anexos.ver', $ax) }}" class="h-full w-full object-cover">
+                                        <button type="button" wire:click="removerAnexoExistente({{ $ax->id }})" class="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-black/50 text-white opacity-0 transition group-hover:opacity-100 hover:bg-perigo-500">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
 
                         @if ($fotos)
                             <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">

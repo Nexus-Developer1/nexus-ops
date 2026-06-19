@@ -50,6 +50,17 @@ class Listagem extends Component
         session()->flash('sucesso', "Relatório {$relatorio->numero} em envio para {$email}.");
     }
 
+    // Soft delete (marca deleted_at) — recuperável; nunca DELETE físico nem apaga o PDF.
+    public function eliminar(int $relatorio): void
+    {
+        $relatorio = Relatorio::findOrFail($relatorio);
+        $rotulo = $relatorio->numero ?? 'rascunho';
+
+        $relatorio->delete();
+
+        session()->flash('sucesso', "Relatório {$rotulo} eliminado.");
+    }
+
     public function render()
     {
         $relatorios = Relatorio::query()
