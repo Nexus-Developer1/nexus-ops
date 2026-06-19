@@ -27,3 +27,5 @@ Thumbs.db
 phc_mirror.dump
 phc_mirror.sql
 tools/
+
+datas_clientes.csv

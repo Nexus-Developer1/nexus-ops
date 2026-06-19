@@ -10,11 +10,19 @@
                 sincronizado{{ $clientes->total() === 1 ? '' : 's' }} do ERP (só consulta).
             </p>
 
-            {{-- Pesquisa --}}
-            <div class="mt-8 w-full max-w-sm">
-                <div class="relative">
+            {{-- Pesquisa + ordenação --}}
+            <div class="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="relative w-full max-w-sm">
                     <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     <input wire:model.live.debounce.400ms="pesquisa" type="text" class="campo-input pl-10" placeholder="Pesquisar por nome, NIF ou email...">
+                </div>
+                <div class="flex items-center gap-2">
+                    <label for="ordenar" class="shrink-0 text-sm text-texto-medio">Ordenar:</label>
+                    <select id="ordenar" wire:model.live="ordenar" class="campo-select w-56">
+                        @foreach ($ordenacoes as $valor => $rotulo)
+                            <option value="{{ $valor }}">{{ $rotulo }}</option>
+                        @endforeach
+                    </select>
                 </div>
             </div>
 

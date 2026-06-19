@@ -21,13 +21,25 @@ class Index extends Component
     // Quantos registos mostrar por bloco no modal (os mais recentes).
     private const LIMITE_MODAL = 10;
 
+    // Expressão pura (sem extensão) para ordenar por nome ignorando acentos e maiúsculas.
+    private const NOME_SEM_ACENTOS = "translate(lower(btrim(nome)), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
+
     #[Url]
     public string $pesquisa = '';
+
+    // Ordenação ativa (valor de uma whitelist — nunca interpolado em cru).
+    #[Url]
+    public string $ordenar = 'nome_asc';
 
     // Cliente selecionado para a ficha (null = nenhum aberto).
     public ?int $clienteId = null;
 
     public function updatingPesquisa(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingOrdenar(): void
     {
         $this->resetPage();
     }
@@ -42,6 +54,32 @@ class Index extends Component
         $this->clienteId = null;
     }
 
+    /** Opções de ordenação (valor => rótulo). data_criacao_erp = data real do PHC. */
+    private function ordenacoes(): array
+    {
+        return [
+            'nome_asc' => 'Nome (A → Z)',
+            'nome_desc' => 'Nome (Z → A)',
+            'recentes' => 'Mais recentes',
+            'antigos' => 'Mais antigos',
+            'erp_asc' => 'Nº cliente (crescente)',
+            'erp_desc' => 'Nº cliente (decrescente)',
+        ];
+    }
+
+    /** Cláusula ORDER BY correspondente (whitelist — segura contra injeção). */
+    private function clausulaOrdenacao(): string
+    {
+        return match ($this->ordenar) {
+            'nome_desc' => self::NOME_SEM_ACENTOS . ' desc',
+            'recentes' => 'data_criacao_erp desc nulls last',
+            'antigos' => 'data_criacao_erp asc nulls last',
+            'erp_asc' => 'id_erp::bigint asc nulls last',
+            'erp_desc' => 'id_erp::bigint desc nulls last',
+            default => self::NOME_SEM_ACENTOS . ' asc', // nome_asc
+        };
+    }
+
     public function render()
     {
         $clientes = Cliente::query()
@@ -54,7 +92,8 @@ class Index extends Component
                         ->orWhere('email', 'ilike', $termo);
                 });
             })
-            ->orderBy('nome')
+            ->orderByRaw($this->clausulaOrdenacao())
+            ->orderBy('id') // desempate estável (paginação consistente)
             ->paginate(15);
 
         $cliente = $this->clienteId ? Cliente::find($this->clienteId) : null;
@@ -99,6 +138,7 @@ class Index extends Component
 
         return view('livewire.clientes.index', [
             'clientes' => $clientes,
+            'ordenacoes' => $this->ordenacoes(),
             'cliente' => $cliente,
             'contratos' => $contratos,
             'contratosTotal' => $contratosTotal,
