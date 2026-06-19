@@ -12,7 +12,7 @@ return new class extends Migration
     {
         Schema::table('clientes', function (Blueprint $table) {
             $table->string('codpost')->nullable()->after('morada');      // PHC cl.codpost
-            $table->string('tlmvl', 40)->nullable()->after('telefone');  // PHC cl.tlmvl (telemóvel)
+            $table->string('tlmvl', 60)->nullable()->after('telefone');  // PHC cl.tlmvl (telemóvel)
             $table->integer('vendedor')->nullable()->after('tlmvl');     // PHC cl.vendedor (código)
             $table->string('vendnm')->nullable()->after('vendedor');     // PHC cl.vendnm (nome do vendedor)
         });

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('nome');
             $table->string('nif', 20)->nullable();
             $table->string('email')->nullable();
-            $table->string('telefone', 40)->nullable();
+            $table->string('telefone', 60)->nullable();
             $table->text('morada')->nullable();
             $table->boolean('ativo')->default(true);
             $table->timestamps();

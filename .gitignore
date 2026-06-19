@@ -1,6 +1,7 @@
 *.log
 .DS_Store
 .env
+/tools/phc_sync/.env
 .env.backup
 .env.production
 .phpactor.json
@@ -22,3 +23,7 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+phc_mirror.dump
+phc_mirror.sql
+tools/
