@@ -19,9 +19,14 @@ class Editor extends Component
 {
     public ?Contrato $contrato = null;
 
+    // Expressão pura (sem extensão) para pesquisar nome ignorando acentos/maiúsculas.
+    private const NOME_SEM_ACENTOS = "translate(lower(nome), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
+
     // Dados gerais.
     public string $numero = '';
     public ?int $cliente_id = null;
+    // Texto do combobox de cliente (pesquisa server-side).
+    public string $clienteBusca = '';
     public string $data_inicio = '';
     public string $data_fim = '';
     public string $tipo = '';
@@ -49,6 +54,7 @@ class Editor extends Component
             $this->contrato = $contrato;
             $this->numero = $contrato->numero;
             $this->cliente_id = $contrato->cliente_id;
+            $this->clienteBusca = $contrato->cliente?->nome ?? '';
             $this->data_inicio = $contrato->data_inicio->toDateString();
             $this->data_fim = $contrato->data_fim->toDateString();
             $this->tipo = $contrato->tipo->value;
@@ -212,6 +218,27 @@ class Editor extends Component
         return redirect()->route('contratos.ficha', $this->contrato);
     }
 
+    // Seleciona um cliente do combobox: guarda o id e mostra o nome no input.
+    public function selecionarCliente(int $id): void
+    {
+        $cliente = Cliente::find($id);
+        if ($cliente) {
+            $this->cliente_id = $cliente->id;
+            $this->clienteBusca = $cliente->nome;
+        }
+    }
+
+    // Normaliza o termo de pesquisa (minúsculas, sem acentos) para casar com a
+    // expressão translate() aplicada ao nome.
+    private function normalizarBusca(string $valor): string
+    {
+        $valor = mb_strtolower(trim($valor));
+        $de = ['á', 'à', 'â', 'ã', 'ä', 'ç', 'é', 'è', 'ê', 'ë', 'í', 'ì', 'î', 'ï', 'ó', 'ò', 'ô', 'õ', 'ö', 'ú', 'ù', 'û', 'ü'];
+        $para = ['a', 'a', 'a', 'a', 'a', 'c', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u'];
+
+        return str_replace($de, $para, $valor);
+    }
+
     public function render()
     {
         // Equipamentos disponíveis para o cliente escolhido (âmbito do contrato).
@@ -223,8 +250,23 @@ class Editor extends Component
                 ->get()
             : collect();
 
+        // Pesquisa de clientes server-side (nome sem acentos + NIF + nº ERP), limitada.
+        $clientesFiltrados = Cliente::query()
+            ->when($this->clienteBusca !== '', function ($q) {
+                $termo = '%' . $this->clienteBusca . '%';
+                $nomeNorm = '%' . $this->normalizarBusca($this->clienteBusca) . '%';
+                $q->where(function ($q) use ($termo, $nomeNorm) {
+                    $q->whereRaw(self::NOME_SEM_ACENTOS . ' like ?', [$nomeNorm])
+                        ->orWhere('nif', 'ilike', $termo)
+                        ->orWhere('id_erp', 'ilike', $termo);
+                });
+            })
+            ->orderBy('nome')
+            ->limit(30)
+            ->get();
+
         return view('livewire.contratos.editor', [
-            'clientes' => Cliente::orderBy('nome')->get(),
+            'clientesFiltrados' => $clientesFiltrados,
             'equipamentos' => $equipamentos,
             'tiposContrato' => TipoContrato::cases(),
             'modelosFaturacao' => ModeloFaturacao::orderBy('nome')->get(),
