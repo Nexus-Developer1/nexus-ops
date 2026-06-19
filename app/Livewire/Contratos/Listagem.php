@@ -31,6 +31,19 @@ class Listagem extends Component
         $this->resetPage();
     }
 
+    // Soft delete (marca deleted_at) — recuperável; nunca DELETE físico nem detach.
+    // As associações em contrato_equipamentos mantêm-se (o cascade só dispara em
+    // DELETE físico) e os equipamentos continuam a existir.
+    public function eliminar(int $contrato): void
+    {
+        $contrato = Contrato::findOrFail($contrato);
+        $numero = $contrato->numero;
+
+        $contrato->delete();
+
+        session()->flash('sucesso', "Contrato {$numero} eliminado.");
+    }
+
     public function render()
     {
         $contratos = Contrato::query()
