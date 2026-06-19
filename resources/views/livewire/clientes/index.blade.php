@@ -39,7 +39,7 @@
                     </thead>
                     <tbody>
                         @forelse ($clientes as $c)
-                            <tr wire:key="cli-{{ $c->id }}" wire:click="selecionar({{ $c->id }})" class="cursor-pointer border-b border-borda transition last:border-0 hover:bg-fundo">
+                            <tr wire:key="cli-{{ $c->id }}" onclick="Livewire.navigate('{{ route('clientes.detalhe', $c) }}')" class="cursor-pointer border-b border-borda transition last:border-0 hover:bg-fundo">
                                 <td class="px-6 py-4">
                                     <div class="font-medium text-texto-forte">{{ $c->nome }}</div>
                                     <div class="text-xs text-texto-fraco">Nº ERP: {{ $c->id_erp ?? '—' }}</div>
@@ -50,9 +50,9 @@
                                     <div class="text-xs text-texto-fraco">{{ $c->telefone ?? $c->tlmvl ?? '—' }}</div>
                                 </td>
                                 <td class="px-6 py-4 text-right">
-                                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-texto-fraco transition hover:bg-white hover:text-verde-600">
+                                    <a href="{{ route('clientes.detalhe', $c) }}" wire:navigate @click.stop class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-texto-fraco transition hover:bg-white hover:text-verde-600" title="Ver cliente">
                                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-                                    </span>
+                                    </a>
                                 </td>
                             </tr>
                         @empty
@@ -68,138 +68,4 @@
 
         </div>
     </main>
-
-    {{-- Ficha do cliente (só leitura) --}}
-    @if ($cliente)
-        <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4" wire:click.self="fechar">
-            <div class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-borda bg-white shadow-xl">
-                <div class="sticky top-0 flex items-start justify-between border-b border-borda bg-white px-6 py-5">
-                    <div>
-                        <h2 class="text-lg font-semibold text-texto-forte">{{ $cliente->nome }}</h2>
-                        <p class="mt-1 text-sm text-texto-medio">Nº de cliente ERP: {{ $cliente->id_erp ?? '—' }}</p>
-                    </div>
-                    <button wire:click="fechar" class="text-texto-fraco hover:text-texto-forte">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                    </button>
-                </div>
-
-                <div class="space-y-6 px-6 py-6">
-                    {{-- Dados gerais --}}
-                    <section>
-                        <h3 class="mb-3 text-xs font-semibold uppercase tracking-wide text-texto-fraco">Dados gerais</h3>
-                        <dl class="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-                            <div><dt class="text-xs text-texto-fraco">Nº de cliente (ERP)</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $cliente->id_erp ?? '—' }}</dd></div>
-                            <div><dt class="text-xs text-texto-fraco">Nome</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $cliente->nome }}</dd></div>
-                            <div><dt class="text-xs text-texto-fraco">NIF</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $cliente->nif ?? '—' }}</dd></div>
-                            <div><dt class="text-xs text-texto-fraco">Código postal</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $cliente->codpost ?? '—' }}</dd></div>
-                            <div class="sm:col-span-2"><dt class="text-xs text-texto-fraco">Morada</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $cliente->morada ?? '—' }}</dd></div>
-                        </dl>
-                    </section>
-
-                    {{-- Contactos --}}
-                    <section class="border-t border-borda pt-5">
-                        <h3 class="mb-3 text-xs font-semibold uppercase tracking-wide text-texto-fraco">Contactos</h3>
-                        <dl class="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-                            <div class="sm:col-span-2"><dt class="text-xs text-texto-fraco">Email</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $cliente->email ?? '—' }}</dd></div>
-                            <div><dt class="text-xs text-texto-fraco">Telefone</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $cliente->telefone ?? '—' }}</dd></div>
-                            <div><dt class="text-xs text-texto-fraco">Telemóvel</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $cliente->tlmvl ?? '—' }}</dd></div>
-                        </dl>
-                    </section>
-
-                    {{-- Comercial --}}
-                    <section class="border-t border-borda pt-5">
-                        <h3 class="mb-3 text-xs font-semibold uppercase tracking-wide text-texto-fraco">Comercial</h3>
-                        <dl class="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-                            <div><dt class="text-xs text-texto-fraco">Vendedor (código)</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $cliente->vendedor ?? '—' }}</dd></div>
-                            <div><dt class="text-xs text-texto-fraco">Vendedor (nome)</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $cliente->vendnm ?? '—' }}</dd></div>
-                        </dl>
-                    </section>
-
-                    {{-- Contratos --}}
-                    <section class="border-t border-borda pt-5" x-data="{ aberto: true }">
-                        <button @click="aberto=!aberto" class="flex w-full items-center justify-between text-left">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Contratos <span class="text-texto-medio">({{ $contratosTotal }})</span></h3>
-                            <svg :class="aberto && 'rotate-180'" class="h-4 w-4 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </button>
-                        <div x-show="aberto" x-transition class="mt-3 space-y-2">
-                            @forelse ($contratos as $ct)
-                                <div class="flex items-center justify-between gap-3 rounded-lg border border-borda px-3 py-2" wire:key="ct-{{ $ct->id }}">
-                                    <div class="min-w-0">
-                                        <div class="truncate text-sm font-medium text-texto-forte">{{ $ct->numero }}</div>
-                                        <div class="truncate text-xs text-texto-fraco">
-                                            {{ $ct->modeloFaturacao?->nome ?? '—' }} ·
-                                            {{ $ct->data_inicio?->translatedFormat('d M Y') ?? '—' }} – {{ $ct->data_fim?->translatedFormat('d M Y') ?? '—' }}
-                                        </div>
-                                    </div>
-                                    <span class="etiqueta {{ $ct->estado->classesEtiqueta() }} shrink-0">{{ $ct->estado->rotulo() }}</span>
-                                </div>
-                            @empty
-                                <p class="text-sm text-texto-medio">Sem contratos.</p>
-                            @endforelse
-                            @if ($contratosTotal > $limiteModal)
-                                <p class="text-xs text-texto-fraco">A mostrar os {{ $limiteModal }} mais recentes de {{ $contratosTotal }}.</p>
-                            @endif
-                        </div>
-                    </section>
-
-                    {{-- Relatórios --}}
-                    <section class="border-t border-borda pt-5" x-data="{ aberto: true }">
-                        <button @click="aberto=!aberto" class="flex w-full items-center justify-between text-left">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Relatórios <span class="text-texto-medio">({{ $relatoriosTotal }})</span></h3>
-                            <svg :class="aberto && 'rotate-180'" class="h-4 w-4 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </button>
-                        <div x-show="aberto" x-transition class="mt-3 space-y-2">
-                            @forelse ($relatorios as $rl)
-                                <div class="flex items-center justify-between gap-3 rounded-lg border border-borda px-3 py-2" wire:key="rl-{{ $rl->id }}">
-                                    <div class="min-w-0">
-                                        <div class="truncate text-sm font-medium text-texto-forte">{{ $rl->numero }}</div>
-                                        <div class="truncate text-xs text-texto-fraco">
-                                            {{ $rl->data?->translatedFormat('d M Y') ?? '—' }}
-                                            @if ($rl->intervencao?->equipamento?->numero_serie) · {{ $rl->intervencao->equipamento->numero_serie }} @endif
-                                        </div>
-                                    </div>
-                                    <span class="etiqueta {{ $rl->estado->classesEtiqueta() }} shrink-0">{{ $rl->estado->rotulo() }}</span>
-                                </div>
-                            @empty
-                                <p class="text-sm text-texto-medio">Sem relatórios.</p>
-                            @endforelse
-                            @if ($relatoriosTotal > $limiteModal)
-                                <p class="text-xs text-texto-fraco">A mostrar os {{ $limiteModal }} mais recentes de {{ $relatoriosTotal }}.</p>
-                            @endif
-                        </div>
-                    </section>
-
-                    {{-- Equipamentos --}}
-                    <section class="border-t border-borda pt-5" x-data="{ aberto: true }">
-                        <button @click="aberto=!aberto" class="flex w-full items-center justify-between text-left">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Equipamentos <span class="text-texto-medio">({{ $equipamentosTotal }})</span></h3>
-                            <svg :class="aberto && 'rotate-180'" class="h-4 w-4 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </button>
-                        <div x-show="aberto" x-transition class="mt-3 space-y-2">
-                            @forelse ($equipamentos as $eq)
-                                <div class="flex items-center justify-between gap-3 rounded-lg border border-borda px-3 py-2" wire:key="eq-{{ $eq->id }}">
-                                    <div class="min-w-0">
-                                        <div class="truncate text-sm font-medium text-texto-forte">{{ trim($eq->fabricante . ' ' . $eq->modelo) ?: '—' }}</div>
-                                        <div class="truncate text-xs text-texto-fraco">
-                                            Nº série: {{ $eq->numero_serie ?? '—' }} · {{ $eq->local?->designacao ?? '—' }}
-                                        </div>
-                                    </div>
-                                    <span class="etiqueta {{ $eq->tipo->classesEtiqueta() }} shrink-0">{{ $eq->tipo->rotulo() }}</span>
-                                </div>
-                            @empty
-                                <p class="text-sm text-texto-medio">Sem equipamentos associados.</p>
-                            @endforelse
-                            @if ($equipamentosTotal > $limiteModal)
-                                <p class="text-xs text-texto-fraco">A mostrar os {{ $limiteModal }} mais recentes de {{ $equipamentosTotal }}.</p>
-                            @endif
-                        </div>
-                    </section>
-                </div>
-
-                <div class="sticky bottom-0 flex justify-end border-t border-borda bg-white px-6 py-4">
-                    <button wire:click="fechar" class="botao-secundario">Fechar</button>
-                </div>
-            </div>
-        </div>
-    @endif
 </div>

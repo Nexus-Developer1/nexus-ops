@@ -73,6 +73,10 @@ Route::middleware(['auth', 'papel:tecnico'])->group(function () {
 Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($servirPdf) {
     // Consulta de clientes (só leitura — origem ERP).
     Route::get('/clientes', \App\Livewire\Clientes\Index::class)->name('clientes');
+    Route::get('/clientes/{cliente}', \App\Livewire\Clientes\Detalhe::class)->name('clientes.detalhe');
+    Route::get('/clientes/{cliente}/equipamentos', \App\Livewire\Clientes\Equipamentos::class)->name('clientes.equipamentos');
+    Route::get('/clientes/{cliente}/contratos', \App\Livewire\Clientes\Contratos::class)->name('clientes.contratos');
+    Route::get('/clientes/{cliente}/relatorios', \App\Livewire\Clientes\Relatorios::class)->name('clientes.relatorios');
 
     // Ficha de equipamento (leitura em campo — ex.: QR code).
     Route::get('/ativos/{equipamento}', \App\Livewire\Equipamentos\Ficha::class)->name('equipamentos.ficha');
