@@ -6,6 +6,7 @@ use App\Enums\EstadoEvento;
 use App\Enums\PapelUtilizador;
 use App\Enums\TipoEvento;
 use App\Models\AssuntoEvento;
+use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\TecnicoDisponibilidade;
 use App\Models\User;
@@ -44,6 +45,10 @@ class Calendario extends Component
     public ?int $formTecnicoId = null;
     public string $formInicio = '';
     public string $formFim = '';
+
+    // Equipamento opcional do evento (pesquisa server-side; deriva local/cliente).
+    public ?int $formEquipamentoId = null;
+    public string $formEquipamentoBusca = '';
 
     // Modal dedicado de marcação de ausência (grava em tecnico_disponibilidade).
     public bool $modalAusencia = false;
@@ -191,6 +196,7 @@ class Calendario extends Component
     {
         return [
             'formTitulo' => 'tipo de evento',
+            'formEquipamentoId' => 'equipamento',
             'formInicio' => 'início',
             'formFim' => 'fim',
             'ausTecnicoId' => 'técnico',
@@ -205,11 +211,40 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset('formTitulo');
+        $this->reset(['formTitulo', 'formEquipamentoId', 'formEquipamentoBusca']);
         $this->formTecnicoId = $this->tecnicoId;
         $this->formInicio = Carbon::parse($inicio)->format('Y-m-d\TH:i');
         $this->formFim = Carbon::parse($fim)->format('Y-m-d\TH:i');
         $this->modalCriar = true;
+    }
+
+    // Seleção de um equipamento na pesquisa server-side: fixa o id e o texto da label.
+    public function selecionarEquipamento(int $id): void
+    {
+        $equipamento = Equipamento::with('local')->find($id);
+        if (! $equipamento) {
+            return;
+        }
+
+        $this->formEquipamentoId = $equipamento->id;
+        $this->formEquipamentoBusca = trim(($equipamento->numero_serie ?? '—')
+            . ' · ' . trim($equipamento->fabricante . ' ' . $equipamento->modelo));
+    }
+
+    // Escrever na caixa desfaz a seleção (campo opcional: sem escolha => sem equipamento).
+    public function updatedFormEquipamentoBusca(): void
+    {
+        $this->formEquipamentoId = null;
+    }
+
+    // Dobra de acentos para pesquisa (igual ao combobox de cliente).
+    private function normalizarBusca(string $valor): string
+    {
+        $valor = mb_strtolower(trim($valor));
+        $de = ['á', 'à', 'â', 'ã', 'ä', 'ç', 'é', 'è', 'ê', 'ë', 'í', 'ì', 'î', 'ï', 'ó', 'ò', 'ô', 'õ', 'ö', 'ú', 'ù', 'û', 'ü'];
+        $para = ['a', 'a', 'a', 'a', 'a', 'c', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u'];
+
+        return str_replace($de, $para, $valor);
     }
 
     public function fecharCriar(): void
@@ -247,6 +282,7 @@ class Calendario extends Component
         $this->validate([
             'formTitulo' => ['required', 'string', 'max:255'],
             'formTecnicoId' => ['nullable', 'exists:utilizadores,id'],
+            'formEquipamentoId' => ['nullable', 'exists:equipamentos,id'],
             'formInicio' => ['required', 'date'],
             'formFim' => ['required', 'date', 'after:formInicio'],
         ]);
@@ -275,6 +311,15 @@ class Calendario extends Component
             );
         }
 
+        // Equipamento opcional: se escolhido, herda local e cliente (equipamento → local → cliente).
+        $equipamentoId = $localId = $clienteId = null;
+        if ($this->formEquipamentoId) {
+            $equipamento = Equipamento::with('local')->find($this->formEquipamentoId);
+            $equipamentoId = $equipamento->id;
+            $localId = $equipamento->local_id;
+            $clienteId = $equipamento->local?->cliente_id;
+        }
+
         $evento = EventoAgenda::create([
             'tipo' => TipoEvento::Outro,
             'titulo' => $titulo,
@@ -282,6 +327,9 @@ class Calendario extends Component
             'fim' => $fim,
             'estado' => EstadoEvento::Planeado,
             'tecnico_id' => $this->formTecnicoId,
+            'equipamento_id' => $equipamentoId,
+            'local_id' => $localId,
+            'cliente_id' => $clienteId,
         ]);
 
         // Notifica o técnico atribuído (CLAUDE.md §6).
@@ -377,12 +425,30 @@ class Calendario extends Component
             ? UrlFacade::signedRoute('agenda.ical', ['tecnico' => $this->tecnicoId])
             : null;
 
+        // Pesquisa de equipamentos server-side (nº série/fabricante/modelo, sem acentos), limitada.
+        // São muitos (~17k) — nunca carregar tudo no cliente.
+        $equipamentosFiltrados = $this->formEquipamentoBusca !== ''
+            ? Equipamento::query()
+                ->with('local.cliente')
+                ->where(function ($q) {
+                    $termo = '%' . $this->formEquipamentoBusca . '%';
+                    $norm = '%' . $this->normalizarBusca($this->formEquipamentoBusca) . '%';
+                    $semAcentos = "translate(lower(fabricante || ' ' || modelo), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
+                    $q->whereRaw($semAcentos . ' like ?', [$norm])
+                        ->orWhere('numero_serie', 'ilike', $termo);
+                })
+                ->orderBy('numero_serie')
+                ->limit(30)
+                ->get()
+            : collect();
+
         return view('livewire.agenda.calendario', [
             'tecnicos' => $tecnicos,
             'evento' => $evento,
             'ausencia' => $ausencia,
             'urlIcal' => $urlIcal,
             'assuntos' => AssuntoEvento::orderBy('nome')->get(),
+            'equipamentosFiltrados' => $equipamentosFiltrados,
         ]);
     }
 }

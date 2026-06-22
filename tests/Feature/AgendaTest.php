@@ -222,6 +222,30 @@ class AgendaTest extends TestCase
         Notification::assertSentTo($tec, EventoAtribuido::class);
     }
 
+    public function test_evento_com_equipamento_herda_local_e_cliente(): void
+    {
+        Notification::fake();
+        $cliente = Cliente::create(['nome' => 'ACME', 'email' => 'acme@x.pt', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC1']);
+        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'fabricante' => 'APC', 'modelo' => 'X40', 'numero_serie' => 'SN-001']);
+
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->set('formTitulo', 'Inspeção')
+            ->set('formEquipamentoId', $equip->id)
+            ->set('formInicio', '2026-07-06T10:00')
+            ->set('formFim', '2026-07-06T11:00')
+            ->call('criarEvento')
+            ->assertHasNoErrors();
+
+        // Equipamento escolhido → evento herda local_id e cliente_id (equipamento → local → cliente).
+        $this->assertDatabaseHas('eventos_agenda', [
+            'titulo' => 'Inspeção',
+            'equipamento_id' => $equip->id,
+            'local_id' => $local->id,
+            'cliente_id' => $cliente->id,
+        ]);
+    }
+
     public function test_criar_ausencia_gera_disponibilidade(): void
     {
         $tec = $this->tecnico();
