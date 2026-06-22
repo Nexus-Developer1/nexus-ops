@@ -25,7 +25,9 @@ return new class extends Migration
             $table->foreignId('contrato_id')->nullable()->constrained('contratos')->nullOnDelete();
             $table->foreignId('intervencao_id')->nullable()->constrained('intervencoes')->nullOnDelete();
 
-            $table->string('recorrencia')->nullable();    // RRULE (preventivas recorrentes)
+            // RRULE — metadado em DESUSO: escrita mas nunca lida (não há motor de RRULE;
+            // a recorrência é materializada como uma linha por ocorrência). Ver EventoAgenda.
+            $table->string('recorrencia')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

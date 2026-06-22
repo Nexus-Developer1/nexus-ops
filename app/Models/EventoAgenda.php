@@ -44,6 +44,9 @@ class EventoAgenda extends Model
         'equipamento_id',
         'contrato_id',
         'intervencao_id',
+        // `recorrencia` (RRULE): metadado em DESUSO. É escrita pelo GeradorVisitasPreventivas
+        // mas NÃO é lida por ninguém — não há motor de RRULE. A recorrência real é uma linha
+        // por ocorrência. Mantida só para rastreio / futura interop iCal.
         'recorrencia',
     ];
 

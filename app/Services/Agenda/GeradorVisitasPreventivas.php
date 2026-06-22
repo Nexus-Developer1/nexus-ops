@@ -35,7 +35,12 @@ class GeradorVisitasPreventivas
             foreach ($contrato->planosVisita as $plano) {
                 $intervalo = $plano->periodicidade->meses();
                 $duracao = $plano->duracao_estimada_min ?: self::DURACAO_PADRAO_MIN;
-                $rrule = 'FREQ=MONTHLY;INTERVAL=' . $intervalo; // rastreio/interop iCal
+
+                // ATENÇÃO: a `recorrencia` (RRULE) é guardada apenas como METADADO/rastreio
+                // (ex.: futura interop iCal). NÃO existe motor de RRULE — nada lê esta coluna
+                // hoje. A recorrência REAL é materializada pelo loop abaixo, que cria uma linha
+                // (evento) por ocorrência. Ver também a nota em EventoAgenda::casts().
+                $rrule = 'FREQ=MONTHLY;INTERVAL=' . $intervalo;
 
                 $equipamentos = $contrato->equipamentos
                     ->where('tipo', $plano->equipamento_tipo);
