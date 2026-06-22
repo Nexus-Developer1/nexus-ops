@@ -34,6 +34,8 @@ class Novo extends Component
     public ?int $equipamento_id = null;
     public string $tipo = 'preventiva';
     public string $data = '';
+    public string $hora_inicio = '';
+    public string $hora_fim = '';
 
     // ---- Constatações ----
     public string $resumo = '';
@@ -72,6 +74,8 @@ class Novo extends Component
             $this->equipamento_id = $intervencao->equipamento_id;
             $this->tipo = $intervencao->tipo->value;
             $this->data = $intervencao->data_inicio?->format('Y-m-d') ?? '';
+            $this->hora_inicio = $intervencao->hora_inicio ? substr($intervencao->hora_inicio, 0, 5) : '';
+            $this->hora_fim = $intervencao->hora_fim ? substr($intervencao->hora_fim, 0, 5) : '';
             $this->resumo = $intervencao->trabalho_realizado ?? '';
             $this->recomendacao = $intervencao->observacoes ?? '';
 
@@ -129,7 +133,18 @@ class Novo extends Component
             'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
             'tipo' => ['required', 'in:preventiva,corretiva,instalacao'],
             'data' => ['required', 'date'],
+            'hora_inicio' => ['nullable', 'date_format:H:i'],
+            'hora_fim' => ['nullable', 'date_format:H:i', 'after_or_equal:hora_inicio'],
             'fotos.*' => ['image', 'max:8192'], // 8 MB
+        ];
+    }
+
+    // Regras das horas reutilizadas no rascunho (sempre opcionais, mas coerentes).
+    protected function regrasHoras(): array
+    {
+        return [
+            'hora_inicio' => ['nullable', 'date_format:H:i'],
+            'hora_fim' => ['nullable', 'date_format:H:i', 'after_or_equal:hora_inicio'],
         ];
     }
 
@@ -240,11 +255,11 @@ class Novo extends Component
             // Validação completa.
             $this->validate();
         } else {
-            // Rascunho: o único obrigatório é o equipamento.
+            // Rascunho: o único obrigatório é o equipamento (as horas, se preenchidas, têm de ser coerentes).
             $this->validate([
                 'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
                 'fotos.*' => ['image', 'max:8192'],
-            ]);
+            ] + $this->regrasHoras());
         }
 
         $relatorio = DB::transaction(function () use ($gerador, $finalizar) {
@@ -255,6 +270,8 @@ class Novo extends Component
                 'estado' => $finalizar ? EstadoIntervencao::Concluida : EstadoIntervencao::EmCurso,
                 'data_inicio' => $this->data ?: null,
                 'data_fim' => $finalizar ? now() : null,
+                'hora_inicio' => $this->hora_inicio ?: null,
+                'hora_fim' => $this->hora_fim ?: null,
                 'trabalho_realizado' => $this->resumo ?: null,
                 'observacoes' => $this->recomendacao ?: null,
                 'diagnostico' => array_filter([

@@ -44,6 +44,8 @@ class Intervencao extends Model
         'estado',
         'data_inicio',
         'data_fim',
+        'hora_inicio',
+        'hora_fim',
         'descricao_problema',
         'trabalho_realizado',
         'observacoes',
