@@ -10,6 +10,7 @@ use App\Models\Anexo;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Models\Relatorio;
+use App\Services\Agenda\GeradorEventoDeRelatorio;
 use App\Services\GeradorRelatorio;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -239,17 +240,17 @@ class Novo extends Component
     }
 
     // ---- Gravação ----
-    public function guardarRascunho(GeradorRelatorio $gerador)
+    public function guardarRascunho(GeradorRelatorio $gerador, GeradorEventoDeRelatorio $geradorEvento)
     {
-        return $this->persistir($gerador, false);
+        return $this->persistir($gerador, $geradorEvento, false);
     }
 
-    public function finalizar(GeradorRelatorio $gerador)
+    public function finalizar(GeradorRelatorio $gerador, GeradorEventoDeRelatorio $geradorEvento)
     {
-        return $this->persistir($gerador, true);
+        return $this->persistir($gerador, $geradorEvento, true);
     }
 
-    private function persistir(GeradorRelatorio $gerador, bool $finalizar)
+    private function persistir(GeradorRelatorio $gerador, GeradorEventoDeRelatorio $geradorEvento, bool $finalizar)
     {
         if ($finalizar) {
             // Validação completa.
@@ -262,7 +263,7 @@ class Novo extends Component
             ] + $this->regrasHoras());
         }
 
-        $relatorio = DB::transaction(function () use ($gerador, $finalizar) {
+        $relatorio = DB::transaction(function () use ($gerador, $geradorEvento, $finalizar) {
             $dados = [
                 'equipamento_id' => $this->equipamento_id,
                 'tecnico_id' => auth()->id(),
@@ -345,6 +346,10 @@ class Novo extends Component
             }
             $relatorio->save();
             $this->relatorioId = $relatorio->id;
+
+            // Camada 3: data de intervenção futura → garante o evento de agenda ligado
+            // (cria ou move). Direto no model, por isso NÃO dispara a camada 2 (anti-loop).
+            $geradorEvento->gerar($intervencao);
 
             return $relatorio;
         });
