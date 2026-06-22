@@ -33,6 +33,14 @@
                 </div>
             </div>
 
+            {{-- Confirmação (ex.: rascunho de relatório gerado a partir do evento) --}}
+            @if (session('sucesso'))
+                <div class="mt-6 flex items-center gap-2 rounded-lg border border-verde-200 bg-verde-50 px-4 py-3 text-sm font-medium text-verde-700">
+                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    {{ session('sucesso') }}
+                </div>
+            @endif
+
             {{-- Aviso de conflito ao reagendar --}}
             <div x-show="erro" x-cloak x-transition
                  class="mt-6 flex items-center gap-2 rounded-lg border border-perigo-200 bg-perigo-100 px-4 py-3 text-sm font-medium text-perigo-600">

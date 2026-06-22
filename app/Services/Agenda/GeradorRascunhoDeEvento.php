@@ -1,0 +1,56 @@
+<?php
+
+namespace App\Services\Agenda;
+
+use App\Enums\EstadoIntervencao;
+use App\Enums\EstadoRelatorio;
+use App\Enums\TipoIntervencao;
+use App\Models\EventoAgenda;
+use App\Models\Intervencao;
+use App\Models\Relatorio;
+use Illuminate\Support\Facades\DB;
+
+// Camada 2 da sincronização Agenda → Relatórios: a partir de um evento manual COM
+// equipamento e data futura, gera um RASCUNHO de relatório ligado ao evento, com o
+// contexto herdado. Caminho do RASCUNHO (não é o ConversorVisita: aqui a intervenção
+// nasce "planeada" e o relatório "rascunho" sem número — o número só na finalização).
+//
+// Anti-loop: liga os dois lados (evento.intervencao_id ⇄ intervencao.evento_agenda_id)
+// e só cria se o evento ainda não estiver convertido — idempotente.
+class GeradorRascunhoDeEvento
+{
+    public function gerar(EventoAgenda $evento): ?Relatorio
+    {
+        // Sem equipamento não há intervenção possível (equipamento_id é NOT NULL).
+        if (! $evento->equipamento_id) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($evento) {
+            // Já ligado a uma intervenção → não recria (idempotente / anti-loop).
+            if ($evento->intervencao_id) {
+                return null;
+            }
+
+            $intervencao = Intervencao::create([
+                'equipamento_id' => $evento->equipamento_id,
+                'tecnico_id' => $evento->tecnico_id,
+                'evento_agenda_id' => $evento->id,
+                'tipo' => TipoIntervencao::Corretiva,
+                'estado' => EstadoIntervencao::Planeada,
+                'data_inicio' => $evento->inicio->toDateString(),
+                'hora_inicio' => $evento->inicio->format('H:i'),
+                'hora_fim' => $evento->fim->format('H:i'),
+            ]);
+
+            // Liga o outro lado da relação.
+            $evento->update(['intervencao_id' => $intervencao->id]);
+
+            // Documento em rascunho — sem número (atribuído só na finalização).
+            return $intervencao->relatorio()->create([
+                'estado' => EstadoRelatorio::Rascunho,
+                'data' => now(),
+            ]);
+        });
+    }
+}

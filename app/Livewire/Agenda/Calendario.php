@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Notifications\EventoAtribuido;
 use App\Services\Agenda\ConversorVisita;
 use App\Services\Agenda\DetetorConflitos;
+use App\Services\Agenda\GeradorRascunhoDeEvento;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\URL as UrlFacade;
 use Livewire\Attributes\Layout;
@@ -275,7 +276,7 @@ class Calendario extends Component
         return true;
     }
 
-    public function criarEvento(DetetorConflitos $detetor)
+    public function criarEvento(DetetorConflitos $detetor, GeradorRascunhoDeEvento $geradorRascunho)
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
@@ -335,6 +336,11 @@ class Calendario extends Component
         // Notifica o técnico atribuído (CLAUDE.md §6).
         if ($evento->tecnico_id) {
             $evento->tecnico->notify(new EventoAtribuido($evento));
+        }
+
+        // Camada 2: evento com equipamento + data futura → gera rascunho de relatório ligado.
+        if ($equipamentoId && $inicio->isFuture() && $geradorRascunho->gerar($evento)) {
+            session()->flash('sucesso', 'Rascunho de relatório criado para esta intervenção.');
         }
 
         $this->modalCriar = false;

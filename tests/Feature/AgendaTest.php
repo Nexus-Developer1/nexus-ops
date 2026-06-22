@@ -246,6 +246,91 @@ class AgendaTest extends TestCase
         ]);
     }
 
+    public function test_evento_futuro_com_equipamento_gera_rascunho_de_relatorio(): void
+    {
+        Notification::fake();
+        $cliente = Cliente::create(['nome' => 'ACME', 'email' => 'acme@x.pt', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC1']);
+        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'fabricante' => 'APC', 'modelo' => 'X40', 'numero_serie' => 'SN-002']);
+        $tec = $this->tecnico();
+
+        $inicio = now()->addWeek()->setTime(10, 0);
+        $fim = (clone $inicio)->setTime(11, 30);
+
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->set('formTitulo', 'Inspeção')
+            ->set('formEquipamentoId', $equip->id)
+            ->set('formTecnicoId', $tec->id)
+            ->set('formInicio', $inicio->format('Y-m-d\TH:i'))
+            ->set('formFim', $fim->format('Y-m-d\TH:i'))
+            ->call('criarEvento')
+            ->assertHasNoErrors();
+
+        $evento = EventoAgenda::where('titulo', 'Inspeção')->firstOrFail();
+
+        // Intervenção planeada, ligada ao evento, com contexto herdado (incl. horas).
+        $this->assertDatabaseHas('intervencoes', [
+            'evento_agenda_id' => $evento->id,
+            'equipamento_id' => $equip->id,
+            'tecnico_id' => $tec->id,
+            'tipo' => 'corretiva',
+            'estado' => 'planeada',
+            'hora_inicio' => '10:00:00',
+            'hora_fim' => '11:30:00',
+        ]);
+        $this->assertEquals($inicio->toDateString(), $evento->intervencao->data_inicio->toDateString());
+
+        // Os dois lados da ligação ficam preenchidos.
+        $this->assertNotNull($evento->intervencao_id);
+
+        // Relatório em rascunho, sem número.
+        $this->assertDatabaseHas('relatorios', [
+            'intervencao_id' => $evento->intervencao_id,
+            'estado' => 'rascunho',
+            'numero' => null,
+        ]);
+    }
+
+    public function test_evento_sem_equipamento_nao_gera_rascunho(): void
+    {
+        Notification::fake();
+
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->set('formTitulo', 'Reunião')
+            ->set('formInicio', now()->addWeek()->format('Y-m-d\TH:i'))
+            ->set('formFim', now()->addWeek()->addHour()->format('Y-m-d\TH:i'))
+            ->call('criarEvento')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseCount('intervencoes', 0);
+        $this->assertDatabaseCount('relatorios', 0);
+    }
+
+    public function test_evento_com_equipamento_mas_data_passada_nao_gera_rascunho(): void
+    {
+        Notification::fake();
+        $cliente = Cliente::create(['nome' => 'ACME', 'email' => 'acme@x.pt', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC1']);
+        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'fabricante' => 'APC', 'modelo' => 'X40', 'numero_serie' => 'SN-003']);
+
+        // Dia útil no passado, em horário comercial (evita o bloqueio de fim-de-semana/horário).
+        // inicio < now() → o evento cria-se, mas NÃO gera rascunho (apesar de ter equipamento).
+        $passado = now()->subWeekdays(5);
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->set('formTitulo', 'Inspeção')
+            ->set('formEquipamentoId', $equip->id)
+            ->set('formInicio', (clone $passado)->setTime(10, 0)->format('Y-m-d\TH:i'))
+            ->set('formFim', (clone $passado)->setTime(11, 0)->format('Y-m-d\TH:i'))
+            ->call('criarEvento')
+            ->assertHasNoErrors();
+
+        // O evento foi mesmo criado (para garantir que testamos o gancho, não a validação).
+        $this->assertDatabaseHas('eventos_agenda', ['titulo' => 'Inspeção', 'equipamento_id' => $equip->id]);
+
+        $this->assertDatabaseCount('intervencoes', 0);
+        $this->assertDatabaseCount('relatorios', 0);
+    }
+
     public function test_criar_ausencia_gera_disponibilidade(): void
     {
         $tec = $this->tecnico();
