@@ -10,6 +10,12 @@
                     <p class="mt-2 text-sm text-texto-medio">Arraste para reagendar · selecione um intervalo livre para criar evento ou ausência.</p>
                 </div>
                 <div class="flex items-center gap-3">
+                    @unless (auth()->user()->ehCliente())
+                        <button type="button" wire:click="abrirAusencia" class="botao-secundario" title="Marcar ausência de um técnico">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                            Marcar ausência
+                        </button>
+                    @endunless
                     @if ($urlIcal)
                         <a href="{{ $urlIcal }}" class="botao-secundario" title="Subscrever em calendário externo">
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -111,7 +117,7 @@
                 </div>
             @endif
 
-            {{-- Modal de criação de evento próprio / ausência --}}
+            {{-- Modal de criação de evento próprio (campo único "Tipo de evento") --}}
             @if ($modalCriar)
                 <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4" wire:click.self="fecharCriar">
                     <form wire:submit="criarEvento" class="w-full max-w-md rounded-xl border border-borda bg-white shadow-xl">
@@ -123,80 +129,65 @@
                         </div>
 
                         <div class="space-y-5 px-6 py-5">
-                            <div>
-                                <label class="campo-label">Tipo</label>
-                                <select wire:model.live="formTipo" class="campo-select">
-                                    <option value="outro">Evento próprio (reunião/outro)</option>
-                                    <option value="ausencia">Ausência de técnico</option>
-                                </select>
+                            {{-- Tipo de evento: campo único pesquisável ligado ao lookup (cresce com o uso).
+                                 Filtra os existentes à medida que se escreve; "Adicionar «X»" guarda um novo. --}}
+                            <div
+                                x-data="{
+                                    tipos: @js($assuntos->map(fn ($a) => ['nome' => $a->nome])->values()),
+                                    titulo: $wire.entangle('formTitulo'),
+                                    aberto: false,
+                                    destaque: 0,
+                                    norm(s) { return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); },
+                                    get filtrados() {
+                                        const n = this.norm(this.titulo);
+                                        if (n === '') return this.tipos;
+                                        return this.tipos.filter(t => this.norm(t.nome).includes(n));
+                                    },
+                                    get existeExato() {
+                                        const n = this.norm(this.titulo);
+                                        return n !== '' && this.tipos.some(t => this.norm(t.nome) === n);
+                                    },
+                                    abrir() { this.aberto = true; this.destaque = 0; },
+                                    fechar() { this.aberto = false; },
+                                    escolher(nome) { this.titulo = nome; this.aberto = false; },
+                                    adicionar() {
+                                        const v = (this.titulo || '').trim();
+                                        if (v === '') return;
+                                        this.$wire.adicionarAssunto(v).then(ok => {
+                                            if (ok) { this.tipos.push({ nome: v }); this.aberto = false; }
+                                        });
+                                    },
+                                }"
+                                @click.outside="fechar()"
+                                @keydown.escape.stop="fechar()"
+                                class="relative"
+                            >
+                                <label class="campo-label" for="tipo-combo">Tipo de evento</label>
+                                <input id="tipo-combo" type="text" x-model="titulo"
+                                    @focus="abrir()" @click="abrir()" @input="abrir()"
+                                    @keydown.enter.prevent="existeExato ? fechar() : adicionar()"
+                                    class="campo-input" placeholder="Ex: Reunião" autocomplete="off"
+                                    role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
+                                <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
+                                    <template x-for="(t, i) in filtrados" :key="t.nome">
+                                        <li @click="escolher(t.nome)" @mouseenter="destaque = i" :class="i === destaque ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'" class="cursor-pointer px-4 py-2 text-sm" role="option">
+                                            <span x-text="t.nome"></span>
+                                        </li>
+                                    </template>
+                                    <li x-show="titulo && titulo.trim() !== '' && !existeExato" @click="adicionar()" class="flex cursor-pointer items-center gap-1.5 px-4 py-2 text-sm font-medium text-verde-600 hover:bg-verde-50">
+                                        <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
+                                        <span>Adicionar «<span x-text="titulo.trim()"></span>»</span>
+                                    </li>
+                                    <li x-show="filtrados.length === 0 && (!titulo || titulo.trim() === '')" class="px-4 py-2 text-sm text-texto-medio">Escreva para criar um tipo de evento.</li>
+                                </ul>
+                                @error('formTitulo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                @error('novoAssunto') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
 
-                            @if ($formTipo === 'outro')
-                                {{-- Assunto: combobox pesquisável ligado ao lookup assuntos_evento (cresce com o uso).
-                                     Filtra os existentes à medida que se escreve; "Adicionar «X»" guarda um novo. --}}
-                                <div
-                                    x-data="{
-                                        assuntos: @js($assuntos->map(fn ($a) => ['nome' => $a->nome])->values()),
-                                        titulo: $wire.entangle('formTitulo'),
-                                        aberto: false,
-                                        destaque: 0,
-                                        norm(s) { return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); },
-                                        get filtrados() {
-                                            const n = this.norm(this.titulo);
-                                            if (n === '') return this.assuntos;
-                                            return this.assuntos.filter(a => this.norm(a.nome).includes(n));
-                                        },
-                                        get existeExato() {
-                                            const n = this.norm(this.titulo);
-                                            return n !== '' && this.assuntos.some(a => this.norm(a.nome) === n);
-                                        },
-                                        abrir() { this.aberto = true; this.destaque = 0; },
-                                        fechar() { this.aberto = false; },
-                                        escolher(nome) { this.titulo = nome; this.aberto = false; },
-                                        adicionar() {
-                                            const v = (this.titulo || '').trim();
-                                            if (v === '') return;
-                                            this.$wire.adicionarAssunto(v).then(ok => {
-                                                if (ok) { this.assuntos.push({ nome: v }); this.aberto = false; }
-                                            });
-                                        },
-                                    }"
-                                    @click.outside="fechar()"
-                                    @keydown.escape.stop="fechar()"
-                                    class="relative"
-                                >
-                                    <label class="campo-label" for="assunto-combo">Título</label>
-                                    <input id="assunto-combo" type="text" x-model="titulo"
-                                        @focus="abrir()" @click="abrir()" @input="abrir()"
-                                        @keydown.enter.prevent="existeExato ? fechar() : adicionar()"
-                                        class="campo-input" placeholder="Ex: Reunião de equipa" autocomplete="off"
-                                        role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
-                                    <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
-                                        <template x-for="(a, i) in filtrados" :key="a.nome">
-                                            <li @click="escolher(a.nome)" @mouseenter="destaque = i" :class="i === destaque ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'" class="cursor-pointer px-4 py-2 text-sm" role="option">
-                                                <span x-text="a.nome"></span>
-                                            </li>
-                                        </template>
-                                        <li x-show="titulo && titulo.trim() !== '' && !existeExato" @click="adicionar()" class="flex cursor-pointer items-center gap-1.5 px-4 py-2 text-sm font-medium text-verde-600 hover:bg-verde-50">
-                                            <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
-                                            <span>Adicionar «<span x-text="titulo.trim()"></span>»</span>
-                                        </li>
-                                        <li x-show="filtrados.length === 0 && (!titulo || titulo.trim() === '')" class="px-4 py-2 text-sm text-texto-medio">Escreva para criar um assunto.</li>
-                                    </ul>
-                                    @error('formTitulo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                                    @error('novoAssunto') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                                </div>
-                            @else
-                                <div>
-                                    <label class="campo-label">Motivo</label>
-                                    <input wire:model="formMotivo" type="text" class="campo-input" placeholder="Ex: Férias">
-                                </div>
-                            @endif
-
                             <div>
-                                <label class="campo-label">Técnico {{ $formTipo === 'ausencia' ? '' : '(opcional)' }}</label>
+                                <label class="campo-label">Técnico (opcional)</label>
                                 <select wire:model="formTecnicoId" class="campo-select">
-                                    <option value="">{{ $formTipo === 'ausencia' ? 'Selecione...' : 'Por atribuir' }}</option>
+                                    <option value="">Por atribuir</option>
                                     @foreach ($tecnicos as $t)
                                         <option value="{{ $t['id'] }}">{{ $t['nome'] }}</option>
                                     @endforeach
@@ -221,6 +212,57 @@
                         <div class="flex items-center justify-end gap-3 border-t border-borda px-6 py-4">
                             <button type="button" wire:click="fecharCriar" class="botao-secundario">Cancelar</button>
                             <button type="submit" class="botao-primario">Criar</button>
+                        </div>
+                    </form>
+                </div>
+            @endif
+
+            {{-- Modal dedicado de marcação de ausência (grava em tecnico_disponibilidade) --}}
+            @if ($modalAusencia)
+                <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4" wire:click.self="fecharMarcarAusencia">
+                    <form wire:submit="marcarAusencia" class="w-full max-w-md rounded-xl border border-borda bg-white shadow-xl">
+                        <div class="flex items-start justify-between border-b border-borda px-6 py-5">
+                            <h2 class="text-lg font-semibold text-texto-forte">Marcar ausência</h2>
+                            <button type="button" wire:click="fecharMarcarAusencia" class="text-texto-fraco hover:text-texto-forte">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <div class="space-y-5 px-6 py-5">
+                            <div>
+                                <label class="campo-label">Técnico</label>
+                                <select wire:model="ausTecnicoId" class="campo-select">
+                                    <option value="">Selecione...</option>
+                                    @foreach ($tecnicos as $t)
+                                        <option value="{{ $t['id'] }}">{{ $t['nome'] }}</option>
+                                    @endforeach
+                                </select>
+                                @error('ausTecnicoId') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div>
+                                <label class="campo-label">Motivo</label>
+                                <input wire:model="ausMotivo" type="text" class="campo-input" placeholder="Ex: Férias">
+                                @error('ausMotivo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="campo-label">Início</label>
+                                    <input wire:model="ausInicio" type="datetime-local" class="campo-input">
+                                    @error('ausInicio') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label class="campo-label">Fim</label>
+                                    <input wire:model="ausFim" type="datetime-local" class="campo-input">
+                                    @error('ausFim') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-end gap-3 border-t border-borda px-6 py-4">
+                            <button type="button" wire:click="fecharMarcarAusencia" class="botao-secundario">Cancelar</button>
+                            <button type="submit" class="botao-primario">Marcar ausência</button>
                         </div>
                     </form>
                 </div>

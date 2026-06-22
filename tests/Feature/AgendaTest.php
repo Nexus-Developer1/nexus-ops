@@ -210,7 +210,6 @@ class AgendaTest extends TestCase
         $tec = $this->tecnico();
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
-            ->set('formTipo', 'outro')
             ->set('formTitulo', 'Reunião de equipa')
             ->set('formTecnicoId', $tec->id)
             ->set('formInicio', '2026-07-06T10:00')
@@ -219,6 +218,7 @@ class AgendaTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('eventos_agenda', ['titulo' => 'Reunião de equipa', 'tipo' => 'outro', 'tecnico_id' => $tec->id]);
+        $this->assertDatabaseHas('assuntos_evento', ['nome' => 'Reunião de equipa']); // tipo livre fica guardado para sugestões
         Notification::assertSentTo($tec, EventoAtribuido::class);
     }
 
@@ -227,12 +227,11 @@ class AgendaTest extends TestCase
         $tec = $this->tecnico();
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
-            ->set('formTipo', 'ausencia')
-            ->set('formTecnicoId', $tec->id)
-            ->set('formMotivo', 'Férias')
-            ->set('formInicio', '2026-08-03T00:00')
-            ->set('formFim', '2026-08-10T23:59')
-            ->call('criarEvento')
+            ->set('ausTecnicoId', $tec->id)
+            ->set('ausMotivo', 'Férias')
+            ->set('ausInicio', '2026-08-03T00:00')
+            ->set('ausFim', '2026-08-10T23:59')
+            ->call('marcarAusencia')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('tecnico_disponibilidade', ['tecnico_id' => $tec->id, 'motivo' => 'Férias']);

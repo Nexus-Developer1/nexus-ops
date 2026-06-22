@@ -38,14 +38,19 @@ class Calendario extends Component
     // Detalhe de uma ausência (clique numa ausência).
     public ?int $ausenciaSelecionadaId = null;
 
-    // Modal de criação de evento próprio / ausência.
+    // Modal de criação de evento próprio (sempre tipo "outro"; o texto livre vai para o título).
     public bool $modalCriar = false;
-    public string $formTipo = 'outro';      // outro | ausencia
     public string $formTitulo = '';
     public ?int $formTecnicoId = null;
     public string $formInicio = '';
     public string $formFim = '';
-    public string $formMotivo = '';
+
+    // Modal dedicado de marcação de ausência (grava em tecnico_disponibilidade).
+    public bool $modalAusencia = false;
+    public ?int $ausTecnicoId = null;
+    public string $ausInicio = '';
+    public string $ausFim = '';
+    public string $ausMotivo = '';
 
     // Paleta de cores por técnico (legenda + eventos).
     private const PALETA = ['#16a34a', '#2563eb', '#9333ea', '#ea580c', '#0891b2', '#db2777'];
@@ -181,13 +186,26 @@ class Calendario extends Component
         return redirect()->route('intervencoes.formulario', $intervencao);
     }
 
-    // ---- Criação de evento próprio / ausência ----
+    /** @return array<string, string> */
+    protected function validationAttributes(): array
+    {
+        return [
+            'formTitulo' => 'tipo de evento',
+            'formInicio' => 'início',
+            'formFim' => 'fim',
+            'ausTecnicoId' => 'técnico',
+            'ausInicio' => 'início',
+            'ausFim' => 'fim',
+            'ausMotivo' => 'motivo',
+        ];
+    }
+
+    // ---- Criação de evento próprio ----
     public function abrirCriacao(string $inicio, string $fim): void
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['formTitulo', 'formMotivo']);
-        $this->formTipo = 'outro';
+        $this->reset('formTitulo');
         $this->formTecnicoId = $this->tecnicoId;
         $this->formInicio = Carbon::parse($inicio)->format('Y-m-d\TH:i');
         $this->formFim = Carbon::parse($fim)->format('Y-m-d\TH:i');
@@ -226,66 +244,91 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $regras = [
-            'formTipo' => ['required', 'in:outro,ausencia'],
-            'formTecnicoId' => [$this->formTipo === 'ausencia' ? 'required' : 'nullable', 'exists:utilizadores,id'],
+        $this->validate([
+            'formTitulo' => ['required', 'string', 'max:255'],
+            'formTecnicoId' => ['nullable', 'exists:utilizadores,id'],
             'formInicio' => ['required', 'date'],
             'formFim' => ['required', 'date', 'after:formInicio'],
-            'formTitulo' => [$this->formTipo === 'outro' ? 'required' : 'nullable', 'string', 'max:255'],
-            'formMotivo' => ['nullable', 'string', 'max:255'],
-        ];
-        $this->validate($regras);
+        ]);
 
         $inicio = Carbon::parse($this->formInicio);
         $fim = Carbon::parse($this->formFim);
 
-        if ($this->formTipo === 'ausencia') {
-            // Ausência → tecnico_disponibilidade (usada na deteção de conflitos).
-            TecnicoDisponibilidade::create([
-                'tecnico_id' => $this->formTecnicoId,
-                'tipo' => 'ausencia',
-                'inicio' => $inicio,
-                'fim' => $fim,
-                'motivo' => $this->formMotivo ?: 'Ausência',
-            ]);
-        } else {
-            // Evento próprio (reunião/outro). Verifica horário e conflito de técnico.
-            if ($razao = $detetor->foraDeHorario($inicio, $fim)) {
-                $this->addError('formInicio', $razao);
+        // Evento próprio. Verifica horário e conflito de técnico.
+        if ($razao = $detetor->foraDeHorario($inicio, $fim)) {
+            $this->addError('formInicio', $razao);
 
-                return;
-            }
-            if ($this->formTecnicoId && $razao = $detetor->conflito($this->formTecnicoId, $inicio, $fim)) {
-                $this->addError('formInicio', $razao);
+            return;
+        }
+        if ($this->formTecnicoId && $razao = $detetor->conflito($this->formTecnicoId, $inicio, $fim)) {
+            $this->addError('formInicio', $razao);
 
-                return;
-            }
+            return;
+        }
 
-            // Assunto fica guardado para reutilização futura (lookup que cresce com o uso).
-            $titulo = trim(preg_replace('/\s+/', ' ', $this->formTitulo));
-            if ($titulo !== '') {
-                AssuntoEvento::firstOrCreate(
-                    ['nome_normalizado' => AssuntoEvento::normalizar($titulo)],
-                    ['nome' => $titulo],
-                );
-            }
+        // O tipo de evento (texto livre) fica guardado para sugestões futuras (cresce com o uso).
+        $titulo = trim(preg_replace('/\s+/', ' ', $this->formTitulo));
+        if ($titulo !== '') {
+            AssuntoEvento::firstOrCreate(
+                ['nome_normalizado' => AssuntoEvento::normalizar($titulo)],
+                ['nome' => $titulo],
+            );
+        }
 
-            $evento = EventoAgenda::create([
-                'tipo' => TipoEvento::Outro,
-                'titulo' => $titulo,
-                'inicio' => $inicio,
-                'fim' => $fim,
-                'estado' => EstadoEvento::Planeado,
-                'tecnico_id' => $this->formTecnicoId,
-            ]);
+        $evento = EventoAgenda::create([
+            'tipo' => TipoEvento::Outro,
+            'titulo' => $titulo,
+            'inicio' => $inicio,
+            'fim' => $fim,
+            'estado' => EstadoEvento::Planeado,
+            'tecnico_id' => $this->formTecnicoId,
+        ]);
 
-            // Notifica o técnico atribuído (CLAUDE.md §6).
-            if ($evento->tecnico_id) {
-                $evento->tecnico->notify(new EventoAtribuido($evento));
-            }
+        // Notifica o técnico atribuído (CLAUDE.md §6).
+        if ($evento->tecnico_id) {
+            $evento->tecnico->notify(new EventoAtribuido($evento));
         }
 
         $this->modalCriar = false;
+        $this->recarregar();
+    }
+
+    // ---- Marcação de ausência (modal dedicado → tecnico_disponibilidade) ----
+    public function abrirAusencia(): void
+    {
+        abort_if(auth()->user()->ehCliente(), 403);
+
+        $this->reset(['ausInicio', 'ausFim', 'ausMotivo']);
+        $this->ausTecnicoId = $this->tecnicoId; // técnico vê-se a si próprio pré-selecionado
+        $this->modalAusencia = true;
+    }
+
+    public function fecharMarcarAusencia(): void
+    {
+        $this->modalAusencia = false;
+    }
+
+    public function marcarAusencia(): void
+    {
+        abort_if(auth()->user()->ehCliente(), 403);
+
+        $this->validate([
+            'ausTecnicoId' => ['required', 'exists:utilizadores,id'],
+            'ausInicio' => ['required', 'date'],
+            'ausFim' => ['required', 'date', 'after:ausInicio'],
+            'ausMotivo' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        // Indisponibiliza o técnico no período (lido por DetetorConflitos).
+        TecnicoDisponibilidade::create([
+            'tecnico_id' => $this->ausTecnicoId,
+            'tipo' => 'ausencia',
+            'inicio' => Carbon::parse($this->ausInicio),
+            'fim' => Carbon::parse($this->ausFim),
+            'motivo' => $this->ausMotivo ?: 'Ausência',
+        ]);
+
+        $this->modalAusencia = false;
         $this->recarregar();
     }
 
