@@ -111,7 +111,7 @@
                                 <svg class="h-5 w-5 shrink-0 text-aviso-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                 <div>
                                     <div class="text-sm font-semibold text-texto-forte">Troca de baterias</div>
-                                    <div class="mt-1 text-xs text-texto-medio">Próxima troca recomendada para <span class="font-medium text-texto-forte">{{ $equipamento->proxima_troca_baterias->translatedFormat('M Y') }}</span>.</div>
+                                    <div class="mt-1 text-xs text-texto-medio">Próxima troca recomendada para <span class="font-medium text-texto-forte">{{ $equipamento->proxima_troca_baterias->translatedFormat('d M Y') }}</span>.</div>
                                 </div>
                             </div>
                         </section>
