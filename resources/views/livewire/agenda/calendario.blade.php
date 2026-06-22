@@ -132,10 +132,59 @@
                             </div>
 
                             @if ($formTipo === 'outro')
-                                <div>
-                                    <label class="campo-label">Título</label>
-                                    <input wire:model="formTitulo" type="text" class="campo-input" placeholder="Ex: Reunião de equipa">
+                                {{-- Assunto: combobox pesquisável ligado ao lookup assuntos_evento (cresce com o uso).
+                                     Filtra os existentes à medida que se escreve; "Adicionar «X»" guarda um novo. --}}
+                                <div
+                                    x-data="{
+                                        assuntos: @js($assuntos->map(fn ($a) => ['nome' => $a->nome])->values()),
+                                        titulo: $wire.entangle('formTitulo'),
+                                        aberto: false,
+                                        destaque: 0,
+                                        norm(s) { return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); },
+                                        get filtrados() {
+                                            const n = this.norm(this.titulo);
+                                            if (n === '') return this.assuntos;
+                                            return this.assuntos.filter(a => this.norm(a.nome).includes(n));
+                                        },
+                                        get existeExato() {
+                                            const n = this.norm(this.titulo);
+                                            return n !== '' && this.assuntos.some(a => this.norm(a.nome) === n);
+                                        },
+                                        abrir() { this.aberto = true; this.destaque = 0; },
+                                        fechar() { this.aberto = false; },
+                                        escolher(nome) { this.titulo = nome; this.aberto = false; },
+                                        adicionar() {
+                                            const v = (this.titulo || '').trim();
+                                            if (v === '') return;
+                                            this.$wire.adicionarAssunto(v).then(ok => {
+                                                if (ok) { this.assuntos.push({ nome: v }); this.aberto = false; }
+                                            });
+                                        },
+                                    }"
+                                    @click.outside="fechar()"
+                                    @keydown.escape.stop="fechar()"
+                                    class="relative"
+                                >
+                                    <label class="campo-label" for="assunto-combo">Título</label>
+                                    <input id="assunto-combo" type="text" x-model="titulo"
+                                        @focus="abrir()" @click="abrir()" @input="abrir()"
+                                        @keydown.enter.prevent="existeExato ? fechar() : adicionar()"
+                                        class="campo-input" placeholder="Ex: Reunião de equipa" autocomplete="off"
+                                        role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
+                                    <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
+                                        <template x-for="(a, i) in filtrados" :key="a.nome">
+                                            <li @click="escolher(a.nome)" @mouseenter="destaque = i" :class="i === destaque ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'" class="cursor-pointer px-4 py-2 text-sm" role="option">
+                                                <span x-text="a.nome"></span>
+                                            </li>
+                                        </template>
+                                        <li x-show="titulo && titulo.trim() !== '' && !existeExato" @click="adicionar()" class="flex cursor-pointer items-center gap-1.5 px-4 py-2 text-sm font-medium text-verde-600 hover:bg-verde-50">
+                                            <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
+                                            <span>Adicionar «<span x-text="titulo.trim()"></span>»</span>
+                                        </li>
+                                        <li x-show="filtrados.length === 0 && (!titulo || titulo.trim() === '')" class="px-4 py-2 text-sm text-texto-medio">Escreva para criar um assunto.</li>
+                                    </ul>
                                     @error('formTitulo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                    @error('novoAssunto') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                                 </div>
                             @else
                                 <div>

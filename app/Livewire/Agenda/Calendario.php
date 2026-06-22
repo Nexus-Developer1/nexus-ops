@@ -5,6 +5,7 @@ namespace App\Livewire\Agenda;
 use App\Enums\EstadoEvento;
 use App\Enums\PapelUtilizador;
 use App\Enums\TipoEvento;
+use App\Models\AssuntoEvento;
 use App\Models\EventoAgenda;
 use App\Models\TecnicoDisponibilidade;
 use App\Models\User;
@@ -198,6 +199,29 @@ class Calendario extends Component
         $this->modalCriar = false;
     }
 
+    // Guarda um novo assunto de evento próprio (lookup que cresce com o uso) e
+    // seleciona-o. Idempotente: se já existir (sem acentos/maiúsculas), reutiliza.
+    public function adicionarAssunto(string $nome): bool
+    {
+        $nome = trim(preg_replace('/\s+/', ' ', $nome));
+
+        if ($nome === '') {
+            $this->addError('novoAssunto', 'Indique o assunto do evento.');
+
+            return false;
+        }
+
+        AssuntoEvento::firstOrCreate(
+            ['nome_normalizado' => AssuntoEvento::normalizar($nome)],
+            ['nome' => $nome],
+        );
+
+        $this->formTitulo = $nome;
+        $this->resetErrorBag('novoAssunto');
+
+        return true;
+    }
+
     public function criarEvento(DetetorConflitos $detetor)
     {
         abort_if(auth()->user()->ehCliente(), 403);
@@ -237,9 +261,18 @@ class Calendario extends Component
                 return;
             }
 
+            // Assunto fica guardado para reutilização futura (lookup que cresce com o uso).
+            $titulo = trim(preg_replace('/\s+/', ' ', $this->formTitulo));
+            if ($titulo !== '') {
+                AssuntoEvento::firstOrCreate(
+                    ['nome_normalizado' => AssuntoEvento::normalizar($titulo)],
+                    ['nome' => $titulo],
+                );
+            }
+
             $evento = EventoAgenda::create([
                 'tipo' => TipoEvento::Outro,
-                'titulo' => $this->formTitulo,
+                'titulo' => $titulo,
                 'inicio' => $inicio,
                 'fim' => $fim,
                 'estado' => EstadoEvento::Planeado,
@@ -306,6 +339,7 @@ class Calendario extends Component
             'evento' => $evento,
             'ausencia' => $ausencia,
             'urlIcal' => $urlIcal,
+            'assuntos' => AssuntoEvento::orderBy('nome')->get(),
         ]);
     }
 }
