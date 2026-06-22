@@ -66,4 +66,34 @@ class GeradorVisitasPreventivas
             return $criadas;
         });
     }
+
+    // Estima quantas visitas gerar() criaria, SEM criar nada (mesma matemática de período
+    // e filtro por tipo). Serve para decidir, na ativação, entre gerar na hora ou em fila.
+    public function estimar(Contrato $contrato): int
+    {
+        $contrato->loadMissing(['planosVisita', 'equipamentos']);
+
+        $total = 0;
+
+        foreach ($contrato->planosVisita as $plano) {
+            $nEquipamentos = $contrato->equipamentos->where('tipo', $plano->equipamento_tipo)->count();
+            if ($nEquipamentos === 0) {
+                continue;
+            }
+
+            $intervalo = $plano->periodicidade->meses();
+            $momento = Carbon::parse($contrato->data_inicio)->setTime(self::HORA_INICIO, 0);
+            $fimVigencia = Carbon::parse($contrato->data_fim)->endOfDay();
+
+            $ocorrencias = 0;
+            while ($momento->lte($fimVigencia)) {
+                $ocorrencias++;
+                $momento->addMonths($intervalo);
+            }
+
+            $total += $nEquipamentos * $ocorrencias;
+        }
+
+        return $total;
+    }
 }

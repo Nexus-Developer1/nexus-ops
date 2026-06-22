@@ -43,6 +43,7 @@ class Contrato extends Model
         'exclusoes',
         'renovacao_automatica',
         'periodo_aviso_dias',
+        'resumo_geracao',
     ];
 
     /** @return array<string, string> */
@@ -55,6 +56,7 @@ class Contrato extends Model
             'tipo' => TipoContrato::class,
             'valor' => 'decimal:2',
             'renovacao_automatica' => 'boolean',
+            'resumo_geracao' => 'array',
         ];
     }
 

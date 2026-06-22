@@ -5,12 +5,16 @@ namespace App\Livewire\Contratos;
 use App\Enums\EstadoContrato;
 use App\Jobs\GerarVisitasPreventivas;
 use App\Models\Contrato;
+use App\Services\Agenda\GeradorVisitasPreventivas;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 #[Layout('components.layouts.app', ['ativo' => 'contratos', 'titulo' => 'Contratos'])]
 class Ficha extends Component
 {
+    // Acima deste nº de visitas, a geração vai para a fila (não prende o request).
+    private const LIMITE_SINCRONO = 300;
+
     public Contrato $contrato;
 
     public function mount(Contrato $contrato): void
@@ -20,7 +24,7 @@ class Ficha extends Component
 
     // Ativa o contrato → passa a governar a operação. A geração automática das
     // visitas preventivas (CLAUDE.md §6) liga-se aqui quando o módulo Agenda existir.
-    public function ativar(): void
+    public function ativar(GeradorVisitasPreventivas $gerador): void
     {
         if ($this->contrato->estado !== EstadoContrato::Rascunho) {
             session()->flash('erro', 'Só é possível ativar contratos em rascunho.');
@@ -36,10 +40,25 @@ class Ficha extends Component
 
         $this->contrato->update(['estado' => EstadoContrato::Ativo]);
 
-        // Gera as visitas preventivas para todo o período de vigência (job assíncrono).
-        GerarVisitasPreventivas::dispatch($this->contrato);
+        // Estima o volume antes de gerar: pequeno/médio corre na hora (feedback imediato),
+        // grande vai para a fila para não prender o request.
+        if ($gerador->estimar($this->contrato) > self::LIMITE_SINCRONO) {
+            GerarVisitasPreventivas::dispatch($this->contrato);
+            session()->flash('sucesso', 'Contrato ativado. Como são muitas visitas, estão a ser geradas em segundo plano — o resumo aparece nesta ficha assim que concluir.');
 
-        session()->flash('sucesso', 'Contrato ativado. As visitas preventivas estão a ser geradas e aparecerão na agenda.');
+            return;
+        }
+
+        // Síncrono: corre o mesmo job na hora (gera + deteta sobreposições + grava resumo).
+        GerarVisitasPreventivas::dispatchSync($this->contrato);
+
+        $resumo = $this->contrato->refresh()->resumo_geracao ?? ['criadas' => 0, 'sobreposicoes' => 0];
+        $msg = "Contrato ativado. Geradas {$resumo['criadas']} visitas preventivas";
+        $msg .= ($resumo['sobreposicoes'] ?? 0) > 0
+            ? " · {$resumo['sobreposicoes']} com sobreposição de equipamento (ver detalhe abaixo)."
+            : ', sem sobreposições.';
+
+        session()->flash('sucesso', $msg);
     }
 
     public function suspender(): void
