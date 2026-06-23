@@ -83,6 +83,14 @@
 
                         <div class="flex items-center justify-end gap-3 border-t border-borda px-6 py-4">
                             @if ($evento->intervencao_id)
+                                @php($rel = $evento->intervencao?->relatorio)
+                                @if ($evento->tipo !== \App\Enums\TipoEvento::VisitaPreventiva)
+                                    @if ($rel && $rel->estado !== \App\Enums\EstadoRelatorio::Rascunho)
+                                        <span class="mr-auto text-xs text-texto-fraco">Relatório finalizado (nº {{ $rel->numero }}) — não removível</span>
+                                    @else
+                                        <button wire:click="removerEvento" wire:confirm="{{ $rel ? 'Remover este evento e o rascunho de relatório associado?' : 'Remover este evento?' }}" class="botao inline-flex items-center gap-2 bg-perigo-600 px-5 py-2.5 text-white hover:bg-perigo-500">Remover</button>
+                                    @endif
+                                @endif
                                 <a href="{{ route('intervencoes.formulario', $evento->intervencao_id) }}" class="botao-primario">Abrir intervenção</a>
                             @elseif (in_array($evento->tipo, [\App\Enums\TipoEvento::VisitaPreventiva, \App\Enums\TipoEvento::Intervencao]))
                                 <button wire:click="fecharModal" class="botao-secundario">Fechar</button>

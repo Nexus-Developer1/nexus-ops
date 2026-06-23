@@ -3,6 +3,7 @@
 namespace App\Livewire\Agenda;
 
 use App\Enums\EstadoEvento;
+use App\Enums\EstadoRelatorio;
 use App\Enums\PapelUtilizador;
 use App\Enums\TipoEvento;
 use App\Models\AssuntoEvento;
@@ -15,6 +16,7 @@ use App\Services\Agenda\ConversorVisita;
 use App\Services\Agenda\DetetorConflitos;
 use App\Services\Agenda\GeradorRascunhoDeEvento;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL as UrlFacade;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -168,15 +170,43 @@ class Calendario extends Component
         $this->eventoSelecionadoId = null;
     }
 
-    // Remove um evento próprio (apenas tipo "outro"; visitas/intervenções não).
+    // Remove um evento a partir do modal de detalhe, com regras seguras quanto ao
+    // relatório ligado (camadas 2/3). Soft deletes em todos os modelos → o cascade da
+    // BD não dispara, por isso apago explicitamente relatorio + intervencao + evento.
     public function removerEvento(): void
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $evento = EventoAgenda::findOrFail($this->eventoSelecionadoId);
-        if ($evento->tipo === TipoEvento::Outro) {
-            $evento->delete();
+        $evento = EventoAgenda::with('intervencao.relatorio')->findOrFail($this->eventoSelecionadoId);
+
+        // Preventivas são geridas pelo contrato (geração apaga/recria planeadas) —
+        // removê-las aqui dessincronizava. Não removível por este caminho.
+        if ($evento->tipo === TipoEvento::VisitaPreventiva) {
+            session()->flash('erro', 'Visitas preventivas são geridas pelo contrato e não podem ser removidas pela agenda.');
+            $this->eventoSelecionadoId = null;
+            $this->recarregar();
+
+            return;
         }
+
+        $intervencao = $evento->intervencao;
+        $relatorio = $intervencao?->relatorio;
+
+        // Relatório finalizado/enviado (tem número) nunca é apagado.
+        if ($relatorio && $relatorio->estado !== EstadoRelatorio::Rascunho) {
+            session()->flash('erro', "Este evento tem um relatório finalizado (nº {$relatorio->numero}) — não pode ser removido.");
+            $this->eventoSelecionadoId = null;
+            $this->recarregar();
+
+            return;
+        }
+
+        DB::transaction(function () use ($evento, $intervencao, $relatorio) {
+            // Rascunho ligado → apaga o relatório e a intervenção que nasceram do evento.
+            $relatorio?->delete();
+            $intervencao?->delete();
+            $evento->delete();
+        });
 
         $this->eventoSelecionadoId = null;
         $this->recarregar();
@@ -419,7 +449,7 @@ class Calendario extends Component
             ]);
 
         $evento = $this->eventoSelecionadoId
-            ? EventoAgenda::with(['cliente', 'equipamento', 'tecnico', 'intervencao'])->find($this->eventoSelecionadoId)
+            ? EventoAgenda::with(['cliente', 'equipamento', 'tecnico', 'intervencao.relatorio'])->find($this->eventoSelecionadoId)
             : null;
 
         $ausencia = $this->ausenciaSelecionadaId
