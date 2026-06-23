@@ -13,6 +13,7 @@
         h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #16A34A; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; margin: 18px 0 8px; }
         .campo-rotulo { color: #6b7280; font-size: 9px; text-transform: uppercase; }
         .campo-valor { color: #111827; font-weight: bold; font-size: 11px; }
+        .cliente-linha { color: #374151; font-size: 10px; line-height: 1.4; }
         table { width: 100%; border-collapse: collapse; }
         .grelha td { padding: 4px 0; vertical-align: top; width: 50%; }
         .texto { color: #374151; line-height: 1.5; }
@@ -52,7 +53,22 @@
     <h2>Cliente e Equipamento</h2>
     <table class="grelha">
         <tr>
-            <td><div class="campo-rotulo">Cliente</div><div class="campo-valor">{{ $c->nome }}</div></td>
+            <td>
+                <div class="campo-rotulo">Cliente</div>
+                <div class="campo-valor">{{ $c->nome }}</div>
+                @php($cNif = trim((string) $c->nif))
+                @php($cMorada = trim((string) $c->morada))
+                @php($cCodpost = trim((string) $c->codpost))
+                @php($cTel = trim((string) $c->telefone))
+                @php($cTlm = trim((string) $c->tlmvl))
+                @php($cEmail = trim((string) $c->email))
+                @if ($cNif !== '')<div class="cliente-linha">NIF {{ $cNif }}</div>@endif
+                @if ($cMorada !== '')<div class="cliente-linha">{{ $cMorada }}</div>@endif
+                @if ($cCodpost !== '')<div class="cliente-linha">{{ $cCodpost }}</div>@endif
+                @if ($cTel !== '')<div class="cliente-linha">Tel. {{ $cTel }}</div>@endif
+                @if ($cTlm !== '')<div class="cliente-linha">Tlm. {{ $cTlm }}</div>@endif
+                @if ($cEmail !== '')<div class="cliente-linha">{{ $cEmail }}</div>@endif
+            </td>
             <td><div class="campo-rotulo">Local</div><div class="campo-valor">{{ $e->local->designacao }}</div></td>
         </tr>
         <tr>

@@ -52,4 +52,34 @@ class PdfRelatorioTest extends TestCase
         // Limpa o ficheiro físico gerado (não coberto pelo RefreshDatabase).
         Storage::disk()->delete($relatorio->pdf_path);
     }
+
+    public function test_pdf_mostra_ficha_completa_do_cliente_e_omite_campos_vazios(): void
+    {
+        $cliente = Cliente::create([
+            'nome' => 'ACME Lda', 'nif' => '500100200',
+            'morada' => 'Rua do Teste 10', 'codpost' => '1000-001 LISBOA',
+            'telefone' => '210000000', 'tlmvl' => ' ', // só um espaço → deve ser omitido
+            'email' => 'geral@acme.pt', 'ativo' => true,
+        ]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sala']);
+        $equipamento = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
+        $intervencao = Intervencao::create(['equipamento_id' => $equipamento->id, 'tipo' => 'preventiva', 'estado' => 'concluida']);
+        $relatorio = Relatorio::create([
+            'intervencao_id' => $intervencao->id, 'numero' => '2026/9101',
+            'data' => now(), 'estado' => EstadoRelatorio::Finalizado,
+        ]);
+
+        $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
+
+        // Campos preenchidos aparecem.
+        $this->assertStringContainsString('NIF 500100200', $html);
+        $this->assertStringContainsString('Rua do Teste 10', $html);
+        $this->assertStringContainsString('1000-001 LISBOA', $html);
+        $this->assertStringContainsString('Tel. 210000000', $html);
+        $this->assertStringContainsString('geral@acme.pt', $html);
+
+        // Campo vazio (telemóvel = espaço) é omitido — sem linha "Tlm." nem "null".
+        $this->assertStringNotContainsString('Tlm.', $html);
+        $this->assertStringNotContainsString('null', $html);
+    }
 }
