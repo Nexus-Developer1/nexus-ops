@@ -23,7 +23,7 @@
                     <div class="sm:col-span-2"><dt class="text-xs text-texto-fraco">Email</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $cliente->email ?? '—' }}</dd></div>
                     <div><dt class="text-xs text-texto-fraco">Telefone</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $cliente->telefone ?? '—' }}</dd></div>
                     <div><dt class="text-xs text-texto-fraco">Telemóvel</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $cliente->tlmvl ?? '—' }}</dd></div>
-                    <div><dt class="text-xs text-texto-fraco">Vendedor</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $cliente->vendnm ?? '—' }}{{ $cliente->vendedor ? ' (' . $cliente->vendedor . ')' : '' }}</dd></div>
+                    <div><dt class="text-xs text-texto-fraco">Vendedor</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $cliente->vendnm ?? '—' }}</dd></div>
                 </dl>
             </section>
 
