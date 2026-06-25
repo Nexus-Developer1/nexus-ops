@@ -11,24 +11,24 @@
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Bom dia, {{ auth()->user()->nome }}</h1>
             <p class="mt-2 text-sm text-texto-medio">Resumo da operação · {{ \Illuminate\Support\Carbon::now()->locale('pt')->translatedFormat('l, d \d\e F \d\e Y') }}</p>
 
-            {{-- KPIs --}}
+            {{-- KPIs (cada cartão navega para a respetiva área) --}}
             <div class="mt-8 grid grid-cols-2 gap-5 lg:grid-cols-4">
-                <div class="cartao p-6">
+                <a href="{{ route('contratos') }}" wire:navigate class="cartao block p-6 transition hover:border-verde-300 hover:shadow-sm">
                     <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Contratos ativos</div>
                     <div class="mt-2 text-3xl font-semibold text-texto-forte">{{ $resumo['contratos_ativos'] }}</div>
-                </div>
-                <div class="cartao p-6">
+                </a>
+                <a href="{{ route('ativos') }}" wire:navigate class="cartao block p-6 transition hover:border-verde-300 hover:shadow-sm">
                     <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Equipamentos</div>
                     <div class="mt-2 text-3xl font-semibold text-texto-forte">{{ $resumo['equipamentos'] }}</div>
-                </div>
-                <div class="cartao p-6">
+                </a>
+                <a href="{{ route('contratos') }}" wire:navigate class="cartao block p-6 transition hover:border-verde-300 hover:shadow-sm">
                     <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Renovações próximas</div>
                     <div class="mt-2 text-3xl font-semibold {{ $resumo['renovacoes'] > 0 ? 'text-aviso-500' : 'text-texto-forte' }}">{{ $resumo['renovacoes'] }}</div>
-                </div>
-                <div class="cartao p-6">
+                </a>
+                <a href="{{ route('alertas') }}" wire:navigate class="cartao block p-6 transition hover:border-verde-300 hover:shadow-sm">
                     <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Alertas em aberto</div>
                     <div class="mt-2 text-3xl font-semibold {{ $numAlertas > 0 ? 'text-perigo-600' : 'text-texto-forte' }}">{{ $numAlertas }}</div>
-                </div>
+                </a>
             </div>
 
             {{-- Rentabilidade + SLA --}}
