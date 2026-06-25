@@ -36,6 +36,7 @@ class Equipamento extends Model
         'data_instalacao',
         'fim_garantia',
         'estado',
+        'notas',
         'proxima_troca_baterias',
         'atributos',
         'qr_code',

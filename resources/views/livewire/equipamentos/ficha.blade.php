@@ -50,6 +50,21 @@
                         @endif
                     </section>
 
+                    {{-- Notas --}}
+                    <section class="cartao">
+                        <div class="flex items-center gap-3 px-6 py-5">
+                            <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span>
+                            <h2 class="text-lg font-semibold text-texto-forte">Notas</h2>
+                        </div>
+                        <div class="border-t border-borda px-6 py-6">
+                            <textarea wire:model="notas" rows="4" class="campo-input" placeholder="Observações sobre este equipamento..."></textarea>
+                            @error('notas') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            <div class="mt-3 flex justify-end">
+                                <button wire:click="guardarNotas" wire:loading.attr="disabled" wire:target="guardarNotas" class="botao-primario">Guardar notas</button>
+                            </div>
+                        </div>
+                    </section>
+
                     {{-- Histórico de intervenções --}}
                     <section class="cartao">
                         <div class="flex items-center justify-between px-6 py-5">

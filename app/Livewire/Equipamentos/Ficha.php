@@ -14,9 +14,24 @@ class Ficha extends Component
 {
     public Equipamento $equipamento;
 
+    public string $notas = '';
+
     public function mount(Equipamento $equipamento): void
     {
         $this->equipamento = $equipamento->load('local.cliente');
+        $this->notas = $equipamento->notas ?? '';
+    }
+
+    // Guarda as notas livres do equipamento.
+    public function guardarNotas(): void
+    {
+        abort_if(auth()->user()->ehCliente(), 403);
+
+        $this->validate(['notas' => ['nullable', 'string', 'max:5000']]);
+
+        $this->equipamento->update(['notas' => trim($this->notas) ?: null]);
+
+        session()->flash('sucesso', 'Notas guardadas.');
     }
 
     // Inicia uma nova intervenção corretiva e abre o formulário de execução.
