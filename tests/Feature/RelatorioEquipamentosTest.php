@@ -172,7 +172,7 @@ class RelatorioEquipamentosTest extends TestCase
 
         // RASCUNHO → não aparece no picker.
         Livewire::actingAs($admin)->test(Novo::class)
-            ->assertViewHas('contratosFiltrados', fn ($c) => ! $c->contains('id', $contrato->id));
+            ->assertViewHas('contratos', fn ($c) => ! $c->contains('id', $contrato->id));
 
         // Ativar o contrato.
         Livewire::actingAs($admin)->test(ContratoFicha::class, ['contrato' => $contrato])->call('ativar');
@@ -180,6 +180,6 @@ class RelatorioEquipamentosTest extends TestCase
 
         // Agora (não-rascunho) → aparece no picker.
         Livewire::actingAs($admin)->test(Novo::class)
-            ->assertViewHas('contratosFiltrados', fn ($c) => $c->contains('id', $contrato->id));
+            ->assertViewHas('contratos', fn ($c) => $c->contains('id', $contrato->id));
     }
 }

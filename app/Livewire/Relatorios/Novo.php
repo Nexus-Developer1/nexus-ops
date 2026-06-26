@@ -472,18 +472,12 @@ class Novo extends Component
             ? Equipamento::with('local')->find($this->equipamento_id)
             : null;
 
-        // Pesquisa de contratos (modo contrato) — por número ou nome do cliente.
+        // Contratos para o picker (modo contrato) — filtragem é client-side (são poucos).
         // Exclui rascunhos: ainda não estão em vigor, não pode haver intervenções ao seu abrigo.
-        $contratosFiltrados = Contrato::query()
+        $contratos = Contrato::query()
             ->where('estado', '!=', EstadoContrato::Rascunho->value)
-            ->when($this->contratoBusca !== '', function ($q) {
-                $termo = '%' . $this->contratoBusca . '%';
-                $q->where(fn ($q) => $q->where('numero', 'ilike', $termo)
-                    ->orWhereHas('cliente', fn ($q) => $q->where('nome', 'ilike', $termo)));
-            })
             ->with('cliente')
             ->orderByDesc('data_inicio')
-            ->limit(20)
             ->get();
 
         return view('livewire.relatorios.novo', [
@@ -492,7 +486,7 @@ class Novo extends Component
             'anexosExistentes' => $anexosExistentes,
             'cobertosSelecionados' => $cobertosSelecionados,
             'equipamentoPrincipal' => $equipamentoPrincipal,
-            'contratosFiltrados' => $contratosFiltrados,
+            'contratos' => $contratos,
         ]);
     }
 }
