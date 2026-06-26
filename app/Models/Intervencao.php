@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -67,6 +68,12 @@ class Intervencao extends Model
     public function equipamento(): BelongsTo
     {
         return $this->belongsTo(Equipamento::class);
+    }
+
+    // Equipamentos ADICIONAIS cobertos por este relatório (além do principal).
+    public function equipamentosCobertos(): BelongsToMany
+    {
+        return $this->belongsToMany(Equipamento::class, 'intervencao_equipamentos');
     }
 
     public function tecnico(): BelongsTo

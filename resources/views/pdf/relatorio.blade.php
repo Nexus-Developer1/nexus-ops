@@ -75,6 +75,16 @@
             <td><div class="campo-rotulo">Equipamento</div><div class="campo-valor">{{ $e->numero_serie }} · {{ $e->fabricante }} {{ $e->modelo }}</div></td>
             <td><div class="campo-rotulo">Tipo</div><div class="campo-valor">{{ $e->tipo->rotulo() }}</div></td>
         </tr>
+        @if ($i->equipamentosCobertos->isNotEmpty())
+            <tr>
+                <td colspan="2">
+                    <div class="campo-rotulo">Também cobertos</div>
+                    @foreach ($i->equipamentosCobertos as $ec)
+                        <div class="cliente-linha">{{ $ec->numero_serie ?? '—' }} · {{ trim($ec->fabricante . ' ' . $ec->modelo) ?: '—' }}</div>
+                    @endforeach
+                </td>
+            </tr>
+        @endif
     </table>
 
     <h2>Intervenção</h2>

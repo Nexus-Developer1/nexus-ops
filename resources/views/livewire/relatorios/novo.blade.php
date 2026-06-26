@@ -115,6 +115,56 @@
                             </div>
                             @error('equipamento_id') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                         </div>
+
+                        {{-- Equipamentos adicionais cobertos pelo mesmo relatório (além do principal). --}}
+                        <div class="sm:col-span-2">
+                            <label class="campo-label">Equipamentos adicionais cobertos</label>
+                            <div
+                                x-data="{
+                                    equipamentos: @js($equipamentos->map(fn ($e) => ['id' => $e->id, 'label' => ($e->local?->cliente?->nome ?? '—') . ' · ' . trim($e->tipo->rotulo() . ' ' . $e->modelo) . ' (' . ($e->numero_serie ?? '—') . ')'])->values()),
+                                    query: '',
+                                    aberto: false,
+                                    norm(s) { return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); },
+                                    get filtrados() {
+                                        const n = this.norm(this.query);
+                                        const base = n === '' ? this.equipamentos : this.equipamentos.filter(e => this.norm(e.label).includes(n));
+                                        return base.slice(0, 50);
+                                    },
+                                    abrir() { this.aberto = true; },
+                                    fechar() { this.aberto = false; },
+                                    escolher(e) { this.$wire.adicionarEquipamentoCoberto(e.id); this.query = ''; this.aberto = false; },
+                                }"
+                                @click.outside="fechar()"
+                                @keydown.escape.stop="fechar()"
+                                class="relative"
+                            >
+                                <input type="text" x-model="query" @focus="abrir()" @click="abrir()" @input="abrir()"
+                                    class="campo-input" placeholder="Pesquisar e adicionar outro equipamento..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
+                                <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
+                                    <template x-for="e in filtrados" :key="e.id">
+                                        <li @click="escolher(e)" class="cursor-pointer px-4 py-2 text-sm text-texto-forte hover:bg-verde-50" role="option">
+                                            <span x-text="e.label"></span>
+                                        </li>
+                                    </template>
+                                    <li x-show="filtrados.length === 0" class="px-4 py-2 text-sm text-texto-medio">Nenhum equipamento encontrado.</li>
+                                </ul>
+                            </div>
+
+                            @if ($cobertosSelecionados->isNotEmpty())
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    @foreach ($cobertosSelecionados as $e)
+                                        <span class="inline-flex items-center gap-1.5 rounded-full border border-borda bg-fundo px-3 py-1 text-xs text-texto-forte" wire:key="coberto-{{ $e->id }}">
+                                            {{ $e->numero_serie ?? '—' }} · {{ trim($e->fabricante . ' ' . $e->modelo) ?: '—' }}
+                                            <button type="button" wire:click="removerEquipamentoCoberto({{ $e->id }})" class="text-texto-fraco hover:text-perigo-600" title="Remover">
+                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @endif
+                            <p class="mt-1.5 text-xs text-texto-fraco">O equipamento principal acima é a referência da intervenção; estes são cobertos pelo mesmo relatório.</p>
+                        </div>
+
                         <div>
                             <label class="campo-label">Tipo de intervenção <span class="text-perigo-500">*</span></label>
                             <select wire:model="tipo" class="campo-select">

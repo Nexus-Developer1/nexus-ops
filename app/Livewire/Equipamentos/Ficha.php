@@ -5,6 +5,7 @@ namespace App\Livewire\Equipamentos;
 use App\Enums\EstadoIntervencao;
 use App\Enums\TipoIntervencao;
 use App\Models\Equipamento;
+use App\Models\Intervencao;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -78,12 +79,21 @@ class Ficha extends Component
 
     public function render()
     {
+        $id = $this->equipamento->id;
+
+        // Histórico: intervenções onde o equipamento é o PRINCIPAL (equipamento_id) ou
+        // está entre os COBERTOS (pivot). Query única sobre intervencoes com EXISTS, por
+        // isso cada intervenção aparece UMA só vez — mesmo que fosse principal e coberto.
+        $intervencoes = Intervencao::query()
+            ->where(fn ($q) => $q->where('equipamento_id', $id)
+                ->orWhereHas('equipamentosCobertos', fn ($q) => $q->whereKey($id)))
+            ->with('tecnico')
+            ->orderByDesc('data_inicio')
+            ->get();
+
         return view('livewire.equipamentos.ficha', [
             'especificacoes' => $this->especificacoes(),
-            'intervencoes' => $this->equipamento->intervencoes()
-                ->with('tecnico')
-                ->orderByDesc('data_inicio')
-                ->get(),
+            'intervencoes' => $intervencoes,
         ]);
     }
 }

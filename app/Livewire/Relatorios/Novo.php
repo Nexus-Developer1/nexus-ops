@@ -33,6 +33,8 @@ class Novo extends Component
 
     // ---- Dados gerais ----
     public ?int $equipamento_id = null;
+    /** @var list<int> Equipamentos adicionais cobertos (além do principal). */
+    public array $equipamentosCobertos = [];
     public string $tipo = 'preventiva';
     public string $data = '';
     public string $hora_inicio = '';
@@ -73,6 +75,7 @@ class Novo extends Component
             $this->relatorioId = $relatorio->id;
             $this->intervencaoId = $intervencao->id;
             $this->equipamento_id = $intervencao->equipamento_id;
+            $this->equipamentosCobertos = $intervencao->equipamentosCobertos()->pluck('equipamentos.id')->all();
             $this->tipo = $intervencao->tipo->value;
             $this->data = $intervencao->data_inicio?->format('Y-m-d') ?? '';
             $this->hora_inicio = $intervencao->hora_inicio ? substr($intervencao->hora_inicio, 0, 5) : '';
@@ -120,6 +123,22 @@ class Novo extends Component
     public function ehRascunho(): bool
     {
         return true; // este formulário só edita rascunhos / cria novos (que nascem rascunho)
+    }
+
+    // Acrescenta um equipamento adicional coberto (nunca o principal nem repetido).
+    public function adicionarEquipamentoCoberto(int $id): void
+    {
+        if ($id === $this->equipamento_id || in_array($id, $this->equipamentosCobertos, true)) {
+            return;
+        }
+        if (Equipamento::whereKey($id)->exists()) {
+            $this->equipamentosCobertos[] = $id;
+        }
+    }
+
+    public function removerEquipamentoCoberto(int $id): void
+    {
+        $this->equipamentosCobertos = array_values(array_filter($this->equipamentosCobertos, fn ($e) => $e !== $id));
     }
 
     private function novoUid(): string
@@ -293,6 +312,11 @@ class Novo extends Component
                 $this->intervencaoId = $intervencao->id;
             }
 
+            // Equipamentos adicionais cobertos (exclui o principal, para não duplicar).
+            $intervencao->equipamentosCobertos()->sync(
+                array_values(array_diff($this->equipamentosCobertos, [$this->equipamento_id])),
+            );
+
             // Etapas + itens: substitui o conjunto, com a ordem.
             $intervencao->checklistEtapas()->delete();
             foreach (array_values($this->etapas) as $ordemEtapa => $etapa) {
@@ -374,10 +398,16 @@ class Novo extends Component
             ? Intervencao::find($this->intervencaoId)?->anexos()->get() ?? collect()
             : collect();
 
+        // Modelos dos equipamentos cobertos selecionados (para mostrar os "chips").
+        $cobertosSelecionados = $this->equipamentosCobertos
+            ? Equipamento::with('local')->whereIn('id', $this->equipamentosCobertos)->get()
+            : collect();
+
         return view('livewire.relatorios.novo', [
             'equipamentos' => $equipamentos,
             'tipos' => TipoIntervencao::cases(),
             'anexosExistentes' => $anexosExistentes,
+            'cobertosSelecionados' => $cobertosSelecionados,
         ]);
     }
 }
