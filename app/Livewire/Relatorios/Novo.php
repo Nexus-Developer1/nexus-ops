@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Relatorios;
 
+use App\Enums\EstadoContrato;
 use App\Enums\EstadoIntervencao;
 use App\Enums\EstadoRelatorio;
 use App\Enums\TipoIntervencao;
@@ -472,7 +473,9 @@ class Novo extends Component
             : null;
 
         // Pesquisa de contratos (modo contrato) — por número ou nome do cliente.
+        // Exclui rascunhos: ainda não estão em vigor, não pode haver intervenções ao seu abrigo.
         $contratosFiltrados = Contrato::query()
+            ->where('estado', '!=', EstadoContrato::Rascunho->value)
             ->when($this->contratoBusca !== '', function ($q) {
                 $termo = '%' . $this->contratoBusca . '%';
                 $q->where(fn ($q) => $q->where('numero', 'ilike', $termo)

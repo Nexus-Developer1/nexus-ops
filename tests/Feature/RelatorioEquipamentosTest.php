@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
+use App\Livewire\Contratos\Editor as ContratoEditor;
+use App\Livewire\Contratos\Ficha as ContratoFicha;
 use App\Livewire\Equipamentos\Ficha;
 use App\Livewire\Relatorios\Novo;
 use App\Models\Cliente;
@@ -144,5 +146,40 @@ class RelatorioEquipamentosTest extends TestCase
             ->set('data', now()->toDateString())
             ->call('guardarRascunho')
             ->assertHasErrors('contrato_id');
+    }
+
+    public function test_picker_exclui_rascunho_mas_inclui_apos_ativar(): void
+    {
+        [$admin, $e1, $e2, $e3] = $this->cenario();
+        $cliente = Cliente::firstOrFail();
+
+        // Cria o contrato como o utilizador faria (com plano, para depois poder ativar).
+        Livewire::actingAs($admin)->test(ContratoEditor::class)
+            ->set('numero', '2026/9001')
+            ->set('cliente_id', $cliente->id)
+            ->set('data_inicio', now()->toDateString())
+            ->set('data_fim', now()->addYear()->toDateString())
+            ->set('tipo', 'preventiva')
+            ->set('modelo_faturacao_id', ModeloFaturacao::query()->value('id'))
+            ->set('periodo_aviso_dias', 30)
+            ->set('equipamentoIds', [$e1->id, $e2->id, $e3->id])
+            ->set('planos', [['equipamento_tipo' => 'ups', 'periodicidade' => 'trimestral', 'duracao_estimada_min' => 60]])
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $contrato = Contrato::where('numero', '2026/9001')->firstOrFail();
+        $this->assertSame('rascunho', $contrato->estado->value); // nasce em rascunho
+
+        // RASCUNHO → não aparece no picker.
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->assertViewHas('contratosFiltrados', fn ($c) => ! $c->contains('id', $contrato->id));
+
+        // Ativar o contrato.
+        Livewire::actingAs($admin)->test(ContratoFicha::class, ['contrato' => $contrato])->call('ativar');
+        $this->assertSame('ativo', $contrato->fresh()->estado->value);
+
+        // Agora (não-rascunho) → aparece no picker.
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->assertViewHas('contratosFiltrados', fn ($c) => $c->contains('id', $contrato->id));
     }
 }
