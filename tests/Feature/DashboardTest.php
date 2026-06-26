@@ -80,10 +80,34 @@ class DashboardTest extends TestCase
         $this->assertFalse($lista->contains('id', $comVisita->id));
     }
 
+    public function test_distribuicao_de_equipamentos_por_tipo_e_estado(): void
+    {
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
+        Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'critico']);
+        Equipamento::create(['local_id' => $local->id, 'tipo' => 'gerador', 'estado' => 'operacional']);
+
+        // Chaves são os valores do enum (regressão: o cast não pode rebentar a conversão).
+        $porTipo = $this->metricas()->equipamentosPorTipo();
+        $this->assertSame(2, $porTipo['ups']);
+        $this->assertSame(1, $porTipo['gerador']);
+
+        $porEstado = $this->metricas()->equipamentosPorEstado();
+        $this->assertSame(2, $porEstado['operacional']);
+        $this->assertSame(1, $porEstado['critico']);
+    }
+
     public function test_dashboard_renderiza_para_admin(): void
     {
         $admin = User::create(['nome' => 'Admin', 'email' => 'a@x.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
-        $this->actingAs($admin)->get('/dashboard')->assertOk()->assertSee('Rentabilidade de visitas');
+        $this->equip(); // garante que a construção dos gráficos corre com dados reais
+
+        $this->actingAs($admin)->get('/dashboard')
+            ->assertOk()
+            ->assertSee('Rentabilidade de visitas')
+            ->assertSee('Equipamentos por tipo')
+            ->assertSee('Visitas preventivas por mês');
     }
 
     public function test_finalizar_fecha_o_evento_de_agenda(): void

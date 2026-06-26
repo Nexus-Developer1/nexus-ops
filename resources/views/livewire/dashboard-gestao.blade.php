@@ -65,6 +65,38 @@
                 </div>
             </div>
 
+            {{-- Gráficos --}}
+            <div class="mt-6 cartao p-6">
+                <h2 class="text-lg font-semibold text-texto-forte">Visitas preventivas por mês</h2>
+                <p class="mt-1 text-sm text-texto-medio">Planeadas vs. realizadas em {{ now()->year }}.</p>
+                <div wire:ignore x-data="grafico(@js($graficoVisitas))" class="mt-4" style="position: relative; height: 260px;">
+                    <canvas x-ref="canvas"></canvas>
+                </div>
+            </div>
+
+            <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div class="cartao p-6">
+                    <h2 class="text-lg font-semibold text-texto-forte">Equipamentos por tipo</h2>
+                    @if (array_sum($graficoTipos['data']['datasets'][0]['data']) > 0)
+                        <div wire:ignore x-data="grafico(@js($graficoTipos))" class="mt-4" style="position: relative; height: 260px;">
+                            <canvas x-ref="canvas"></canvas>
+                        </div>
+                    @else
+                        <p class="mt-4 text-sm text-texto-medio">Sem equipamentos registados.</p>
+                    @endif
+                </div>
+                <div class="cartao p-6">
+                    <h2 class="text-lg font-semibold text-texto-forte">Equipamentos por estado</h2>
+                    @if (array_sum($graficoEstados['data']['datasets'][0]['data']) > 0)
+                        <div wire:ignore x-data="grafico(@js($graficoEstados))" class="mt-4" style="position: relative; height: 260px;">
+                            <canvas x-ref="canvas"></canvas>
+                        </div>
+                    @else
+                        <p class="mt-4 text-sm text-texto-medio">Sem equipamentos registados.</p>
+                    @endif
+                </div>
+            </div>
+
             {{-- Renovações + equipamentos sem visitas --}}
             <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <section class="cartao">

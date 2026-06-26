@@ -6,10 +6,23 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import ptLocale from '@fullcalendar/core/locales/pt';
 import Sortable from 'sortablejs';
+import Chart from 'chart.js/auto';
 
 // Componente Alpine da Agenda (FullCalendar). O $wire vem do componente Livewire
 // que envolve este DOM. Eventos e reagendamento passam pelo backend (fonte de verdade).
 document.addEventListener('alpine:init', () => {
+    // Gráfico Chart.js: recebe a configuração (type/data/options) já montada no servidor.
+    // O canvas vive dentro de um wrapper com wire:ignore para o Livewire não o morfar.
+    window.Alpine.data('grafico', (config) => ({
+        instancia: null,
+        init() {
+            this.instancia = new Chart(this.$refs.canvas, config);
+        },
+        destroy() {
+            this.instancia?.destroy();
+        },
+    }));
+
     window.Alpine.data('agendaCalendario', () => ({
         calendar: null,
         erro: '',

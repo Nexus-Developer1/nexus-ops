@@ -83,6 +83,59 @@ class ServicoMetricas
         return Contrato::aExpirar()->with('cliente')->orderBy('data_fim')->limit($limite)->get();
     }
 
+    // Distribuição de equipamentos por tipo (UPS/Gerador/PDU). [tipo => total]
+    /** @return array<string, int> */
+    public function equipamentosPorTipo(): array
+    {
+        return Equipamento::query()
+            ->selectRaw('tipo, count(*) as total')
+            ->groupBy('tipo')
+            ->orderByDesc('total')
+            ->get()
+            ->mapWithKeys(fn ($r) => [$r->tipo->value => (int) $r->total])
+            ->all();
+    }
+
+    // Distribuição de equipamentos por estado (operacional/degradado/...). [estado => total]
+    /** @return array<string, int> */
+    public function equipamentosPorEstado(): array
+    {
+        return Equipamento::query()
+            ->selectRaw('estado, count(*) as total')
+            ->groupBy('estado')
+            ->orderByDesc('total')
+            ->get()
+            ->mapWithKeys(fn ($r) => [$r->estado->value => (int) $r->total])
+            ->all();
+    }
+
+    // Visitas preventivas do ano por mês: planeadas (todas) vs realizadas (concluídas).
+    /** @return array{planeadas: list<int>, realizadas: list<int>} */
+    public function visitasPorMes(): array
+    {
+        $base = EventoAgenda::query()
+            ->where('tipo', TipoEvento::VisitaPreventiva->value)
+            ->whereYear('inicio', now()->year);
+
+        $contar = fn ($query) => $query
+            ->selectRaw('extract(month from inicio)::int as mes, count(*) as total')
+            ->groupBy('mes')
+            ->get()
+            ->mapWithKeys(fn ($r) => [(int) $r->mes => (int) $r->total]);
+
+        $planeadasMes = $contar(clone $base);
+        $realizadasMes = $contar((clone $base)->where('estado', EstadoEvento::Concluido->value));
+
+        $planeadas = [];
+        $realizadas = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $planeadas[] = $planeadasMes[$m] ?? 0;
+            $realizadas[] = $realizadasMes[$m] ?? 0;
+        }
+
+        return ['planeadas' => $planeadas, 'realizadas' => $realizadas];
+    }
+
     // Equipamentos sem intervenção nos últimos N meses (manutenção em falta).
     public function equipamentosSemVisitas(int $limite = 5): Collection
     {
