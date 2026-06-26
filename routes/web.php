@@ -61,6 +61,11 @@ Route::middleware(['auth', 'papel:admin'])->group(function () {
 
     // Alertas proativos (renovações, baterias, visitas em atraso, SLA).
     Route::get('/alertas', \App\Livewire\Alertas\Painel::class)->name('alertas');
+
+    // Despesas (custos da operação). Rota /nova ANTES de /{despesa} para não colidir.
+    Route::get('/despesas', \App\Livewire\Despesas\Listagem::class)->name('despesas');
+    Route::get('/despesas/nova', \App\Livewire\Despesas\Editor::class)->name('despesas.nova');
+    Route::get('/despesas/{despesa}/editar', \App\Livewire\Despesas\Editor::class)->name('despesas.editar');
 });
 
 // ---- Painel inicial do técnico (a sua operação) ----
