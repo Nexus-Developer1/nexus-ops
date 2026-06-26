@@ -27,7 +27,6 @@
             <div class="mt-8 flex gap-8 border-b border-borda">
                 <button @click="tab='gerais'" :class="tab==='gerais' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">Dados Gerais</button>
                 <button @click="tab='diagnostico'" :class="tab==='diagnostico' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">Diagnóstico</button>
-                <button @click="tab='fotografias'" :class="tab==='fotografias' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">Fotografias</button>
             </div>
 
             {{-- ===== DADOS GERAIS ===== --}}
@@ -454,29 +453,6 @@
                         <div><label class="campo-label">Tensão de entrada (V)</label><input wire:model="tensao_entrada" type="number" class="campo-input" placeholder="Ex: 230"></div>
                         <div><label class="campo-label">Tensão de saída (V)</label><input wire:model="tensao_saida" type="number" class="campo-input" placeholder="Ex: 230"></div>
                         <div class="col-span-2"><label class="campo-label">Anomalias detetadas</label><textarea wire:model="anomalias" rows="2" class="campo-input resize-none" placeholder="Registe quaisquer anomalias observadas..."></textarea></div>
-                    </div>
-                </section>
-            </div>
-
-            {{-- ===== FOTOGRAFIAS ===== --}}
-            <div x-show="tab==='fotografias'" x-cloak class="mt-7">
-                <section class="cartao">
-                    <div class="flex items-center justify-between px-6 py-5">
-                        <h2 class="text-lg font-semibold text-texto-forte">Fotografias selecionadas</h2>
-                        <span class="text-sm text-texto-fraco">{{ count($fotos) }} {{ \Illuminate\Support\Str::plural('ficheiro', count($fotos)) }}</span>
-                    </div>
-                    <div class="border-t border-borda px-6 py-6">
-                        @if ($fotos)
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                @foreach ($fotos as $foto)
-                                    <div class="aspect-square overflow-hidden rounded-xl bg-zinc-800" wire:key="fotog-{{ $loop->index }}">
-                                        <img src="{{ $foto->temporaryUrl() }}" class="h-full w-full object-cover">
-                                    </div>
-                                @endforeach
-                            </div>
-                        @else
-                            <p class="text-sm text-texto-medio">Ainda não selecionou fotografias. Use o cartão "Registo Fotográfico" nos Dados Gerais.</p>
-                        @endif
                     </div>
                 </section>
             </div>
