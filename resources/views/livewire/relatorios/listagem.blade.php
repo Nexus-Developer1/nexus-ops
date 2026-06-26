@@ -37,6 +37,14 @@
                 </div>
             </div>
 
+            {{-- Filtro por tipo de relatório (combina com o filtro de estado acima). --}}
+            <div class="mt-3 flex items-center gap-2">
+                <span class="mr-1 text-xs font-semibold uppercase tracking-wide text-texto-fraco">Tipo</span>
+                <button wire:click="filtrarTipo('')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $tipo === '' ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">Todos</button>
+                <button wire:click="filtrarTipo('contrato')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $tipo === 'contrato' ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">De contrato</button>
+                <button wire:click="filtrarTipo('individual')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $tipo === 'individual' ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">Individual</button>
+            </div>
+
             {{-- Tabela --}}
             <div class="cartao mt-6 overflow-hidden" wire:loading.class="opacity-60">
                 <div class="overflow-x-auto"><table class="w-full min-w-[640px] text-left text-sm">

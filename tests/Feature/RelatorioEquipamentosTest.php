@@ -6,6 +6,7 @@ use App\Enums\PapelUtilizador;
 use App\Livewire\Contratos\Editor as ContratoEditor;
 use App\Livewire\Contratos\Ficha as ContratoFicha;
 use App\Livewire\Equipamentos\Ficha;
+use App\Livewire\Relatorios\Listagem as RelatoriosListagem;
 use App\Livewire\Relatorios\Novo;
 use App\Models\Cliente;
 use App\Models\Contrato;
@@ -13,6 +14,7 @@ use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Models\Local;
 use App\Models\ModeloFaturacao;
+use App\Models\Relatorio;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -181,5 +183,42 @@ class RelatorioEquipamentosTest extends TestCase
         // Agora (não-rascunho) → aparece no picker.
         Livewire::actingAs($admin)->test(Novo::class)
             ->assertViewHas('contratos', fn ($c) => $c->contains('id', $contrato->id));
+    }
+
+    public function test_listagem_filtra_por_tipo_e_combina_com_estado(): void
+    {
+        [$admin, $e1, $e2] = $this->cenario();
+        $cliente = Cliente::firstOrFail();
+        $contrato = Contrato::create([
+            'numero' => '2026/5001', 'cliente_id' => $cliente->id,
+            'data_inicio' => now()->subMonth(), 'data_fim' => now()->addYear(),
+            'estado' => 'ativo', 'tipo' => 'preventiva', 'modelo_faturacao_id' => ModeloFaturacao::query()->value('id'),
+        ]);
+
+        // Relatório DE CONTRATO (finalizado).
+        $iC = Intervencao::create(['equipamento_id' => $e1->id, 'contrato_id' => $contrato->id, 'tipo' => 'preventiva', 'estado' => 'concluida']);
+        $rC = Relatorio::create(['intervencao_id' => $iC->id, 'numero' => '2026/0001', 'data' => now(), 'estado' => 'finalizado']);
+
+        // Relatório INDIVIDUAL (rascunho, sem contrato).
+        $iI = Intervencao::create(['equipamento_id' => $e2->id, 'tipo' => 'corretiva', 'estado' => 'em_curso']);
+        $rI = Relatorio::create(['intervencao_id' => $iI->id, 'numero' => null, 'data' => now(), 'estado' => 'rascunho']);
+
+        $ids = fn ($p) => $p->pluck('id')->all();
+
+        // tipo='contrato' → só o de contrato.
+        Livewire::actingAs($admin)->test(RelatoriosListagem::class)->set('tipo', 'contrato')
+            ->assertViewHas('relatorios', fn ($p) => in_array($rC->id, $ids($p), true) && ! in_array($rI->id, $ids($p), true));
+
+        // tipo='individual' → só o individual.
+        Livewire::actingAs($admin)->test(RelatoriosListagem::class)->set('tipo', 'individual')
+            ->assertViewHas('relatorios', fn ($p) => in_array($rI->id, $ids($p), true) && ! in_array($rC->id, $ids($p), true));
+
+        // tipo='' → ambos (sem filtro de tipo).
+        Livewire::actingAs($admin)->test(RelatoriosListagem::class)
+            ->assertViewHas('relatorios', fn ($p) => in_array($rC->id, $ids($p), true) && in_array($rI->id, $ids($p), true));
+
+        // Combina com estado: de contrato + rascunho → nenhum (o de contrato é finalizado).
+        Livewire::actingAs($admin)->test(RelatoriosListagem::class)->set('tipo', 'contrato')->set('estado', 'rascunho')
+            ->assertViewHas('relatorios', fn ($p) => ! in_array($rC->id, $ids($p), true) && ! in_array($rI->id, $ids($p), true));
     }
 }

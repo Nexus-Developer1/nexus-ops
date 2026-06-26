@@ -21,6 +21,11 @@ class Listagem extends Component
     #[Url]
     public string $estado = '';
 
+    // Tipo de relatório: '' (todos) | 'contrato' | 'individual'. Distingue-se pelo
+    // intervencao.contrato_id (preenchido = de contrato; null = individual).
+    #[Url]
+    public string $tipo = '';
+
     public function updatingPesquisa(): void
     {
         $this->resetPage();
@@ -29,6 +34,12 @@ class Listagem extends Component
     public function filtrarEstado(string $estado): void
     {
         $this->estado = $estado;
+        $this->resetPage();
+    }
+
+    public function filtrarTipo(string $tipo): void
+    {
+        $this->tipo = $tipo;
         $this->resetPage();
     }
 
@@ -66,6 +77,8 @@ class Listagem extends Component
         $relatorios = Relatorio::query()
             ->with('intervencao.equipamento.local.cliente', 'intervencao.tecnico')
             ->when($this->estado, fn ($q) => $q->where('estado', $this->estado))
+            ->when($this->tipo === 'contrato', fn ($q) => $q->whereHas('intervencao', fn ($q) => $q->whereNotNull('contrato_id')))
+            ->when($this->tipo === 'individual', fn ($q) => $q->whereHas('intervencao', fn ($q) => $q->whereNull('contrato_id')))
             ->when($this->pesquisa, function ($q) {
                 $termo = '%' . $this->pesquisa . '%';
                 $q->where(function ($q) use ($termo) {
