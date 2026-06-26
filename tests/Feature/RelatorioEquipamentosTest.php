@@ -6,9 +6,11 @@ use App\Enums\PapelUtilizador;
 use App\Livewire\Equipamentos\Ficha;
 use App\Livewire\Relatorios\Novo;
 use App\Models\Cliente;
+use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Models\Local;
+use App\Models\ModeloFaturacao;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -88,5 +90,59 @@ class RelatorioEquipamentosTest extends TestCase
                     && $ids === array_values(array_unique($ids))      // sem duplicados
                     && $ids === [$i2->id, $i3->id, $i1->id];           // ordenado por data_inicio desc
             });
+    }
+
+    public function test_modo_contrato_carrega_equipamentos_do_contrato_e_liga_contrato(): void
+    {
+        [$admin, $e1, $e2] = $this->cenario();
+        $cliente = Cliente::firstOrFail();
+        $contrato = Contrato::create([
+            'numero' => '2026/7001', 'cliente_id' => $cliente->id,
+            'data_inicio' => now()->subMonth(), 'data_fim' => now()->addYear(),
+            'estado' => 'ativo', 'tipo' => 'preventiva', 'modelo_faturacao_id' => ModeloFaturacao::query()->value('id'),
+        ]);
+        $contrato->equipamentos()->sync([$e1->id, $e2->id]);
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->set('data', now()->toDateString())
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $interv = Intervencao::whereNotNull('contrato_id')->firstOrFail();
+        $this->assertSame($contrato->id, $interv->contrato_id);
+
+        // Os 2 equipamentos do contrato ficam no relatório (principal + coberto), sem assumir ordem.
+        $todos = collect([$interv->equipamento_id])
+            ->merge($interv->equipamentosCobertos()->pluck('equipamentos.id'))
+            ->sort()->values()->all();
+        $this->assertSame([$e1->id, $e2->id], $todos);
+    }
+
+    public function test_modo_individual_nao_liga_contrato(): void
+    {
+        [$admin, $e1] = $this->cenario();
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'individual')
+            ->set('equipamento_id', $e1->id)
+            ->set('data', now()->toDateString())
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $this->assertNull(Intervencao::where('equipamento_id', $e1->id)->firstOrFail()->contrato_id);
+    }
+
+    public function test_modo_contrato_exige_contrato(): void
+    {
+        [$admin, $e1] = $this->cenario();
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->set('equipamento_id', $e1->id) // tem equipamento mas falta o contrato
+            ->set('data', now()->toDateString())
+            ->call('guardarRascunho')
+            ->assertHasErrors('contrato_id');
     }
 }

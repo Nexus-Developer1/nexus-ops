@@ -45,6 +45,7 @@ class GeradorRelatorio
                 'intervencao' => fn ($q) => $q->withoutGlobalScopes()->with([
                     'equipamento' => fn ($q) => $q->withoutGlobalScopes()->with('local.cliente'),
                     'equipamentosCobertos' => fn ($q) => $q->withoutGlobalScopes(),
+                    'contrato' => fn ($q) => $q->withoutGlobalScopes(),
                     'tecnico',
                     'checklistItens',
                     'checklistEtapas.itens',

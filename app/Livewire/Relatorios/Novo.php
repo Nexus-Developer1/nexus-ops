@@ -7,6 +7,7 @@ use App\Enums\EstadoRelatorio;
 use App\Enums\TipoIntervencao;
 use App\Jobs\GerarRelatorioPdf;
 use App\Models\Anexo;
+use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Models\Relatorio;
@@ -32,6 +33,11 @@ class Novo extends Component
     public ?int $intervencaoId = null;
 
     // ---- Dados gerais ----
+    // Modo: 'individual' (escolhe equipamento à mão) ou 'contrato' (equipamentos vêm do contrato).
+    public string $modo = 'individual';
+    public ?int $contrato_id = null;
+    public string $contratoBusca = '';
+
     public ?int $equipamento_id = null;
     /** @var list<int> Equipamentos adicionais cobertos (além do principal). */
     public array $equipamentosCobertos = [];
@@ -71,11 +77,18 @@ class Novo extends Component
                 return;
             }
 
-            $intervencao = $relatorio->intervencao()->with('checklistEtapas.itens')->firstOrFail();
+            $intervencao = $relatorio->intervencao()->with('checklistEtapas.itens', 'contrato.cliente')->firstOrFail();
             $this->relatorioId = $relatorio->id;
             $this->intervencaoId = $intervencao->id;
             $this->equipamento_id = $intervencao->equipamento_id;
             $this->equipamentosCobertos = $intervencao->equipamentosCobertos()->pluck('equipamentos.id')->all();
+
+            // Modo deduzido: se a intervenção tem contrato → "contrato", senão "individual".
+            $this->contrato_id = $intervencao->contrato_id;
+            $this->modo = $intervencao->contrato_id ? 'contrato' : 'individual';
+            $this->contratoBusca = $intervencao->contrato
+                ? trim($intervencao->contrato->numero . ' · ' . ($intervencao->contrato->cliente?->nome ?? ''))
+                : '';
             $this->tipo = $intervencao->tipo->value;
             $this->data = $intervencao->data_inicio?->format('Y-m-d') ?? '';
             $this->hora_inicio = $intervencao->hora_inicio ? substr($intervencao->hora_inicio, 0, 5) : '';
@@ -125,6 +138,47 @@ class Novo extends Component
         return true; // este formulário só edita rascunhos / cria novos (que nascem rascunho)
     }
 
+    // Alterna entre relatório de contrato e individual.
+    public function definirModo(string $modo): void
+    {
+        $this->modo = $modo === 'contrato' ? 'contrato' : 'individual';
+
+        if ($this->modo === 'individual') {
+            $this->contrato_id = null;
+            $this->contratoBusca = '';
+        }
+    }
+
+    // Modo contrato: ao escolher o contrato, carrega os seus equipamentos (1.º = principal,
+    // restantes = cobertos) e liga a intervenção ao contrato. Ficam editáveis.
+    public function selecionarContrato(int $id): void
+    {
+        $contrato = Contrato::with('cliente', 'equipamentos')->find($id);
+        if (! $contrato) {
+            return;
+        }
+
+        $this->modo = 'contrato';
+        $this->contrato_id = $contrato->id;
+        $this->contratoBusca = trim($contrato->numero . ' · ' . ($contrato->cliente?->nome ?? ''));
+
+        $ids = $contrato->equipamentos->pluck('id')->all();
+        $this->equipamento_id = $ids[0] ?? null;
+        $this->equipamentosCobertos = array_values(array_slice($ids, 1));
+    }
+
+    // Remove um equipamento do relatório (chip). Se for o principal, promove o 1.º coberto.
+    public function removerEquipamentoDoRelatorio(int $id): void
+    {
+        if ($id === $this->equipamento_id) {
+            $this->equipamento_id = array_shift($this->equipamentosCobertos) ?: null;
+
+            return;
+        }
+
+        $this->removerEquipamentoCoberto($id);
+    }
+
     // Acrescenta um equipamento adicional coberto (nunca o principal nem repetido).
     public function adicionarEquipamentoCoberto(int $id): void
     {
@@ -156,7 +210,7 @@ class Novo extends Component
             'hora_inicio' => ['nullable', 'date_format:H:i'],
             'hora_fim' => ['nullable', 'date_format:H:i', 'after_or_equal:hora_inicio'],
             'fotos.*' => ['image', 'max:8192'], // 8 MB
-        ];
+        ] + $this->regrasContrato();
     }
 
     // Regras das horas reutilizadas no rascunho (sempre opcionais, mas coerentes).
@@ -165,6 +219,14 @@ class Novo extends Component
         return [
             'hora_inicio' => ['nullable', 'date_format:H:i'],
             'hora_fim' => ['nullable', 'date_format:H:i', 'after_or_equal:hora_inicio'],
+        ];
+    }
+
+    // No modo contrato, o contrato é obrigatório; no individual, fica nulo.
+    protected function regrasContrato(): array
+    {
+        return [
+            'contrato_id' => [$this->modo === 'contrato' ? 'required' : 'nullable', 'integer', 'exists:contratos,id'],
         ];
     }
 
@@ -275,16 +337,17 @@ class Novo extends Component
             // Validação completa.
             $this->validate();
         } else {
-            // Rascunho: o único obrigatório é o equipamento (as horas, se preenchidas, têm de ser coerentes).
+            // Rascunho: o único obrigatório é o equipamento (e o contrato, se for modo contrato).
             $this->validate([
                 'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
                 'fotos.*' => ['image', 'max:8192'],
-            ] + $this->regrasHoras());
+            ] + $this->regrasHoras() + $this->regrasContrato());
         }
 
         $relatorio = DB::transaction(function () use ($gerador, $geradorEvento, $finalizar) {
             $dados = [
                 'equipamento_id' => $this->equipamento_id,
+                'contrato_id' => $this->modo === 'contrato' ? $this->contrato_id : null,
                 'tecnico_id' => auth()->id(),
                 'tipo' => $this->tipo,
                 'estado' => $finalizar ? EstadoIntervencao::Concluida : EstadoIntervencao::EmCurso,
@@ -403,11 +466,30 @@ class Novo extends Component
             ? Equipamento::with('local')->whereIn('id', $this->equipamentosCobertos)->get()
             : collect();
 
+        // Equipamento principal (para o chip "principal" no modo contrato).
+        $equipamentoPrincipal = $this->equipamento_id
+            ? Equipamento::with('local')->find($this->equipamento_id)
+            : null;
+
+        // Pesquisa de contratos (modo contrato) — por número ou nome do cliente.
+        $contratosFiltrados = Contrato::query()
+            ->when($this->contratoBusca !== '', function ($q) {
+                $termo = '%' . $this->contratoBusca . '%';
+                $q->where(fn ($q) => $q->where('numero', 'ilike', $termo)
+                    ->orWhereHas('cliente', fn ($q) => $q->where('nome', 'ilike', $termo)));
+            })
+            ->with('cliente')
+            ->orderByDesc('data_inicio')
+            ->limit(20)
+            ->get();
+
         return view('livewire.relatorios.novo', [
             'equipamentos' => $equipamentos,
             'tipos' => TipoIntervencao::cases(),
             'anexosExistentes' => $anexosExistentes,
             'cobertosSelecionados' => $cobertosSelecionados,
+            'equipamentoPrincipal' => $equipamentoPrincipal,
+            'contratosFiltrados' => $contratosFiltrados,
         ]);
     }
 }

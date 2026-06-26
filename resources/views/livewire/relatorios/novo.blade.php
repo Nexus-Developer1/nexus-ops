@@ -43,6 +43,75 @@
                         <svg :class="aberto && 'rotate-180'" class="h-5 w-5 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                     </button>
                     <div x-show="aberto" x-transition class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 px-6 pb-7">
+                        {{-- Modo: relatório de contrato (equipamentos vêm do contrato) vs individual (à mão). --}}
+                        <div class="sm:col-span-2">
+                            <label class="campo-label">Tipo de relatório</label>
+                            <div class="inline-flex rounded-lg border border-borda bg-fundo p-1">
+                                <button type="button" wire:click="definirModo('contrato')" class="rounded-md px-4 py-1.5 text-sm font-medium transition {{ $modo === 'contrato' ? 'bg-white text-texto-forte shadow-sm' : 'text-texto-medio hover:text-texto-forte' }}">Relatório de contrato</button>
+                                <button type="button" wire:click="definirModo('individual')" class="rounded-md px-4 py-1.5 text-sm font-medium transition {{ $modo === 'individual' ? 'bg-white text-texto-forte shadow-sm' : 'text-texto-medio hover:text-texto-forte' }}">Relatório individual</button>
+                            </div>
+                        </div>
+
+                        @if ($modo === 'contrato')
+                            {{-- Contrato (pesquisa server-side por nº/cliente); ao escolher carrega os equipamentos. --}}
+                            <div class="sm:col-span-2">
+                                <label class="campo-label" for="contrato-combo">Contrato <span class="text-perigo-500">*</span></label>
+                                <div x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
+                                    <input id="contrato-combo" type="text"
+                                        wire:model.live.debounce.300ms="contratoBusca"
+                                        @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
+                                        @keydown.arrow-down.prevent="aberto = true; if ($refs['c' + (destaque + 1)]) destaque++"
+                                        @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
+                                        @keydown.enter.prevent="$refs['c' + destaque]?.click()"
+                                        class="campo-input pr-10" placeholder="Pesquisar contrato por número ou cliente..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
+                                    <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                    <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
+                                        @forelse ($contratosFiltrados as $idx => $ct)
+                                            <li x-ref="c{{ $idx }}" wire:key="ct-{{ $ct->id }}"
+                                                wire:click="selecionarContrato({{ $ct->id }})" @click="aberto = false"
+                                                @mouseenter="destaque = {{ $idx }}"
+                                                :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
+                                                class="cursor-pointer px-4 py-2 text-sm" role="option">
+                                                <span class="font-medium">{{ $ct->numero }}</span>
+                                                <span class="text-xs text-texto-fraco"> · {{ $ct->cliente?->nome ?? '—' }}</span>
+                                            </li>
+                                        @empty
+                                            <li class="px-4 py-2 text-sm text-texto-medio">{{ $contratoBusca === '' ? 'Escreva para pesquisar…' : 'Nenhum contrato encontrado.' }}</li>
+                                        @endforelse
+                                    </ul>
+                                </div>
+                                @error('contrato_id') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            </div>
+
+                            {{-- Equipamentos do contrato (pré-preenchidos e editáveis — remove os não intervencionados). --}}
+                            <div class="sm:col-span-2">
+                                <label class="campo-label">Equipamentos do contrato</label>
+                                @if ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty())
+                                    <div class="flex flex-wrap gap-2">
+                                        @if ($equipamentoPrincipal)
+                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-verde-200 bg-verde-50 px-3 py-1 text-xs font-medium text-verde-700" wire:key="princ-{{ $equipamentoPrincipal->id }}">
+                                                {{ $equipamentoPrincipal->numero_serie ?? '—' }} · {{ trim($equipamentoPrincipal->fabricante . ' ' . $equipamentoPrincipal->modelo) ?: '—' }}
+                                                <span class="text-[10px] uppercase tracking-wide text-verde-600/70">principal</span>
+                                                <button type="button" wire:click="removerEquipamentoDoRelatorio({{ $equipamentoPrincipal->id }})" class="text-verde-600/60 hover:text-perigo-600" title="Remover">
+                                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                </button>
+                                            </span>
+                                        @endif
+                                        @foreach ($cobertosSelecionados as $e)
+                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-borda bg-fundo px-3 py-1 text-xs text-texto-forte" wire:key="ctcob-{{ $e->id }}">
+                                                {{ $e->numero_serie ?? '—' }} · {{ trim($e->fabricante . ' ' . $e->modelo) ?: '—' }}
+                                                <button type="button" wire:click="removerEquipamentoDoRelatorio({{ $e->id }})" class="text-texto-fraco hover:text-perigo-600" title="Remover">
+                                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                </button>
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <p class="text-sm text-texto-medio">Escolhe um contrato para carregar os equipamentos.</p>
+                                @endif
+                                @error('equipamento_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            </div>
+                        @else
                         <div>
                             <label class="campo-label" for="equip-combo">Equipamento <span class="text-perigo-500">*</span></label>
                             {{-- Combobox com pesquisa à medida que se escreve (filtragem client-side em Alpine).
@@ -164,6 +233,7 @@
                             @endif
                             <p class="mt-1.5 text-xs text-texto-fraco">O equipamento principal acima é a referência da intervenção; estes são cobertos pelo mesmo relatório.</p>
                         </div>
+                        @endif
 
                         <div>
                             <label class="campo-label">Tipo de intervenção <span class="text-perigo-500">*</span></label>

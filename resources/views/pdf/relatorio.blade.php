@@ -75,6 +75,12 @@
             <td><div class="campo-rotulo">Equipamento</div><div class="campo-valor">{{ $e->numero_serie }} · {{ $e->fabricante }} {{ $e->modelo }}</div></td>
             <td><div class="campo-rotulo">Tipo</div><div class="campo-valor">{{ $e->tipo->rotulo() }}</div></td>
         </tr>
+        @if ($i->contrato)
+            {{-- Relatório no âmbito de um contrato. Individual (sem contrato) → linha omitida. --}}
+            <tr>
+                <td colspan="2"><div class="campo-rotulo">Contrato</div><div class="campo-valor">{{ $i->contrato->numero }} · {{ $i->contrato->tipo->rotulo() }}</div></td>
+            </tr>
+        @endif
         @if ($i->equipamentosCobertos->isNotEmpty())
             <tr>
                 <td colspan="2">

@@ -5,9 +5,11 @@ namespace Tests\Feature;
 use App\Enums\EstadoRelatorio;
 use App\Enums\PapelUtilizador;
 use App\Models\Cliente;
+use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Models\Local;
+use App\Models\ModeloFaturacao;
 use App\Models\Relatorio;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,5 +83,35 @@ class PdfRelatorioTest extends TestCase
         // Campo vazio (telemóvel = espaço) é omitido — sem linha "Tlm." nem "null".
         $this->assertStringNotContainsString('Tlm.', $html);
         $this->assertStringNotContainsString('null', $html);
+    }
+
+    public function test_pdf_mostra_contrato_quando_existe_e_omite_quando_individual(): void
+    {
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sala']);
+        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
+        $contrato = Contrato::create([
+            'numero' => '2026/0001', 'cliente_id' => $cliente->id,
+            'data_inicio' => now()->subMonth(), 'data_fim' => now()->addYear(),
+            'estado' => 'ativo', 'tipo' => 'preventiva', 'modelo_faturacao_id' => ModeloFaturacao::query()->value('id'),
+        ]);
+
+        // Relatório DE CONTRATO → mostra a linha do contrato.
+        $iContrato = Intervencao::create(['equipamento_id' => $equip->id, 'contrato_id' => $contrato->id, 'tipo' => 'preventiva', 'estado' => 'concluida']);
+        $rContrato = Relatorio::create(['intervencao_id' => $iContrato->id, 'numero' => '2026/9200', 'data' => now(), 'estado' => EstadoRelatorio::Finalizado]);
+        $htmlContrato = view('pdf.relatorio', ['relatorio' => $rContrato, 'fotos' => []])->render();
+
+        $this->assertStringContainsString('Contrato', $htmlContrato);
+        $this->assertStringContainsString('2026/0001', $htmlContrato);
+
+        // Relatório INDIVIDUAL (sem contrato) → não mostra contrato nem "null".
+        $iIndividual = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'corretiva', 'estado' => 'concluida']);
+        $rIndividual = Relatorio::create(['intervencao_id' => $iIndividual->id, 'numero' => '2026/9201', 'data' => now(), 'estado' => EstadoRelatorio::Finalizado]);
+        $htmlIndividual = view('pdf.relatorio', ['relatorio' => $rIndividual, 'fotos' => []])->render();
+
+        $this->assertStringNotContainsString('2026/0001', $htmlIndividual); // nº do contrato não aparece
+        $this->assertStringNotContainsString('null', $htmlIndividual);
+        // A etiqueta "Contrato" não surge no individual (só existe nessa linha).
+        $this->assertStringNotContainsString('>Contrato<', $htmlIndividual);
     }
 }
