@@ -43,6 +43,7 @@ class EventoAgenda extends Model
         'local_id',
         'equipamento_id',
         'contrato_id',
+        'cobertura', // 'incluida' | 'extra' | null — marcação para o saldo de visitas do contrato
         'intervencao_id',
         // `recorrencia` (RRULE): metadado em DESUSO. É escrita pelo GeradorVisitasPreventivas
         // mas NÃO é lida por ninguém — não há motor de RRULE. A recorrência real é uma linha

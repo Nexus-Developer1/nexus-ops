@@ -35,6 +35,7 @@ class Contrato extends Model
         'data_inicio',
         'data_fim',
         'hora_visita',
+        'visitas_incluidas', // total de visitas incluídas pela vida do contrato (null = não controlado)
         'estado',
         'tipo',
         'modelo_faturacao_id',
