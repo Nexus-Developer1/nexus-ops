@@ -142,9 +142,22 @@ class Novo extends Component
     // Alterna entre relatório de contrato e individual.
     public function definirModo(string $modo): void
     {
-        $this->modo = $modo === 'contrato' ? 'contrato' : 'individual';
+        $novo = $modo === 'contrato' ? 'contrato' : 'individual';
 
-        if ($this->modo === 'individual') {
+        // Clicar no modo onde já estás não mexe na seleção atual.
+        if ($novo === $this->modo) {
+            return;
+        }
+
+        $this->modo = $novo;
+
+        // A seleção de equipamento é específica do modo: ao trocar, começa do zero
+        // (individual = preencher à mão; contrato = vem do contrato ao escolhê-lo).
+        $this->equipamento_id = null;
+        $this->equipamentosCobertos = [];
+
+        // O modo individual não tem contrato.
+        if ($novo === 'individual') {
             $this->contrato_id = null;
             $this->contratoBusca = '';
         }

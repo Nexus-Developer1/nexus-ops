@@ -185,6 +185,44 @@ class RelatorioEquipamentosTest extends TestCase
             ->assertViewHas('contratos', fn ($c) => $c->contains('id', $contrato->id));
     }
 
+    public function test_trocar_de_modo_limpa_a_selecao_de_equipamento(): void
+    {
+        [$admin, $e1, $e2] = $this->cenario();
+        $cliente = Cliente::firstOrFail();
+        $contrato = Contrato::create([
+            'numero' => '2026/6001', 'cliente_id' => $cliente->id,
+            'data_inicio' => now()->subMonth(), 'data_fim' => now()->addYear(),
+            'estado' => 'ativo', 'tipo' => 'preventiva', 'modelo_faturacao_id' => ModeloFaturacao::query()->value('id'),
+        ]);
+        $contrato->equipamentos()->sync([$e1->id, $e2->id]);
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id);
+
+        // Carregou o equipamento do contrato.
+        $this->assertNotNull($c->get('equipamento_id'));
+        $this->assertNotEmpty($c->get('equipamentosCobertos'));
+
+        // Trocar para individual → tudo limpo (campo vazio para preencher à mão).
+        $c->call('definirModo', 'individual');
+        $this->assertNull($c->get('equipamento_id'));
+        $this->assertSame([], $c->get('equipamentosCobertos'));
+        $this->assertNull($c->get('contrato_id'));
+    }
+
+    public function test_clicar_no_mesmo_modo_nao_limpa_a_selecao(): void
+    {
+        [$admin, $e1] = $this->cenario();
+
+        // Default é 'individual'; com equipamento à mão, clicar 'individual' não apaga.
+        $c = Livewire::actingAs($admin)->test(Novo::class)
+            ->set('equipamento_id', $e1->id)
+            ->call('definirModo', 'individual');
+
+        $this->assertSame($e1->id, $c->get('equipamento_id'));
+    }
+
     public function test_listagem_filtra_por_tipo_e_combina_com_estado(): void
     {
         [$admin, $e1, $e2] = $this->cenario();
