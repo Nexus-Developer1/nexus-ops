@@ -6,10 +6,12 @@ use App\Enums\PapelUtilizador;
 use App\Livewire\Intervencoes\Formulario;
 use App\Models\Cliente;
 use App\Models\Contrato;
+use App\Models\ContratoPlanoVisita;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\Intervencao;
 use App\Models\Local;
+use App\Models\ModeloFaturacao;
 use App\Models\User;
 use App\Services\Gestao\ServicoMetricas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -34,20 +36,102 @@ class DashboardTest extends TestCase
         return Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
     }
 
-    public function test_rentabilidade_de_visitas(): void
+    private int $seqContrato = 0;
+
+    // Contrato com um plano de visita (periodicidade) e N equipamentos do tipo dado.
+    private function contratoComPlano(string $periodicidade, Carbon $inicio, Carbon $fim, int $nEquip = 1, string $tipo = 'ups', string $estado = 'ativo'): Contrato
     {
-        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
-        // 4 visitas este ano: 3 concluídas, 1 planeada → 75%.
-        foreach (['concluido', 'concluido', 'concluido', 'planeado'] as $i => $estado) {
+        $this->seqContrato++;
+        $cliente = Cliente::create(['nome' => 'ACME ' . $this->seqContrato, 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+
+        $contrato = Contrato::create([
+            'numero' => '2026/T' . $this->seqContrato,
+            'cliente_id' => $cliente->id,
+            'data_inicio' => $inicio,
+            'data_fim' => $fim,
+            'estado' => $estado,
+            'tipo' => 'preventiva',
+            'modelo_faturacao_id' => ModeloFaturacao::query()->value('id'),
+        ]);
+
+        $ids = [];
+        for ($i = 0; $i < $nEquip; $i++) {
+            $ids[] = Equipamento::create(['local_id' => $local->id, 'tipo' => $tipo, 'estado' => 'operacional'])->id;
+        }
+        $contrato->equipamentos()->sync($ids);
+
+        ContratoPlanoVisita::create([
+            'contrato_id' => $contrato->id,
+            'equipamento_tipo' => $tipo,
+            'periodicidade' => $periodicidade,
+        ]);
+
+        return $contrato;
+    }
+
+    public function test_visitas_contratadas_calculadas_a_partir_da_periodicidade(): void
+    {
+        // Contrato anual completo, trimestral, 1 UPS → 4 visitas contratadas no ano (Jan/Abr/Jul/Out).
+        $this->contratoComPlano('trimestral', now()->startOfYear(), now()->endOfYear());
+
+        $r = $this->metricas()->rentabilidadeVisitas();
+        $this->assertSame(4, $r['contratadas']);
+        $this->assertSame(0, $r['realizadas']); // ainda sem eventos concluídos
+    }
+
+    public function test_realizadas_nao_conta_canceladas(): void
+    {
+        $this->contratoComPlano('trimestral', now()->startOfYear(), now()->endOfYear()); // contratadas = 4
+
+        $cliente = Cliente::create(['nome' => 'EV', 'ativo' => true]);
+        // 2 concluídas + 1 cancelada no ano.
+        foreach (['concluido', 'concluido', 'cancelado'] as $i => $estado) {
             EventoAgenda::create(['tipo' => 'visita_preventiva', 'titulo' => "V$i", 'estado' => $estado,
-                'inicio' => now()->startOfYear()->addDays($i), 'fim' => now()->startOfYear()->addDays($i)->addHour(),
+                'inicio' => now()->startOfYear()->addDays($i + 1), 'fim' => now()->startOfYear()->addDays($i + 1)->addHour(),
                 'cliente_id' => $cliente->id]);
         }
 
         $r = $this->metricas()->rentabilidadeVisitas();
-        $this->assertSame(3, $r['realizadas']);
-        $this->assertSame(4, $r['orcamentadas']);
-        $this->assertSame(75, $r['taxa']);
+        $this->assertSame(2, $r['realizadas']);  // cancelada não conta (bug corrigido)
+        $this->assertSame(4, $r['contratadas']); // determinístico, alheio aos eventos
+        $this->assertSame(50, $r['taxa']);       // 2/4
+    }
+
+    public function test_vigencia_parcial_conta_so_as_visitas_dentro_do_ano(): void
+    {
+        // Começa a 1 de julho deste ano, trimestral, 1 UPS → só Jul e Out caem no ano corrente.
+        $inicio = now()->startOfYear()->addMonths(6);          // 1 de julho
+        $fim = now()->startOfYear()->addMonths(6)->addYear();  // ~1 de julho do ano seguinte
+        $this->contratoComPlano('trimestral', $inicio, $fim);
+
+        $this->assertSame(2, $this->metricas()->rentabilidadeVisitas()['contratadas']);
+    }
+
+    public function test_contratadas_e_deterministico_independente_de_eventos(): void
+    {
+        $this->contratoComPlano('trimestral', now()->startOfYear(), now()->endOfYear()); // 4
+
+        $this->assertSame(4, $this->metricas()->rentabilidadeVisitas()['contratadas']);
+
+        // Criar eventos preventivos planeados/cancelados NÃO altera as "contratadas".
+        $cliente = Cliente::create(['nome' => 'EV2', 'ativo' => true]);
+        foreach (['planeado', 'cancelado', 'cancelado'] as $i => $estado) {
+            EventoAgenda::create(['tipo' => 'visita_preventiva', 'titulo' => "X$i", 'estado' => $estado,
+                'inicio' => now()->startOfYear()->addDays($i + 1), 'fim' => now()->startOfYear()->addDays($i + 1)->addHour(),
+                'cliente_id' => $cliente->id]);
+        }
+
+        $r = $this->metricas()->rentabilidadeVisitas();
+        $this->assertSame(4, $r['contratadas']); // inalterado
+        $this->assertSame(0, $r['realizadas']);  // nenhum concluído
+    }
+
+    public function test_contrato_em_rascunho_nao_conta_para_contratadas(): void
+    {
+        $this->contratoComPlano('trimestral', now()->startOfYear(), now()->endOfYear(), 1, 'ups', 'rascunho');
+
+        $this->assertSame(0, $this->metricas()->rentabilidadeVisitas()['contratadas']);
     }
 
     public function test_cumprimento_de_sla(): void

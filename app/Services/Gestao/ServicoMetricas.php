@@ -9,6 +9,7 @@ use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\Intervencao;
+use App\Services\Agenda\GeradorVisitasPreventivas;
 use Illuminate\Support\Collection;
 
 // Métricas de gestão para o dashboard (CLAUDE.md §6): rentabilidade (visitas
@@ -30,21 +31,38 @@ class ServicoMetricas
         ];
     }
 
-    // Visitas preventivas do ano: realizadas (concluídas) vs. orçamentadas (planeadas).
-    /** @return array{realizadas:int, orcamentadas:int, taxa:int} */
+    // Visitas preventivas do ANO CIVIL corrente: realizadas (concluídas) vs. contratadas.
+    // "Contratadas" é DETERMINÍSTICO — calculado a partir da periodicidade dos planos de
+    // visita e da vigência de cada contrato (não conta eventos materializados na agenda),
+    // por isso é imune a visitas geradas/canceladas. "Realizadas" só conta as concluídas
+    // (visitas canceladas NÃO entram).
+    /** @return array{realizadas:int, contratadas:int, taxa:int} */
     public function rentabilidadeVisitas(): array
     {
-        $base = EventoAgenda::query()
-            ->where('tipo', TipoEvento::VisitaPreventiva->value)
-            ->whereYear('inicio', now()->year);
+        $ano = now()->year;
+        $gerador = app(GeradorVisitasPreventivas::class);
 
-        $orcamentadas = (clone $base)->count();
-        $realizadas = (clone $base)->where('estado', EstadoEvento::Concluido->value)->count();
+        // Contratadas: soma do que cada contrato (não-rascunho, com vigência a tocar o ano)
+        // implica dentro do ano corrente.
+        $contratadas = Contrato::query()
+            ->where('estado', '!=', EstadoContrato::Rascunho->value)
+            ->whereYear('data_inicio', '<=', $ano)
+            ->whereYear('data_fim', '>=', $ano)
+            ->with(['planosVisita', 'equipamentos'])
+            ->get()
+            ->sum(fn (Contrato $c) => $gerador->estimarNoAno($c, $ano));
+
+        // Realizadas: visitas preventivas concluídas no ano (sem canceladas).
+        $realizadas = EventoAgenda::query()
+            ->where('tipo', TipoEvento::VisitaPreventiva->value)
+            ->where('estado', EstadoEvento::Concluido->value)
+            ->whereYear('inicio', $ano)
+            ->count();
 
         return [
             'realizadas' => $realizadas,
-            'orcamentadas' => $orcamentadas,
-            'taxa' => $orcamentadas > 0 ? (int) round($realizadas / $orcamentadas * 100) : 0,
+            'contratadas' => $contratadas,
+            'taxa' => $contratadas > 0 ? (int) round($realizadas / $contratadas * 100) : 0,
         ];
     }
 

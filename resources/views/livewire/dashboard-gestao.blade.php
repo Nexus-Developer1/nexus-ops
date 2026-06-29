@@ -38,10 +38,10 @@
                         <h2 class="text-lg font-semibold text-texto-forte">Rentabilidade de visitas</h2>
                         <span class="text-sm text-texto-medio">{{ now()->year }}</span>
                     </div>
-                    <p class="mt-1 text-sm text-texto-medio">Visitas preventivas realizadas vs. orçamentadas.</p>
+                    <p class="mt-1 text-sm text-texto-medio">Visitas preventivas realizadas vs. contratadas.</p>
                     <div class="mt-5 flex items-end justify-between">
                         <div class="text-3xl font-semibold text-texto-forte">{{ $resumo['visitas']['taxa'] }}%</div>
-                        <div class="text-sm text-texto-medio">{{ $resumo['visitas']['realizadas'] }} / {{ $resumo['visitas']['orcamentadas'] }}</div>
+                        <div class="text-sm text-texto-medio">{{ $resumo['visitas']['realizadas'] }} / {{ $resumo['visitas']['contratadas'] }}</div>
                     </div>
                     <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-fundo">
                         <div class="h-full rounded-full bg-verde-500" style="width: {{ $resumo['visitas']['taxa'] }}%"></div>

@@ -101,4 +101,42 @@ class GeradorVisitasPreventivas
 
         return $total;
     }
+
+    // Quantas visitas preventivas o contrato IMPLICA dentro de um ano civil — cálculo
+    // determinístico a partir da periodicidade (não conta eventos materializados). Uma
+    // ocorrência (ancorada em data_inicio, com passo periodicidade) conta se cair dentro
+    // de `vigência ∩ ano`, tratando assim contratos com vigência parcial no ano.
+    public function estimarNoAno(Contrato $contrato, int $ano): int
+    {
+        $contrato->loadMissing(['planosVisita', 'equipamentos']);
+
+        $inicioAno = Carbon::create($ano, 1, 1)->startOfDay();
+        $fimAno = Carbon::create($ano, 12, 31)->endOfDay();
+
+        $total = 0;
+
+        foreach ($contrato->planosVisita as $plano) {
+            $nEquipamentos = $contrato->equipamentos->where('tipo', $plano->equipamento_tipo)->count();
+            if ($nEquipamentos === 0) {
+                continue;
+            }
+
+            $intervalo = $plano->periodicidade->meses();
+            $momento = Carbon::parse($contrato->data_inicio)->setTime(self::HORA_INICIO, 0);
+            // Não passa do fim da vigência NEM do fim do ano.
+            $limite = Carbon::parse($contrato->data_fim)->endOfDay()->min($fimAno);
+
+            $ocorrencias = 0;
+            while ($momento->lte($limite)) {
+                if ($momento->gte($inicioAno)) { // só as que caem dentro do ano corrente
+                    $ocorrencias++;
+                }
+                $momento->addMonths($intervalo);
+            }
+
+            $total += $nEquipamentos * $ocorrencias;
+        }
+
+        return $total;
+    }
 }
