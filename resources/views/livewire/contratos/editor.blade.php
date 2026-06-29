@@ -80,6 +80,12 @@
                         @error('hora_visita') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
+                        <label class="campo-label">Visitas incluídas</label>
+                        <input wire:model="visitas_incluidas" type="number" min="1" class="campo-input" placeholder="—">
+                        <p class="mt-1.5 text-xs text-texto-fraco">Opcional — total pela vida do contrato. Vazio = sem controlo de saldo.</p>
+                        @error('visitas_incluidas') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
                         <label class="campo-label">Tipo</label>
                         <select wire:model="tipo" class="campo-select">
                             <option value="">Selecione...</option>

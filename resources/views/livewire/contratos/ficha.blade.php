@@ -100,6 +100,29 @@
                 @endif
             </section>
 
+            {{-- Saldo de visitas (modelo manual) — só aparece se o contrato definiu visitas incluídas. --}}
+            @if ($saldo)
+                <section class="cartao mt-8 p-6">
+                    <div class="flex items-baseline justify-between">
+                        <h2 class="text-lg font-semibold text-texto-forte">Saldo de visitas</h2>
+                        @if ($saldo['extras'] > 0)
+                            <span class="text-sm text-texto-medio">{{ $saldo['extras'] }} {{ \Illuminate\Support\Str::plural('extra', $saldo['extras']) }}</span>
+                        @endif
+                    </div>
+                    <div class="mt-4 flex flex-wrap items-baseline gap-x-8 gap-y-2">
+                        <span class="text-sm text-texto-medio"><span class="text-2xl font-semibold text-texto-forte">{{ $saldo['incluidas'] }}</span> incluídas</span>
+                        <span class="text-sm text-texto-medio"><span class="text-2xl font-semibold text-texto-forte">{{ $saldo['usadas'] }}</span> usadas</span>
+                        <span class="text-sm text-texto-medio"><span class="text-2xl font-semibold {{ $saldo['excedido'] > 0 ? 'text-perigo-600' : 'text-verde-600' }}">{{ $saldo['restantes'] }}</span> restantes</span>
+                    </div>
+                    @if ($saldo['excedido'] > 0)
+                        <p class="mt-3 flex items-center gap-2 text-sm font-medium text-perigo-600">
+                            <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                            Limite excedido — {{ $saldo['excedido'] }} {{ \Illuminate\Support\Str::plural('visita', $saldo['excedido']) }} além do incluído.
+                        </p>
+                    @endif
+                </section>
+            @endif
+
             <div class="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
                 {{-- Equipamentos cobertos --}}
                 <section class="cartao">

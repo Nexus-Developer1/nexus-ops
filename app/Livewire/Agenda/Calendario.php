@@ -2,11 +2,13 @@
 
 namespace App\Livewire\Agenda;
 
+use App\Enums\EstadoContrato;
 use App\Enums\EstadoEvento;
 use App\Enums\EstadoRelatorio;
 use App\Enums\PapelUtilizador;
 use App\Enums\TipoEvento;
 use App\Models\AssuntoEvento;
+use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\TecnicoDisponibilidade;
@@ -52,6 +54,10 @@ class Calendario extends Component
     // Equipamento opcional do evento (pesquisa server-side; deriva local/cliente).
     public ?int $formEquipamentoId = null;
     public string $formEquipamentoBusca = '';
+
+    // Contrato opcional a que a visita pertence; cobertura só conta se houver contrato.
+    public ?int $formContratoId = null;
+    public ?string $formCobertura = null; // 'incluida' | 'extra'
 
     // Modal dedicado de marcação de ausência (grava em tecnico_disponibilidade).
     public bool $modalAusencia = false;
@@ -242,7 +248,7 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['formTitulo', 'formEquipamentoId', 'formEquipamentoBusca']);
+        $this->reset(['formTitulo', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura']);
         $this->formTecnicoId = $this->tecnicoId;
         $this->formInicio = Carbon::parse($inicio)->format('Y-m-d\TH:i');
         $this->formFim = Carbon::parse($fim)->format('Y-m-d\TH:i');
@@ -266,6 +272,12 @@ class Calendario extends Component
     public function updatedFormEquipamentoBusca(): void
     {
         $this->formEquipamentoId = null;
+    }
+
+    // Escolher contrato assume "incluída" por defeito; limpar contrato limpa a cobertura.
+    public function updatedFormContratoId(): void
+    {
+        $this->formCobertura = $this->formContratoId ? ($this->formCobertura ?: 'incluida') : null;
     }
 
     // Dobra de acentos para pesquisa (igual ao combobox de cliente).
@@ -316,6 +328,8 @@ class Calendario extends Component
             'formEquipamentoId' => ['nullable', 'exists:equipamentos,id'],
             'formInicio' => ['required', 'date'],
             'formFim' => ['required', 'date', 'after:formInicio'],
+            'formContratoId' => ['nullable', 'exists:contratos,id'],
+            'formCobertura' => ['nullable', 'required_with:formContratoId', 'in:incluida,extra'],
         ]);
 
         $inicio = Carbon::parse($this->formInicio);
@@ -361,6 +375,9 @@ class Calendario extends Component
             'equipamento_id' => $equipamentoId,
             'local_id' => $localId,
             'cliente_id' => $clienteId,
+            'contrato_id' => $this->formContratoId,
+            // Cobertura só se houver contrato (incluída = desconta saldo; extra = faturável).
+            'cobertura' => $this->formContratoId ? $this->formCobertura : null,
         ]);
 
         // Notifica o técnico atribuído (CLAUDE.md §6).
@@ -478,6 +495,18 @@ class Calendario extends Component
                 ->get()
             : collect();
 
+        // Contratos ativos para ligar a visita manual; se há equipamento escolhido,
+        // filtra aos contratos do cliente desse equipamento.
+        $clienteDoEquipamento = $this->formEquipamentoId
+            ? Equipamento::with('local')->find($this->formEquipamentoId)?->local?->cliente_id
+            : null;
+        $contratos = Contrato::query()
+            ->where('estado', EstadoContrato::Ativo->value)
+            ->when($clienteDoEquipamento, fn ($q) => $q->where('cliente_id', $clienteDoEquipamento))
+            ->with('cliente')
+            ->orderBy('numero')
+            ->get();
+
         return view('livewire.agenda.calendario', [
             'tecnicos' => $tecnicos,
             'evento' => $evento,
@@ -485,6 +514,7 @@ class Calendario extends Component
             'urlIcal' => $urlIcal,
             'assuntos' => AssuntoEvento::orderBy('nome')->get(),
             'equipamentosFiltrados' => $equipamentosFiltrados,
+            'contratos' => $contratos,
         ]);
     }
 }

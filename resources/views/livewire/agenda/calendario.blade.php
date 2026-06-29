@@ -264,6 +264,36 @@
                                     @error('formFim') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                                 </div>
                             </div>
+
+                            {{-- Contrato (opcional) + cobertura — liga a visita ao saldo do contrato. --}}
+                            <div>
+                                <label class="campo-label">Contrato (opcional)</label>
+                                <select wire:model.live="formContratoId" class="campo-select">
+                                    <option value="">Sem contrato</option>
+                                    @foreach ($contratos as $c)
+                                        <option value="{{ $c->id }}">{{ $c->numero }} · {{ $c->cliente?->nome ?? '—' }}</option>
+                                    @endforeach
+                                </select>
+                                @error('formContratoId') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            </div>
+
+                            @if ($formContratoId)
+                                <div>
+                                    <label class="campo-label">Cobertura</label>
+                                    <div class="flex gap-2">
+                                        <button type="button" wire:click="$set('formCobertura', 'incluida')"
+                                            class="flex-1 rounded-lg px-3.5 py-2 text-sm font-medium {{ $formCobertura === 'incluida' ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">
+                                            Incluída no contrato
+                                        </button>
+                                        <button type="button" wire:click="$set('formCobertura', 'extra')"
+                                            class="flex-1 rounded-lg px-3.5 py-2 text-sm font-medium {{ $formCobertura === 'extra' ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">
+                                            Extra (faturável)
+                                        </button>
+                                    </div>
+                                    <p class="mt-1.5 text-xs text-texto-fraco">"Incluída" desconta do saldo do contrato; "Extra" é faturável à parte.</p>
+                                    @error('formCobertura') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                </div>
+                            @endif
                         </div>
 
                         <div class="flex items-center justify-end gap-3 border-t border-borda px-6 py-4">

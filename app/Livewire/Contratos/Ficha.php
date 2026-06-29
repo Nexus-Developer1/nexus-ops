@@ -3,6 +3,7 @@
 namespace App\Livewire\Contratos;
 
 use App\Enums\EstadoContrato;
+use App\Enums\EstadoEvento;
 use App\Jobs\GerarVisitasPreventivas;
 use App\Models\Contrato;
 use App\Services\Agenda\GeradorVisitasPreventivas;
@@ -88,6 +89,36 @@ class Ficha extends Component
 
         return view('livewire.contratos.ficha', [
             'contrato' => $this->contrato,
+            'saldo' => $this->saldoVisitas(),
         ]);
+    }
+
+    // Saldo de visitas incluídas (modelo manual). Conta por COBERTURA, sem filtrar tipo
+    // (apanha visitas manuais; ignora as auto-geradas, que têm cobertura null). Null se o
+    // contrato não tem cláusula de visitas (visitas_incluidas vazio) → não se mostra saldo.
+    /** @return array{incluidas:int, usadas:int, extras:int, restantes:int, excedido:int}|null */
+    private function saldoVisitas(): ?array
+    {
+        $incluidas = $this->contrato->visitas_incluidas;
+        if ($incluidas === null) {
+            return null;
+        }
+
+        $usadas = $this->contrato->eventos()
+            ->where('cobertura', 'incluida')
+            ->where('estado', '!=', EstadoEvento::Cancelado->value)
+            ->count();
+        $extras = $this->contrato->eventos()
+            ->where('cobertura', 'extra')
+            ->where('estado', '!=', EstadoEvento::Cancelado->value)
+            ->count();
+
+        return [
+            'incluidas' => $incluidas,
+            'usadas' => $usadas,
+            'extras' => $extras,
+            'restantes' => max(0, $incluidas - $usadas), // nunca negativo
+            'excedido' => max(0, $usadas - $incluidas),
+        ];
     }
 }
