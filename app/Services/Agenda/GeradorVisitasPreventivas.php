@@ -31,6 +31,7 @@ class GeradorVisitasPreventivas
                 ->delete();
 
             $criadas = 0;
+            [$horaInicio, $minutoInicio] = $this->horaInicio($contrato);
 
             foreach ($contrato->planosVisita as $plano) {
                 $intervalo = $plano->periodicidade->meses();
@@ -46,7 +47,7 @@ class GeradorVisitasPreventivas
                     ->where('tipo', $plano->equipamento_tipo);
 
                 foreach ($equipamentos as $equipamento) {
-                    $momento = Carbon::parse($contrato->data_inicio)->setTime(self::HORA_INICIO, 0);
+                    $momento = Carbon::parse($contrato->data_inicio)->setTime($horaInicio, $minutoInicio);
                     $fimVigencia = Carbon::parse($contrato->data_fim)->endOfDay();
 
                     while ($momento->lte($fimVigencia)) {
@@ -70,6 +71,20 @@ class GeradorVisitasPreventivas
 
             return $criadas;
         });
+    }
+
+    // Hora de início das visitas geradas: a hora única do contrato (`hora_visita`), ou
+    // 09:00 por defeito quando não está definida (mantém o comportamento anterior).
+    /** @return array{0:int, 1:int} [hora, minuto] */
+    private function horaInicio(Contrato $contrato): array
+    {
+        if ($contrato->hora_visita) {
+            $hora = Carbon::parse($contrato->hora_visita); // aceita "14:30" ou "14:30:00"
+
+            return [$hora->hour, $hora->minute];
+        }
+
+        return [self::HORA_INICIO, 0];
     }
 
     // Estima quantas visitas gerar() criaria, SEM criar nada (mesma matemática de período

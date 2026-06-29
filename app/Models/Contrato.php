@@ -34,6 +34,7 @@ class Contrato extends Model
         'cliente_id',
         'data_inicio',
         'data_fim',
+        'hora_visita',
         'estado',
         'tipo',
         'modelo_faturacao_id',

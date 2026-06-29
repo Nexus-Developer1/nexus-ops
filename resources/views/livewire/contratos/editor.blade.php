@@ -74,6 +74,12 @@
                         @error('data_fim') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
+                        <label class="campo-label">Hora das visitas</label>
+                        <input wire:model="hora_visita" type="time" class="campo-input">
+                        <p class="mt-1.5 text-xs text-texto-fraco">Opcional — se vazio, as visitas são geradas às 09:00.</p>
+                        @error('hora_visita') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
                         <label class="campo-label">Tipo</label>
                         <select wire:model="tipo" class="campo-select">
                             <option value="">Selecione...</option>

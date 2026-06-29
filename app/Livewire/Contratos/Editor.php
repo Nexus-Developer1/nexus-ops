@@ -29,6 +29,7 @@ class Editor extends Component
     public string $clienteBusca = '';
     public string $data_inicio = '';
     public string $data_fim = '';
+    public ?string $hora_visita = null; // hora única das visitas preventivas (vazio = 09:00)
     public string $tipo = '';
     public ?int $modelo_faturacao_id = null;
     public ?string $valor = null;
@@ -57,6 +58,7 @@ class Editor extends Component
             $this->clienteBusca = $contrato->cliente?->nome ?? '';
             $this->data_inicio = $contrato->data_inicio->toDateString();
             $this->data_fim = $contrato->data_fim->toDateString();
+            $this->hora_visita = $contrato->hora_visita ? substr($contrato->hora_visita, 0, 5) : null;
             $this->tipo = $contrato->tipo->value;
             $this->modelo_faturacao_id = $contrato->modelo_faturacao_id;
             $this->valor = $contrato->valor;
@@ -153,6 +155,7 @@ class Editor extends Component
             'cliente_id' => ['required', 'exists:clientes,id'],
             'data_inicio' => ['required', 'date'],
             'data_fim' => ['required', 'date', 'after:data_inicio'],
+            'hora_visita' => ['nullable', 'date_format:H:i'],
             'tipo' => ['required', Rule::enum(TipoContrato::class)],
             'modelo_faturacao_id' => ['required', 'integer', 'exists:modelos_faturacao,id'],
             'valor' => ['nullable', 'numeric', 'min:0'],
@@ -183,6 +186,7 @@ class Editor extends Component
             'cliente_id' => $this->cliente_id,
             'data_inicio' => $this->data_inicio,
             'data_fim' => $this->data_fim,
+            'hora_visita' => $this->hora_visita ?: null,
             'tipo' => $this->tipo,
             'modelo_faturacao_id' => $this->modelo_faturacao_id,
             'valor' => $this->valor !== '' ? $this->valor : null,

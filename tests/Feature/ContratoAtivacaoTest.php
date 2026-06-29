@@ -85,4 +85,40 @@ class ContratoAtivacaoTest extends TestCase
         Queue::assertPushed(GerarVisitasPreventivas::class); // foi para a fila, não correu na hora
         $this->assertNull($contrato->fresh()->resumo_geracao); // resumo só depois do worker
     }
+
+    public function test_gerar_usa_a_hora_do_contrato(): void
+    {
+        $contrato = $this->contratoCom(1, 'anual', now()->startOfYear(), now()->startOfYear()->addMonths(1), '2026/8004');
+        $contrato->update(['hora_visita' => '14:30']);
+
+        app(GeradorVisitasPreventivas::class)->gerar($contrato);
+
+        $evento = $contrato->eventos()->where('tipo', 'visita_preventiva')->firstOrFail();
+        $this->assertSame('14:30', \Illuminate\Support\Carbon::parse($evento->inicio)->format('H:i'));
+        // Duração (60 min do plano) inalterada → fim às 15:30.
+        $this->assertSame('15:30', \Illuminate\Support\Carbon::parse($evento->fim)->format('H:i'));
+    }
+
+    public function test_gerar_sem_hora_usa_as_09h_por_defeito(): void
+    {
+        $contrato = $this->contratoCom(1, 'anual', now()->startOfYear(), now()->startOfYear()->addMonths(1), '2026/8005');
+        // hora_visita fica null (não definida) → fallback 09:00.
+
+        app(GeradorVisitasPreventivas::class)->gerar($contrato);
+
+        $evento = $contrato->eventos()->where('tipo', 'visita_preventiva')->firstOrFail();
+        $this->assertSame('09:00', \Illuminate\Support\Carbon::parse($evento->inicio)->format('H:i'));
+    }
+
+    public function test_hora_do_contrato_nao_afeta_o_kpi_contratadas(): void
+    {
+        $contrato = $this->contratoCom(1, 'mensal', now()->startOfYear(), now()->endOfYear(), '2026/8006');
+        $gerador = app(GeradorVisitasPreventivas::class);
+
+        $semHora = $gerador->estimarNoAno($contrato, now()->year);
+        $contrato->update(['hora_visita' => '23:45']);
+        $comHora = $gerador->estimarNoAno($contrato->fresh(), now()->year);
+
+        $this->assertSame($semHora, $comHora); // a hora não muda a contagem de ocorrências
+    }
 }
