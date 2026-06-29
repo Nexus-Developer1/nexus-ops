@@ -56,6 +56,7 @@
                             <div class="sm:col-span-2">
                                 <label class="campo-label" for="contrato-combo">Contrato <span class="text-perigo-500">*</span></label>
                                 <div
+                                    wire:key="combo-contrato"
                                     x-data="{
                                         contratos: @js($contratos->map(fn ($c) => ['id' => $c->id, 'label' => $c->numero . ' · ' . ($c->cliente?->nome ?? '—')])->values()),
                                         inicial: @js((string) $contratoBusca),
@@ -128,7 +129,7 @@
                         <div>
                             <label class="campo-label" for="equip-combo">Equipamento <span class="text-perigo-500">*</span></label>
                             {{-- Pesquisa server-side (~20 resultados): não carrega os ~17k equipamentos. --}}
-                            <div x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
+                            <div wire:key="combo-equip-principal" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
                                 <input id="equip-combo" type="text"
                                     wire:model.live.debounce.300ms="equipamentoBusca"
                                     @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
@@ -158,7 +159,7 @@
                         <div class="sm:col-span-2">
                             <label class="campo-label">Equipamentos adicionais cobertos</label>
                             {{-- Pesquisa server-side (~20 resultados); ao escolher, adiciona o chip. --}}
-                            <div x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
+                            <div wire:key="combo-equip-coberto" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
                                 <input type="text" wire:model.live.debounce.300ms="cobertoBusca"
                                     @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
                                     @keydown.arrow-down.prevent="aberto = true; if ($refs['co' + (destaque + 1)]) destaque++"

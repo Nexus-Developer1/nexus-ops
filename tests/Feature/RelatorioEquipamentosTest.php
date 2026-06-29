@@ -245,6 +245,23 @@ class RelatorioEquipamentosTest extends TestCase
             ->assertSet('equipamento_id', null);
     }
 
+    public function test_comboboxes_tem_wire_key_distinto_e_equipamento_sem_filtrados(): void
+    {
+        [$admin] = $this->cenario();
+
+        // Modo individual (default): comboboxes de equipamento server-side, SEM a expressão Alpine `filtrados`.
+        $individual = Livewire::actingAs($admin)->test(Novo::class)->html();
+        $this->assertStringContainsString('wire:key="combo-equip-principal"', $individual);
+        $this->assertStringContainsString('wire:key="combo-equip-coberto"', $individual);
+        $this->assertStringNotContainsString('filtrados', $individual); // equipamento não usa Alpine `filtrados`
+
+        // Modo contrato: picker de contratos (o único com `filtrados`), com a sua própria key.
+        $contrato = Livewire::actingAs($admin)->test(Novo::class)->call('definirModo', 'contrato')->html();
+        $this->assertStringContainsString('wire:key="combo-contrato"', $contrato);
+        // O `filtrados` do picker está no MESMO x-data que o define (key própria → o morph reinicializa o Alpine).
+        $this->assertStringContainsString('get filtrados()', $contrato);
+    }
+
     public function test_listagem_filtra_por_tipo_e_combina_com_estado(): void
     {
         [$admin, $e1, $e2] = $this->cenario();
