@@ -74,12 +74,6 @@
                         @error('data_fim') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="campo-label">Hora das visitas</label>
-                        <input wire:model="hora_visita" type="time" class="campo-input">
-                        <p class="mt-1.5 text-xs text-texto-fraco">Opcional — se vazio, as visitas são geradas às 09:00.</p>
-                        @error('hora_visita') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
                         <label class="campo-label">Visitas incluídas</label>
                         <input wire:model="visitas_incluidas" type="number" min="1" class="campo-input" placeholder="—">
                         <p class="mt-1.5 text-xs text-texto-fraco">Opcional — total pela vida do contrato. Vazio = sem controlo de saldo.</p>
@@ -203,51 +197,6 @@
                             <p x-show="nenhum" x-cloak class="mt-1 text-sm text-texto-medio">Sem equipamentos correspondentes.</p>
                         </div>
                     @endif
-                </div>
-            </section>
-
-            {{-- Planos de visita --}}
-            <section class="cartao mt-8">
-                <div class="flex items-center justify-between px-6 py-5">
-                    <div>
-                        <h2 class="text-lg font-semibold text-texto-forte">Planos de visita</h2>
-                        <p class="mt-0.5 text-xs text-texto-fraco">Periodicidade por tipo de equipamento — alimenta a geração de visitas preventivas.</p>
-                    </div>
-                    <button type="button" wire:click="adicionarPlano" class="botao-secundario">+ Plano</button>
-                </div>
-                <div class="border-t border-borda px-6 py-6">
-                    @forelse ($planos as $i => $plano)
-                        <div class="mb-3 grid grid-cols-1 sm:grid-cols-12 items-start gap-3 last:mb-0" wire:key="plano-{{ $i }}">
-                            <div class="col-span-4">
-                                <select wire:model="planos.{{ $i }}.equipamento_tipo" class="campo-select">
-                                    <option value="">Tipo...</option>
-                                    @foreach ($tiposEquipamento as $t)
-                                        <option value="{{ $t->value }}">{{ $t->rotulo() }}</option>
-                                    @endforeach
-                                </select>
-                                @error('planos.'.$i.'.equipamento_tipo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            </div>
-                            <div class="col-span-4">
-                                <select wire:model="planos.{{ $i }}.periodicidade" class="campo-select">
-                                    <option value="">Periodicidade...</option>
-                                    @foreach ($periodicidades as $p)
-                                        <option value="{{ $p->value }}">{{ $p->rotulo() }}</option>
-                                    @endforeach
-                                </select>
-                                @error('planos.'.$i.'.periodicidade') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            </div>
-                            <div class="col-span-3">
-                                <input wire:model="planos.{{ $i }}.duracao_estimada_min" type="number" class="campo-input" placeholder="Duração (min)">
-                            </div>
-                            <div class="col-span-1 flex justify-end pt-2">
-                                <button type="button" wire:click="removerPlano({{ $i }})" class="text-texto-fraco hover:text-perigo-600" title="Remover">
-                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                </button>
-                            </div>
-                        </div>
-                    @empty
-                        <p class="text-sm text-texto-medio">Sem planos de visita. Adicione pelo menos um para poder ativar o contrato.</p>
-                    @endforelse
                 </div>
             </section>
 

@@ -30,38 +30,6 @@
                 </div>
             @endif
 
-            {{-- Resumo da última geração de visitas preventivas (só visibilidade). --}}
-            @if ($resumo = $contrato->resumo_geracao)
-                @if (($resumo['sobreposicoes'] ?? 0) > 0)
-                    <div x-data="{ aberto: false }" class="mb-6 rounded-lg border border-aviso-200 bg-aviso-100/60 px-4 py-3 text-sm">
-                        <div class="flex items-center justify-between gap-3">
-                            <span class="flex items-center gap-2 font-medium text-aviso-600">
-                                <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-                                Geradas {{ $resumo['criadas'] ?? 0 }} visitas · {{ $resumo['sobreposicoes'] }} com sobreposição de equipamento
-                            </span>
-                            <button type="button" @click="aberto = !aberto" class="shrink-0 text-xs font-medium text-aviso-600 underline">
-                                <span x-show="!aberto">Ver detalhe</span>
-                                <span x-show="aberto" x-cloak>Ocultar</span>
-                            </button>
-                        </div>
-                        <ul x-show="aberto" x-cloak class="mt-3 space-y-1 border-t border-aviso-200 pt-3 text-texto-medio">
-                            @foreach ($resumo['detalhe'] ?? [] as $d)
-                                <li class="flex flex-wrap gap-x-2">
-                                    <span class="font-medium text-texto-forte">{{ $d['quando'] }}</span>
-                                    <span>· {{ $d['visita'] }}</span>
-                                    <span class="text-texto-fraco">colide com {{ $d['colide_com'] }}{{ ($d['externo'] ?? false) ? ' (outro contrato)' : '' }}</span>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @else
-                    <div class="mb-6 flex items-center gap-2 rounded-lg border border-verde-200 bg-verde-50 px-4 py-3 text-sm font-medium text-verde-700">
-                        <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                        Geradas {{ $resumo['criadas'] ?? 0 }} visitas preventivas, sem sobreposições.
-                    </div>
-                @endif
-            @endif
-
             {{-- Cabeçalho --}}
             <div class="flex items-start justify-between">
                 <div>
@@ -123,46 +91,26 @@
                 </section>
             @endif
 
-            <div class="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
-                {{-- Equipamentos cobertos --}}
-                <section class="cartao">
-                    <div class="flex items-center justify-between px-6 py-5">
-                        <h2 class="text-lg font-semibold text-texto-forte">Equipamentos cobertos</h2>
-                        <span class="text-sm text-texto-fraco">{{ $contrato->equipamentos->count() }}</span>
-                    </div>
-                    <ul class="border-t border-borda">
-                        @forelse ($contrato->equipamentos as $e)
-                            <li class="flex items-center justify-between border-b border-borda px-6 py-3.5 last:border-0">
-                                <div>
-                                    <a href="{{ route('equipamentos.ficha', $e) }}" wire:navigate class="text-sm font-medium text-texto-forte hover:text-verde-600">{{ $e->fabricante }} {{ $e->modelo }}</a>
-                                    <div class="text-xs text-texto-fraco">{{ $e->numero_serie ?? '—' }} · {{ $e->local->designacao }}</div>
-                                </div>
-                                <span class="etiqueta {{ $e->tipo->classesEtiqueta() }}">{{ $e->tipo->rotulo() }}</span>
-                            </li>
-                        @empty
-                            <li class="px-6 py-8 text-center text-sm text-texto-medio">Sem equipamentos associados.</li>
-                        @endforelse
-                    </ul>
-                </section>
-
-                {{-- Planos de visita --}}
-                <section class="cartao">
-                    <div class="px-6 py-5"><h2 class="text-lg font-semibold text-texto-forte">Planos de visita</h2></div>
-                    <ul class="border-t border-borda">
-                        @forelse ($contrato->planosVisita as $p)
-                            <li class="flex items-center justify-between border-b border-borda px-6 py-3.5 last:border-0">
-                                <div class="text-sm font-medium text-texto-forte">{{ $p->equipamento_tipo->rotulo() }}</div>
-                                <div class="text-sm text-texto-medio">
-                                    {{ $p->periodicidade->rotulo() }}
-                                    @if ($p->duracao_estimada_min)<span class="text-texto-fraco">· {{ $p->duracao_estimada_min }} min</span>@endif
-                                </div>
-                            </li>
-                        @empty
-                            <li class="px-6 py-8 text-center text-sm text-texto-medio">Sem planos de visita definidos.</li>
-                        @endforelse
-                    </ul>
-                </section>
-            </div>
+            {{-- Equipamentos cobertos --}}
+            <section class="cartao mt-8">
+                <div class="flex items-center justify-between px-6 py-5">
+                    <h2 class="text-lg font-semibold text-texto-forte">Equipamentos cobertos</h2>
+                    <span class="text-sm text-texto-fraco">{{ $contrato->equipamentos->count() }}</span>
+                </div>
+                <ul class="border-t border-borda">
+                    @forelse ($contrato->equipamentos as $e)
+                        <li class="flex items-center justify-between border-b border-borda px-6 py-3.5 last:border-0">
+                            <div>
+                                <a href="{{ route('equipamentos.ficha', $e) }}" wire:navigate class="text-sm font-medium text-texto-forte hover:text-verde-600">{{ $e->fabricante }} {{ $e->modelo }}</a>
+                                <div class="text-xs text-texto-fraco">{{ $e->numero_serie ?? '—' }} · {{ $e->local->designacao }}</div>
+                            </div>
+                            <span class="etiqueta {{ $e->tipo->classesEtiqueta() }}">{{ $e->tipo->rotulo() }}</span>
+                        </li>
+                    @empty
+                        <li class="px-6 py-8 text-center text-sm text-texto-medio">Sem equipamentos associados.</li>
+                    @endforelse
+                </ul>
+            </section>
 
             {{-- SLAs --}}
             <section class="cartao mt-8">

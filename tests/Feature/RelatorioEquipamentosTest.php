@@ -165,7 +165,6 @@ class RelatorioEquipamentosTest extends TestCase
             ->set('modelo_faturacao_id', ModeloFaturacao::query()->value('id'))
             ->set('periodo_aviso_dias', 30)
             ->set('equipamentoIds', [$e1->id, $e2->id, $e3->id])
-            ->set('planos', [['equipamento_tipo' => 'ups', 'periodicidade' => 'trimestral', 'duracao_estimada_min' => 60]])
             ->call('guardar')
             ->assertHasNoErrors();
 

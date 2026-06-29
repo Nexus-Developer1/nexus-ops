@@ -2,10 +2,8 @@
 
 namespace App\Livewire\Contratos;
 
-use App\Enums\Periodicidade;
 use App\Enums\PrioridadeSla;
 use App\Enums\TipoContrato;
-use App\Enums\TipoEquipamento;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
@@ -29,7 +27,6 @@ class Editor extends Component
     public string $clienteBusca = '';
     public string $data_inicio = '';
     public string $data_fim = '';
-    public ?string $hora_visita = null; // hora única das visitas preventivas (vazio = 09:00)
     public ?int $visitas_incluidas = null; // total de visitas incluídas pela vida do contrato (vazio = sem cláusula)
     public string $tipo = '';
     public ?int $modelo_faturacao_id = null;
@@ -44,22 +41,18 @@ class Editor extends Component
     public array $equipamentoIds = [];
 
     /** @var array<int, array<string, mixed>> */
-    public array $planos = [];
-
-    /** @var array<int, array<string, mixed>> */
     public array $slas = [];
 
     public function mount(?Contrato $contrato = null): void
     {
         if ($contrato && $contrato->exists) {
-            $contrato->load(['equipamentos:id', 'planosVisita', 'slas']);
+            $contrato->load(['equipamentos:id', 'slas']);
             $this->contrato = $contrato;
             $this->numero = $contrato->numero;
             $this->cliente_id = $contrato->cliente_id;
             $this->clienteBusca = $contrato->cliente?->nome ?? '';
             $this->data_inicio = $contrato->data_inicio->toDateString();
             $this->data_fim = $contrato->data_fim->toDateString();
-            $this->hora_visita = $contrato->hora_visita ? substr($contrato->hora_visita, 0, 5) : null;
             $this->visitas_incluidas = $contrato->visitas_incluidas;
             $this->tipo = $contrato->tipo->value;
             $this->modelo_faturacao_id = $contrato->modelo_faturacao_id;
@@ -70,11 +63,6 @@ class Editor extends Component
             $this->renovacao_automatica = $contrato->renovacao_automatica;
             $this->periodo_aviso_dias = $contrato->periodo_aviso_dias;
             $this->equipamentoIds = $contrato->equipamentos->pluck('id')->all();
-            $this->planos = $contrato->planosVisita->map(fn ($p) => [
-                'equipamento_tipo' => $p->equipamento_tipo->value,
-                'periodicidade' => $p->periodicidade->value,
-                'duracao_estimada_min' => $p->duracao_estimada_min,
-            ])->all();
             $this->slas = $contrato->slas->map(fn ($s) => [
                 'prioridade' => $s->prioridade->value,
                 'tempo_resposta_horas' => $s->tempo_resposta_horas,
@@ -95,17 +83,6 @@ class Editor extends Component
         $contagem = Contrato::where('numero', 'like', $ano . '/%')->count();
 
         return sprintf('%d/%04d', $ano, $contagem + 1);
-    }
-
-    public function adicionarPlano(): void
-    {
-        $this->planos[] = ['equipamento_tipo' => '', 'periodicidade' => '', 'duracao_estimada_min' => null];
-    }
-
-    public function removerPlano(int $i): void
-    {
-        unset($this->planos[$i]);
-        $this->planos = array_values($this->planos);
     }
 
     public function adicionarSla(): void
@@ -157,7 +134,6 @@ class Editor extends Component
             'cliente_id' => ['required', 'exists:clientes,id'],
             'data_inicio' => ['required', 'date'],
             'data_fim' => ['required', 'date', 'after:data_inicio'],
-            'hora_visita' => ['nullable', 'date_format:H:i'],
             'visitas_incluidas' => ['nullable', 'integer', 'min:1'],
             'tipo' => ['required', Rule::enum(TipoContrato::class)],
             'modelo_faturacao_id' => ['required', 'integer', 'exists:modelos_faturacao,id'],
@@ -168,10 +144,6 @@ class Editor extends Component
             'periodo_aviso_dias' => ['required', 'integer', 'min:0', 'max:365'],
             'equipamentoIds' => ['array'],
             'equipamentoIds.*' => ['exists:equipamentos,id'],
-            'planos' => ['array'],
-            'planos.*.equipamento_tipo' => ['required', Rule::enum(TipoEquipamento::class)],
-            'planos.*.periodicidade' => ['required', Rule::enum(Periodicidade::class)],
-            'planos.*.duracao_estimada_min' => ['nullable', 'integer', 'min:0'],
             'slas' => ['array'],
             'slas.*.prioridade' => ['required', Rule::enum(PrioridadeSla::class)],
             'slas.*.tempo_resposta_horas' => ['nullable', 'integer', 'min:0'],
@@ -189,7 +161,6 @@ class Editor extends Component
             'cliente_id' => $this->cliente_id,
             'data_inicio' => $this->data_inicio,
             'data_fim' => $this->data_fim,
-            'hora_visita' => $this->hora_visita ?: null,
             'visitas_incluidas' => $this->visitas_incluidas ?: null,
             'tipo' => $this->tipo,
             'modelo_faturacao_id' => $this->modelo_faturacao_id,
@@ -210,12 +181,8 @@ class Editor extends Component
 
         $this->contrato->equipamentos()->sync($this->equipamentoIds);
 
-        // Planos e SLAs: substitui o conjunto (forma simples e previsível).
-        $this->contrato->planosVisita()->delete();
-        foreach ($this->planos as $p) {
-            $this->contrato->planosVisita()->create($p);
-        }
-
+        // SLAs: substitui o conjunto (forma simples e previsível). Os planos de visita
+        // (modelo antigo) já NÃO são editados aqui — não se tocam, preservando os existentes.
         $this->contrato->slas()->delete();
         foreach ($this->slas as $s) {
             $this->contrato->slas()->create($s);
@@ -278,8 +245,6 @@ class Editor extends Component
             'equipamentos' => $equipamentos,
             'tiposContrato' => TipoContrato::cases(),
             'modelosFaturacao' => ModeloFaturacao::orderBy('nome')->get(),
-            'tiposEquipamento' => TipoEquipamento::cases(),
-            'periodicidades' => Periodicidade::cases(),
             'prioridades' => PrioridadeSla::cases(),
         ]);
     }

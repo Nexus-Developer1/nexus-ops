@@ -60,7 +60,7 @@ class ContratoTest extends TestCase
             ->assertSee('ACME');
     }
 
-    public function test_cria_contrato_com_equipamentos_planos_e_slas(): void
+    public function test_cria_contrato_com_equipamentos_e_slas(): void
     {
         [$cliente, $equip] = $this->clienteComEquipamento();
 
@@ -73,7 +73,6 @@ class ContratoTest extends TestCase
             ->set('tipo', 'full_service')
             ->set('modelo_faturacao_id', $this->modeloFaturacaoId())
             ->set('equipamentoIds', [$equip->id])
-            ->set('planos', [['equipamento_tipo' => 'ups', 'periodicidade' => 'trimestral', 'duracao_estimada_min' => 90]])
             ->set('slas', [['prioridade' => 'critica', 'tempo_resposta_horas' => 4, 'tempo_resolucao_horas' => 24, 'horario_cobertura' => '24x7']])
             ->call('guardar')
             ->assertHasNoErrors()
@@ -82,8 +81,34 @@ class ContratoTest extends TestCase
         $contrato = Contrato::where('numero', '2026/0042')->firstOrFail();
         $this->assertSame(EstadoContrato::Rascunho, $contrato->estado);
         $this->assertCount(1, $contrato->equipamentos);
-        $this->assertCount(1, $contrato->planosVisita);
         $this->assertCount(1, $contrato->slas);
+    }
+
+    public function test_editar_contrato_preserva_planos_e_hora_existentes(): void
+    {
+        // (Fase 4) A UI de planos/hora saiu, mas os dados antigos NÃO se perdem ao guardar.
+        [$cliente, $equip] = $this->clienteComEquipamento();
+        $contrato = Contrato::create([
+            'numero' => '2026/0050', 'cliente_id' => $cliente->id,
+            'data_inicio' => now(), 'data_fim' => now()->addYear(),
+            'estado' => EstadoContrato::Rascunho, 'tipo' => 'preventiva', 'modelo_faturacao_id' => $this->modeloFaturacaoId(),
+            'renovacao_automatica' => false, 'hora_visita' => '14:30',
+        ]);
+        $contrato->equipamentos()->sync([$equip->id]);
+        $contrato->planosVisita()->create(['equipamento_tipo' => 'ups', 'periodicidade' => 'trimestral']);
+        $contrato->refresh(); // lê os defaults da BD (periodo_aviso_dias, etc.)
+
+        // Editar pelo editor (muda só o nº) e guardar.
+        Livewire::actingAs($this->admin())
+            ->test(Editor::class, ['contrato' => $contrato])
+            ->set('numero', '2026/0050-A')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $contrato->refresh();
+        $this->assertSame('2026/0050-A', $contrato->numero);          // a edição passou
+        $this->assertCount(1, $contrato->planosVisita);                // planos preservados
+        $this->assertSame('14:30:00', $contrato->hora_visita);         // hora preservada
     }
 
     public function test_nao_ativa_sem_equipamento_ou_plano(): void

@@ -61,7 +61,6 @@ class Ficha extends Component
         $this->contrato->load([
             'cliente',
             'equipamentos.local',
-            'planosVisita',
             'slas',
         ]);
 
