@@ -83,9 +83,9 @@ class AgendaTest extends TestCase
         $this->assertSame(5, $contrato->eventos()->count());
     }
 
-    public function test_ativar_contrato_gera_visitas_na_agenda(): void
+    public function test_ativar_contrato_nao_gera_visitas_na_agenda(): void
     {
-        // QUEUE_CONNECTION=sync nos testes → o job corre de imediato.
+        // (Fase 2) Ativar já NÃO gera visitas — passam a ser agendadas à mão na agenda.
         [$contrato] = $this->contratoComUps('2026/0003', now(), now()->addMonths(6));
 
         Livewire::actingAs($this->admin())
@@ -93,7 +93,7 @@ class AgendaTest extends TestCase
             ->call('ativar');
 
         $this->assertSame(EstadoContrato::Ativo, $contrato->fresh()->estado);
-        $this->assertGreaterThan(0, $contrato->eventos()->count());
+        $this->assertSame(0, $contrato->eventos()->count()); // nenhuma visita criada
     }
 
     public function test_reagendar_deteta_conflito_de_tecnico(): void

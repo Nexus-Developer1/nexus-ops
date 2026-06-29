@@ -4,21 +4,21 @@ namespace Tests\Feature;
 
 use App\Enums\EstadoContrato;
 use App\Enums\PapelUtilizador;
-use App\Jobs\GerarVisitasPreventivas;
 use App\Livewire\Contratos\Ficha;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
+use App\Models\EventoAgenda;
 use App\Models\Local;
 use App\Models\ModeloFaturacao;
 use App\Models\User;
 use App\Services\Agenda\GeradorVisitasPreventivas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-// Ativação do contrato: feedback imediato síncrono até ao limite; fila acima dele.
+// Ativação do contrato (Fase 2): muda só o estado para Ativo, sem gerar visitas.
+// O gerador/estimar continuam testados diretamente (ficam funcionais para o KPI/revert).
 class ContratoAtivacaoTest extends TestCase
 {
     use RefreshDatabase;
@@ -57,9 +57,9 @@ class ContratoAtivacaoTest extends TestCase
         $this->assertSame(0, $contrato->eventos()->count()); // estimar não cria
     }
 
-    public function test_ativar_pequeno_corre_na_hora_com_resumo_imediato(): void
+    public function test_ativar_nao_gera_visitas(): void
     {
-        // 2 equipamentos, trimestral, 6 meses → 6 visitas (≤ limite) → síncrono.
+        // (Fase 2) Ativar passa o contrato a Ativo SEM gerar visitas na agenda.
         $contrato = $this->contratoCom(2, 'trimestral', now()->startOfYear(), now()->startOfYear()->addMonths(6), '2026/8002');
 
         Livewire::actingAs($this->admin())->test(Ficha::class, ['contrato' => $contrato])
@@ -67,23 +67,60 @@ class ContratoAtivacaoTest extends TestCase
 
         $contrato->refresh();
         $this->assertSame(EstadoContrato::Ativo, $contrato->estado);
-        // Correu na hora: o resumo já está disponível no MESMO request (feedback imediato).
-        $this->assertNotNull($contrato->resumo_geracao);
-        $this->assertSame(6, $contrato->resumo_geracao['criadas']);
-        $this->assertSame(6, $contrato->eventos()->count());
+        $this->assertSame(0, $contrato->eventos()->count());  // nenhuma visita gerada
+        $this->assertNull($contrato->resumo_geracao);          // sem resumo de geração
     }
 
-    public function test_ativar_grande_vai_para_a_fila(): void
+    public function test_ativar_sem_planos_e_permitido(): void
     {
-        Queue::fake();
-        // 30 equipamentos, mensal, 1 ano → 30 × 13 = 390 > 300 (limite) → assíncrono.
-        $contrato = $this->contratoCom(30, 'mensal', now()->startOfYear(), now()->startOfYear()->addYear(), '2026/8003');
+        // Com equipamento mas SEM planos de visita → pode na mesma ser ativado.
+        $cliente = Cliente::create(['nome' => 'ACME', 'email' => 'p@x.pt', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'fabricante' => 'APC', 'modelo' => 'X']);
+        $contrato = Contrato::create([
+            'numero' => '2026/8003', 'cliente_id' => $cliente->id,
+            'data_inicio' => now(), 'data_fim' => now()->addYear(),
+            'estado' => EstadoContrato::Rascunho, 'tipo' => 'preventiva',
+            'modelo_faturacao_id' => ModeloFaturacao::query()->value('id'),
+        ]);
+        $contrato->equipamentos()->sync([$equip->id]);
 
         Livewire::actingAs($this->admin())->test(Ficha::class, ['contrato' => $contrato])
             ->call('ativar');
 
-        Queue::assertPushed(GerarVisitasPreventivas::class); // foi para a fila, não correu na hora
-        $this->assertNull($contrato->fresh()->resumo_geracao); // resumo só depois do worker
+        $this->assertSame(EstadoContrato::Ativo, $contrato->fresh()->estado);
+        $this->assertSame(0, $contrato->planosVisita()->count()); // não tinha planos
+        $this->assertSame(0, $contrato->eventos()->count());
+    }
+
+    public function test_ativar_sem_equipamento_e_bloqueado(): void
+    {
+        // Sem equipamentos → continua a não poder ser ativado (requisito mantido).
+        $cliente = Cliente::create(['nome' => 'ACME', 'email' => 'q@x.pt', 'ativo' => true]);
+        $contrato = Contrato::create([
+            'numero' => '2026/8007', 'cliente_id' => $cliente->id,
+            'data_inicio' => now(), 'data_fim' => now()->addYear(),
+            'estado' => EstadoContrato::Rascunho, 'tipo' => 'preventiva',
+            'modelo_faturacao_id' => ModeloFaturacao::query()->value('id'),
+        ]);
+
+        Livewire::actingAs($this->admin())->test(Ficha::class, ['contrato' => $contrato])
+            ->call('ativar');
+
+        $this->assertSame(EstadoContrato::Rascunho, $contrato->fresh()->estado); // continua rascunho
+    }
+
+    public function test_ativar_nao_mexe_em_eventos_existentes(): void
+    {
+        // Um evento já na agenda fica intacto quando se ativa um contrato.
+        $contrato = $this->contratoCom(1, 'trimestral', now()->startOfYear(), now()->endOfYear(), '2026/8008');
+        $evento = EventoAgenda::create(['tipo' => 'visita_preventiva', 'titulo' => 'V', 'estado' => 'planeado',
+            'inicio' => now(), 'fim' => now()->addHour(), 'cliente_id' => $contrato->cliente_id]);
+
+        Livewire::actingAs($this->admin())->test(Ficha::class, ['contrato' => $contrato])->call('ativar');
+
+        $this->assertDatabaseHas('eventos_agenda', ['id' => $evento->id, 'estado' => 'planeado']);
+        $this->assertDatabaseCount('eventos_agenda', 1); // não criou nem apagou nada
     }
 
     public function test_gerar_usa_a_hora_do_contrato(): void
