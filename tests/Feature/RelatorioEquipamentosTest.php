@@ -223,6 +223,28 @@ class RelatorioEquipamentosTest extends TestCase
         $this->assertSame($e1->id, $c->get('equipamento_id'));
     }
 
+    public function test_pesquisa_de_equipamento_e_server_side(): void
+    {
+        [$admin, $e1] = $this->cenario(); // e1: SN-PRINC · Riello NPW
+
+        $c = Livewire::actingAs($admin)->test(Novo::class);
+
+        // Sem texto → não carrega nada (não traz os ~17k).
+        $c->assertViewHas('equipamentosPrincipalFiltrados', fn ($r) => $r->isEmpty());
+
+        // Com texto → traz os que batem certo (limit server-side).
+        $c->set('equipamentoBusca', 'SN-PRINC')
+            ->assertViewHas('equipamentosPrincipalFiltrados', fn ($r) => $r->contains('id', $e1->id));
+
+        // Selecionar fixa o id.
+        $c->call('selecionarEquipamentoPrincipal', $e1->id)
+            ->assertSet('equipamento_id', $e1->id);
+
+        // Escrever de novo desfaz a seleção (até escolher outro).
+        $c->set('equipamentoBusca', 'outro')
+            ->assertSet('equipamento_id', null);
+    }
+
     public function test_listagem_filtra_por_tipo_e_combina_com_estado(): void
     {
         [$admin, $e1, $e2] = $this->cenario();

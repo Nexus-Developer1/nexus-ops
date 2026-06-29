@@ -14,6 +14,7 @@ use App\Models\Intervencao;
 use App\Models\Relatorio;
 use App\Services\Agenda\GeradorEventoDeRelatorio;
 use App\Services\GeradorRelatorio;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -40,8 +41,10 @@ class Novo extends Component
     public string $contratoBusca = '';
 
     public ?int $equipamento_id = null;
+    public string $equipamentoBusca = '';   // pesquisa server-side do equipamento principal
     /** @var list<int> Equipamentos adicionais cobertos (além do principal). */
     public array $equipamentosCobertos = [];
+    public string $cobertoBusca = '';        // pesquisa server-side dos cobertos
     public string $tipo = 'preventiva';
     public string $data = '';
     public string $hora_inicio = '';
@@ -78,10 +81,11 @@ class Novo extends Component
                 return;
             }
 
-            $intervencao = $relatorio->intervencao()->with('checklistEtapas.itens', 'contrato.cliente')->firstOrFail();
+            $intervencao = $relatorio->intervencao()->with('checklistEtapas.itens', 'contrato.cliente', 'equipamento.local.cliente')->firstOrFail();
             $this->relatorioId = $relatorio->id;
             $this->intervencaoId = $intervencao->id;
             $this->equipamento_id = $intervencao->equipamento_id;
+            $this->equipamentoBusca = $intervencao->equipamento ? $this->rotuloEquipamento($intervencao->equipamento) : '';
             $this->equipamentosCobertos = $intervencao->equipamentosCobertos()->pluck('equipamentos.id')->all();
 
             // Modo deduzido: se a intervenção tem contrato → "contrato", senão "individual".
@@ -154,7 +158,9 @@ class Novo extends Component
         // A seleção de equipamento é específica do modo: ao trocar, começa do zero
         // (individual = preencher à mão; contrato = vem do contrato ao escolhê-lo).
         $this->equipamento_id = null;
+        $this->equipamentoBusca = '';
         $this->equipamentosCobertos = [];
+        $this->cobertoBusca = '';
 
         // O modo individual não tem contrato.
         if ($novo === 'individual') {
@@ -193,20 +199,80 @@ class Novo extends Component
         $this->removerEquipamentoCoberto($id);
     }
 
+    // Modo individual: escolhe o equipamento principal (pesquisa server-side).
+    public function selecionarEquipamentoPrincipal(int $id): void
+    {
+        $equipamento = Equipamento::with('local.cliente')->find($id);
+        if (! $equipamento) {
+            return;
+        }
+        $this->equipamento_id = $equipamento->id;
+        $this->equipamentoBusca = $this->rotuloEquipamento($equipamento);
+    }
+
+    // Escrever na caixa do principal desfaz a seleção (até escolher um da lista).
+    public function updatedEquipamentoBusca(): void
+    {
+        $this->equipamento_id = null;
+    }
+
     // Acrescenta um equipamento adicional coberto (nunca o principal nem repetido).
     public function adicionarEquipamentoCoberto(int $id): void
     {
         if ($id === $this->equipamento_id || in_array($id, $this->equipamentosCobertos, true)) {
+            $this->cobertoBusca = '';
+
             return;
         }
         if (Equipamento::whereKey($id)->exists()) {
             $this->equipamentosCobertos[] = $id;
         }
+        $this->cobertoBusca = ''; // limpa a pesquisa para o próximo
     }
 
     public function removerEquipamentoCoberto(int $id): void
     {
         $this->equipamentosCobertos = array_values(array_filter($this->equipamentosCobertos, fn ($e) => $e !== $id));
+    }
+
+    // Rótulo de um equipamento (cliente · tipo modelo (nº série)) — igual em toda a UI.
+    private function rotuloEquipamento(Equipamento $e): string
+    {
+        return ($e->local?->cliente?->nome ?? '—') . ' · ' . trim($e->tipo->rotulo() . ' ' . $e->modelo) . ' (' . ($e->numero_serie ?? '—') . ')';
+    }
+
+    // Dobra de acentos para pesquisa (igual aos outros comboboxes server-side).
+    private function normalizarBusca(string $valor): string
+    {
+        $valor = mb_strtolower(trim($valor));
+        $de = ['á', 'à', 'â', 'ã', 'ä', 'ç', 'é', 'è', 'ê', 'ë', 'í', 'ì', 'î', 'ï', 'ó', 'ò', 'ô', 'õ', 'ö', 'ú', 'ù', 'û', 'ü'];
+        $para = ['a', 'a', 'a', 'a', 'a', 'c', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u'];
+
+        return str_replace($de, $para, $valor);
+    }
+
+    // Pesquisa server-side de equipamentos (nº série / fabricante+modelo sem acentos /
+    // cliente), limitada. Vazia quando não há texto — nunca carrega os ~17k de uma vez.
+    private function equipamentosFiltrados(string $busca): Collection
+    {
+        if (trim($busca) === '') {
+            return collect();
+        }
+
+        $termo = '%' . $busca . '%';
+        $norm = '%' . $this->normalizarBusca($busca) . '%';
+        $semAcentos = "translate(lower(fabricante || ' ' || modelo), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
+
+        return Equipamento::query()
+            ->with('local.cliente')
+            ->where(function ($q) use ($termo, $norm, $semAcentos) {
+                $q->whereRaw($semAcentos . ' like ?', [$norm])
+                    ->orWhere('numero_serie', 'ilike', $termo)
+                    ->orWhereHas('local.cliente', fn ($q) => $q->where('nome', 'ilike', $termo));
+            })
+            ->orderBy('numero_serie')
+            ->limit(20)
+            ->get();
     }
 
     private function novoUid(): string
@@ -467,10 +533,6 @@ class Novo extends Component
 
     public function render()
     {
-        $equipamentos = Equipamento::with('local.cliente')
-            ->orderBy('numero_serie')
-            ->get();
-
         $anexosExistentes = $this->intervencaoId
             ? Intervencao::find($this->intervencaoId)?->anexos()->get() ?? collect()
             : collect();
@@ -494,7 +556,8 @@ class Novo extends Component
             ->get();
 
         return view('livewire.relatorios.novo', [
-            'equipamentos' => $equipamentos,
+            'equipamentosPrincipalFiltrados' => $this->equipamentosFiltrados($this->equipamentoBusca),
+            'equipamentosCobertosFiltrados' => $this->equipamentosFiltrados($this->cobertoBusca),
             'tipos' => TipoIntervencao::cases(),
             'anexosExistentes' => $anexosExistentes,
             'cobertosSelecionados' => $cobertosSelecionados,
