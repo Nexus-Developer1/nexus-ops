@@ -31,44 +31,27 @@
                 </a>
             </div>
 
-            {{-- Rentabilidade + SLA --}}
-            <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div class="cartao p-6">
-                    <div class="flex items-baseline justify-between">
-                        <h2 class="text-lg font-semibold text-texto-forte">Rentabilidade de visitas</h2>
-                        <span class="text-sm text-texto-medio">{{ now()->year }}</span>
-                    </div>
-                    <p class="mt-1 text-sm text-texto-medio">Visitas preventivas realizadas vs. contratadas.</p>
+            {{-- Cumprimento de SLA (largura total) --}}
+            <div class="mt-6 cartao p-6">
+                <h2 class="text-lg font-semibold text-texto-forte">Cumprimento de SLA</h2>
+                <p class="mt-1 text-sm text-texto-medio">Corretivas resolvidas dentro do prazo contratado.</p>
+                @if (is_null($resumo['cumprimento_sla']['taxa']))
+                    <div class="mt-5 text-sm text-texto-medio">Ainda sem corretivas concluídas com SLA.</div>
+                @else
                     <div class="mt-5 flex items-end justify-between">
-                        <div class="text-3xl font-semibold text-texto-forte">{{ $resumo['visitas']['taxa'] }}%</div>
-                        <div class="text-sm text-texto-medio">{{ $resumo['visitas']['realizadas'] }} / {{ $resumo['visitas']['contratadas'] }}</div>
+                        <div class="text-3xl font-semibold text-texto-forte">{{ $resumo['cumprimento_sla']['taxa'] }}%</div>
+                        <div class="text-sm text-texto-medio">{{ $resumo['cumprimento_sla']['dentro'] }} / {{ $resumo['cumprimento_sla']['total'] }}</div>
                     </div>
                     <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-fundo">
-                        <div class="h-full rounded-full bg-verde-500" style="width: {{ $resumo['visitas']['taxa'] }}%"></div>
+                        <div class="h-full rounded-full {{ $resumo['cumprimento_sla']['taxa'] >= 90 ? 'bg-verde-500' : 'bg-aviso-500' }}" style="width: {{ $resumo['cumprimento_sla']['taxa'] }}%"></div>
                     </div>
-                </div>
-
-                <div class="cartao p-6">
-                    <h2 class="text-lg font-semibold text-texto-forte">Cumprimento de SLA</h2>
-                    <p class="mt-1 text-sm text-texto-medio">Corretivas resolvidas dentro do prazo contratado.</p>
-                    @if (is_null($resumo['cumprimento_sla']['taxa']))
-                        <div class="mt-5 text-sm text-texto-medio">Ainda sem corretivas concluídas com SLA.</div>
-                    @else
-                        <div class="mt-5 flex items-end justify-between">
-                            <div class="text-3xl font-semibold text-texto-forte">{{ $resumo['cumprimento_sla']['taxa'] }}%</div>
-                            <div class="text-sm text-texto-medio">{{ $resumo['cumprimento_sla']['dentro'] }} / {{ $resumo['cumprimento_sla']['total'] }}</div>
-                        </div>
-                        <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-fundo">
-                            <div class="h-full rounded-full {{ $resumo['cumprimento_sla']['taxa'] >= 90 ? 'bg-verde-500' : 'bg-aviso-500' }}" style="width: {{ $resumo['cumprimento_sla']['taxa'] }}%"></div>
-                        </div>
-                    @endif
-                </div>
+                @endif
             </div>
 
             {{-- Gráficos --}}
             <div class="mt-6 cartao p-6">
-                <h2 class="text-lg font-semibold text-texto-forte">Visitas preventivas por mês</h2>
-                <p class="mt-1 text-sm text-texto-medio">Planeadas vs. realizadas em {{ now()->year }}.</p>
+                <h2 class="text-lg font-semibold text-texto-forte">Visitas de contrato — planeadas vs. realizadas</h2>
+                <p class="mt-1 text-sm text-texto-medio">Por mês, em {{ now()->year }}.</p>
                 <div wire:ignore x-data="grafico(@js($graficoVisitas))" class="mt-4" style="position: relative; height: 260px;">
                     <canvas x-ref="canvas"></canvas>
                 </div>

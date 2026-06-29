@@ -211,21 +211,21 @@ class SaldoVisitasFase1Test extends TestCase
 
     // ---- Coexistência ----
 
-    public function test_coexistencia_saldo_e_kpi_nao_interferem(): void
+    public function test_saldo_conta_manual_e_grafico_conta_ambas(): void
     {
         $c = $this->contratoAtivo(2);
 
-        // Visita MANUAL (tipo outro, incluída) → entra no saldo, não no KPI antigo.
+        // Visita MANUAL (tipo outro, incluída) concluída → entra no saldo.
         $this->evento($c, 'incluida', 'concluido', 'outro', now());
-        // Visita AUTOMÁTICA (visita_preventiva, cobertura null) concluída este ano → entra no KPI, não no saldo.
+        // Visita LEGADO (visita_preventiva, cobertura null) concluída → NÃO entra no saldo.
         $this->evento($c, null, 'concluido', 'visita_preventiva', now());
 
-        // Saldo conta só a manual.
+        // Saldo conta só a manual (a preventiva sem cobertura não desconta).
         Livewire::actingAs($this->admin())->test(ContratoFicha::class, ['contrato' => $c])
             ->assertViewHas('saldo', fn ($s) => $s['usadas'] === 1);
 
-        // KPI antigo conta só a preventiva concluída (a manual 'outro' não entra).
-        $kpi = app(ServicoMetricas::class)->rentabilidadeVisitas();
-        $this->assertSame(1, $kpi['realizadas']);
+        // O gráfico mensal (Fase 3, adaptado) conta AMBAS como realizadas (manual + legado).
+        $realizadas = app(ServicoMetricas::class)->visitasPorMes()['realizadas'];
+        $this->assertSame(2, array_sum($realizadas));
     }
 }
