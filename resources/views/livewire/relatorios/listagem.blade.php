@@ -1,7 +1,5 @@
 <div>
-    <x-topbar :breadcrumb="['Início', 'Relatórios']">
-        <button class="botao-secundario">Exportar</button>
-    </x-topbar>
+    <x-topbar :breadcrumb="['Início', 'Relatórios']" />
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-6xl">
