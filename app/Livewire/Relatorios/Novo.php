@@ -74,8 +74,9 @@ class Novo extends Component
     public function mount(?Relatorio $relatorio = null): void
     {
         if ($relatorio && $relatorio->exists) {
-            // Só rascunhos são editáveis aqui; finalizados vão para a lista.
-            if ($relatorio->estado !== EstadoRelatorio::Rascunho) {
+            // Editáveis: rascunhos e finalizados. Um relatório JÁ ENVIADO não se edita aqui
+            // (documento oficial já entregue ao cliente) → volta para a lista.
+            if ($relatorio->estado === EstadoRelatorio::Enviado) {
                 $this->redirectRoute('relatorios', navigate: true);
 
                 return;

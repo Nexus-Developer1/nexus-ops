@@ -261,6 +261,27 @@ class RelatorioEquipamentosTest extends TestCase
         $this->assertStringContainsString('get filtrados()', $contrato);
     }
 
+    public function test_editar_carrega_finalizado_mas_bloqueia_enviado(): void
+    {
+        [$admin, $e1] = $this->cenario();
+
+        // Finalizado → o editor CARREGA (não redireciona) e traz os dados.
+        $iF = Intervencao::create(['equipamento_id' => $e1->id, 'tipo' => 'preventiva', 'estado' => 'concluida', 'data_inicio' => now()]);
+        $finalizado = $iF->relatorio()->create(['numero' => '2026/0100', 'data' => now(), 'estado' => 'finalizado']);
+
+        Livewire::actingAs($admin)->test(Novo::class, ['relatorio' => $finalizado])
+            ->assertNoRedirect()
+            ->assertSet('relatorioId', $finalizado->id)
+            ->assertSet('equipamento_id', $e1->id);
+
+        // Enviado → REDIRECIONA para a listagem (documento já entregue, não se edita aqui).
+        $iE = Intervencao::create(['equipamento_id' => $e1->id, 'tipo' => 'preventiva', 'estado' => 'concluida', 'data_inicio' => now()]);
+        $enviado = $iE->relatorio()->create(['numero' => '2026/0101', 'data' => now(), 'estado' => 'enviado']);
+
+        Livewire::actingAs($admin)->test(Novo::class, ['relatorio' => $enviado])
+            ->assertRedirect(route('relatorios'));
+    }
+
     public function test_listagem_filtra_por_tipo_e_combina_com_estado(): void
     {
         [$admin, $e1, $e2] = $this->cenario();
