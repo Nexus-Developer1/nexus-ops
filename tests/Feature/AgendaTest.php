@@ -19,7 +19,6 @@ use App\Models\Local;
 use App\Models\TecnicoDisponibilidade;
 use App\Models\User;
 use App\Notifications\EventoAtribuido;
-use App\Services\Agenda\GeradorVisitasPreventivas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
@@ -52,35 +51,8 @@ class AgendaTest extends TestCase
             'estado' => EstadoContrato::Rascunho, 'tipo' => 'preventiva', 'modelo_faturacao_id' => \App\Models\ModeloFaturacao::query()->value('id'),
         ]);
         $contrato->equipamentos()->sync([$equip->id]);
-        $contrato->planosVisita()->create(['equipamento_tipo' => 'ups', 'periodicidade' => 'trimestral', 'duracao_estimada_min' => 90]);
 
         return [$contrato, $equip];
-    }
-
-    public function test_gera_visitas_trimestrais_para_o_periodo(): void
-    {
-        // Um ano, trimestral → 5 ocorrências (mês 0,3,6,9,12).
-        [$contrato] = $this->contratoComUps('2026/0001', now()->startOfYear(), now()->startOfYear()->addYear());
-
-        $criadas = app(GeradorVisitasPreventivas::class)->gerar($contrato);
-
-        $this->assertSame(5, $criadas);
-        $this->assertSame(5, $contrato->eventos()->where('tipo', TipoEvento::VisitaPreventiva)->count());
-        // Sem técnico atribuído e com duração de 90 min.
-        $primeiro = $contrato->eventos()->orderBy('inicio')->first();
-        $this->assertNull($primeiro->tecnico_id);
-        $this->assertSame(90, (int) $primeiro->inicio->diffInMinutes($primeiro->fim));
-    }
-
-    public function test_geracao_e_idempotente(): void
-    {
-        [$contrato] = $this->contratoComUps('2026/0002', now()->startOfYear(), now()->startOfYear()->addYear());
-        $gerador = app(GeradorVisitasPreventivas::class);
-
-        $gerador->gerar($contrato);
-        $gerador->gerar($contrato); // segunda passagem não deve duplicar
-
-        $this->assertSame(5, $contrato->eventos()->count());
     }
 
     public function test_ativar_contrato_nao_gera_visitas_na_agenda(): void

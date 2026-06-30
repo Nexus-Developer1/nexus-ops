@@ -14,8 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
-// Contrato de manutenção — nasce na app (CLAUDE.md §10). Âmbito, periodicidade,
-// SLA e faturação; os planos de visita alimentam a agenda (§6).
+// Contrato de manutenção — nasce na app (CLAUDE.md §10). Âmbito, SLA, faturação e
+// nº de visitas incluídas; as visitas são agendadas manualmente na agenda (§6).
 class Contrato extends Model
 {
     use HasFactory, RestritoAoCliente, SoftDeletes;
@@ -34,7 +34,6 @@ class Contrato extends Model
         'cliente_id',
         'data_inicio',
         'data_fim',
-        'hora_visita',
         'visitas_incluidas', // total de visitas incluídas pela vida do contrato (null = não controlado)
         'estado',
         'tipo',
@@ -45,7 +44,6 @@ class Contrato extends Model
         'exclusoes',
         'renovacao_automatica',
         'periodo_aviso_dias',
-        'resumo_geracao',
     ];
 
     /** @return array<string, string> */
@@ -58,7 +56,6 @@ class Contrato extends Model
             'tipo' => TipoContrato::class,
             'valor' => 'decimal:2',
             'renovacao_automatica' => 'boolean',
-            'resumo_geracao' => 'array',
         ];
     }
 
@@ -75,11 +72,6 @@ class Contrato extends Model
     public function equipamentos(): BelongsToMany
     {
         return $this->belongsToMany(Equipamento::class, 'contrato_equipamentos')->withTimestamps();
-    }
-
-    public function planosVisita(): HasMany
-    {
-        return $this->hasMany(ContratoPlanoVisita::class);
     }
 
     public function slas(): HasMany

@@ -84,34 +84,7 @@ class ContratoTest extends TestCase
         $this->assertCount(1, $contrato->slas);
     }
 
-    public function test_editar_contrato_preserva_planos_e_hora_existentes(): void
-    {
-        // (Fase 4) A UI de planos/hora saiu, mas os dados antigos NÃO se perdem ao guardar.
-        [$cliente, $equip] = $this->clienteComEquipamento();
-        $contrato = Contrato::create([
-            'numero' => '2026/0050', 'cliente_id' => $cliente->id,
-            'data_inicio' => now(), 'data_fim' => now()->addYear(),
-            'estado' => EstadoContrato::Rascunho, 'tipo' => 'preventiva', 'modelo_faturacao_id' => $this->modeloFaturacaoId(),
-            'renovacao_automatica' => false, 'hora_visita' => '14:30',
-        ]);
-        $contrato->equipamentos()->sync([$equip->id]);
-        $contrato->planosVisita()->create(['equipamento_tipo' => 'ups', 'periodicidade' => 'trimestral']);
-        $contrato->refresh(); // lê os defaults da BD (periodo_aviso_dias, etc.)
-
-        // Editar pelo editor (muda só o nº) e guardar.
-        Livewire::actingAs($this->admin())
-            ->test(Editor::class, ['contrato' => $contrato])
-            ->set('numero', '2026/0050-A')
-            ->call('guardar')
-            ->assertHasNoErrors();
-
-        $contrato->refresh();
-        $this->assertSame('2026/0050-A', $contrato->numero);          // a edição passou
-        $this->assertCount(1, $contrato->planosVisita);                // planos preservados
-        $this->assertSame('14:30:00', $contrato->hora_visita);         // hora preservada
-    }
-
-    public function test_nao_ativa_sem_equipamento_ou_plano(): void
+    public function test_nao_ativa_sem_equipamento(): void
     {
         [$cliente] = $this->clienteComEquipamento();
         $contrato = Contrato::create([
@@ -127,7 +100,7 @@ class ContratoTest extends TestCase
         $this->assertSame(EstadoContrato::Rascunho, $contrato->fresh()->estado);
     }
 
-    public function test_ativa_contrato_com_equipamento_e_plano(): void
+    public function test_ativa_contrato_com_equipamento(): void
     {
         [$cliente, $equip] = $this->clienteComEquipamento();
         $contrato = Contrato::create([
@@ -136,7 +109,6 @@ class ContratoTest extends TestCase
             'estado' => EstadoContrato::Rascunho, 'tipo' => 'preventiva', 'modelo_faturacao_id' => $this->modeloFaturacaoId(),
         ]);
         $contrato->equipamentos()->sync([$equip->id]);
-        $contrato->planosVisita()->create(['equipamento_tipo' => 'ups', 'periodicidade' => 'trimestral']);
 
         Livewire::actingAs($this->admin())
             ->test(Ficha::class, ['contrato' => $contrato])
