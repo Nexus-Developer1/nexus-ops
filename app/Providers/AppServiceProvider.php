@@ -7,6 +7,9 @@ use App\Services\Erp\FakeErpDriver;
 use App\Services\Erp\NullErpDriver;
 use App\Services\Erp\SqlServerErpDriver;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Database\Connection;
+use Illuminate\Database\Connectors\SqlServerConnector;
+use Illuminate\Database\SqlServerConnection;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,6 +25,18 @@ class AppServiceProvider extends ServiceProvider
                 // Default seguro (ERP_DRIVER vazio): não injeta dados fictícios.
                 default => new NullErpDriver(),
             };
+        });
+
+        // Regista o driver de BD 'dblib' (SQL Server via pdo_dblib/FreeTDS), que o Laravel
+        // não reconhece de origem. Reutiliza o connector e a connection do SQL Server — o
+        // dialeto é o mesmo. O SqlServerConnector já gera um DSN 'dblib:...' quando o
+        // pdo_dblib está disponível; só falta mapear o NOME 'dblib' para essas classes:
+        //   1) connector → cria o PDO (ligação) usando o DSN dblib;
+        //   2) resolver → embrulha o PDO numa SqlServerConnection (gramática SQL Server).
+        $this->app->bind('db.connector.dblib', fn () => new SqlServerConnector());
+
+        Connection::resolverFor('dblib', function ($connection, $database, $prefix, $config) {
+            return new SqlServerConnection($connection, $database, $prefix, $config);
         });
     }
 
