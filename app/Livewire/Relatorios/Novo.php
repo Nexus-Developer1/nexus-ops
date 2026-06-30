@@ -509,9 +509,11 @@ class Novo extends Component
             }
             $relatorio->estado = $finalizar ? EstadoRelatorio::Finalizado : EstadoRelatorio::Rascunho;
             if ($finalizar && blank($relatorio->numero)) {
-                $relatorio->numero = $gerador->proximoNumero();
+                // Atribui o número (MAX+1) e grava com retry à prova de corrida.
+                $gerador->atribuirNumeroEGravar($relatorio);
+            } else {
+                $relatorio->save();
             }
-            $relatorio->save();
             $this->relatorioId = $relatorio->id;
 
             // Camada 3: data de intervenção futura → garante o evento de agenda ligado

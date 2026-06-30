@@ -79,6 +79,10 @@
                                                 Retomar
                                             </a>
                                         @else
+                                            <a href="{{ route('relatorios.editar', $r) }}" wire:navigate class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-texto-medio transition hover:bg-fundo">
+                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                                Editar
+                                            </a>
                                             <a href="{{ route('relatorios.pdf', $r) }}" target="_blank" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-verde-600 transition hover:bg-verde-50">
                                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                                 PDF

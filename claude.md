@@ -14,9 +14,8 @@ A aplicação tem **base de dados própria (PostgreSQL)** e **lê dados de uma B
 ### A cadeia central do domínio (interiorizar antes de escrever código)
 
 ```
-Contrato (periodicidade + equipamentos cobertos)
-   → gera visitas preventivas planeadas
-   → aparecem na Agenda
+Contrato (nº de visitas incluídas + equipamentos cobertos)
+   → técnico agenda as visitas à mão na Agenda (ligadas ao contrato)
    → técnico executa → vira Intervenção
    → da Intervenção sai um Relatório
    → enviado ao Cliente
@@ -27,7 +26,7 @@ Contrato (periodicidade + equipamentos cobertos)
 ### Os 5 módulos
 
 1. **Equipamentos / Ativos** — registo central
-2. **Contratos de manutenção** — âmbito, periodicidade, SLA; alimentam a agenda
+2. **Contratos de manutenção** — âmbito, nº de visitas incluídas, SLA
 3. **Agenda / Calendário** — vista temporal por técnico e cliente
 4. **Intervenções (ordens de trabalho)** — execução: trabalho, medições, checklist, fotos
 5. **Relatórios** — documento gerado da intervenção, enviado ao cliente
@@ -61,7 +60,7 @@ Contrato (periodicidade + equipamentos cobertos)
 - **Object storage:** MinIO (S3-compatible) ou filesystem estruturado
 - **Reverse proxy / TLS:** nginx ou Caddy
 - **PDF:** HTML→PDF via Chromium/Puppeteer (fidelidade com fotos/tabelas) ou WeasyPrint/DomPDF (mais leve)
-- **Jobs assíncronos:** fila (Redis + worker) — geração de PDF, envio de emails, geração de visitas planeadas
+- **Jobs assíncronos:** fila (Redis + worker) — geração de PDF, envio de emails
 - **Calendário frontend:** FullCalendar ou equivalente (dia/semana/mês, recursos por técnico, drag-and-drop)
 
 ---
@@ -84,14 +83,13 @@ Contrato (periodicidade + equipamentos cobertos)
 
 ### Contratos
 
-- `contratos` — numero, cliente_id, data_inicio, data_fim, estado (rascunho/ativo/suspenso/expirado/renovado), tipo (preventiva/corretiva/full-service), modelo de faturação (avença/por visita/T&M), valor, periodo_faturacao, coberturas/exclusões, renovacao_automatica, periodo_aviso_dias
+- `contratos` — numero, cliente_id, data_inicio, data_fim, **visitas_incluidas** (nº fixo de visitas pela vida do contrato; null = sem controlo de saldo), estado (rascunho/ativo/suspenso/expirado/renovado), tipo (preventiva/corretiva/full-service), modelo de faturação (avença/por visita/T&M), valor, periodo_faturacao, coberturas/exclusões, renovacao_automatica, periodo_aviso_dias
 - `contrato_equipamentos` — N:M contrato↔equipamento
-- `contrato_planos_visita` — equipamento_tipo, periodicidade (mensal/trimestral/semestral/anual), duracao_estimada → **alimenta a geração automática de visitas**
 - `contrato_slas` — por prioridade (crítica/alta/normal): tempo_resposta, tempo_resolucao, horário de cobertura (8x5/24x7) → medidos contra timestamps das intervenções corretivas
 
 ### Agenda
 
-- `eventos_agenda` — id, tipo (visita_preventiva/intervencao/ausencia/outro), titulo, inicio, fim, tecnico_id, cliente_id, local_id, equipamento_id, intervencao_id, contrato_id, estado (planeado/confirmado/em curso/concluído/cancelado), recorrencia (RRULE)
+- `eventos_agenda` — id, tipo (visita_preventiva/intervencao/ausencia/outro), titulo, inicio, fim, tecnico_id, cliente_id, local_id, equipamento_id, intervencao_id, contrato_id, **cobertura** (incluida/extra/null — liga uma visita manual ao saldo do contrato), estado (planeado/confirmado/em curso/concluído/cancelado), recorrencia (RRULE — metadado em desuso)
 - `tecnico_disponibilidade` — horários, férias, ausências → deteção de conflitos e capacidade
 
 ### Intervenções e relatórios
@@ -120,16 +118,18 @@ Padrão obrigatório:
 ## 6. Regras de negócio chave
 
 ### Contratos
-- Ao **ativar** um contrato → gerar as visitas preventivas planeadas para todo o período de vigência (com base em `contrato_planos_visita`) → aparecem imediatamente na agenda
-- Periodicidade pode diferir por tipo de equipamento dentro do mesmo contrato
+- **Modelo de saldo de visitas:** cada contrato define um **nº fixo de visitas incluídas** (`visitas_incluidas`) — total pela **vida do contrato** (não por ano, não renova). Vazio (null) = sem controlo de saldo.
+- **Ativar** um contrato apenas o põe em estado ativo — **NÃO gera visitas automaticamente** (exige ≥1 equipamento). As visitas são agendadas **à mão** na agenda.
+- Ao agendar uma visita, liga-se a um contrato e marca-se como **incluída** (gasta uma do saldo) ou **extra** (faturável à parte), via `eventos_agenda.cobertura`.
+- **Saldo** (incluídas / usadas / restantes) na **ficha do contrato**: `usadas` = eventos do contrato com `cobertura='incluida'` e estado ≠ cancelado; `restantes` = `visitas_incluidas` − usadas (nunca negativo; se excedido, mostra aviso). Determinístico — conta eventos pela cobertura, não por periodicidade.
 - `intervencoes.contrato_id` determina se o trabalho está **incluído no contrato** ou é **faturável à parte** — essencial para faturação correta
-- Alertas: contratos a expirar (dentro de `periodo_aviso_dias`), SLA em risco, visitas planeadas em atraso
-- Relatórios de gestão: rentabilidade (visitas realizadas vs. orçamentadas), cumprimento de SLA, renovações próximas, equipamentos sem visitas recentes
+- Alertas: contratos a expirar (dentro de `periodo_aviso_dias`), SLA em risco
+- Relatórios de gestão: cumprimento de SLA, renovações próximas, equipamentos sem visitas recentes; gráfico mensal de visitas de contrato (planeadas vs. realizadas, conta eventos com cobertura)
 
 ### Agenda
 - A agenda é em larga medida uma **projeção** das intervenções e visitas planeadas + eventos próprios (reuniões, ausências)
 - Drag-and-drop para reagendar com **deteção de conflitos** (técnico sobreposto, fora de horário de cobertura, em ausência)
-- Recorrência via RRULE para preventivas (ex.: 1.ª terça de cada trimestre)
+- Visitas agendadas à mão; ao criar, pode ligar-se a um contrato e marcar a cobertura (incluída/extra) → alimenta o saldo do contrato
 - Conversão evento → intervenção quando o técnico inicia a visita, mantendo `evento_agenda_id` para rastreio
 - **Regra de ouro:** intervenção e evento de agenda partilham os mesmos factos (técnico, datas, equipamento). Há **uma única fonte de verdade** (ver decisão pendente #4) — nunca duplicar/dessincronizar
 - Notificações ao técnico (e opcionalmente ao cliente); feed iCal para calendários externos
@@ -187,9 +187,9 @@ Padrão obrigatório:
 - Geração de PDF e envio ao cliente → já demonstra valor
 
 ### Fase 2 — Contratos + Agenda (5–7 semanas)
-- Módulo de contratos (âmbito, periodicidade, SLA, faturação, renovações)
+- Módulo de contratos (âmbito, nº de visitas incluídas, SLA, faturação, renovações)
 - Módulo de agenda (vistas, drag-and-drop, conflitos)
-- **Geração automática das visitas preventivas a partir dos contratos** — aqui a ferramenta passa a governar a operação
+- **Agendamento manual de visitas ligadas ao contrato, com saldo (incluídas/usadas/restantes)** — aqui a ferramenta passa a governar a operação
 
 ### Fase 3 — Portal e automação (4–6 semanas)
 - Portal do cliente, alertas proativos (renovações, SLA, baterias)
@@ -225,5 +225,5 @@ Padrão obrigatório:
 - Nomes de domínio (tabelas, entidades, campos) em **português**, snake_case
 - Migrações versionadas desde o primeiro commit
 - Nenhum blob na BD; nenhum acesso direto às tabelas do ERP
-- Operações pesadas (PDF, email, geração de visitas) sempre em **jobs assíncronos**
+- Operações pesadas (PDF, email) sempre em **jobs assíncronos**
 - Cada feature deve responder: "onde encaixa na cadeia Contrato → Visita → Agenda → Intervenção → Relatório → Cliente?"
