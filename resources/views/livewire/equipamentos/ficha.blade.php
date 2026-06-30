@@ -105,11 +105,11 @@
                             </div>
                         </div>
                         <dl class="mt-4 space-y-3 text-sm">
-                            <div class="flex justify-between"><dt class="text-texto-medio">Nº de série</dt><dd class="font-medium text-texto-forte">{{ $equipamento->numero_serie ?? '—' }}</dd></div>
-                            <div class="flex justify-between"><dt class="text-texto-medio">Fabricante</dt><dd class="font-medium text-texto-forte">{{ $equipamento->fabricante ?? '—' }}</dd></div>
-                            <div class="flex justify-between"><dt class="text-texto-medio">Modelo</dt><dd class="font-medium text-texto-forte">{{ $equipamento->modelo ?? '—' }}</dd></div>
-                            <div class="flex justify-between"><dt class="text-texto-medio">Instalação</dt><dd class="font-medium text-texto-forte">{{ $equipamento->data_instalacao?->translatedFormat('d M Y') ?? '—' }}</dd></div>
-                            <div class="flex justify-between"><dt class="text-texto-medio">Fim de garantia</dt><dd class="font-medium text-texto-forte">{{ $equipamento->fim_garantia?->translatedFormat('d M Y') ?? '—' }}</dd></div>
+                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Nº de série</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->numero_serie ?? '—' }}</dd></div>
+                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Fabricante</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->fabricante ?? '—' }}</dd></div>
+                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Modelo</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->modelo ?? '—' }}</dd></div>
+                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Instalação</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->data_instalacao?->translatedFormat('d M Y') ?? '—' }}</dd></div>
+                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Fim de garantia</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->fim_garantia?->translatedFormat('d M Y') ?? '—' }}</dd></div>
                         </dl>
                     </section>
 
