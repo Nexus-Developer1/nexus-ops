@@ -17,6 +17,14 @@ Schedule::command('erp:sincronizar-clientes')
     ->onOneServer()
     ->when(fn () => filled(config('erp.driver')));
 
+// Sincronização diária das linhas de faturação do ERP (mesmo critério: só com driver
+// ERP configurado). Só linhas com nº de série (equipamentos) — ver SincronizarFaturacaoErp.
+Schedule::command('erp:sincronizar-faturacao')
+    ->dailyAt(config('erp.sync_hora'))
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->when(fn () => filled(config('erp.driver')));
+
 // Resumo diário de alertas proativos aos administradores (CLAUDE.md §9).
 Schedule::command('alertas:verificar')
     ->dailyAt('08:00')

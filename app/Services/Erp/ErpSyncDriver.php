@@ -13,4 +13,12 @@ interface ErpSyncDriver
      * @return iterable<ClienteErp>
      */
     public function obterClientes(?int $limite = null): iterable;
+
+    /**
+     * Devolve as linhas de faturação do ERP (só linhas com nº de série — equipamentos).
+     *
+     * @param  int|null  $limite  Nº máximo de linhas a devolver (null = decisão do driver).
+     * @return iterable<LinhaFaturaErp>
+     */
+    public function obterLinhasFatura(?int $limite = null): iterable;
 }

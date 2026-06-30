@@ -24,6 +24,49 @@ class FakeErpDriver implements ErpSyncDriver
         }
     }
 
+    public function obterLinhasFatura(?int $limite = null): iterable
+    {
+        $n = max(1, $limite ?? self::PADRAO);
+
+        // Simula o WHERE series NOT LIKE '' do PHC: geramos candidatas (algumas sem série)
+        // mas só devolvemos as que TÊM nº de série — tal como a query real.
+        for ($i = 0; $i < $n; $i++) {
+            $linha = $this->gerarLinhaFatura($i);
+
+            if (blank($linha->series)) {
+                continue; // sem série → filtrada (equipamentos físicos apenas)
+            }
+
+            yield $linha;
+        }
+    }
+
+    private function gerarLinhaFatura(int $i): LinhaFaturaErp
+    {
+        // Determinístico por índice — a linha i é sempre igual (mesmo fistamp), tornando o
+        // upsert por id_erp reproduzível (2.ª corrida = atualizações, não duplicados).
+        mt_srand(self::SEMENTE + 5000 + $i);
+
+        $docs = ['Factura', 'Fatura-Recibo', 'V/Factura', 'Nota de Crédito'];
+        $refs = ['UPS-RIELLO-NPW', 'GER-CAT-9KVA', 'PDU-APC-16A', 'UPS-EATON-9PX', 'BAT-12V-9AH'];
+        $designs = ['UPS RIELLO NPW 2000VA INTERATIVA - TOWER', 'Gerador CAT 9kVA', 'PDU APC 16A', 'UPS Eaton 9PX 6kVA', 'Bateria 12V 9Ah'];
+
+        // 1 em cada 4 linhas sem número de série (será filtrada pelo WHERE series).
+        $temSerie = ($i % 4) !== 3;
+        $idx = mt_rand(0, count($refs) - 1);
+
+        return new LinhaFaturaErp(
+            idErp: sprintf('NV25%010d,%07d-%d', $i, mt_rand(1000000, 9999999), mt_rand(0, 9)), // fi.fistamp único por i
+            nmdoc: $docs[mt_rand(0, count($docs) - 1)],
+            fno: 1000 + $i,
+            data: sprintf('2025-%02d-%02d', mt_rand(1, 12), mt_rand(1, 28)),
+            ref: $refs[$idx],
+            design: $designs[$idx],
+            series: $temSerie ? sprintf('MH%02dVNPW%07d', mt_rand(10, 30), mt_rand(1, 9999999)) : '',
+            qtt: (float) mt_rand(1, 5),
+        );
+    }
+
     private function gerarCliente(int $i): ClienteErp
     {
         // Determinístico por índice — o cliente i é sempre igual, independente do total.

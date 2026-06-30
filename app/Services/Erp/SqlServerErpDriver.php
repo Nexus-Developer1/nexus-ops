@@ -50,4 +50,43 @@ class SqlServerErpDriver implements ErpSyncDriver
             'Driver SQL Server do ERP ainda não implementado. Definir ERP_DRIVER=fake ou configurar a ligação read-only.'
         );
     }
+
+    public function obterLinhasFatura(?int $limite = null): iterable
+    {
+        // Forma final quando houver acesso ao PHC (BD SOON, SQL Server). A query abaixo é a
+        // VALIDADA: linhas de fatura (fi) com a data vinda de ft por ftstamp, só linhas com
+        // nº de série preenchido (equipamentos físicos). Correlação por fi.fistamp → id_erp.
+        //
+        // §5 do CLAUDE.md: quando ligarem ao PHC, envolver esta query numa VIEW read-only
+        // dedicada (ex.: vw_linhas_fatura) e ler dessa view, nunca das tabelas brutas fi/ft.
+        //
+        // Query validada (SQL Server / PHC SOON):
+        //
+        //   SELECT fistamp, nmdoc, fno,
+        //          (SELECT fdata FROM ft WHERE ftstamp = fi.ftstamp) AS data,
+        //          ref, design, series, qtt
+        //   FROM fi
+        //   WHERE series NOT LIKE ''
+        //
+        // return DB::connection('erp')
+        //     ->table('vw_linhas_fatura')            // view dedicada (recomendado, §5); ou a query acima
+        //     ->select('fistamp', 'nmdoc', 'fno', 'data', 'ref', 'design', 'series', 'qtt')
+        //     ->where('series', 'not like', '')      // só linhas com nº de série (equipamentos)
+        //     ->when($limite, fn ($q) => $q->limit($limite))
+        //     ->cursor()
+        //     ->map(fn ($r) => new LinhaFaturaErp(
+        //         idErp: (string) $r->fistamp,
+        //         nmdoc: $r->nmdoc,
+        //         fno: $r->fno !== null ? (int) $r->fno : null,
+        //         data: $r->data ? \Illuminate\Support\Carbon::parse($r->data)->format('Y-m-d') : null,
+        //         ref: $r->ref,
+        //         design: $r->design,
+        //         series: $r->series,
+        //         qtt: $r->qtt !== null ? (float) $r->qtt : null,
+        //     ));
+
+        throw new \RuntimeException(
+            'Driver SQL Server do ERP ainda não implementado. Definir ERP_DRIVER=fake ou configurar a ligação read-only.'
+        );
+    }
 }

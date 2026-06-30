@@ -10,4 +10,9 @@ class NullErpDriver implements ErpSyncDriver
     {
         return [];
     }
+
+    public function obterLinhasFatura(?int $limite = null): iterable
+    {
+        return [];
+    }
 }
