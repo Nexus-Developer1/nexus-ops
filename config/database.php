@@ -114,6 +114,19 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+        // Ligação READ-ONLY ao SQL Server do ERP (PHC, BD SOON) via pdo_dblib/FreeTDS.
+        // Driver 'dblib' (NÃO 'sqlsrv' — usamos FreeTDS, não a extensão Microsoft).
+        // Valores das vars ERP_DB_* (as mesmas de config/erp.php).
+        'erp' => [
+            'driver' => 'dblib',
+            'host' => env('ERP_DB_HOST'),
+            'port' => env('ERP_DB_PORT', 1433),
+            'database' => env('ERP_DB_DATABASE'),
+            'username' => env('ERP_DB_USERNAME'),
+            'password' => env('ERP_DB_PASSWORD'),
+            'charset' => 'utf8',
+        ],
+
     ],
 
     /*
