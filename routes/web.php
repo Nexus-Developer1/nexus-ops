@@ -88,7 +88,16 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
     // Ficha de equipamento (leitura em campo — ex.: QR code).
     Route::get('/ativos/{equipamento}', \App\Livewire\Equipamentos\Ficha::class)->name('equipamentos.ficha');
 
-    Route::get('/intervencoes/{intervencao}', \App\Livewire\Intervencoes\Formulario::class)->name('intervencoes.formulario');
+    // "Abrir intervenção": o trabalho preenche-se no EDITOR DE RELATÓRIO (fonte única — abas
+    // de equipamento, ficha de medições, etc.). Garante um rascunho ligado e redireciona.
+    Route::get('/intervencoes/{intervencao}', function (\App\Models\Intervencao $intervencao) {
+        $relatorio = $intervencao->relatorio()->firstOrCreate([], [
+            'estado' => \App\Enums\EstadoRelatorio::Rascunho,
+            'data' => now(),
+        ]);
+
+        return redirect()->route('relatorios.editar', $relatorio);
+    })->name('intervencoes.formulario');
 
     // Agenda (calendário de visitas, intervenções e ausências).
     Route::get('/agenda', \App\Livewire\Agenda\Calendario::class)->name('agenda');
