@@ -23,10 +23,25 @@
                 <span class="etiqueta {{ \App\Enums\EstadoRelatorio::Rascunho->classesEtiqueta() }} uppercase tracking-wide">Rascunho</span>
             </div>
 
-            {{-- Tabs --}}
-            <div class="mt-8 flex gap-8 border-b border-borda">
+            {{-- Tabs: Dados Gerais / Diagnóstico + (modo contrato) um separador por equipamento. --}}
+            <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-1 border-b border-borda">
                 <button @click="tab='gerais'" :class="tab==='gerais' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">Dados Gerais</button>
                 <button @click="tab='diagnostico'" :class="tab==='diagnostico' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">Diagnóstico</button>
+
+                @if ($modo === 'contrato' && ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty()))
+                    <span class="mx-1 h-4 w-px bg-borda" aria-hidden="true"></span>
+                    @if ($equipamentoPrincipal)
+                        <button wire:key="tab-btn-{{ $equipamentoPrincipal->id }}" @click="tab='equip-{{ $equipamentoPrincipal->id }}'" :class="tab==='equip-{{ $equipamentoPrincipal->id }}' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm transition">
+                            {{ $equipamentoPrincipal->numero_serie ?? '—' }}
+                            <span class="rounded-full bg-verde-50 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-verde-700">principal</span>
+                        </button>
+                    @endif
+                    @foreach ($cobertosSelecionados as $e)
+                        <button wire:key="tab-btn-{{ $e->id }}" @click="tab='equip-{{ $e->id }}'" :class="tab==='equip-{{ $e->id }}' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">
+                            {{ $e->numero_serie ?? '—' }}
+                        </button>
+                    @endforeach
+                @endif
             </div>
 
             {{-- ===== DADOS GERAIS ===== --}}
@@ -97,29 +112,25 @@
                                 @error('contrato_id') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
 
-                            {{-- Equipamentos do contrato: cada um é um painel accordion; o cabeçalho
-                                 (nº série + modelo + × remover) expande a ficha de medições desse equipamento. --}}
+                            {{-- Equipamentos do contrato: aparecem como separadores no topo (ao lado de
+                                 "Dados Gerais"); clicar num deles abre a ficha de medições desse equipamento. --}}
                             <div class="sm:col-span-2">
                                 <label class="campo-label">Equipamentos do contrato</label>
                                 @if ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty())
-                                    <div class="space-y-2">
+                                    <div class="flex flex-wrap gap-2">
                                         @if ($equipamentoPrincipal)
-                                            <x-relatorios.ficha-ups
-                                                :prefixo="'fichas.' . $equipamentoPrincipal->id"
-                                                :equipamentoId="$equipamentoPrincipal->id"
-                                                :serie="$equipamentoPrincipal->numero_serie ?? '—'"
-                                                :modelo="trim($equipamentoPrincipal->fabricante . ' ' . $equipamentoPrincipal->modelo)"
-                                                :principal="true" />
+                                            <button type="button" wire:key="chip-{{ $equipamentoPrincipal->id }}" @click="tab='equip-{{ $equipamentoPrincipal->id }}'" class="inline-flex items-center gap-1.5 rounded-full border border-verde-200 bg-verde-50 px-3 py-1 text-xs font-medium text-verde-700 hover:bg-verde-100 transition">
+                                                {{ $equipamentoPrincipal->numero_serie ?? '—' }}
+                                                <span class="text-[10px] uppercase tracking-wide text-verde-600/70">principal</span>
+                                            </button>
                                         @endif
                                         @foreach ($cobertosSelecionados as $e)
-                                            <x-relatorios.ficha-ups
-                                                :prefixo="'fichas.' . $e->id"
-                                                :equipamentoId="$e->id"
-                                                :serie="$e->numero_serie ?? '—'"
-                                                :modelo="trim($e->fabricante . ' ' . $e->modelo)"
-                                                :principal="false" />
+                                            <button type="button" wire:key="chip-{{ $e->id }}" @click="tab='equip-{{ $e->id }}'" class="inline-flex items-center gap-1.5 rounded-full border border-borda bg-fundo px-3 py-1 text-xs text-texto-forte hover:border-verde-300 hover:text-verde-700 transition">
+                                                {{ $e->numero_serie ?? '—' }}
+                                            </button>
                                         @endforeach
                                     </div>
+                                    <p class="mt-1.5 text-xs text-texto-fraco">Clica num equipamento (aqui ou no separador em cima) para preencher a sua ficha de medições.</p>
                                 @else
                                     <p class="text-sm text-texto-medio">Escolhe um contrato para carregar os equipamentos.</p>
                                 @endif
@@ -407,6 +418,44 @@
                     </div>
                 </section>
             </div>
+
+            {{-- ===== FICHAS DE MEDIÇÃO (uma "página" por equipamento do contrato) ===== --}}
+            {{-- Nota: construir a lista com diretivas INLINE. Este ficheiro já usa a forma
+                 inline na checklist; um bloco raw de PHP partiria a compilação do Blade. --}}
+            @if ($modo === 'contrato')
+                @php($equipamentosFicha = collect())
+                @if ($equipamentoPrincipal) @php($equipamentosFicha->push(['e' => $equipamentoPrincipal, 'principal' => true])) @endif
+                @foreach ($cobertosSelecionados as $e) @php($equipamentosFicha->push(['e' => $e, 'principal' => false])) @endforeach
+                @foreach ($equipamentosFicha as $item)
+                    @php($e = $item['e'])
+                    <div x-show="tab==='equip-{{ $e->id }}'" x-cloak class="space-y-5" wire:key="tab-ficha-{{ $e->id }}">
+                        <section class="cartao mt-7">
+                            <div class="flex items-center justify-between gap-3 px-6 py-5">
+                                <div class="flex min-w-0 items-center gap-3">
+                                    <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
+                                    <div class="min-w-0">
+                                        <h2 class="flex items-center gap-2 text-lg font-semibold text-texto-forte">
+                                            <span class="truncate">{{ $e->numero_serie ?? '—' }}</span>
+                                            @if ($item['principal'])
+                                                <span class="shrink-0 rounded-full bg-verde-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-verde-700">principal</span>
+                                            @endif
+                                        </h2>
+                                        <p class="truncate text-sm text-texto-medio">{{ trim($e->fabricante . ' ' . $e->modelo) ?: 'UPS' }}</p>
+                                    </div>
+                                </div>
+                                {{-- Remove o equipamento do relatório e volta aos Dados Gerais. --}}
+                                <button type="button" @click="tab='gerais'" wire:click="removerEquipamentoDoRelatorio({{ $e->id }})" class="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-texto-medio transition hover:text-perigo-600" title="Remover equipamento do relatório">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    Remover
+                                </button>
+                            </div>
+                            <div class="border-t border-borda px-6 py-6">
+                                <x-relatorios.ficha-ups :prefixo="'fichas.' . $e->id" />
+                            </div>
+                        </section>
+                    </div>
+                @endforeach
+            @endif
 
         </div>
     </main>

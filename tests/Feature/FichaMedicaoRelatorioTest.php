@@ -11,6 +11,7 @@ use App\Models\FichaMedicao;
 use App\Models\Intervencao;
 use App\Models\Local;
 use App\Models\ModeloFaturacao;
+use App\Models\Relatorio;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -213,6 +214,41 @@ class FichaMedicaoRelatorioTest extends TestCase
         $f1 = FichaMedicao::where('intervencao_id', $interv->id)->where('equipamento_id', $e1->id)->firstOrFail();
         $this->assertEquals(230.1, (float) $f1->ve_ln_l1);
         $this->assertSame('ficha e1', $f1->notas_finais);
+    }
+
+    public function test_render_http_formulario_novo_individual_compila_o_blade(): void
+    {
+        [$admin] = $this->cenarioContrato();
+
+        // GET real → compila o novo.blade.php inteiro e renderiza o modo individual (default).
+        $this->actingAs($admin)
+            ->get(route('relatorios.novo'))
+            ->assertOk()
+            ->assertSee('Dados Gerais')
+            ->assertSee('Checklist'); // secção do modo individual
+    }
+
+    public function test_render_http_formulario_contrato_mostra_abas_e_ficha(): void
+    {
+        [$admin, $contrato, $e1, $e2] = $this->cenarioContrato();
+
+        // Relatório de contrato (rascunho): a intervenção tem contrato_id → modo contrato.
+        $interv = Intervencao::create([
+            'equipamento_id' => $e1->id, 'contrato_id' => $contrato->id,
+            'tipo' => 'preventiva', 'estado' => 'em_curso', 'data_inicio' => now(),
+        ]);
+        $interv->equipamentosCobertos()->attach($e2->id);
+        $relatorio = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => null, 'data' => now(), 'estado' => 'rascunho']);
+
+        // GET real → renderiza os ramos do modo contrato: aba por equipamento + <x-relatorios.ficha-ups>.
+        $resp = $this->actingAs($admin)
+            ->get(route('relatorios.editar', $relatorio))
+            ->assertOk();
+
+        $resp->assertSee($e1->numero_serie);   // separador/aba do equipamento principal
+        $resp->assertSee($e2->numero_serie);   // separador/aba do coberto
+        $resp->assertSee('Medições elétricas'); // conteúdo da ficha-ups (só existe no componente)
+        $resp->assertSee('Teste de descarga');
     }
 
     public function test_modo_individual_nao_cria_fichas_e_mantem_checklist(): void
