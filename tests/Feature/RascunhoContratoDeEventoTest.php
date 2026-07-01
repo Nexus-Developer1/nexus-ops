@@ -86,6 +86,39 @@ class RascunhoContratoDeEventoTest extends TestCase
         $this->assertDatabaseHas('relatorios', ['intervencao_id' => $interv->id, 'estado' => 'rascunho', 'numero' => null]);
     }
 
+    public function test_evento_com_contrato_sem_equipamento_gera_rascunho_do_contrato(): void
+    {
+        [$cliente, $local] = $this->clienteLocal();
+        [$e1, $e2, $e3] = [$this->equip($local, 'SN-1'), $this->equip($local, 'SN-2'), $this->equip($local, 'SN-3')];
+        $contrato = $this->contrato($cliente);
+        $contrato->equipamentos()->sync([$e1->id, $e2->id, $e3->id]);
+
+        $inicio = now()->addWeek()->setTime(10, 0);
+
+        // Associa SÓ o contrato (sem escolher equipamento) → o âmbito vem do contrato.
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->set('formTitulo', 'Preventiva UPS')
+            ->set('formInicio', $inicio->format('Y-m-d\TH:i'))
+            ->set('formFim', (clone $inicio)->setTime(11, 30)->format('Y-m-d\TH:i'))
+            ->set('formContratoId', $contrato->id)
+            ->set('formCobertura', 'incluida')
+            ->call('criarEvento')
+            ->assertHasNoErrors();
+
+        $interv = Intervencao::firstOrFail();
+        $this->assertSame($contrato->id, $interv->contrato_id);
+        $this->assertSame('preventiva', $interv->tipo->value);
+
+        // Todos os equipamentos do contrato ficam no relatório (principal + cobertos).
+        $todos = collect([$interv->equipamento_id])
+            ->merge($interv->equipamentosCobertos()->pluck('equipamentos.id'))
+            ->sort()->values()->all();
+        $this->assertSame([$e1->id, $e2->id, $e3->id], $todos);
+
+        // E o evento herda o cliente do contrato (não tinha equipamento de onde o tirar).
+        $this->assertSame($cliente->id, EventoAgenda::firstOrFail()->cliente_id);
+    }
+
     public function test_evento_sem_contrato_gera_rascunho_individual(): void
     {
         [, $local] = $this->clienteLocal();
@@ -127,6 +160,33 @@ class RascunhoContratoDeEventoTest extends TestCase
         $this->assertSame($fora->id, $interv->equipamento_id); // principal continua a ser o do evento
         $cobertos = $interv->equipamentosCobertos()->pluck('equipamentos.id')->sort()->values()->all();
         $this->assertSame([$e2->id, $e3->id], $cobertos);      // cobertos = todos os do contrato
+    }
+
+    public function test_principal_do_contrato_e_deterministico_e_estavel_ao_regerar(): void
+    {
+        [$cliente, $local] = $this->clienteLocal();
+        // e1 é criado primeiro → menor id. A ordem de sync na pivot é propositadamente
+        // ao contrário, para provar que o principal vem do orderBy('id'), não da pivot.
+        [$e1, $e2, $e3] = [$this->equip($local, 'SN-1'), $this->equip($local, 'SN-2'), $this->equip($local, 'SN-3')];
+        $contrato = $this->contrato($cliente);
+        $contrato->equipamentos()->sync([$e3->id, $e2->id, $e1->id]);
+
+        $evento = EventoAgenda::create([
+            'tipo' => 'outro', 'titulo' => 'V', 'estado' => 'planeado',
+            'inicio' => now()->addWeek()->setTime(9, 0), 'fim' => now()->addWeek()->setTime(10, 0),
+            'equipamento_id' => null, 'contrato_id' => $contrato->id, // só contrato, sem equipamento
+        ]);
+
+        $gerador = app(GeradorRascunhoDeEvento::class);
+        $gerador->gerar($evento);
+
+        $interv = Intervencao::firstOrFail();
+        $this->assertSame($e1->id, $interv->equipamento_id); // 1.º por id, não por ordem de sync
+
+        // Re-gerar: idempotente e o principal NÃO muda.
+        $this->assertNull($gerador->gerar($evento->fresh()));
+        $this->assertSame(1, Intervencao::count());
+        $this->assertSame($e1->id, $interv->fresh()->equipamento_id);
     }
 
     public function test_regerar_nao_duplica(): void

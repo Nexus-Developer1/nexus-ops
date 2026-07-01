@@ -26,19 +26,33 @@ class GeradorRascunhoDeEvento
 {
     public function gerar(EventoAgenda $evento): ?Relatorio
     {
-        // Sem equipamento não há intervenção possível (equipamento_id é NOT NULL).
-        if (! $evento->equipamento_id) {
-            return null;
-        }
-
         return DB::transaction(function () use ($evento) {
             // Já ligado a uma intervenção → não recria (idempotente / anti-loop).
             if ($evento->intervencao_id) {
                 return null;
             }
 
+            // Equipamentos do contrato (se houver) — âmbito da visita. Documento de sistema →
+            // sem global scopes, para trazer a cobertura completa do contrato.
+            $idsContrato = $evento->contrato_id
+                ? Equipamento::withoutGlobalScopes()
+                    ->whereHas('contratos', fn ($q) => $q->whereKey($evento->contrato_id))
+                    ->orderBy('id')
+                    ->pluck('id')
+                    ->all()
+                : [];
+
+            // Principal: o equipamento do evento; se não foi escolhido, o 1.º do contrato.
+            $principalId = $evento->equipamento_id ?: ($idsContrato[0] ?? null);
+
+            // Sem qualquer equipamento (nem no evento nem no contrato) não há intervenção
+            // possível (equipamento_id é NOT NULL) → não gera.
+            if (! $principalId) {
+                return null;
+            }
+
             $intervencao = Intervencao::create([
-                'equipamento_id' => $evento->equipamento_id,
+                'equipamento_id' => $principalId,
                 'contrato_id' => $evento->contrato_id, // modo contrato quando o evento tem contrato
                 'tecnico_id' => $evento->tecnico_id,
                 'evento_agenda_id' => $evento->id,
@@ -49,16 +63,10 @@ class GeradorRascunhoDeEvento
                 'hora_fim' => $evento->fim->format('H:i'),
             ]);
 
-            // Modo contrato: os equipamentos cobertos são os DO CONTRATO (menos o principal),
-            // para o relatório abrir com a ficha de medições por equipamento. Documento de
-            // sistema → sem global scopes, para trazer a cobertura completa do contrato.
+            // Modo contrato: os equipamentos cobertos são os DO CONTRATO menos o principal,
+            // para o relatório abrir com a ficha de medições por equipamento.
             if ($evento->contrato_id) {
-                $cobertos = Equipamento::withoutGlobalScopes()
-                    ->whereHas('contratos', fn ($q) => $q->whereKey($evento->contrato_id))
-                    ->where('id', '!=', $evento->equipamento_id)
-                    ->pluck('id')
-                    ->all();
-
+                $cobertos = array_values(array_diff($idsContrato, [$principalId]));
                 $intervencao->equipamentosCobertos()->sync($cobertos);
             }
 

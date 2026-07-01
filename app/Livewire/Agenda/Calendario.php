@@ -365,6 +365,11 @@ class Calendario extends Component
             $clienteId = $equipamento->local?->cliente_id;
         }
 
+        // Sem equipamento mas COM contrato: o evento herda o cliente do contrato.
+        if (! $clienteId && $this->formContratoId) {
+            $clienteId = Contrato::withoutGlobalScopes()->whereKey($this->formContratoId)->value('cliente_id');
+        }
+
         $evento = EventoAgenda::create([
             'tipo' => TipoEvento::Outro,
             'titulo' => $titulo,
@@ -385,8 +390,9 @@ class Calendario extends Component
             $evento->tecnico->notify(new EventoAtribuido($evento));
         }
 
-        // Camada 2: evento com equipamento + data futura → gera rascunho de relatório ligado.
-        if ($equipamentoId && $inicio->isFuture() && $geradorRascunho->gerar($evento)) {
+        // Camada 2: evento com equipamento OU contrato + data futura → gera rascunho de
+        // relatório ligado (o equipamento do contrato serve de âmbito quando não se escolhe um).
+        if (($equipamentoId || $this->formContratoId) && $inicio->isFuture() && $geradorRascunho->gerar($evento)) {
             session()->flash('sucesso', 'Rascunho de relatório criado para esta intervenção.');
         }
 
