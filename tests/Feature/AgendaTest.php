@@ -269,10 +269,11 @@ class AgendaTest extends TestCase
         $evento = EventoAgenda::where('titulo', 'Inspeção')->firstOrFail();
 
         // Intervenção planeada, ligada ao evento, com contexto herdado (incl. horas).
+        // Visita agendada → nasce PREVENTIVA (o gerador de rascunho mudou de propósito).
         $this->assertDatabaseHas('intervencoes', [
             'evento_agenda_id' => $evento->id,
             'equipamento_id' => $equip->id,
-            'tipo' => 'corretiva',
+            'tipo' => 'preventiva',
             'estado' => 'planeada',
             'hora_inicio' => '10:00:00',
             'hora_fim' => '11:30:00',
