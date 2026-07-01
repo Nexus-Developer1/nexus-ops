@@ -113,10 +113,25 @@
                         </dl>
                     </section>
 
-                    {{-- Contrato (módulo da Fase 2) --}}
+                    {{-- Contrato(s) associado(s) via contrato_equipamentos --}}
                     <section class="cartao p-6">
-                        <h2 class="text-base font-semibold text-texto-forte">Contrato</h2>
-                        <p class="mt-3 text-sm text-texto-medio">Sem contrato associado.</p>
+                        <h2 class="text-base font-semibold text-texto-forte">{{ $contratos->count() > 1 ? 'Contratos' : 'Contrato' }}</h2>
+                        @if ($contratos->isEmpty())
+                            <p class="mt-3 text-sm text-texto-medio">Sem contrato associado.</p>
+                        @else
+                            <div class="mt-3 space-y-2">
+                                @foreach ($contratos as $contrato)
+                                    <a href="{{ route('contratos.ficha', $contrato) }}" wire:navigate wire:key="contrato-{{ $contrato->id }}"
+                                       class="flex items-center justify-between gap-3 rounded-lg border border-borda px-3 py-2.5 transition hover:border-verde-300 hover:bg-verde-50/40">
+                                        <span class="min-w-0">
+                                            <span class="block truncate text-sm font-semibold text-texto-forte">{{ $contrato->numero }}</span>
+                                            <span class="block truncate text-xs text-texto-medio">{{ $contrato->tipo->rotulo() }} · {{ $contrato->data_inicio?->format('d/m/Y') ?? '—' }} – {{ $contrato->data_fim?->format('d/m/Y') ?? '—' }}</span>
+                                        </span>
+                                        <span class="etiqueta shrink-0 {{ $contrato->estado->classesEtiqueta() }}">{{ $contrato->estado->rotulo() }}</span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
                     </section>
 
                     {{-- Alerta de baterias --}}

@@ -91,9 +91,15 @@ class Ficha extends Component
             ->orderByDesc('data_inicio')
             ->get();
 
+        // Contrato(s) que cobrem este equipamento (N:M via contrato_equipamentos).
+        $contratos = $this->equipamento->contratos()
+            ->orderByDesc('data_inicio')
+            ->get();
+
         return view('livewire.equipamentos.ficha', [
             'especificacoes' => $this->especificacoes(),
             'intervencoes' => $intervencoes,
+            'contratos' => $contratos,
         ]);
     }
 }
