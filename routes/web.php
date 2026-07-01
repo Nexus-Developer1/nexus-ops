@@ -83,6 +83,7 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
     Route::get('/clientes/{cliente}/contratos', \App\Livewire\Clientes\Contratos::class)->name('clientes.contratos');
     Route::get('/clientes/{cliente}/relatorios', \App\Livewire\Clientes\Relatorios::class)->name('clientes.relatorios');
     Route::get('/clientes/{cliente}/faturacao', \App\Livewire\Clientes\Faturacao::class)->name('clientes.faturacao');
+    Route::get('/clientes/{cliente}/faturacao/{linha}', \App\Livewire\Clientes\Fatura::class)->name('clientes.fatura');
 
     // Ficha de equipamento (leitura em campo — ex.: QR code).
     Route::get('/ativos/{equipamento}', \App\Livewire\Equipamentos\Ficha::class)->name('equipamentos.ficha');

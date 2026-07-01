@@ -113,7 +113,7 @@
                 <div class="mt-4 space-y-2">
                     @forelse ($faturacao as $l)
                         @php $nSeries = filled($l->series) ? substr_count($l->series, ',') + 1 : 0; @endphp
-                        <div class="flex items-center justify-between gap-3 rounded-lg border border-borda px-3 py-2" wire:key="fat-{{ $l->id }}">
+                        <a href="{{ route('clientes.fatura', [$cliente, $l]) }}" wire:navigate class="flex items-center justify-between gap-3 rounded-lg border border-borda px-3 py-2 transition hover:border-verde-300 hover:bg-fundo" wire:key="fat-{{ $l->id }}">
                             <div class="min-w-0">
                                 <div class="truncate text-sm font-medium text-texto-forte">{{ $l->design ?: ($l->ref ?? '—') }}</div>
                                 <div class="truncate text-xs text-texto-fraco">
@@ -121,7 +121,7 @@
                                 </div>
                             </div>
                             <span class="shrink-0 text-xs text-texto-fraco">{{ $nSeries > 0 ? $nSeries . ' ' . \Illuminate\Support\Str::plural('série', $nSeries) : '—' }}</span>
-                        </div>
+                        </a>
                     @empty
                         <p class="text-sm text-texto-medio">Sem faturação.</p>
                     @endforelse

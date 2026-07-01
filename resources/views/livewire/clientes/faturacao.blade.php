@@ -33,7 +33,8 @@
                     <tbody>
                         @forelse ($linhas as $l)
                             @php $nSeries = filled($l->series) ? substr_count($l->series, ',') + 1 : 0; @endphp
-                            <tr class="border-b border-borda transition last:border-0 hover:bg-fundo" wire:key="fat-{{ $l->id }}">
+                            <tr class="cursor-pointer border-b border-borda transition last:border-0 hover:bg-fundo" wire:key="fat-{{ $l->id }}"
+                                x-on:click="Livewire.navigate(@js(route('clientes.fatura', [$cliente, $l])))">
                                 <td class="px-6 py-4 text-texto-medio whitespace-nowrap">{{ $l->data?->translatedFormat('d M Y') ?? '—' }}</td>
                                 <td class="px-6 py-4 text-texto-forte whitespace-nowrap">{{ trim($l->nmdoc . ' ' . $l->fno) ?: '—' }}</td>
                                 <td class="px-6 py-4 text-texto-medio">{{ $l->design ?: ($l->ref ?? '—') }}</td>

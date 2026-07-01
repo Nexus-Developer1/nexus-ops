@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
 use App\Livewire\Clientes\Detalhe;
+use App\Livewire\Clientes\Fatura;
 use App\Livewire\Clientes\Faturacao;
 use App\Models\Cliente;
 use App\Models\LinhaFatura;
@@ -74,5 +75,34 @@ class ClienteFaturacaoTest extends TestCase
             ->assertViewHas('faturacaoTotal', 12)
             ->assertSee('Faturação')
             ->assertSee('Ver todas');
+    }
+
+    public function test_fatura_mostra_todas_as_linhas_do_mesmo_documento(): void
+    {
+        $cliente = Cliente::create(['nome' => 'ACME', 'id_erp' => '148', 'ativo' => true]);
+        // Documento "Fatura 3314" (este ano) com 3 artigos + outro documento com 1.
+        $a = $this->linha('148', 'A1', now(), ['nmdoc' => 'Fatura', 'fno' => 3314, 'design' => 'CPU INTEL']);
+        $this->linha('148', 'A2', now(), ['nmdoc' => 'Fatura', 'fno' => 3314, 'design' => 'MB ASUS']);
+        $this->linha('148', 'A3', now(), ['nmdoc' => 'Fatura', 'fno' => 3314, 'design' => 'SSD PNY']);
+        $this->linha('148', 'B1', now(), ['nmdoc' => 'Fatura', 'fno' => 999, 'design' => 'ARTIGO_DOUTRO_DOC']);
+        // MESMO nmdoc+fno (Fatura 3314) mas de OUTRO ANO → documento diferente (o fno
+        // reinicia anualmente no PHC): NÃO pode juntar-se a esta fatura.
+        $this->linha('148', 'C1', now()->subYear(), ['nmdoc' => 'Fatura', 'fno' => 3314, 'design' => 'ARTIGO_DE_OUTRO_ANO']);
+
+        Livewire::actingAs($this->admin())->test(Fatura::class, ['cliente' => $cliente, 'linha' => $a])
+            ->assertViewHas('linhas', fn ($c) => $c->count() === 3)
+            ->assertSee('CPU INTEL')->assertSee('MB ASUS')->assertSee('SSD PNY')
+            ->assertDontSee('ARTIGO_DOUTRO_DOC')        // outro documento (fno diferente) não entra
+            ->assertDontSee('ARTIGO_DE_OUTRO_ANO');     // mesmo nmdoc+fno noutra data → separado
+    }
+
+    public function test_fatura_de_linha_de_outro_cliente_da_404(): void
+    {
+        $cliente = Cliente::create(['nome' => 'ACME', 'id_erp' => '148', 'ativo' => true]);
+        $linhaOutro = $this->linha('999', 'Z1', now()); // pertence ao cliente 999
+
+        $this->actingAs($this->admin())
+            ->get(route('clientes.fatura', [$cliente, $linhaOutro]))
+            ->assertNotFound();
     }
 }
