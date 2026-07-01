@@ -13,6 +13,7 @@ class LinhaFatura extends Model
     /** @var list<string> */
     protected $fillable = [
         'id_erp',
+        'cliente_no',
         'nmdoc',
         'fno',
         'data',

@@ -36,6 +36,7 @@ class SincronizarFaturacaoErp extends Command
                 $linha = LinhaFatura::updateOrCreate(
                     ['id_erp' => $linhaErp->idErp],
                     [
+                        'cliente_no' => $linhaErp->clienteNo,
                         'nmdoc' => $linhaErp->nmdoc,
                         'fno' => $linhaErp->fno,
                         'data' => $linhaErp->data,

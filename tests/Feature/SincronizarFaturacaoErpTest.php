@@ -56,6 +56,7 @@ class SincronizarFaturacaoErpTest extends TestCase
 
         $linha = LinhaFatura::firstOrFail();
         $this->assertNotEmpty($linha->id_erp);
+        $this->assertNotEmpty($linha->cliente_no);   // nº de cliente (ft.no) preenchido
         $this->assertNotEmpty($linha->series);
         $this->assertNotNull($linha->qtt);
         $this->assertNotNull($linha->synced_at);

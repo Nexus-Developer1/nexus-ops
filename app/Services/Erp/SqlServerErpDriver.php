@@ -66,6 +66,7 @@ class SqlServerErpDriver implements ErpSyncDriver
 
         $sql = "SELECT {$top}fistamp, nmdoc, fno,
                        (SELECT fdata FROM ft WHERE ftstamp = fi.ftstamp) AS data,
+                       (SELECT no FROM ft WHERE ftstamp = fi.ftstamp) AS cliente_no,
                        ref, design, series, qtt
                 FROM fi
                 WHERE series NOT LIKE ''";
@@ -73,6 +74,7 @@ class SqlServerErpDriver implements ErpSyncDriver
         foreach (DB::connection('erp')->select($sql) as $r) {
             yield new LinhaFaturaErp(
                 idErp: (string) $r->fistamp,
+                clienteNo: $r->cliente_no !== null ? (string) $r->cliente_no : null,
                 nmdoc: $r->nmdoc,
                 fno: $r->fno !== null ? (int) $r->fno : null,
                 data: $r->data ? \Illuminate\Support\Carbon::parse($r->data)->format('Y-m-d') : null,

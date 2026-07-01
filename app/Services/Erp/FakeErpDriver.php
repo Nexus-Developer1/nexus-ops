@@ -57,6 +57,7 @@ class FakeErpDriver implements ErpSyncDriver
 
         return new LinhaFaturaErp(
             idErp: sprintf('NV25%010d,%07d-%d', $i, mt_rand(1000000, 9999999), mt_rand(0, 9)), // fi.fistamp único por i
+            clienteNo: (string) (1000 + ($i % 10)), // liga aos clientes fake (id_erp 1000..1009)
             nmdoc: $docs[mt_rand(0, count($docs) - 1)],
             fno: 1000 + $i,
             data: sprintf('2025-%02d-%02d', mt_rand(1, 12), mt_rand(1, 28)),
