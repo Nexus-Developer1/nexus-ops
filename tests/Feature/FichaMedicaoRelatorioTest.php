@@ -251,6 +251,27 @@ class FichaMedicaoRelatorioTest extends TestCase
         $resp->assertSee('Teste de descarga');
     }
 
+    public function test_finalizar_contrato_com_ficha_gera_relatorio_e_pdf(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake();
+        [$admin, $contrato, $e1] = $this->cenarioContrato();
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->set('data', now()->toDateString())
+            ->set('hora_inicio', '10:00')
+            ->set('hora_fim', '11:00')
+            ->set("fichas.{$e1->id}.ve_ln_l1", '230.00')
+            ->call('finalizar')
+            ->assertHasNoErrors();
+
+        $relatorio = \App\Models\Relatorio::firstOrFail();
+        $this->assertSame(\App\Enums\EstadoRelatorio::Finalizado, $relatorio->estado);
+        $this->assertNotNull($relatorio->numero);         // número atribuído antes do PDF
+        $this->assertNotNull($relatorio->fresh()->pdf_path); // PDF gerado (queue sync) sem 500
+    }
+
     public function test_modo_individual_nao_cria_fichas_e_mantem_checklist(): void
     {
         [$admin, , $e1] = $this->cenarioContrato();
