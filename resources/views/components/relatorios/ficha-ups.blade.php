@@ -1,6 +1,8 @@
 @props([
     'prefixo',              // caminho Livewire da ficha, ex.: "fichas.123"
-    'titulo' => 'UPS',      // rótulo do equipamento no cabeçalho
+    'equipamentoId',        // id do equipamento (para o × remover)
+    'serie' => '—',         // nº de série (destaque no cabeçalho — distingue os equipamentos)
+    'modelo' => '',         // modelo (texto secundário)
     'principal' => false,   // equipamento principal do relatório?
 ])
 
@@ -21,16 +23,24 @@
     ];
 @endphp
 
-<section class="rounded-lg border border-borda bg-fundo/40" x-data="{ aberta: {{ $principal ? 'true' : 'false' }} }" wire:key="ficha-{{ $prefixo }}">
-    <button type="button" @click="aberta=!aberta" class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
-        <span class="flex items-center gap-2 truncate">
-            <span class="text-sm font-semibold text-texto-forte truncate">{{ $titulo }}</span>
+<section class="rounded-lg border border-borda bg-fundo/40" x-data="{ aberta: false }" wire:key="ficha-{{ $prefixo }}">
+    <div class="flex items-center gap-3 px-4 py-3">
+        {{-- Clicar no cabeçalho expande/colapsa a ficha deste equipamento. --}}
+        <button type="button" @click="aberta=!aberta" class="flex min-w-0 flex-1 items-center gap-3 text-left">
+            <span class="min-w-0">
+                <span class="block truncate text-sm font-semibold text-texto-forte">{{ $serie ?: '—' }}</span>
+                <span class="block truncate text-xs text-texto-medio">{{ $modelo ?: 'UPS' }}</span>
+            </span>
             @if ($principal)
                 <span class="shrink-0 rounded-full bg-verde-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-verde-700">principal</span>
             @endif
-        </span>
-        <svg :class="aberta && 'rotate-180'" class="h-5 w-5 shrink-0 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-    </button>
+            <svg :class="aberta && 'rotate-180'" class="ml-auto h-5 w-5 shrink-0 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        {{-- Remover o equipamento do relatório (função já existente). --}}
+        <button type="button" wire:click="removerEquipamentoDoRelatorio({{ $equipamentoId }})" class="shrink-0 text-texto-fraco transition hover:text-perigo-600" title="Remover equipamento do relatório">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+    </div>
 
     <div x-show="aberta" x-transition x-cloak class="space-y-6 border-t border-borda px-4 py-5">
 

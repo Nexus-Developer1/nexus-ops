@@ -97,27 +97,27 @@
                                 @error('contrato_id') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
 
-                            {{-- Equipamentos do contrato (pré-preenchidos e editáveis — remove os não intervencionados). --}}
+                            {{-- Equipamentos do contrato: cada um é um painel accordion; o cabeçalho
+                                 (nº série + modelo + × remover) expande a ficha de medições desse equipamento. --}}
                             <div class="sm:col-span-2">
                                 <label class="campo-label">Equipamentos do contrato</label>
                                 @if ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty())
-                                    <div class="flex flex-wrap gap-2">
+                                    <div class="space-y-2">
                                         @if ($equipamentoPrincipal)
-                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-verde-200 bg-verde-50 px-3 py-1 text-xs font-medium text-verde-700" wire:key="princ-{{ $equipamentoPrincipal->id }}">
-                                                {{ $equipamentoPrincipal->numero_serie ?? '—' }} · {{ trim($equipamentoPrincipal->fabricante . ' ' . $equipamentoPrincipal->modelo) ?: '—' }}
-                                                <span class="text-[10px] uppercase tracking-wide text-verde-600/70">principal</span>
-                                                <button type="button" wire:click="removerEquipamentoDoRelatorio({{ $equipamentoPrincipal->id }})" class="text-verde-600/60 hover:text-perigo-600" title="Remover">
-                                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                                                </button>
-                                            </span>
+                                            <x-relatorios.ficha-ups
+                                                :prefixo="'fichas.' . $equipamentoPrincipal->id"
+                                                :equipamentoId="$equipamentoPrincipal->id"
+                                                :serie="$equipamentoPrincipal->numero_serie ?? '—'"
+                                                :modelo="trim($equipamentoPrincipal->fabricante . ' ' . $equipamentoPrincipal->modelo)"
+                                                :principal="true" />
                                         @endif
                                         @foreach ($cobertosSelecionados as $e)
-                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-borda bg-fundo px-3 py-1 text-xs text-texto-forte" wire:key="ctcob-{{ $e->id }}">
-                                                {{ $e->numero_serie ?? '—' }} · {{ trim($e->fabricante . ' ' . $e->modelo) ?: '—' }}
-                                                <button type="button" wire:click="removerEquipamentoDoRelatorio({{ $e->id }})" class="text-texto-fraco hover:text-perigo-600" title="Remover">
-                                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                                                </button>
-                                            </span>
+                                            <x-relatorios.ficha-ups
+                                                :prefixo="'fichas.' . $e->id"
+                                                :equipamentoId="$e->id"
+                                                :serie="$e->numero_serie ?? '—'"
+                                                :modelo="trim($e->fabricante . ' ' . $e->modelo)"
+                                                :principal="false" />
                                         @endforeach
                                     </div>
                                 @else
@@ -254,37 +254,6 @@
                         <textarea wire:model="resumo" rows="3" class="campo-input resize-none" placeholder="Descreva as constatações técnicas observadas durante a intervenção…"></textarea>
                     </div>
                 </section>
-
-                {{-- Ficha de medições (UPS) — só no modo contrato, uma por equipamento coberto. --}}
-                @if ($modo === 'contrato')
-                <section class="cartao" x-data="{ aberto: true }">
-                    <button @click="aberto=!aberto" class="cartao-cabecalho">
-                        <span class="flex items-center gap-3">
-                            <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
-                            <span class="text-lg font-semibold text-texto-forte">Ficha de medições (UPS)</span>
-                        </span>
-                        <svg :class="aberto && 'rotate-180'" class="h-5 w-5 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                    </button>
-                    <div x-show="aberto" x-transition class="space-y-4 px-6 pb-7">
-                        @if ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty())
-                            @if ($equipamentoPrincipal)
-                                <x-relatorios.ficha-ups
-                                    :prefixo="'fichas.' . $equipamentoPrincipal->id"
-                                    :titulo="(trim($equipamentoPrincipal->fabricante . ' ' . $equipamentoPrincipal->modelo) ?: 'UPS') . ' · ' . ($equipamentoPrincipal->numero_serie ?? '—')"
-                                    :principal="true" />
-                            @endif
-                            @foreach ($cobertosSelecionados as $e)
-                                <x-relatorios.ficha-ups
-                                    :prefixo="'fichas.' . $e->id"
-                                    :titulo="(trim($e->fabricante . ' ' . $e->modelo) ?: 'UPS') . ' · ' . ($e->numero_serie ?? '—')"
-                                    :principal="false" />
-                            @endforeach
-                        @else
-                            <p class="text-sm text-texto-medio">Escolhe um contrato para preencher as fichas de medição dos equipamentos.</p>
-                        @endif
-                    </div>
-                </section>
-                @endif
 
                 {{-- Checklist (relatório individual) --}}
                 @if ($modo !== 'contrato')
