@@ -102,6 +102,32 @@
                 </div>
             </section>
 
+            {{-- Faturação (linhas do PHC ligadas por cliente_no = id_erp) --}}
+            <section class="cartao mt-5 p-6">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-semibold text-texto-forte">Faturação <span class="text-texto-fraco">({{ $faturacaoTotal }})</span></h2>
+                    @if ($faturacaoTotal > $limite)
+                        <a href="{{ route('clientes.faturacao', $cliente) }}" wire:navigate class="text-sm font-medium text-verde-600 hover:text-verde-700">Ver todas →</a>
+                    @endif
+                </div>
+                <div class="mt-4 space-y-2">
+                    @forelse ($faturacao as $l)
+                        @php $nSeries = filled($l->series) ? substr_count($l->series, ',') + 1 : 0; @endphp
+                        <div class="flex items-center justify-between gap-3 rounded-lg border border-borda px-3 py-2" wire:key="fat-{{ $l->id }}">
+                            <div class="min-w-0">
+                                <div class="truncate text-sm font-medium text-texto-forte">{{ $l->design ?: ($l->ref ?? '—') }}</div>
+                                <div class="truncate text-xs text-texto-fraco">
+                                    {{ $l->data?->translatedFormat('d M Y') ?? '—' }} · {{ trim($l->nmdoc . ' ' . $l->fno) ?: '—' }}
+                                </div>
+                            </div>
+                            <span class="shrink-0 text-xs text-texto-fraco">{{ $nSeries > 0 ? $nSeries . ' ' . \Illuminate\Support\Str::plural('série', $nSeries) : '—' }}</span>
+                        </div>
+                    @empty
+                        <p class="text-sm text-texto-medio">Sem faturação.</p>
+                    @endforelse
+                </div>
+            </section>
+
         </div>
     </main>
 </div>

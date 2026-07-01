@@ -5,6 +5,7 @@ namespace App\Livewire\Clientes;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
+use App\Models\LinhaFatura;
 use App\Models\Relatorio;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -34,6 +35,8 @@ class Detalhe extends Component
         $equipamentos = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $id));
         // Relatórios — cadeia relatorio -> intervencao -> equipamento -> local -> cliente.
         $relatorios = Relatorio::whereHas('intervencao.equipamento.local', fn ($q) => $q->where('cliente_id', $id));
+        // Faturação — linhas do PHC ligadas por cliente_no = id_erp do cliente.
+        $faturacao = LinhaFatura::where('cliente_no', $this->cliente->id_erp);
 
         return view('livewire.clientes.detalhe', [
             'contratos' => (clone $contratos)->with('modeloFaturacao')->orderByDesc('data_inicio')->limit(self::LIMITE)->get(),
@@ -42,6 +45,8 @@ class Detalhe extends Component
             'equipamentosTotal' => (clone $equipamentos)->count(),
             'relatorios' => (clone $relatorios)->with('intervencao.equipamento')->orderByDesc('data')->limit(self::LIMITE)->get(),
             'relatoriosTotal' => (clone $relatorios)->count(),
+            'faturacao' => (clone $faturacao)->orderByDesc('data')->limit(self::LIMITE)->get(),
+            'faturacaoTotal' => (clone $faturacao)->count(),
             'limite' => self::LIMITE,
         ]);
     }
