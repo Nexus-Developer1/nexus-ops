@@ -84,7 +84,11 @@ class GeradorRelatorio
                 'intervencao' => fn ($q) => $q->withoutGlobalScopes()->with([
                     'equipamento' => fn ($q) => $q->withoutGlobalScopes()->with('local.cliente'),
                     'equipamentosCobertos' => fn ($q) => $q->withoutGlobalScopes(),
-                    'contrato' => fn ($q) => $q->withoutGlobalScopes(),
+                    'contrato' => fn ($q) => $q->withoutGlobalScopes()->with('cliente'),
+                    // Fichas de medição (relatório de contrato) + equipamento/local/cliente de cada uma.
+                    'fichasMedicao' => fn ($q) => $q->with([
+                        'equipamento' => fn ($q) => $q->withoutGlobalScopes()->with('local.cliente'),
+                    ]),
                     'tecnico',
                     'checklistItens',
                     'checklistEtapas.itens',

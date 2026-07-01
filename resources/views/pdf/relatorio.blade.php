@@ -26,6 +26,18 @@
         .foto { width: 150px; height: 110px; object-fit: cover; border: 1px solid #e5e7eb; margin: 0 6px 6px 0; }
         .rodape { margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 8px; text-align: center; color: #9ca3af; font-size: 8px; letter-spacing: 1px; }
         .etiqueta { background: #ECFDF3; color: #166534; font-size: 9px; padding: 2px 6px; border-radius: 3px; }
+        /* Ficha de medições (folha Nexus) — uma por página. */
+        .ficha-pagina { page-break-before: always; }
+        .ficha-titulo { font-size: 14px; font-weight: bold; color: #111827; margin: 0 0 2px; }
+        .ficha-sub { color: #6b7280; font-size: 10px; margin-bottom: 6px; }
+        .ficha-seccao { background-color: #16A34A; color: #ffffff; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 8px; margin: 12px 0 6px; }
+        .ficha-tab { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+        .ficha-tab td, .ficha-tab th { border: 1px solid #d1d5db; padding: 3px 6px; font-size: 10px; vertical-align: top; }
+        .ficha-tab th { background-color: #f3f4f6; color: #374151; font-weight: bold; text-align: left; }
+        .ficha-rot { color: #9ca3af; font-size: 8px; text-transform: uppercase; }
+        .cel-num { text-align: center; }
+        .cel-ok { text-align: center; color: #16A34A; font-weight: bold; width: 8%; }
+        .cel-nok { text-align: center; color: #dc2626; font-weight: bold; width: 8%; }
     </style>
 </head>
 <body>
@@ -129,33 +141,189 @@
         </table>
     @endif
 
-    @if ($i->checklistEtapas->count())
-        <h2>Checklist</h2>
-        @foreach ($i->checklistEtapas as $etapa)
-            @php($tot = $etapa->itens->count())
-            @php($fei = $etapa->itens->where('concluido', true)->count())
-            <div class="etapa-titulo">{{ $etapa->titulo }} <span class="etapa-contador">({{ $fei }}/{{ $tot }} concluídos)</span></div>
-            @foreach ($etapa->itens as $item)
+    {{-- Checklist antiga: só nos relatórios INDIVIDUAIS. Nos de contrato é substituída
+         pelas fichas de medição (abaixo). --}}
+    @if (! $i->contrato)
+        @if ($i->checklistEtapas->count())
+            <h2>Checklist</h2>
+            @foreach ($i->checklistEtapas as $etapa)
+                @php($tot = $etapa->itens->count())
+                @php($fei = $etapa->itens->where('concluido', true)->count())
+                <div class="etapa-titulo">{{ $etapa->titulo }} <span class="etapa-contador">({{ $fei }}/{{ $tot }} concluídos)</span></div>
+                @foreach ($etapa->itens as $item)
+                    <div class="item">
+                        <span class="{{ $item->concluido ? 'marca-check' : 'marca-vazio' }}">{{ $item->concluido ? '[X]' : '[ ]' }}</span>
+                        {{ $item->descricao }}@if ($item->observacao)<span class="item-obs"> — {{ $item->observacao }}</span>@endif
+                    </div>
+                @endforeach
+            @endforeach
+        @elseif ($i->checklistItens->count())
+            <h2>Checklist</h2>
+            @foreach ($i->checklistItens as $item)
                 <div class="item">
                     <span class="{{ $item->concluido ? 'marca-check' : 'marca-vazio' }}">{{ $item->concluido ? '[X]' : '[ ]' }}</span>
-                    {{ $item->descricao }}@if ($item->observacao)<span class="item-obs"> — {{ $item->observacao }}</span>@endif
+                    {{ $item->descricao }}
                 </div>
             @endforeach
-        @endforeach
-    @elseif ($i->checklistItens->count())
-        <h2>Checklist</h2>
-        @foreach ($i->checklistItens as $item)
-            <div class="item">
-                <span class="{{ $item->concluido ? 'marca-check' : 'marca-vazio' }}">{{ $item->concluido ? '[X]' : '[ ]' }}</span>
-                {{ $item->descricao }}
-            </div>
-        @endforeach
+        @endif
     @endif
 
     @if (count($fotos ?? []))
         <h2>Registo Fotográfico</h2>
         @foreach ($fotos as $foto)
             <img src="{{ $foto }}" class="foto">
+        @endforeach
+    @endif
+
+    {{-- ===== FICHAS DE MEDIÇÃO (relatório de contrato) — uma por página =====
+         Nota: usar sempre a forma INLINE do PHP (como o resto desta view); um bloco raw
+         de PHP partiria a compilação do Blade. --}}
+    @if ($i->contrato && $i->fichasMedicao->isNotEmpty())
+        @foreach ($i->fichasMedicao as $ficha)
+            @php($fe = $ficha->equipamento)
+            @php($floc = $fe?->local)
+            @php($fcli = $floc?->cliente)
+            @php($mostrarClienteFinal = $fcli && $fcli->id !== $i->contrato->cliente_id)
+            <div class="ficha-pagina">
+                <div class="ficha-titulo">Ficha de Medições — UPS</div>
+                <div class="ficha-sub">Relatório {{ $relatorio->numero }} · {{ $ficha->serie ?: ($fe?->numero_serie ?? '—') }}</div>
+
+                <div class="ficha-seccao">Identificação</div>
+                <table class="ficha-tab">
+                    <tr>
+                        <td style="width:50%;"><span class="ficha-rot">Cliente</span><br>{{ $i->contrato->cliente?->nome ?? $fcli?->nome ?? '—' }}</td>
+                        <td><span class="ficha-rot">Intervenção nº</span><br>{{ $relatorio->numero }}</td>
+                    </tr>
+                    @if ($mostrarClienteFinal)
+                        <tr><td colspan="2"><span class="ficha-rot">Cliente final</span><br>{{ $fcli->nome }}</td></tr>
+                    @endif
+                    <tr>
+                        <td><span class="ficha-rot">Data</span><br>{{ $i->data_inicio?->format('d/m/Y') ?? $relatorio->data->format('d/m/Y') }}</td>
+                        <td><span class="ficha-rot">Local de instalação</span><br>{{ $floc?->designacao ?? '—' }}@if (trim((string) $floc?->morada) !== '') · {{ $floc->morada }}@endif</td>
+                    </tr>
+                </table>
+
+                <div class="ficha-seccao">Dados do equipamento</div>
+                <table class="ficha-tab">
+                    <tr>
+                        <td style="width:25%;"><span class="ficha-rot">Marca</span><br>{{ $ficha->marca ?: '—' }}</td>
+                        <td style="width:25%;"><span class="ficha-rot">Modelo</span><br>{{ $ficha->modelo ?: '—' }}</td>
+                        <td style="width:25%;"><span class="ficha-rot">S/N</span><br>{{ $ficha->serie ?: '—' }}</td>
+                        <td style="width:25%;"><span class="ficha-rot">Baterias</span><br>{{ $ficha->baterias ?: '—' }}</td>
+                    </tr>
+                </table>
+
+                <div class="ficha-seccao">Configuração da UPS</div>
+                <table class="ficha-tab">
+                    <tr>
+                        <td style="width:50%;"><span class="ficha-rot">Tipo</span><br>{{ $ficha->config_tipo ? ucfirst($ficha->config_tipo) : '—' }}</td>
+                        <td><span class="ficha-rot">Bypass externo</span><br>{{ $ficha->bypass_externo ? 'Sim' : 'Não' }}</td>
+                    </tr>
+                </table>
+                @php($modulos = collect($ficha->modulos ?? [])->filter(fn ($m) => trim((string) ($m['modelo'] ?? '')) !== '' || trim((string) ($m['sn'] ?? '')) !== ''))
+                @php($bancos = collect($ficha->bancos_bateria ?? [])->filter(fn ($m) => trim((string) ($m['modelo'] ?? '')) !== '' || trim((string) ($m['sn'] ?? '')) !== ''))
+                @if ($modulos->isNotEmpty())
+                    <table class="ficha-tab">
+                        <tr><th colspan="2">Módulos de potência</th></tr>
+                        <tr><th style="width:60%;">Modelo</th><th>S/N</th></tr>
+                        @foreach ($modulos as $m)
+                            <tr><td>{{ $m['modelo'] ?? '' }}</td><td>{{ $m['sn'] ?? '' }}</td></tr>
+                        @endforeach
+                    </table>
+                @endif
+                @if ($bancos->isNotEmpty())
+                    <table class="ficha-tab">
+                        <tr><th colspan="2">Banco de baterias externo</th></tr>
+                        <tr><th style="width:60%;">Modelo</th><th>S/N</th></tr>
+                        @foreach ($bancos as $m)
+                            <tr><td>{{ $m['modelo'] ?? '' }}</td><td>{{ $m['sn'] ?? '' }}</td></tr>
+                        @endforeach
+                    </table>
+                @endif
+
+                <div class="ficha-seccao">Valores elétricos</div>
+                @php($tabelasE = [
+                    ['Tensão de entrada L/N (V)', ['L1' => 've_ln_l1', 'L2' => 've_ln_l2', 'L3' => 've_ln_l3']],
+                    ['Tensão de entrada L/L (V)', ['L1-L2' => 've_ll_l1l2', 'L1-L3' => 've_ll_l1l3', 'L2-L3' => 've_ll_l2l3']],
+                    ['Carga (%)', ['L1' => 'carga_l1', 'L2' => 'carga_l2', 'L3' => 'carga_l3']],
+                    ['Frequência (Hz)', ['Hz' => 'frequencia']],
+                    ['Tensão de saída L/N (V)', ['L1' => 'vs_ln_l1', 'L2' => 'vs_ln_l2', 'L3' => 'vs_ln_l3']],
+                    ['Tensão de saída L/L (V)', ['L1-L2' => 'vs_ll_l1l2', 'L1-L3' => 'vs_ll_l1l3', 'L2-L3' => 'vs_ll_l2l3']],
+                    ['Corrente de saída (A)', ['L1' => 'is_l1', 'L2' => 'is_l2', 'L3' => 'is_l3']],
+                    ['Corrente de saída pico (A)', ['L1' => 'ispico_l1', 'L2' => 'ispico_l2', 'L3' => 'ispico_l3']],
+                    ['Tensão de baterias (V)', ['V+' => 'vbat_pos', 'V-' => 'vbat_neg']],
+                    ['Temperatura (°C)', ['°C' => 'temperatura']],
+                ])
+                <table class="ficha-tab">
+                    @foreach ($tabelasE as [$titulo, $campos])
+                        <tr>
+                            <td style="width:34%;">{{ $titulo }}</td>
+                            @foreach ($campos as $lab => $campo)
+                                <td class="cel-num" style="width:22%;"><span class="ficha-rot">{{ $lab }}</span> {{ $ficha->{$campo} }}</td>
+                            @endforeach
+                            @for ($k = count($campos); $k < 3; $k++)<td></td>@endfor
+                        </tr>
+                    @endforeach
+                </table>
+
+                <div class="ficha-seccao">Verificações</div>
+                <table class="ficha-tab">
+                    <tr><th>Item</th><th class="cel-ok">OK</th><th class="cel-nok">NOK</th><th style="width:40%;">Nota</th></tr>
+                    @foreach (\App\Models\FichaMedicao::VERIFICACOES as $chave => $rotulo)
+                        @php($v = $ficha->verificacoes[$chave] ?? [])
+                        @php($estado = $v['estado'] ?? null)
+                        <tr>
+                            <td>{{ $rotulo }}</td>
+                            <td class="cel-ok">{{ $estado === 'ok' ? 'X' : '' }}</td>
+                            <td class="cel-nok">{{ $estado === 'nok' ? 'X' : '' }}</td>
+                            <td>{{ $v['nota'] ?? '' }}</td>
+                        </tr>
+                    @endforeach
+                </table>
+
+                <div class="ficha-seccao">Teste de descarga de baterias</div>
+                <table class="ficha-tab">
+                    <tr>
+                        <th>Tempo</th>
+                        @foreach (\App\Models\FichaMedicao::COLS_DESCARGA as $ck => $crot)<th class="cel-num">{{ $crot }}</th>@endforeach
+                    </tr>
+                    @foreach (\App\Models\FichaMedicao::LINHAS_DESCARGA as $lk => $lrot)
+                        <tr>
+                            <td>{{ $lrot }}</td>
+                            @foreach (array_keys(\App\Models\FichaMedicao::COLS_DESCARGA) as $ck)
+                                <td class="cel-num">{{ $ficha->teste_descarga[$lk][$ck] ?? '' }}</td>
+                            @endforeach
+                        </tr>
+                    @endforeach
+                </table>
+                <table class="ficha-tab">
+                    <tr>
+                        <td style="width:60%;">Baterias em funcionamento</td>
+                        <td class="cel-ok">{{ $ficha->baterias_funcionamento === 'ok' ? 'X' : '' }}</td>
+                        <td class="cel-nok">{{ $ficha->baterias_funcionamento === 'nok' ? 'X' : '' }}</td>
+                    </tr>
+                </table>
+
+                <div class="ficha-seccao">Relatório final</div>
+                <table class="ficha-tab">
+                    <tr><th>Item</th><th class="cel-ok">OK</th><th class="cel-nok">NOK</th></tr>
+                    <tr>
+                        <td>Carga a funcionar</td>
+                        <td class="cel-ok">{{ $ficha->carga_a_funcionar === 'ok' ? 'X' : '' }}</td>
+                        <td class="cel-nok">{{ $ficha->carga_a_funcionar === 'nok' ? 'X' : '' }}</td>
+                    </tr>
+                    <tr>
+                        <td>UPS em modo normal</td>
+                        <td class="cel-ok">{{ $ficha->ups_modo_normal === 'ok' ? 'X' : '' }}</td>
+                        <td class="cel-nok">{{ $ficha->ups_modo_normal === 'nok' ? 'X' : '' }}</td>
+                    </tr>
+                </table>
+                @if (trim((string) $ficha->notas_finais) !== '')
+                    <table class="ficha-tab">
+                        <tr><td><span class="ficha-rot">Notas finais</span><br>{{ $ficha->notas_finais }}</td></tr>
+                    </table>
+                @endif
+            </div>
         @endforeach
     @endif
 
