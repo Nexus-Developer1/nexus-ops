@@ -1,0 +1,233 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\PapelUtilizador;
+use App\Livewire\Relatorios\Novo;
+use App\Models\Cliente;
+use App\Models\Contrato;
+use App\Models\Equipamento;
+use App\Models\FichaMedicao;
+use App\Models\Intervencao;
+use App\Models\Local;
+use App\Models\ModeloFaturacao;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+// Ficha de medições (UPS): no modo contrato, uma ficha por equipamento coberto substitui a
+// checklist genérica. Todos os campos são opcionais.
+class FichaMedicaoRelatorioTest extends TestCase
+{
+    use RefreshDatabase;
+
+    /** @return array{0: User, 1: Contrato, 2: Equipamento, 3: Equipamento} */
+    private function cenarioContrato(): array
+    {
+        $admin = User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC1']);
+        $e1 = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'fabricante' => 'Riello', 'modelo' => 'NPW', 'numero_serie' => 'SN-1', 'atributos' => ['num_baterias' => 40]]);
+        $e2 = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'fabricante' => 'Riello', 'modelo' => 'MST', 'numero_serie' => 'SN-2']);
+
+        $contrato = Contrato::create([
+            'numero' => '2026/7001', 'cliente_id' => $cliente->id,
+            'data_inicio' => now()->subMonth(), 'data_fim' => now()->addYear(),
+            'estado' => 'ativo', 'tipo' => 'preventiva', 'modelo_faturacao_id' => ModeloFaturacao::query()->value('id'),
+        ]);
+        $contrato->equipamentos()->sync([$e1->id, $e2->id]);
+
+        return [$admin, $contrato, $e1, $e2];
+    }
+
+    public function test_modo_contrato_cria_uma_ficha_por_equipamento_pre_preenchida(): void
+    {
+        [$admin, $contrato, $e1, $e2] = $this->cenarioContrato();
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->set('data', now()->toDateString())
+            // Uma medição em cada → ambas as fichas têm conteúdo e são persistidas.
+            ->set("fichas.{$e1->id}.verificacoes.acessibilidade.estado", 'ok')
+            ->set("fichas.{$e2->id}.verificacoes.acessibilidade.estado", 'ok')
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $interv = Intervencao::whereNotNull('contrato_id')->firstOrFail();
+        $this->assertSame(2, $interv->fichasMedicao()->count());
+
+        // Pré-preenchida com os dados do equipamento (marca/modelo/série/baterias).
+        $f1 = FichaMedicao::where('intervencao_id', $interv->id)->where('equipamento_id', $e1->id)->firstOrFail();
+        $this->assertSame('Riello', $f1->marca);
+        $this->assertSame('NPW', $f1->modelo);
+        $this->assertSame('SN-1', $f1->serie);
+        $this->assertSame('40', $f1->baterias);
+        $this->assertSame('ups', $f1->tipo_equipamento);
+
+        // Sem checklist genérica no modo contrato.
+        $this->assertSame(0, $interv->checklistEtapas()->count());
+    }
+
+    public function test_pre_preenchimento_visivel_no_estado_da_ficha(): void
+    {
+        [$admin, $contrato, $e1] = $this->cenarioContrato();
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->assertSet("fichas.{$e1->id}.marca", 'Riello')
+            ->assertSet("fichas.{$e1->id}.serie", 'SN-1');
+    }
+
+    public function test_valores_preenchidos_sao_persistidos_e_vazios_ficam_null(): void
+    {
+        [$admin, $contrato, $e1] = $this->cenarioContrato();
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->set('data', now()->toDateString())
+            ->set("fichas.{$e1->id}.ve_ln_l1", '230.5')
+            ->set("fichas.{$e1->id}.ve_ln_l2", '')                 // vazio → null
+            ->set("fichas.{$e1->id}.verificacoes.acessibilidade.estado", 'ok')
+            ->set("fichas.{$e1->id}.verificacoes.limpeza.estado", 'nok')
+            ->set("fichas.{$e1->id}.ups_modo_normal", 'ok')
+            ->set("fichas.{$e1->id}.teste_descarga.inicio.vbat_pos", '13.6')
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $interv = Intervencao::whereNotNull('contrato_id')->firstOrFail();
+        $f = FichaMedicao::where('intervencao_id', $interv->id)->where('equipamento_id', $e1->id)->firstOrFail();
+
+        $this->assertEquals(230.5, (float) $f->ve_ln_l1);
+        $this->assertNull($f->ve_ln_l2);
+        $this->assertSame('ok', $f->verificacoes['acessibilidade']['estado']);
+        $this->assertSame('nok', $f->verificacoes['limpeza']['estado']);
+        $this->assertSame('ok', $f->ups_modo_normal);
+        $this->assertEquals(13.6, (float) $f->teste_descarga['inicio']['vbat_pos']);
+    }
+
+    public function test_reabrir_carrega_a_ficha_persistida(): void
+    {
+        [$admin, $contrato, $e1] = $this->cenarioContrato();
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->set('data', now()->toDateString())
+            ->set("fichas.{$e1->id}.notas_finais", 'Tudo OK')
+            ->call('guardarRascunho');
+
+        $relatorio = Intervencao::whereNotNull('contrato_id')->firstOrFail()->relatorio;
+
+        Livewire::actingAs($admin)->test(Novo::class, ['relatorio' => $relatorio])
+            ->assertSet("fichas.{$e1->id}.notas_finais", 'Tudo OK');
+    }
+
+    public function test_remover_equipamento_coberto_apaga_a_sua_ficha(): void
+    {
+        [$admin, $contrato, $e1, $e2] = $this->cenarioContrato();
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->set('data', now()->toDateString())
+            // Ambas com conteúdo → 2 fichas persistidas.
+            ->set("fichas.{$e1->id}.notas_finais", 'ficha principal')
+            ->set("fichas.{$e2->id}.notas_finais", 'ficha coberto')
+            ->call('guardarRascunho');
+
+        $interv = Intervencao::whereNotNull('contrato_id')->firstOrFail();
+        $this->assertSame(2, $interv->fichasMedicao()->count());
+
+        // Remove o coberto e volta a gravar → a sua ficha desaparece.
+        $relatorio = $interv->relatorio;
+        Livewire::actingAs($admin)->test(Novo::class, ['relatorio' => $relatorio])
+            ->call('removerEquipamentoDoRelatorio', $e2->id)
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $this->assertSame(1, $interv->fichasMedicao()->count());
+        $this->assertSame(0, FichaMedicao::where('intervencao_id', $interv->id)->where('equipamento_id', $e2->id)->count());
+    }
+
+    public function test_ficha_vazia_nao_e_persistida(): void
+    {
+        [$admin, $contrato] = $this->cenarioContrato();
+
+        // Contrato escolhido, nenhuma medição introduzida → nenhuma ficha gravada.
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->set('data', now()->toDateString())
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $interv = Intervencao::whereNotNull('contrato_id')->firstOrFail();
+        $this->assertSame(0, $interv->fichasMedicao()->count());
+    }
+
+    public function test_ciclo_gravar_reabrir_manter_medicoes_e_regravar(): void
+    {
+        // 3 equipamentos no contrato: preenche 2, deixa o 3.º vazio.
+        [$admin, $contrato, $e1, $e2] = $this->cenarioContrato();
+        $e3 = Equipamento::create(['local_id' => $e1->local_id, 'tipo' => 'ups', 'estado' => 'operacional', 'fabricante' => 'Riello', 'modelo' => 'DLD', 'numero_serie' => 'SN-3']);
+        $contrato->equipamentos()->syncWithoutDetaching([$e3->id]);
+
+        // 1) Gravar rascunho com 2 fichas preenchidas (e1, e2); e3 fica vazio.
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->set('data', now()->toDateString())
+            ->set("fichas.{$e1->id}.ve_ln_l1", '230.1')
+            ->set("fichas.{$e1->id}.notas_finais", 'ficha e1')
+            ->set("fichas.{$e2->id}.verificacoes.limpeza.estado", 'ok')
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $interv = Intervencao::whereNotNull('contrato_id')->firstOrFail();
+
+        // Só as 2 preenchidas são persistidas; a vazia (e3) não cria registo.
+        $this->assertSame(2, $interv->fichasMedicao()->count());
+        $this->assertSame(0, FichaMedicao::where('intervencao_id', $interv->id)->where('equipamento_id', $e3->id)->count());
+
+        $idF1 = FichaMedicao::where('intervencao_id', $interv->id)->where('equipamento_id', $e1->id)->value('id');
+        $idF2 = FichaMedicao::where('intervencao_id', $interv->id)->where('equipamento_id', $e2->id)->value('id');
+
+        // 2) Reabrir: as 2 preenchidas mantêm valores; a 3.ª cai em estruturaVazia (sem rebentar).
+        $relatorio = $interv->relatorio;
+        $comp = Livewire::actingAs($admin)->test(Novo::class, ['relatorio' => $relatorio])
+            ->assertSet("fichas.{$e1->id}.notas_finais", 'ficha e1')
+            ->assertSet("fichas.{$e2->id}.verificacoes.limpeza.estado", 'ok')
+            ->assertSet("fichas.{$e3->id}.notas_finais", ''); // 3.º equipamento sem ficha na BD → vazio
+
+        // 3) Gravar de novo sem mexer → continua com 2 fichas, mesmos IDs (update in-place), valores intactos.
+        $comp->call('guardarRascunho')->assertHasNoErrors();
+
+        $this->assertSame(2, $interv->fichasMedicao()->count());
+        $this->assertSame($idF1, FichaMedicao::where('intervencao_id', $interv->id)->where('equipamento_id', $e1->id)->value('id'));
+        $this->assertSame($idF2, FichaMedicao::where('intervencao_id', $interv->id)->where('equipamento_id', $e2->id)->value('id'));
+
+        $f1 = FichaMedicao::where('intervencao_id', $interv->id)->where('equipamento_id', $e1->id)->firstOrFail();
+        $this->assertEquals(230.1, (float) $f1->ve_ln_l1);
+        $this->assertSame('ficha e1', $f1->notas_finais);
+    }
+
+    public function test_modo_individual_nao_cria_fichas_e_mantem_checklist(): void
+    {
+        [$admin, , $e1] = $this->cenarioContrato();
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'individual')
+            ->set('equipamento_id', $e1->id)
+            ->set('data', now()->toDateString())
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $interv = Intervencao::where('equipamento_id', $e1->id)->firstOrFail();
+        $this->assertSame(0, $interv->fichasMedicao()->count());
+        $this->assertGreaterThan(0, $interv->checklistEtapas()->count()); // checklist mantém-se
+    }
+}

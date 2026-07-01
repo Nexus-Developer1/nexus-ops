@@ -59,4 +59,23 @@ class DetetorConflitos
 
         return null;
     }
+
+    // Sobreposição para um técnico em TEXTO LIVRE (sem conta): deteta o double-booking com
+    // outro evento do mesmo nome. Não há ausências ligadas a um nome livre.
+    public function conflitoPorNome(string $nome, Carbon $inicio, Carbon $fim, ?int $excetoEventoId = null): ?string
+    {
+        $sobreposto = EventoAgenda::query()
+            ->where('tecnico_nome', $nome)
+            ->where('estado', '!=', EstadoEvento::Cancelado->value)
+            ->when($excetoEventoId, fn ($q) => $q->where('id', '!=', $excetoEventoId))
+            ->where('inicio', '<', $fim)
+            ->where('fim', '>', $inicio)
+            ->first();
+
+        if ($sobreposto) {
+            return 'O técnico já tem "' . $sobreposto->titulo . '" neste horário.';
+        }
+
+        return null;
+    }
 }

@@ -10,6 +10,7 @@ use App\Jobs\GerarRelatorioPdf;
 use App\Models\Anexo;
 use App\Models\Contrato;
 use App\Models\Equipamento;
+use App\Models\FichaMedicao;
 use App\Models\Intervencao;
 use App\Models\Relatorio;
 use App\Services\Agenda\GeradorEventoDeRelatorio;
@@ -56,6 +57,10 @@ class Novo extends Component
     // ---- Checklist em etapas ----
     // Estrutura: [['uid','titulo','itens'=>[['uid','descricao','concluido','observacao'],...]], ...]
     public array $etapas = [];
+
+    // ---- Fichas de medição (só modo contrato) ----
+    // Uma por equipamento coberto, keyed por equipamento_id. Estrutura em FichaMedicao::estruturaVazia().
+    public array $fichas = [];
 
     // ---- Recomendações ----
     public string $recomendacao = '';
@@ -461,32 +466,38 @@ class Novo extends Component
                 array_values(array_diff($this->equipamentosCobertos, [$this->equipamento_id])),
             );
 
-            // Etapas + itens: substitui o conjunto, com a ordem.
-            $intervencao->checklistEtapas()->delete();
-            foreach (array_values($this->etapas) as $ordemEtapa => $etapa) {
-                $titulo = trim($etapa['titulo'] ?? '');
-                $itens = array_values(array_filter(
-                    $etapa['itens'] ?? [],
-                    fn ($it) => trim($it['descricao'] ?? '') !== '',
-                ));
+            // Modo contrato: a checklist genérica é substituída pela ficha de medições (uma por
+            // equipamento coberto). Modo individual: mantém a checklist em etapas.
+            if ($this->modo === 'contrato') {
+                $this->persistirFichas($intervencao);
+            } else {
+                // Etapas + itens: substitui o conjunto, com a ordem.
+                $intervencao->checklistEtapas()->delete();
+                foreach (array_values($this->etapas) as $ordemEtapa => $etapa) {
+                    $titulo = trim($etapa['titulo'] ?? '');
+                    $itens = array_values(array_filter(
+                        $etapa['itens'] ?? [],
+                        fn ($it) => trim($it['descricao'] ?? '') !== '',
+                    ));
 
-                if ($titulo === '' && count($itens) === 0) {
-                    continue;
-                }
+                    if ($titulo === '' && count($itens) === 0) {
+                        continue;
+                    }
 
-                $etapaModel = $intervencao->checklistEtapas()->create([
-                    'titulo' => $titulo !== '' ? $titulo : 'Sem título',
-                    'ordem' => $ordemEtapa,
-                ]);
-
-                foreach ($itens as $ordemItem => $it) {
-                    $etapaModel->itens()->create([
-                        'intervencao_id' => $intervencao->id,
-                        'descricao' => trim($it['descricao']),
-                        'concluido' => (bool) ($it['concluido'] ?? false),
-                        'observacao' => trim($it['observacao'] ?? '') ?: null,
-                        'ordem' => $ordemItem,
+                    $etapaModel = $intervencao->checklistEtapas()->create([
+                        'titulo' => $titulo !== '' ? $titulo : 'Sem título',
+                        'ordem' => $ordemEtapa,
                     ]);
+
+                    foreach ($itens as $ordemItem => $it) {
+                        $etapaModel->itens()->create([
+                            'intervencao_id' => $intervencao->id,
+                            'descricao' => trim($it['descricao']),
+                            'concluido' => (bool) ($it['concluido'] ?? false),
+                            'observacao' => trim($it['observacao'] ?? '') ?: null,
+                            'ordem' => $ordemItem,
+                        ]);
+                    }
                 }
             }
 
@@ -534,8 +545,78 @@ class Novo extends Component
         return redirect()->route('relatorios');
     }
 
+    // Grava (upsert) uma ficha de medições por equipamento coberto e remove as órfãs.
+    private function persistirFichas(Intervencao $intervencao): void
+    {
+        $ids = array_values(array_unique(array_filter(
+            array_merge([$this->equipamento_id], $this->equipamentosCobertos)
+        )));
+
+        foreach ($ids as $equipId) {
+            $dados = $this->fichas[$equipId] ?? FichaMedicao::estruturaVazia();
+            $attrs = FichaMedicao::atributosDeFormulario($dados);
+
+            // Só persiste fichas com medições. Uma ficha vazia (só a identificação
+            // auto-preenchida) não cria registo; se já existia e foi esvaziada, remove-se.
+            if (! FichaMedicao::temConteudo($attrs)) {
+                $intervencao->fichasMedicao()->where('equipamento_id', $equipId)->delete();
+
+                continue;
+            }
+
+            FichaMedicao::updateOrCreate(
+                ['intervencao_id' => $intervencao->id, 'equipamento_id' => $equipId],
+                $attrs + ['tipo_equipamento' => 'ups'],
+            );
+        }
+
+        // Fichas de equipamentos que deixaram de estar cobertos (órfãs).
+        $intervencao->fichasMedicao()
+            ->when($ids !== [], fn ($q) => $q->whereNotIn('equipamento_id', $ids))
+            ->delete();
+    }
+
+    // Garante uma ficha de medições (pré-preenchida) para cada equipamento coberto no modo
+    // contrato, sem sobrepor dados já introduzidos. Só o modo contrato usa fichas.
+    private function sincronizarFichas(): void
+    {
+        if ($this->modo !== 'contrato') {
+            $this->fichas = [];
+
+            return;
+        }
+
+        $ids = array_values(array_unique(array_filter(
+            array_merge([$this->equipamento_id], $this->equipamentosCobertos)
+        )));
+
+        // Descarta fichas de equipamentos que já não fazem parte do relatório.
+        $this->fichas = array_intersect_key($this->fichas, array_flip($ids));
+
+        $emFalta = array_values(array_diff($ids, array_keys($this->fichas)));
+        if ($emFalta === []) {
+            return;
+        }
+
+        $equipamentos = Equipamento::whereIn('id', $emFalta)->get()->keyBy('id');
+
+        // Ao editar, recupera as fichas já persistidas para não perder valores.
+        $persistidas = $this->intervencaoId
+            ? FichaMedicao::where('intervencao_id', $this->intervencaoId)
+                ->whereIn('equipamento_id', $emFalta)->get()->keyBy('equipamento_id')
+            : collect();
+
+        foreach ($emFalta as $id) {
+            $this->fichas[$id] = $persistidas->has($id)
+                ? $persistidas->get($id)->paraFormulario()
+                : FichaMedicao::estruturaVazia($equipamentos->get($id));
+        }
+    }
+
     public function render()
     {
+        $this->sincronizarFichas();
+
         $anexosExistentes = $this->intervencaoId
             ? Intervencao::find($this->intervencaoId)?->anexos()->get() ?? collect()
             : collect();

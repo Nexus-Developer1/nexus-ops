@@ -255,7 +255,39 @@
                     </div>
                 </section>
 
-                {{-- Checklist --}}
+                {{-- Ficha de medições (UPS) — só no modo contrato, uma por equipamento coberto. --}}
+                @if ($modo === 'contrato')
+                <section class="cartao" x-data="{ aberto: true }">
+                    <button @click="aberto=!aberto" class="cartao-cabecalho">
+                        <span class="flex items-center gap-3">
+                            <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
+                            <span class="text-lg font-semibold text-texto-forte">Ficha de medições (UPS)</span>
+                        </span>
+                        <svg :class="aberto && 'rotate-180'" class="h-5 w-5 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div x-show="aberto" x-transition class="space-y-4 px-6 pb-7">
+                        @if ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty())
+                            @if ($equipamentoPrincipal)
+                                <x-relatorios.ficha-ups
+                                    :prefixo="'fichas.' . $equipamentoPrincipal->id"
+                                    :titulo="(trim($equipamentoPrincipal->fabricante . ' ' . $equipamentoPrincipal->modelo) ?: 'UPS') . ' · ' . ($equipamentoPrincipal->numero_serie ?? '—')"
+                                    :principal="true" />
+                            @endif
+                            @foreach ($cobertosSelecionados as $e)
+                                <x-relatorios.ficha-ups
+                                    :prefixo="'fichas.' . $e->id"
+                                    :titulo="(trim($e->fabricante . ' ' . $e->modelo) ?: 'UPS') . ' · ' . ($e->numero_serie ?? '—')"
+                                    :principal="false" />
+                            @endforeach
+                        @else
+                            <p class="text-sm text-texto-medio">Escolhe um contrato para preencher as fichas de medição dos equipamentos.</p>
+                        @endif
+                    </div>
+                </section>
+                @endif
+
+                {{-- Checklist (relatório individual) --}}
+                @if ($modo !== 'contrato')
                 <section class="cartao" x-data="{ aberto: true }">
                     <button @click="aberto=!aberto" class="cartao-cabecalho">
                         <span class="flex items-center gap-3">
@@ -316,6 +348,7 @@
                         </button>
                     </div>
                 </section>
+                @endif
 
                 {{-- Recomendações e Próximos Passos --}}
                 <section class="cartao" x-data="{ aberto: true }">

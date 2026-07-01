@@ -47,7 +47,7 @@ class Calendario extends Component
     // Modal de criação de evento próprio (sempre tipo "outro"; o texto livre vai para o título).
     public bool $modalCriar = false;
     public string $formTitulo = '';
-    public ?int $formTecnicoId = null;
+    public string $formTecnicoNome = ''; // técnico em texto livre (com histórico); sem conta de utilizador
     public string $formInicio = '';
     public string $formFim = '';
 
@@ -233,6 +233,7 @@ class Calendario extends Component
     {
         return [
             'formTitulo' => 'tipo de evento',
+            'formTecnicoNome' => 'técnico',
             'formEquipamentoId' => 'equipamento',
             'formInicio' => 'início',
             'formFim' => 'fim',
@@ -248,8 +249,7 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['formTitulo', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura']);
-        $this->formTecnicoId = $this->tecnicoId;
+        $this->reset(['formTitulo', 'formTecnicoNome', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura']);
         $this->formInicio = Carbon::parse($inicio)->format('Y-m-d\TH:i');
         $this->formFim = Carbon::parse($fim)->format('Y-m-d\TH:i');
         $this->modalCriar = true;
@@ -324,7 +324,7 @@ class Calendario extends Component
 
         $this->validate([
             'formTitulo' => ['required', 'string', 'max:255'],
-            'formTecnicoId' => ['nullable', 'exists:utilizadores,id'],
+            'formTecnicoNome' => ['nullable', 'string', 'max:255'],
             'formEquipamentoId' => ['nullable', 'exists:equipamentos,id'],
             'formInicio' => ['required', 'date'],
             'formFim' => ['required', 'date', 'after:formInicio'],
@@ -341,7 +341,7 @@ class Calendario extends Component
 
             return;
         }
-        if ($this->formTecnicoId && $razao = $detetor->conflito($this->formTecnicoId, $inicio, $fim)) {
+        if (filled($this->formTecnicoNome) && $razao = $detetor->conflitoPorNome(trim($this->formTecnicoNome), $inicio, $fim)) {
             $this->addError('formInicio', $razao);
 
             return;
@@ -371,7 +371,7 @@ class Calendario extends Component
             'inicio' => $inicio,
             'fim' => $fim,
             'estado' => EstadoEvento::Planeado,
-            'tecnico_id' => $this->formTecnicoId,
+            'tecnico_nome' => trim($this->formTecnicoNome) ?: null,
             'equipamento_id' => $equipamentoId,
             'local_id' => $localId,
             'cliente_id' => $clienteId,
@@ -507,6 +507,15 @@ class Calendario extends Component
             ->orderBy('numero')
             ->get();
 
+        // Histórico de nomes de técnico já usados (texto livre) — para sugerir ao criar.
+        $tecnicosSugeridos = EventoAgenda::query()
+            ->whereNotNull('tecnico_nome')
+            ->where('tecnico_nome', '!=', '')
+            ->distinct()
+            ->orderBy('tecnico_nome')
+            ->pluck('tecnico_nome')
+            ->all();
+
         return view('livewire.agenda.calendario', [
             'tecnicos' => $tecnicos,
             'evento' => $evento,
@@ -515,6 +524,7 @@ class Calendario extends Component
             'assuntos' => AssuntoEvento::orderBy('nome')->get(),
             'equipamentosFiltrados' => $equipamentosFiltrados,
             'contratos' => $contratos,
+            'tecnicosSugeridos' => $tecnicosSugeridos,
         ]);
     }
 }

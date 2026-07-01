@@ -105,4 +105,20 @@ class ClienteFaturacaoTest extends TestCase
             ->get(route('clientes.fatura', [$cliente, $linhaOutro]))
             ->assertNotFound();
     }
+
+    public function test_ficha_detalhe_renderiza_via_http_com_faturacao_real(): void
+    {
+        // Reproduz o caminho HTTP completo (rotas + layout) com dados realistas: série com
+        // 133 nºs, design longo, fno grande — para apanhar um eventual 500 na secção.
+        $cliente = Cliente::create(['nome' => 'ACME', 'id_erp' => '148', 'ativo' => true]);
+        $series = implode(',', array_map(fn ($i) => sprintf('MH20VNPW%07d', $i), range(1, 133)));
+        $this->linha('148', 'R1', now(), [
+            'nmdoc' => 'Factura', 'fno' => 987654,
+            'design' => 'VGA PNY nVIDIA QUADRO T1000 4GB GDDR6 PCI-E 3.0 LP 4XMDP', 'series' => $series, 'qtt' => 133,
+        ]);
+
+        $this->actingAs($this->admin())
+            ->get(route('clientes.detalhe', $cliente))
+            ->assertOk();
+    }
 }

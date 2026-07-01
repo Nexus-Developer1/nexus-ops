@@ -102,6 +102,12 @@ class Intervencao extends Model
         return $this->hasMany(ChecklistEtapa::class)->orderBy('ordem');
     }
 
+    // Fichas de medição (uma por equipamento coberto pelo relatório).
+    public function fichasMedicao(): HasMany
+    {
+        return $this->hasMany(FichaMedicao::class);
+    }
+
     public function anexos(): MorphMany
     {
         return $this->morphMany(Anexo::class, 'anexavel');

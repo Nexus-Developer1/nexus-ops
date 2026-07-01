@@ -109,7 +109,6 @@ class SyncRelatorioEventoTest extends TestCase
         Notification::fake();
         [, , $equip] = $this->contexto('SN-103');
         $admin = $this->admin();
-        $tec = User::create(['nome' => 'Téc', 'email' => 't@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
 
         $inicio = now()->addWeek()->setTime(10, 0);
         $fim = (clone $inicio)->setTime(11, 0);
@@ -118,7 +117,6 @@ class SyncRelatorioEventoTest extends TestCase
         Livewire::actingAs($admin)->test(Calendario::class)
             ->set('formTitulo', 'Inspeção')
             ->set('formEquipamentoId', $equip->id)
-            ->set('formTecnicoId', $tec->id)
             ->set('formInicio', $inicio->format('Y-m-d\TH:i'))
             ->set('formFim', $fim->format('Y-m-d\TH:i'))
             ->call('criarEvento')

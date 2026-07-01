@@ -39,6 +39,7 @@ class EventoAgenda extends Model
         'fim',
         'estado',
         'tecnico_id',
+        'tecnico_nome', // nome do técnico em texto livre (quando não é uma conta de utilizador)
         'cliente_id',
         'local_id',
         'equipamento_id',
@@ -64,6 +65,12 @@ class EventoAgenda extends Model
     public function tecnico(): BelongsTo
     {
         return $this->belongsTo(User::class, 'tecnico_id');
+    }
+
+    // Nome do técnico a mostrar: a conta ligada (se houver) ou o nome em texto livre.
+    public function getTecnicoLabelAttribute(): ?string
+    {
+        return $this->tecnico?->nome ?? $this->tecnico_nome;
     }
 
     public function cliente(): BelongsTo

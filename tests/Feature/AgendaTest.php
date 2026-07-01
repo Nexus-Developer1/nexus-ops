@@ -176,22 +176,52 @@ class AgendaTest extends TestCase
             ->assertReturned(fn ($r) => $r['ok'] === false);
     }
 
-    public function test_criar_evento_proprio_e_notifica_tecnico(): void
+    public function test_criar_evento_proprio_guarda_tecnico_em_texto_livre(): void
     {
         Notification::fake();
-        $tec = $this->tecnico();
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Reunião de equipa')
-            ->set('formTecnicoId', $tec->id)
+            ->set('formTecnicoNome', 'João Silva')
             ->set('formInicio', '2026-07-06T10:00')
             ->set('formFim', '2026-07-06T11:00')
             ->call('criarEvento')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('eventos_agenda', ['titulo' => 'Reunião de equipa', 'tipo' => 'outro', 'tecnico_id' => $tec->id]);
-        $this->assertDatabaseHas('assuntos_evento', ['nome' => 'Reunião de equipa']); // tipo livre fica guardado para sugestões
-        Notification::assertSentTo($tec, EventoAtribuido::class);
+        // Técnico gravado como texto livre (não é conta) e o tipo fica guardado para sugestões.
+        $this->assertDatabaseHas('eventos_agenda', ['titulo' => 'Reunião de equipa', 'tipo' => 'outro', 'tecnico_nome' => 'João Silva', 'tecnico_id' => null]);
+        $this->assertDatabaseHas('assuntos_evento', ['nome' => 'Reunião de equipa']);
+        Notification::assertNothingSent(); // sem conta → sem notificação automática
+    }
+
+    public function test_agenda_sugere_nomes_de_tecnico_ja_usados(): void
+    {
+        $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
+        EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'X', 'estado' => 'planeado',
+            'inicio' => now(), 'fim' => now()->addHour(), 'tecnico_nome' => 'João Silva', 'cliente_id' => $cliente->id]);
+        EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Y', 'estado' => 'planeado',
+            'inicio' => now(), 'fim' => now()->addHour(), 'tecnico_nome' => 'Maria Costa', 'cliente_id' => $cliente->id]);
+
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->assertViewHas('tecnicosSugeridos', fn ($s) => in_array('João Silva', $s, true) && in_array('Maria Costa', $s, true));
+    }
+
+    public function test_criar_evento_deteta_conflito_de_tecnico_por_nome(): void
+    {
+        $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
+        // 2026-07-06 é segunda (horário útil). "João Silva" já tem 10h–11h.
+        EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Existente', 'estado' => 'planeado',
+            'inicio' => Carbon::parse('2026-07-06 10:00'), 'fim' => Carbon::parse('2026-07-06 11:00'), 'tecnico_nome' => 'João Silva', 'cliente_id' => $cliente->id]);
+
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->set('formTitulo', 'Nova')
+            ->set('formTecnicoNome', 'João Silva')
+            ->set('formInicio', '2026-07-06T10:30')
+            ->set('formFim', '2026-07-06T11:30')
+            ->call('criarEvento')
+            ->assertHasErrors('formInicio'); // sobreposição do mesmo técnico
+
+        $this->assertDatabaseMissing('eventos_agenda', ['titulo' => 'Nova']);
     }
 
     public function test_evento_com_equipamento_herda_local_e_cliente(): void
@@ -224,7 +254,6 @@ class AgendaTest extends TestCase
         $cliente = Cliente::create(['nome' => 'ACME', 'email' => 'acme@x.pt', 'ativo' => true]);
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC1']);
         $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'fabricante' => 'APC', 'modelo' => 'X40', 'numero_serie' => 'SN-002']);
-        $tec = $this->tecnico();
 
         $inicio = now()->addWeek()->setTime(10, 0);
         $fim = (clone $inicio)->setTime(11, 30);
@@ -232,7 +261,6 @@ class AgendaTest extends TestCase
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Inspeção')
             ->set('formEquipamentoId', $equip->id)
-            ->set('formTecnicoId', $tec->id)
             ->set('formInicio', $inicio->format('Y-m-d\TH:i'))
             ->set('formFim', $fim->format('Y-m-d\TH:i'))
             ->call('criarEvento')
@@ -244,7 +272,6 @@ class AgendaTest extends TestCase
         $this->assertDatabaseHas('intervencoes', [
             'evento_agenda_id' => $evento->id,
             'equipamento_id' => $equip->id,
-            'tecnico_id' => $tec->id,
             'tipo' => 'corretiva',
             'estado' => 'planeada',
             'hora_inicio' => '10:00:00',
