@@ -68,7 +68,8 @@ class Calendario extends Component
     // Paleta de cores por técnico (legenda + eventos).
     private const PALETA = ['#16a34a', '#2563eb', '#9333ea', '#ea580c', '#0891b2', '#db2777'];
 
-    public function updatedTecnicoId(): void
+    // Ao mudar o filtro de técnico, manda o FullCalendar re-buscar os eventos (sem F5).
+    public function updatedTecnicoNome(): void
     {
         $this->recarregar();
     }
