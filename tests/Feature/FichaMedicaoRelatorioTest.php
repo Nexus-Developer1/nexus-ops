@@ -309,4 +309,27 @@ class FichaMedicaoRelatorioTest extends TestCase
         $this->assertSame(1, $interv->checklistEtapas()->count());
         $this->assertDatabaseHas('checklist_itens', ['intervencao_id' => $interv->id, 'descricao' => 'Verificar ventoinhas']);
     }
+
+    public function test_reabrir_e_gravar_nao_apaga_diagnostico_legado(): void
+    {
+        [$admin, , $e1] = $this->cenarioContrato();
+
+        // Relatório LEGADO com diagnóstico técnico antigo (estado geral, carga, etc.).
+        $interv = Intervencao::create([
+            'equipamento_id' => $e1->id, 'tipo' => 'corretiva', 'estado' => 'concluida', 'data_inicio' => now(),
+            'diagnostico' => ['estado_geral' => 'Degradado', 'carga' => '62', 'tensao_entrada' => '230', 'prioridade' => 'Alta'],
+        ]);
+        $relatorio = $interv->relatorio()->create(['numero' => '2026/0600', 'data' => now(), 'estado' => 'finalizado']);
+
+        Livewire::actingAs($admin)->test(Novo::class, ['relatorio' => $relatorio])
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        // O diagnóstico legado CONTINUA na BD — só se manteve/atualizou a prioridade.
+        $d = $interv->fresh()->diagnostico;
+        $this->assertSame('Degradado', $d['estado_geral']);
+        $this->assertSame('62', $d['carga']);
+        $this->assertSame('230', $d['tensao_entrada']);
+        $this->assertSame('Alta', $d['prioridade']);
+    }
 }

@@ -66,13 +66,6 @@ class Novo extends Component
     public string $recomendacao = '';
     public string $prioridade = 'Normal';
 
-    // ---- Diagnóstico ----
-    public string $estado_geral = '';
-    public string $carga = '';
-    public string $tensao_entrada = '';
-    public string $tensao_saida = '';
-    public string $anomalias = '';
-
     // ---- Fotos (novos uploads temporários até gravar) ----
     public array $fotos = [];
 
@@ -107,13 +100,7 @@ class Novo extends Component
             $this->resumo = $intervencao->trabalho_realizado ?? '';
             $this->recomendacao = $intervencao->observacoes ?? '';
 
-            $d = $intervencao->diagnostico ?? [];
-            $this->estado_geral = $d['estado_geral'] ?? '';
-            $this->carga = $d['carga'] ?? '';
-            $this->tensao_entrada = $d['tensao_entrada'] ?? '';
-            $this->tensao_saida = $d['tensao_saida'] ?? '';
-            $this->anomalias = $d['anomalias'] ?? '';
-            $this->prioridade = $d['prioridade'] ?? 'Normal';
+            $this->prioridade = ($intervencao->diagnostico['prioridade'] ?? null) ?: 'Normal';
 
             $this->etapas = $intervencao->checklistEtapas->map(fn ($et) => [
                 'uid' => $this->novoUid(),
@@ -443,20 +430,20 @@ class Novo extends Component
                 'hora_fim' => $this->hora_fim ?: null,
                 'trabalho_realizado' => $this->resumo ?: null,
                 'observacoes' => $this->recomendacao ?: null,
-                'diagnostico' => array_filter([
-                    'estado_geral' => $this->estado_geral ?: null,
-                    'carga' => $this->carga ?: null,
-                    'tensao_entrada' => $this->tensao_entrada ?: null,
-                    'tensao_saida' => $this->tensao_saida ?: null,
-                    'anomalias' => $this->anomalias ?: null,
-                    'prioridade' => $this->prioridade ?: null,
-                ]),
             ];
 
             if ($this->intervencaoId) {
                 $intervencao = Intervencao::findOrFail($this->intervencaoId);
+                // O diagnóstico técnico passou para a ficha de medições; aqui só se atualiza a
+                // prioridade da recomendação. NÃO destrói o diagnóstico legado (estado_geral,
+                // carga, tensões, anomalias) de relatórios antigos — só se acrescenta a prioridade.
+                $dados['diagnostico'] = array_filter(array_merge(
+                    $intervencao->diagnostico ?? [],
+                    ['prioridade' => $this->prioridade ?: null],
+                ));
                 $intervencao->update($dados);
             } else {
+                $dados['diagnostico'] = array_filter(['prioridade' => $this->prioridade ?: null]);
                 $intervencao = Intervencao::create($dados);
                 $this->intervencaoId = $intervencao->id;
             }

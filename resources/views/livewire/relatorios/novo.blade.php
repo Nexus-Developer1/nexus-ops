@@ -26,7 +26,6 @@
             {{-- Tabs: Dados Gerais / Diagnóstico + um separador por equipamento (ambos os modos). --}}
             <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-1 border-b border-borda">
                 <button @click="tab='gerais'" :class="tab==='gerais' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">Dados Gerais</button>
-                <button @click="tab='diagnostico'" :class="tab==='diagnostico' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">Diagnóstico</button>
 
                 @if ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty())
                     <span class="mx-1 h-4 w-px bg-borda" aria-hidden="true"></span>
@@ -326,31 +325,6 @@
                             </div>
                         @endif
                         @error('fotos.*') <p class="mt-2 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-                </section>
-            </div>
-
-            {{-- ===== DIAGNÓSTICO ===== --}}
-            <div x-show="tab==='diagnostico'" x-cloak class="space-y-5">
-                <section class="cartao mt-7">
-                    <div class="flex items-center gap-3 px-6 py-5">
-                        <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
-                        <h2 class="text-lg font-semibold text-texto-forte">Diagnóstico do Equipamento</h2>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 border-t border-borda px-6 py-6">
-                        <div>
-                            <label class="campo-label">Estado geral</label>
-                            <select wire:model="estado_geral" class="campo-select">
-                                <option value="">—</option>
-                                <option value="Operacional">Operacional</option>
-                                <option value="Degradado">Degradado</option>
-                                <option value="Crítico">Crítico</option>
-                            </select>
-                        </div>
-                        <div><label class="campo-label">Carga atual (%)</label><input wire:model="carga" type="number" class="campo-input" placeholder="Ex: 62"></div>
-                        <div><label class="campo-label">Tensão de entrada (V)</label><input wire:model="tensao_entrada" type="number" class="campo-input" placeholder="Ex: 230"></div>
-                        <div><label class="campo-label">Tensão de saída (V)</label><input wire:model="tensao_saida" type="number" class="campo-input" placeholder="Ex: 230"></div>
-                        <div class="col-span-2"><label class="campo-label">Anomalias detetadas</label><textarea wire:model="anomalias" rows="2" class="campo-input resize-none" placeholder="Registe quaisquer anomalias observadas..."></textarea></div>
                     </div>
                 </section>
             </div>

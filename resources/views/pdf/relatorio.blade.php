@@ -127,19 +127,6 @@
         <div style="margin-top:8px;"><div class="campo-rotulo">Observações</div><div class="texto">{{ $i->observacoes }}</div></div>
     @endif
 
-    @php($d = $i->diagnostico ?? [])
-    @if (count($d))
-        <h2>Diagnóstico</h2>
-        <table class="grelha">
-            @foreach (array_chunk($d, 2, true) as $par)
-                <tr>
-                    @foreach ($par as $chave => $valor)
-                        <td><div class="campo-rotulo">{{ ucfirst(str_replace('_', ' ', $chave)) }}</div><div class="campo-valor">{{ $valor }}</div></td>
-                    @endforeach
-                </tr>
-            @endforeach
-        </table>
-    @endif
 
     {{-- Checklist antiga: só quando NÃO há fichas de medição (relatórios legados). Os relatórios
          novos (contrato ou individual) usam as fichas por equipamento (abaixo). --}}

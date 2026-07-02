@@ -100,6 +100,21 @@ class PdfFichaMedicaoTest extends TestCase
         $this->assertStringNotContainsString('<div class="ficha-pagina">', $html);
     }
 
+    public function test_pdf_nao_mostra_seccao_diagnostico(): void
+    {
+        [$contrato, , $e1] = $this->contexto();
+        $interv = Intervencao::create([
+            'equipamento_id' => $e1->id, 'contrato_id' => $contrato->id, 'tipo' => 'preventiva', 'estado' => 'concluida',
+            'diagnostico' => ['estado_geral' => 'Operacional', 'carga' => '55', 'prioridade' => 'Normal'],
+        ]);
+        $relatorio = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/9400', 'data' => now(), 'estado' => EstadoRelatorio::Finalizado]);
+
+        $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
+
+        // A secção Diagnóstico foi removida do PDF (info passou para a ficha).
+        $this->assertStringNotContainsString('<h2>Diagnóstico</h2>', $html);
+    }
+
     // Individual (sem contrato) COM ficha → o PDF mostra a ficha, não a checklist, e não rebenta
     // com o contrato nulo.
     public function test_pdf_individual_com_ficha_mostra_ficha_sem_contrato(): void
