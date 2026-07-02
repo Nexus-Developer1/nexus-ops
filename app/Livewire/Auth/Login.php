@@ -23,9 +23,10 @@ class Login extends Component
     {
         $this->validate();
 
-        // Só utilizadores ativos podem entrar (ver secção 7 do CLAUDE.md).
+        // Só utilizadores ativos podem entrar (ver secção 7 do CLAUDE.md). Email normalizado
+        // (minúsculas) para o login ser case-insensitive — bate com o email guardado.
         $credenciais = [
-            'email' => $this->email,
+            'email' => strtolower(trim($this->email)),
             'password' => $this->password,
             'ativo' => true,
         ];

@@ -35,7 +35,8 @@ class AceitarConvite extends Component
 
         $status = Password::broker('invites')->reset(
             [
-                'email' => $this->email,
+                // Email normalizado para bater com a conta (guardada em minúsculas).
+                'email' => strtolower(trim($this->email)),
                 'password' => $this->password,
                 'password_confirmation' => $this->password_confirmation,
                 'token' => $this->token,

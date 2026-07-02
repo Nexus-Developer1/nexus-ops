@@ -27,6 +27,10 @@ class Adicionar extends Component
     {
         abort_unless(Gate::allows('gerir-utilizadores'), 403);
 
+        // Normaliza ANTES de validar → o 'unique' apanha duplicados com outra capitalização
+        // (ex.: Suporte@ vs suporte@), já que os emails são guardados em minúsculas.
+        $this->email = strtolower(trim($this->email));
+
         $this->validate([
             'nome' => ['required', 'string', 'max:255'],
             // Único: bloqueia criar um segundo utilizador com o mesmo email.
@@ -34,9 +38,10 @@ class Adicionar extends Component
         ], attributes: ['nome' => 'nome', 'email' => 'email']);
 
         // Técnico, ativo, SEM password (chave omitida → NULL → login impossível até aceitar).
+        // O email é normalizado pelo mutator do modelo (minúsculas).
         $user = User::create([
             'nome' => trim($this->nome),
-            'email' => strtolower(trim($this->email)),
+            'email' => $this->email,
             'papel' => PapelUtilizador::Tecnico,
             'ativo' => true,
         ]);

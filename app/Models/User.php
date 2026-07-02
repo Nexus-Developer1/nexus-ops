@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PapelUtilizador;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -42,6 +43,16 @@ class User extends Authenticatable
             'papel' => PapelUtilizador::class,
             'ativo' => 'boolean',
         ];
+    }
+
+    // Storage: o email é sempre guardado em minúsculas (emails são case-insensitive). Garante
+    // que nenhuma conta nasce com capitalização diferente, venha de onde vier (create/update,
+    // convite, seeder, factory). A comparação no login/reset normaliza o INPUT à parte.
+    protected function email(): Attribute
+    {
+        return Attribute::make(
+            set: fn (?string $valor) => $valor === null ? null : strtolower(trim($valor)),
+        );
     }
 
     // Só preenchido para utilizadores do portal de cliente.

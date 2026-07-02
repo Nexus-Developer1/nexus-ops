@@ -20,7 +20,8 @@ class EsqueciPassword extends Component
     {
         $this->validate();
 
-        $status = Password::sendResetLink(['email' => $this->email]);
+        // Normaliza o email (minúsculas) para encontrar a conta guardada em minúsculas.
+        $status = Password::sendResetLink(['email' => strtolower(trim($this->email))]);
 
         // Se houver throttle, avisa; caso contrário mensagem neutra (não revela se
         // o email existe — evita enumeração de contas).
