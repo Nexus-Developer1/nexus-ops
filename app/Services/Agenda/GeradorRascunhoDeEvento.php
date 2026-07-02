@@ -3,7 +3,6 @@
 namespace App\Services\Agenda;
 
 use App\Enums\EstadoIntervencao;
-use App\Enums\EstadoRelatorio;
 use App\Enums\TipoIntervencao;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
@@ -73,11 +72,8 @@ class GeradorRascunhoDeEvento
             // Liga o outro lado da relação.
             $evento->update(['intervencao_id' => $intervencao->id]);
 
-            // Documento em rascunho — sem número (atribuído só na finalização).
-            return $intervencao->relatorio()->create([
-                'estado' => EstadoRelatorio::Rascunho,
-                'data' => now(),
-            ]);
+            // Documento em rascunho — sem número (atribuído só na finalização). Ponto único.
+            return $intervencao->garantirRascunho();
         });
     }
 }

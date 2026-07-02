@@ -472,11 +472,8 @@ class Novo extends Component
             }
             $this->fotos = [];
 
-            // Relatório: cria/atualiza. O número só é atribuído ao finalizar.
-            $relatorio = Relatorio::firstOrNew(['intervencao_id' => $intervencao->id]);
-            if (! $relatorio->exists) {
-                $relatorio->data = now();
-            }
+            // Relatório: garante o rascunho-base (ponto único, à prova de corrida) e ajusta.
+            $relatorio = $intervencao->garantirRascunho();
             $relatorio->estado = $finalizar ? EstadoRelatorio::Finalizado : EstadoRelatorio::Rascunho;
             if ($finalizar && blank($relatorio->numero)) {
                 // Atribui o número (MAX+1) e grava com retry à prova de corrida.

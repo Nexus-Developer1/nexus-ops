@@ -104,11 +104,8 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
                 ->with('erro', 'O relatório desta intervenção foi eliminado.');
         }
 
-        // Vivo → abre esse; nunca existiu → cria o rascunho.
-        $relatorio ??= $intervencao->relatorio()->create([
-            'estado' => \App\Enums\EstadoRelatorio::Rascunho,
-            'data' => now(),
-        ]);
+        // Vivo → abre esse; nunca existiu → cria o rascunho (ponto único, à prova de corrida).
+        $relatorio ??= $intervencao->garantirRascunho();
 
         return redirect()->route('relatorios.editar', $relatorio);
     })->name('intervencoes.formulario');

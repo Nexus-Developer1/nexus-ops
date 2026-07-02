@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\EstadoIntervencao;
+use App\Enums\EstadoRelatorio;
 use App\Enums\TipoIntervencao;
 use App\Models\Concerns\RestritoAoCliente;
 use App\Models\Concerns\RestritoAoTecnico;
@@ -89,6 +90,18 @@ class Intervencao extends Model
     public function relatorio(): HasOne
     {
         return $this->hasOne(Relatorio::class);
+    }
+
+    // Ponto ÚNICO de criação do rascunho-base de um relatório (sem número, data=now, estado
+    // rascunho). Idempotente e à prova de corrida: firstOrCreate faz SELECT e, no miss, delega
+    // para createOrFirst (savepoint + re-leitura no 23505 do índice único parcial). Os fluxos
+    // com especificidades (finalizar atribui número) tratam-nas depois desta base.
+    public function garantirRascunho(): Relatorio
+    {
+        return $this->relatorio()->firstOrCreate([], [
+            'estado' => EstadoRelatorio::Rascunho,
+            'data' => now(),
+        ]);
     }
 
     public function checklistItens(): HasMany

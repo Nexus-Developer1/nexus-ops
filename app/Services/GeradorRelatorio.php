@@ -16,13 +16,17 @@ class GeradorRelatorio
     // Cria (ou reutiliza) o relatório da intervenção com numeração sequencial.
     public function criarParaIntervencao(Intervencao $intervencao): Relatorio
     {
-        $relatorio = $intervencao->relatorio()->firstOrNew([]);
-
-        if ($relatorio->exists) {
-            return $relatorio; // já tem relatório (e número) — não regenera
+        // Já existe (qualquer estado) → devolve tal como está (não regenera).
+        if ($existente = $intervencao->relatorio()->first()) {
+            return $existente;
         }
 
-        $relatorio->data = now();
+        // Nenhum → cria a base (ponto único, à prova de corrida) e finaliza com número.
+        $relatorio = $intervencao->garantirRascunho();
+        if (filled($relatorio->numero)) {
+            return $relatorio; // a corrida já finalizou entretanto
+        }
+
         $relatorio->estado = EstadoRelatorio::Finalizado;
         $this->atribuirNumeroEGravar($relatorio);
 
