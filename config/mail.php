@@ -75,6 +75,11 @@ return [
             'channel' => env('MAIL_LOG_CHANNEL'),
         ],
 
+        // Microsoft Graph (app-only). Registado em AppServiceProvider via Mail::extend('graph').
+        'graph' => [
+            'transport' => 'graph',
+        ],
+
         'array' => [
             'transport' => 'array',
         ],

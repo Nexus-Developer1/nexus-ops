@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Mail\Transport\GraphTransport;
 use App\Services\Erp\ErpSyncDriver;
 use App\Services\Erp\FakeErpDriver;
 use App\Services\Erp\NullErpDriver;
@@ -11,6 +12,7 @@ use Illuminate\Database\Connection;
 use Illuminate\Database\Connectors\SqlServerConnector;
 use Illuminate\Database\SqlServerConnection;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -42,6 +44,14 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Transporte de email 'graph' (Microsoft Graph, app-only). Lazy: o closure só corre
+        // quando o mailer 'graph' é resolvido. Credenciais em config/services.php (via env).
+        Mail::extend('graph', function () {
+            $c = config('services.microsoft_graph');
+
+            return new GraphTransport($c['tenant_id'], $c['client_id'], $c['client_secret'], $c['sender']);
+        });
+
         // Email de recuperação de palavra-passe em português (broker nativo).
         ResetPassword::toMailUsing(function ($notifiable, string $token) {
             $url = route('password.reset', [
