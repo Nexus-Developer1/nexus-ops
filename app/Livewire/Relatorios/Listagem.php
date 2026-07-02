@@ -5,6 +5,7 @@ namespace App\Livewire\Relatorios;
 use App\Enums\EstadoRelatorio;
 use App\Jobs\EnviarRelatorioPorEmail;
 use App\Models\Relatorio;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -62,12 +63,34 @@ class Listagem extends Component
     }
 
     // Soft delete (marca deleted_at) — recuperável; nunca DELETE físico nem apaga o PDF.
+    // Se o relatório está ligado a um evento de agenda, apaga-se a unidade toda
+    // (relatório + intervenção + evento) — sai da agenda e não deixa intervenção órfã.
+    // ENVIADO nunca é apagado (documento já entregue ao cliente, como na edição).
     public function eliminar(int $relatorio): void
     {
-        $relatorio = Relatorio::findOrFail($relatorio);
-        $rotulo = $relatorio->numero ?? 'rascunho';
+        $relatorio = Relatorio::with('intervencao.eventoAgenda')->findOrFail($relatorio);
 
-        $relatorio->delete();
+        // Guarda de servidor (além de esconder o botão na UI): enviado é imutável.
+        if ($relatorio->estado === EstadoRelatorio::Enviado) {
+            session()->flash('erro', "O relatório {$relatorio->numero} já foi enviado ao cliente e não pode ser eliminado.");
+
+            return;
+        }
+
+        $rotulo = $relatorio->numero ?? 'rascunho';
+        $intervencao = $relatorio->intervencao;
+        $evento = $intervencao?->eventoAgenda;
+
+        DB::transaction(function () use ($relatorio, $intervencao, $evento) {
+            $relatorio->delete();
+
+            // Ligado à agenda → apaga também a intervenção e o evento (rascunho e finalizado
+            // comportam-se igual: não fica intervenção órfã nem evento fantasma).
+            if ($evento) {
+                $intervencao?->delete();
+                $evento->delete();
+            }
+        });
 
         session()->flash('sucesso', "Relatório {$rotulo} eliminado.");
     }
