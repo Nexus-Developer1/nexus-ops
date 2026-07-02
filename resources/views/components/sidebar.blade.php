@@ -17,8 +17,7 @@
         'utilizadores' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>',
     ];
 
-    // Navegação (CLAUDE.md §7). Técnico = admin, EXCETO gerir utilizadores → partilham a MESMA
-    // lista de gestão. As únicas diferenças: o técnico tem o seu Painel; o admin tem Utilizadores.
+    // Navegação: o técnico é um ESPELHO do admin (mesma lista), a ÚNICA exceção é "Utilizadores".
     $itens = [
         ['id' => 'dashboard',  'label' => 'Dashboard',  'url' => route('dashboard')],
         ['id' => 'ativos',     'label' => 'Ativos',     'url' => route('ativos')],
@@ -29,11 +28,6 @@
         ['id' => 'agenda',     'label' => 'Agenda',     'url' => route('agenda')],
         ['id' => 'alertas',    'label' => 'Alertas',    'url' => route('alertas')],
     ];
-
-    // Painel: área própria do técnico (o admin é redirecionado de /painel) → só para o técnico, no topo.
-    if ($u && $u->ehTecnico()) {
-        array_unshift($itens, ['id' => 'painel', 'label' => 'Painel', 'url' => route('painel')]);
-    }
 
     // Gerir utilizadores: exclusivo do admin (Gate 'gerir-utilizadores'). Escondido dos técnicos.
     if ($u && $u->ehAdmin()) {

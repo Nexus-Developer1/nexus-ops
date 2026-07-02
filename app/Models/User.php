@@ -76,13 +76,10 @@ class User extends Authenticatable
         return $this->papel === PapelUtilizador::Cliente;
     }
 
-    // Rota inicial de cada papel (CLAUDE.md §7).
+    // Rota inicial de cada papel. Técnico = admin (aterra no dashboard); só o cliente vai
+    // para o portal.
     public function rotaInicial(): string
     {
-        return match (true) {
-            $this->ehCliente() => 'portal.dashboard',
-            $this->ehTecnico() => 'painel',
-            default => 'dashboard',
-        };
+        return $this->ehCliente() ? 'portal.dashboard' : 'dashboard';
     }
 }

@@ -42,18 +42,18 @@ class TecnicoTest extends TestCase
         return compact('evento', 'interv', 'rel');
     }
 
-    public function test_tecnico_so_ve_o_seu_trabalho(): void
+    public function test_tecnico_ve_todo_o_trabalho_como_o_admin(): void
     {
+        // Técnico = espelho do admin: vê o trabalho de TODOS os técnicos (sem isolamento).
         $a = $this->tecnico('a@nexus.pt');
         $b = $this->tecnico('b@nexus.pt');
         $this->trabalhoDe($a);
         $this->trabalhoDe($b);
 
         $this->actingAs($a);
-        $this->assertSame(1, EventoAgenda::count());
-        $this->assertSame(1, Intervencao::count());
-        $this->assertSame(1, Relatorio::count());
-        $this->assertSame($a->id, EventoAgenda::first()->tecnico_id);
+        $this->assertSame(2, EventoAgenda::count());  // o seu + o do outro técnico
+        $this->assertSame(2, Intervencao::count());
+        $this->assertSame(2, Relatorio::count());
     }
 
     public function test_tecnico_acede_a_gestao_menos_utilizadores(): void
@@ -86,8 +86,9 @@ class TecnicoTest extends TestCase
         $this->actingAs($admin)->get('/painel')->assertRedirect(route('dashboard'));
     }
 
-    public function test_login_de_tecnico_aterra_no_painel(): void
+    public function test_login_de_tecnico_aterra_no_dashboard_como_admin(): void
     {
+        // Técnico = espelho do admin → aterra no dashboard (já não no painel).
         $tec = $this->tecnico('t@nexus.pt');
         $tec->update(['password' => 'segredo123']);
 
@@ -95,6 +96,6 @@ class TecnicoTest extends TestCase
             ->set('email', 't@nexus.pt')
             ->set('password', 'segredo123')
             ->call('autenticar')
-            ->assertRedirect(route('painel'));
+            ->assertRedirect(route('dashboard'));
     }
 }

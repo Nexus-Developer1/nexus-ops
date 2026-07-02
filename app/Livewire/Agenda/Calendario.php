@@ -32,10 +32,8 @@ class Calendario extends Component
 
     public function mount(): void
     {
-        // O técnico só vê (e filtra para) a sua própria agenda (CLAUDE.md §7).
-        if (auth()->user()->ehTecnico()) {
-            $this->tecnicoId = auth()->id();
-        }
+        // Técnico = admin: vê a agenda toda por defeito (o filtro por técnico é opcional, igual
+        // ao admin). Sem auto-filtro à sua própria agenda.
     }
 
     // Detalhe de um evento (clique num evento).

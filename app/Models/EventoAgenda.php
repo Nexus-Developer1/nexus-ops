@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Enums\EstadoEvento;
 use App\Enums\TipoEvento;
 use App\Models\Concerns\RestritoAoCliente;
-use App\Models\Concerns\RestritoAoTecnico;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,20 +14,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 // Projeção temporal central da operação (CLAUDE.md §6).
 class EventoAgenda extends Model
 {
-    use RestritoAoCliente, RestritoAoTecnico, SoftDeletes;
+    use RestritoAoCliente, SoftDeletes;
 
     protected $table = 'eventos_agenda';
 
-    // Isolamento por cliente (coluna direta).
+    // Isolamento por cliente (coluna direta). NÃO há isolamento por técnico: o técnico tem a
+    // mesma visibilidade que o admin (exceto gerir utilizadores).
     protected static function restringirAoCliente(Builder $query, int $clienteId): void
     {
         $query->where('cliente_id', $clienteId);
-    }
-
-    // Isolamento por técnico (a sua agenda).
-    protected static function restringirAoTecnico(Builder $query, int $tecnicoId): void
-    {
-        $query->where('tecnico_id', $tecnicoId);
     }
 
     /** @var list<string> */

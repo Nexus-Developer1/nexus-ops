@@ -6,7 +6,6 @@ use App\Enums\EstadoIntervencao;
 use App\Enums\EstadoRelatorio;
 use App\Enums\TipoIntervencao;
 use App\Models\Concerns\RestritoAoCliente;
-use App\Models\Concerns\RestritoAoTecnico;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,20 +19,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 // Intervenção / ordem de trabalho sobre um equipamento.
 class Intervencao extends Model
 {
-    use HasFactory, RestritoAoCliente, RestritoAoTecnico, SoftDeletes;
+    use HasFactory, RestritoAoCliente, SoftDeletes;
 
     protected $table = 'intervencoes';
 
-    // Isolamento por cliente (via equipamento → local).
+    // Isolamento por cliente (via equipamento → local). NÃO há isolamento por técnico: o técnico
+    // tem a mesma visibilidade que o admin (exceto gerir utilizadores).
     protected static function restringirAoCliente(Builder $query, int $clienteId): void
     {
         $query->whereHas('equipamento.local', fn ($q) => $q->where('cliente_id', $clienteId));
-    }
-
-    // Isolamento por técnico (as suas intervenções).
-    protected static function restringirAoTecnico(Builder $query, int $tecnicoId): void
-    {
-        $query->where('tecnico_id', $tecnicoId);
     }
 
     /** @var list<string> */
