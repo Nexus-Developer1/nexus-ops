@@ -12,26 +12,24 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 // Envio do relatório ao cliente por email — sempre em job assíncrono (CLAUDE.md §12).
-// Garante o PDF, envia, regista enviado_em/enviado_para e marca o estado Enviado (§6).
+// Destinatário, assunto e mensagem são escritos à mão na página de composição
+// (Relatorios\Enviar); aqui garante-se o PDF, envia-se, e marca-se Enviado (§6).
 class EnviarRelatorioPorEmail implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public Relatorio $relatorio) {}
+    public function __construct(
+        public Relatorio $relatorio,
+        public string $para,
+        public string $assunto,
+        public string $mensagem,
+    ) {}
 
     public function handle(GeradorRelatorio $gerador): void
     {
-        $this->relatorio->load('intervencao.equipamento.local.cliente');
-
-        $cliente = $this->relatorio->intervencao->equipamento->local->cliente;
-        $destinatario = $cliente->email;
-
-        // Sem email do cliente não há para onde enviar — aborta sem marcar Enviado.
-        if (blank($destinatario)) {
-            Log::warning('Relatório sem destinatário: cliente sem email.', [
-                'relatorio' => $this->relatorio->numero,
-                'cliente_id' => $cliente->id,
-            ]);
+        // Defensivo: o destinatário é validado na composição, mas nunca envia em branco.
+        if (blank($this->para)) {
+            Log::warning('Envio de relatório sem destinatário.', ['relatorio' => $this->relatorio->numero]);
 
             return;
         }
@@ -42,18 +40,18 @@ class EnviarRelatorioPorEmail implements ShouldQueue
             $this->relatorio->refresh();
         }
 
-        Mail::to($destinatario)->send(new RelatorioParaCliente($this->relatorio));
+        Mail::to($this->para)->send(new RelatorioParaCliente($this->relatorio, $this->assunto, $this->mensagem));
 
         $this->relatorio->update([
             'estado' => EstadoRelatorio::Enviado,
             'enviado_em' => now(),
-            'enviado_para' => $destinatario,
+            'enviado_para' => $this->para,
         ]);
 
         // Auditoria de envios de relatórios (CLAUDE.md §11).
         Log::info('Relatório enviado ao cliente.', [
             'relatorio' => $this->relatorio->numero,
-            'para' => $destinatario,
+            'para' => $this->para,
         ]);
     }
 }

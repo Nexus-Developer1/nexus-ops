@@ -17,24 +17,26 @@ class RelatorioParaCliente extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public Relatorio $relatorio) {}
+    public function __construct(
+        public Relatorio $relatorio,
+        public string $assunto,
+        public string $mensagem,
+    ) {}
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: 'Relatório de intervenção ' . $this->relatorio->numero,
-        );
+        // Assunto escrito à mão na página de composição.
+        return new Envelope(subject: $this->assunto);
     }
 
     public function content(): Content
     {
+        // O corpo é a mensagem escrita à mão; o PDF vai em anexo.
         return new Content(
             markdown: 'emails.relatorio',
             with: [
                 'relatorio' => $this->relatorio,
-                'intervencao' => $this->relatorio->intervencao,
-                'cliente' => $this->relatorio->intervencao->equipamento->local->cliente,
-                'equipamento' => $this->relatorio->intervencao->equipamento,
+                'mensagem' => $this->mensagem,
             ],
         );
     }

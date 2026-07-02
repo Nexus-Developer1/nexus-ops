@@ -117,6 +117,7 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
     // /novo ANTES de qualquer rota com parâmetro para não colidir.
     Route::get('/relatorios/novo', \App\Livewire\Relatorios\Novo::class)->name('relatorios.novo');
     Route::get('/relatorios/{relatorio}/editar', \App\Livewire\Relatorios\Novo::class)->name('relatorios.editar');
+    Route::get('/relatorios/{relatorio}/enviar', \App\Livewire\Relatorios\Enviar::class)->name('relatorios.enviar');
     Route::get('/relatorios/{relatorio}/pdf', $servirPdf)->name('relatorios.pdf');
 
     // Proxy aos anexos no object storage (evita expor o MinIO ao browser).

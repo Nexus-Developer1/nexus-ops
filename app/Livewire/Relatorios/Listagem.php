@@ -3,7 +3,6 @@
 namespace App\Livewire\Relatorios;
 
 use App\Enums\EstadoRelatorio;
-use App\Jobs\EnviarRelatorioPorEmail;
 use App\Models\Relatorio;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -44,23 +43,6 @@ class Listagem extends Component
         $this->resetPage();
     }
 
-    // Despacha o envio do relatório ao cliente (job assíncrono — CLAUDE.md §12).
-    public function enviar(int $relatorio): void
-    {
-        $relatorio = Relatorio::with('intervencao.equipamento.local.cliente')->findOrFail($relatorio);
-
-        $email = $relatorio->intervencao->equipamento->local->cliente->email;
-
-        if (blank($email)) {
-            session()->flash('erro', "O cliente do relatório {$relatorio->numero} não tem email definido.");
-
-            return;
-        }
-
-        EnviarRelatorioPorEmail::dispatch($relatorio);
-
-        session()->flash('sucesso', "Relatório {$relatorio->numero} em envio para {$email}.");
-    }
 
     // Soft delete (marca deleted_at) — recuperável; nunca DELETE físico nem apaga o PDF.
     // Se o relatório está ligado a um evento de agenda, apaga-se a unidade toda

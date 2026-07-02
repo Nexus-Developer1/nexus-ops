@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Enums\EstadoRelatorio;
 use App\Enums\PapelUtilizador;
 use App\Jobs\EnviarRelatorioPorEmail;
-use App\Livewire\Relatorios\Listagem as RelatoriosListagem;
+use App\Livewire\Relatorios\Enviar;
 use App\Mail\RelatorioParaCliente;
 use App\Models\Cliente;
 use App\Models\Equipamento;
@@ -19,71 +19,106 @@ use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-// Última etapa da cadeia do domínio: Relatório → enviado ao Cliente (CLAUDE.md §6).
+// Última etapa da cadeia: Relatório → enviado ao Cliente (CLAUDE.md §6). O envio passa por uma
+// página de composição onde o destinatário, assunto e mensagem são escritos à mão.
 class EnvioRelatorioTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function relatorioPara(?string $email): Relatorio
+    private function admin(): User
+    {
+        return User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
+    }
+
+    private function relatorioPara(?string $email, string $estado = 'finalizado', ?string $numero = '2026/9001'): Relatorio
     {
         $cliente = Cliente::create(['nome' => 'Cliente Teste', 'email' => $email, 'ativo' => true]);
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sala Técnica']);
         $equipamento = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
-        $intervencao = Intervencao::create([
-            'equipamento_id' => $equipamento->id,
-            'tipo' => 'corretiva',
-            'estado' => 'concluida',
-        ]);
+        $intervencao = Intervencao::create(['equipamento_id' => $equipamento->id, 'tipo' => 'corretiva', 'estado' => 'concluida']);
 
         // pdf_path já preenchido para o job não invocar a geração de PDF no teste.
         return Relatorio::create([
-            'intervencao_id' => $intervencao->id,
-            'numero' => '2026/9001',
-            'data' => now(),
-            'estado' => EstadoRelatorio::Finalizado,
-            'pdf_path' => 'relatorios/2026-9001.pdf',
+            'intervencao_id' => $intervencao->id, 'numero' => $numero,
+            'data' => now(), 'estado' => $estado, 'pdf_path' => 'relatorios/2026-9001.pdf',
         ]);
     }
 
-    public function test_envia_relatorio_e_marca_como_enviado(): void
+    public function test_job_envia_com_valores_escritos_e_marca_enviado(): void
     {
         Mail::fake();
         $relatorio = $this->relatorioPara('cliente@exemplo.pt');
 
-        (new EnviarRelatorioPorEmail($relatorio))->handle(app(\App\Services\GeradorRelatorio::class));
+        (new EnviarRelatorioPorEmail($relatorio, 'destinatario@escrito.pt', 'Assunto à mão', 'Mensagem à mão'))
+            ->handle(app(\App\Services\GeradorRelatorio::class));
 
-        Mail::assertSent(RelatorioParaCliente::class, fn ($mail) => $mail->hasTo('cliente@exemplo.pt'));
+        Mail::assertSent(RelatorioParaCliente::class, fn ($mail) => $mail->hasTo('destinatario@escrito.pt') && $mail->hasSubject('Assunto à mão'));
 
         $relatorio->refresh();
         $this->assertSame(EstadoRelatorio::Enviado, $relatorio->estado);
-        $this->assertSame('cliente@exemplo.pt', $relatorio->enviado_para);
+        $this->assertSame('destinatario@escrito.pt', $relatorio->enviado_para); // o escrito, não o do cliente
         $this->assertNotNull($relatorio->enviado_em);
     }
 
-    public function test_botao_enviar_da_listagem_despacha_o_job(): void
+    public function test_pagina_de_composicao_pre_preenche_e_despacha_com_o_escrito(): void
     {
         Queue::fake();
-        $admin = User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
         $relatorio = $this->relatorioPara('cliente@exemplo.pt');
 
-        Livewire::actingAs($admin)->test(RelatoriosListagem::class)
-            ->call('enviar', $relatorio->id)
-            ->assertHasNoErrors();
+        Livewire::actingAs($this->admin())->test(Enviar::class, ['relatorio' => $relatorio])
+            ->assertSet('para', 'cliente@exemplo.pt')                              // pré-preenchido, editável
+            ->assertSet('assunto', 'Relatório de intervenção 2026/9001')
+            ->set('para', 'outro@destino.pt')
+            ->set('assunto', 'O meu assunto')
+            ->set('mensagem', 'Olá, segue o relatório.')
+            ->call('enviar')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('relatorios'));
 
-        Queue::assertPushed(EnviarRelatorioPorEmail::class, fn ($job) => $job->relatorio->id === $relatorio->id);
+        Queue::assertPushed(EnviarRelatorioPorEmail::class, fn ($job) => $job->relatorio->id === $relatorio->id
+            && $job->para === 'outro@destino.pt'
+            && $job->assunto === 'O meu assunto'
+            && $job->mensagem === 'Olá, segue o relatório.');
     }
 
-    public function test_nao_envia_sem_email_do_cliente(): void
+    public function test_composicao_exige_destinatario_valido(): void
+    {
+        Queue::fake();
+        $relatorio = $this->relatorioPara(null); // cliente sem email → para começa vazio
+
+        $comp = Livewire::actingAs($this->admin())->test(Enviar::class, ['relatorio' => $relatorio])
+            ->set('assunto', 'X')->set('mensagem', 'Y'); // isolar o erro no 'para'
+
+        // Vazio → regra 'required', não despacha.
+        $comp->set('para', '')
+            ->call('enviar')
+            ->assertHasErrors(['para' => 'required']);
+
+        // Malformado ("joao@") → regra 'email', também barrado na página, não despacha.
+        $comp->set('para', 'joao@')
+            ->call('enviar')
+            ->assertHasErrors(['para' => 'email']);
+
+        // Nunca chegou nada à fila (a validação corre antes do dispatch).
+        Queue::assertNothingPushed();
+    }
+
+    public function test_rascunho_nao_abre_composicao(): void
+    {
+        $rascunho = $this->relatorioPara('cliente@exemplo.pt', estado: 'rascunho', numero: null);
+
+        Livewire::actingAs($this->admin())->test(Enviar::class, ['relatorio' => $rascunho])
+            ->assertRedirect(route('relatorios'));
+    }
+
+    public function test_job_defensivo_nao_envia_com_destinatario_vazio(): void
     {
         Mail::fake();
-        $relatorio = $this->relatorioPara(null);
+        $relatorio = $this->relatorioPara('cliente@exemplo.pt');
 
-        (new EnviarRelatorioPorEmail($relatorio))->handle(app(\App\Services\GeradorRelatorio::class));
+        (new EnviarRelatorioPorEmail($relatorio, '', 'A', 'M'))->handle(app(\App\Services\GeradorRelatorio::class));
 
         Mail::assertNothingSent();
-
-        $relatorio->refresh();
-        $this->assertSame(EstadoRelatorio::Finalizado, $relatorio->estado);
-        $this->assertNull($relatorio->enviado_em);
+        $this->assertSame(EstadoRelatorio::Finalizado, $relatorio->fresh()->estado);
     }
 }

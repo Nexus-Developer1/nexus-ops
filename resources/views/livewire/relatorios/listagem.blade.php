@@ -87,11 +87,11 @@
                                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                                 PDF
                                             </a>
-                                            <button wire:click="enviar({{ $r->id }})" wire:loading.attr="disabled" wire:target="enviar({{ $r->id }})"
-                                                class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-texto-medio transition hover:bg-fundo disabled:opacity-50">
+                                            <a href="{{ route('relatorios.enviar', $r) }}" wire:navigate
+                                                class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-texto-medio transition hover:bg-fundo">
                                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                                                 {{ $r->estado === \App\Enums\EstadoRelatorio::Enviado ? 'Reenviar' : 'Enviar' }}
-                                            </button>
+                                            </a>
                                         @endif
 
                                         {{-- Enviado = documento entregue ao cliente → não se elimina (botão escondido; guarda no método). --}}
