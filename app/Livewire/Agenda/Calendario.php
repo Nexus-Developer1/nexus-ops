@@ -19,7 +19,6 @@ use App\Services\Agenda\DetetorConflitos;
 use App\Services\Agenda\GeradorRascunhoDeEvento;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\URL as UrlFacade;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -27,8 +26,10 @@ use Livewire\Component;
 #[Layout('components.layouts.app', ['ativo' => 'agenda', 'titulo' => 'Agenda'])]
 class Calendario extends Component
 {
+    // Filtro por técnico: pelo NOME (os eventos são marcados por tecnico_nome, texto livre),
+    // não pela conta. Vazio = todos.
     #[Url]
-    public ?int $tecnicoId = null;
+    public string $tecnicoNome = '';
 
     public function mount(): void
     {
@@ -77,13 +78,14 @@ class Calendario extends Component
         $this->js("window.dispatchEvent(new Event('agenda:refetch'))");
     }
 
-    private function corTecnico(?int $tecnicoId): string
+    private function corTecnico(?string $nome): string
     {
-        if (! $tecnicoId) {
+        $nome = trim((string) $nome);
+        if ($nome === '') {
             return '#94a3b8'; // por atribuir
         }
 
-        return self::PALETA[$tecnicoId % count(self::PALETA)];
+        return self::PALETA[abs(crc32($nome)) % count(self::PALETA)];
     }
 
     // ---- Fonte de eventos do FullCalendar (intervalo visível) ----
@@ -97,10 +99,10 @@ class Calendario extends Component
             ->with(['cliente', 'equipamento'])
             ->where('estado', '!=', EstadoEvento::Cancelado->value)
             ->whereBetween('inicio', [$de, $ate])
-            ->when($this->tecnicoId, fn ($q) => $q->where('tecnico_id', $this->tecnicoId))
+            ->when($this->tecnicoNome !== '', fn ($q) => $q->where('tecnico_nome', $this->tecnicoNome))
             ->get()
             ->map(function (EventoAgenda $e) {
-                $cor = $this->corTecnico($e->tecnico_id);
+                $cor = $this->corTecnico($e->tecnico_nome);
 
                 return [
                     'id' => (string) $e->id,
@@ -123,7 +125,7 @@ class Calendario extends Component
         $ausencias = TecnicoDisponibilidade::query()
             ->where('inicio', '<', $ate)
             ->where('fim', '>', $de)
-            ->when($this->tecnicoId, fn ($q) => $q->where('tecnico_id', $this->tecnicoId))
+            ->when($this->tecnicoNome !== '', fn ($q) => $q->whereHas('tecnico', fn ($t) => $t->where('nome', $this->tecnicoNome)))
             ->get()
             ->map(fn (TecnicoDisponibilidade $a) => [
                 'id' => 'aus-' . $a->id,
@@ -403,8 +405,7 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['ausInicio', 'ausFim', 'ausMotivo']);
-        $this->ausTecnicoId = $this->tecnicoId; // técnico vê-se a si próprio pré-selecionado
+        $this->reset(['ausInicio', 'ausFim', 'ausMotivo', 'ausTecnicoId']);
         $this->modalAusencia = true;
     }
 
@@ -459,15 +460,23 @@ class Calendario extends Component
 
     public function render()
     {
+        // Contas de técnico — usadas no modal de AUSÊNCIA (ausências são por conta).
         $tecnicos = User::where('papel', PapelUtilizador::Tecnico)
             ->where('ativo', true)
             ->orderBy('nome')
             ->get()
-            ->map(fn (User $t) => [
-                'id' => $t->id,
-                'nome' => $t->nome,
-                'cor' => $this->corTecnico($t->id),
-            ]);
+            ->map(fn (User $t) => ['id' => $t->id, 'nome' => $t->nome]);
+
+        // Nomes de técnico usados nos EVENTOS (texto livre) — alimentam o filtro e a legenda,
+        // com a cor por nome (coerente com a cor dos eventos no calendário).
+        $nomesTecnicos = EventoAgenda::query()
+            ->whereNotNull('tecnico_nome')
+            ->where('tecnico_nome', '!=', '')
+            ->distinct()
+            ->orderBy('tecnico_nome')
+            ->pluck('tecnico_nome')
+            ->map(fn (string $nome) => ['nome' => $nome, 'cor' => $this->corTecnico($nome)])
+            ->all();
 
         $evento = $this->eventoSelecionadoId
             ? EventoAgenda::with(['cliente', 'equipamento', 'tecnico', 'intervencao.relatorio'])->find($this->eventoSelecionadoId)
@@ -475,11 +484,6 @@ class Calendario extends Component
 
         $ausencia = $this->ausenciaSelecionadaId
             ? TecnicoDisponibilidade::with('tecnico')->find($this->ausenciaSelecionadaId)
-            : null;
-
-        // URL iCal assinada do técnico filtrado (subscrição externa).
-        $urlIcal = $this->tecnicoId
-            ? UrlFacade::signedRoute('agenda.ical', ['tecnico' => $this->tecnicoId])
             : null;
 
         // Pesquisa de equipamentos server-side (nº série/fabricante/modelo, sem acentos), limitada.
@@ -522,9 +526,9 @@ class Calendario extends Component
 
         return view('livewire.agenda.calendario', [
             'tecnicos' => $tecnicos,
+            'nomesTecnicos' => $nomesTecnicos,
             'evento' => $evento,
             'ausencia' => $ausencia,
-            'urlIcal' => $urlIcal,
             'assuntos' => AssuntoEvento::orderBy('nome')->get(),
             'equipamentosFiltrados' => $equipamentosFiltrados,
             'contratos' => $contratos,

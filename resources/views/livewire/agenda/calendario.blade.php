@@ -16,20 +16,14 @@
                             Marcar ausência
                         </button>
                     @endunless
-                    @if ($urlIcal)
-                        <a href="{{ $urlIcal }}" class="botao-secundario" title="Subscrever em calendário externo">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            iCal
-                        </a>
-                    @endif
-                    @unless (auth()->user()->ehTecnico())
-                        <select wire:model.live="tecnicoId" class="campo-select w-56">
-                            <option value="">Todos os técnicos</option>
-                            @foreach ($tecnicos as $t)
-                                <option value="{{ $t['id'] }}">{{ $t['nome'] }}</option>
-                            @endforeach
-                        </select>
-                    @endunless
+                    {{-- Filtro por técnico (pelo nome usado nos eventos). Disponível para todos
+                         (técnico = admin). Vazio = todos os técnicos. --}}
+                    <select wire:model.live="tecnicoNome" class="campo-select w-56">
+                        <option value="">Todos os técnicos</option>
+                        @foreach ($nomesTecnicos as $t)
+                            <option value="{{ $t['nome'] }}">{{ $t['nome'] }}</option>
+                        @endforeach
+                    </select>
                 </div>
             </div>
 
@@ -382,9 +376,9 @@
                 </div>
             @endif
 
-            {{-- Legenda de técnicos --}}
+            {{-- Legenda de técnicos (por nome, com a cor dos eventos) --}}
             <div class="mt-5 flex flex-wrap items-center gap-6 text-sm text-texto-medio">
-                @foreach ($tecnicos as $t)
+                @foreach ($nomesTecnicos as $t)
                     <span class="inline-flex items-center gap-2">
                         <span class="h-3 w-3 rounded-full" style="background-color: {{ $t['cor'] }}"></span> {{ $t['nome'] }}
                     </span>
