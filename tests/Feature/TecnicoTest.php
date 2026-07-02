@@ -56,14 +56,19 @@ class TecnicoTest extends TestCase
         $this->assertSame($a->id, EventoAgenda::first()->tecnico_id);
     }
 
-    public function test_tecnico_nao_acede_a_areas_de_gestao(): void
+    public function test_tecnico_acede_a_gestao_menos_utilizadores(): void
     {
         $tec = $this->tecnico('t@nexus.pt');
 
-        $this->actingAs($tec)->get('/dashboard')->assertRedirect(route('painel'));
-        $this->actingAs($tec)->get('/contratos')->assertRedirect(route('painel'));
-        $this->actingAs($tec)->get('/alertas')->assertRedirect(route('painel'));
-        $this->actingAs($tec)->get('/ativos')->assertRedirect(route('painel'));
+        // Técnico = admin, EXCETO gerir utilizadores → tem acesso a estas áreas.
+        $this->actingAs($tec)->get('/dashboard')->assertOk();
+        $this->actingAs($tec)->get('/contratos')->assertOk();
+        $this->actingAs($tec)->get('/alertas')->assertOk();
+        $this->actingAs($tec)->get('/ativos')->assertOk();
+        $this->actingAs($tec)->get('/despesas')->assertOk();
+
+        // ÚNICA exceção: gestão de utilizadores → 403 (Gate 'gerir-utilizadores').
+        $this->actingAs($tec)->get(route('utilizadores.adicionar'))->assertForbidden();
     }
 
     public function test_tecnico_acede_a_sua_operacao(): void

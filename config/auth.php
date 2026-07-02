@@ -99,6 +99,16 @@ return [
             'expire' => 60,
             'throttle' => 60,
         ],
+
+        // Broker dedicado aos CONVITES: reutiliza o mecanismo de reset (mesma tabela, token
+        // imprevisível, uso único) mas com validade maior (3 dias) — adequada a um convite,
+        // sem alargar a validade curta do reset normal.
+        'invites' => [
+            'provider' => 'users',
+            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => 60 * 24 * 3,
+            'throttle' => 0,
+        ],
     ],
 
     /*

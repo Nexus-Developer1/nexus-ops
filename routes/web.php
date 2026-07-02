@@ -13,6 +13,9 @@ Route::middleware('guest')->group(function () {
     // Recuperação de palavra-passe (broker nativo do Laravel).
     Route::get('/esqueci-password', \App\Livewire\Auth\EsqueciPassword::class)->name('password.request');
     Route::get('/redefinir-password/{token}', \App\Livewire\Auth\RedefinirPassword::class)->name('password.reset');
+
+    // Aceitar convite: definir a password de uma conta nova (broker 'invites', uso único).
+    Route::get('/convite/{token}', \App\Livewire\Auth\AceitarConvite::class)->name('convite.definir');
 });
 
 // Feed iCal de um técnico — URL assinada, acessível por apps de calendário
@@ -45,8 +48,9 @@ $servirPdf = function (\App\Models\Relatorio $relatorio, \App\Services\GeradorRe
         ->header('Content-Disposition', 'inline; filename="' . str_replace('/', '-', $relatorio->numero) . '.pdf"');
 };
 
-// ---- Gestão (só admin) — dashboard de gestão, contratos, alertas, ativos ----
-Route::middleware(['auth', 'papel:admin'])->group(function () {
+// ---- Gestão da operação (admin + técnico) — dashboard, contratos, alertas, ativos, despesas.
+// O técnico tem as mesmas permissões que o admin, EXCETO gerir utilizadores (grupo abaixo). ----
+Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
     Route::get('/dashboard', \App\Livewire\DashboardGestao::class)->name('dashboard');
 
     Route::get('/ativos', \App\Livewire\Equipamentos\Listagem::class)->name('ativos');
@@ -66,6 +70,14 @@ Route::middleware(['auth', 'papel:admin'])->group(function () {
     Route::get('/despesas', \App\Livewire\Despesas\Listagem::class)->name('despesas');
     Route::get('/despesas/nova', \App\Livewire\Despesas\Editor::class)->name('despesas.nova');
     Route::get('/despesas/{despesa}/editar', \App\Livewire\Despesas\Editor::class)->name('despesas.editar');
+});
+
+// ---- Gestão de utilizadores (ÚNICA área exclusiva do admin) ----
+// Middleware admin,tecnico para o técnico CHEGAR ao componente e levar um 403 real do Gate
+// 'gerir-utilizadores' (o middleware papel:admin redirecionaria, não daria 403). A guarda
+// verdadeira é o abort_unless(Gate) no componente.
+Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
+    Route::get('/utilizadores/adicionar', \App\Livewire\Utilizadores\Adicionar::class)->name('utilizadores.adicionar');
 });
 
 // ---- Painel inicial do técnico (a sua operação) ----

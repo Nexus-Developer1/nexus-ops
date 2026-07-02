@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Mail\Transport\GraphTransport;
+use App\Models\User;
 use App\Services\Erp\ErpSyncDriver;
 use App\Services\Erp\FakeErpDriver;
 use App\Services\Erp\NullErpDriver;
@@ -12,6 +13,7 @@ use Illuminate\Database\Connection;
 use Illuminate\Database\Connectors\SqlServerConnector;
 use Illuminate\Database\SqlServerConnection;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
 
@@ -44,6 +46,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Única capacidade exclusiva do admin: gerir/convidar utilizadores. O técnico tem todo
+        // o resto (ver grupos de rotas). Usada no componente (abort_unless) e para esconder o link.
+        Gate::define('gerir-utilizadores', fn (User $utilizador) => $utilizador->ehAdmin());
+
         // Transporte de email 'graph' (Microsoft Graph, app-only). Lazy: o closure só corre
         // quando o mailer 'graph' é resolvido. Credenciais em config/services.php (via env).
         Mail::extend('graph', function () {

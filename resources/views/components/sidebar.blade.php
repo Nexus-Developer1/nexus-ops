@@ -14,28 +14,32 @@
         'agenda'     => '<path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>',
         'alertas'    => '<path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>',
         'despesas'   => '<path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>',
+        'utilizadores' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>',
     ];
 
-    // Navegação conforme o papel (CLAUDE.md §7): o técnico vê só a sua operação.
+    // Navegação (CLAUDE.md §7). Técnico = admin, EXCETO gerir utilizadores → partilham a MESMA
+    // lista de gestão. As únicas diferenças: o técnico tem o seu Painel; o admin tem Utilizadores.
+    $itens = [
+        ['id' => 'dashboard',  'label' => 'Dashboard',  'url' => route('dashboard')],
+        ['id' => 'ativos',     'label' => 'Ativos',     'url' => route('ativos')],
+        ['id' => 'clientes',   'label' => 'Clientes',   'url' => route('clientes')],
+        ['id' => 'relatorios', 'label' => 'Relatórios', 'url' => route('relatorios')],
+        ['id' => 'contratos',  'label' => 'Contratos',  'url' => route('contratos')],
+        ['id' => 'despesas',   'label' => 'Despesas',   'url' => route('despesas')],
+        ['id' => 'agenda',     'label' => 'Agenda',     'url' => route('agenda')],
+        ['id' => 'alertas',    'label' => 'Alertas',    'url' => route('alertas')],
+    ];
+
+    // Painel: área própria do técnico (o admin é redirecionado de /painel) → só para o técnico, no topo.
     if ($u && $u->ehTecnico()) {
-        $itens = [
-            ['id' => 'painel',     'label' => 'Painel',     'url' => route('painel')],
-            ['id' => 'agenda',     'label' => 'Agenda',     'url' => route('agenda')],
-            ['id' => 'relatorios', 'label' => 'Relatórios', 'url' => route('relatorios')],
-            ['id' => 'clientes',   'label' => 'Clientes',   'url' => route('clientes')],
-        ];
-    } else {
-        $itens = [
-            ['id' => 'dashboard',  'label' => 'Dashboard',  'url' => route('dashboard')],
-            ['id' => 'ativos',     'label' => 'Ativos',     'url' => route('ativos')],
-            ['id' => 'clientes',   'label' => 'Clientes',   'url' => route('clientes')],
-            ['id' => 'relatorios', 'label' => 'Relatórios', 'url' => route('relatorios')],
-            ['id' => 'contratos',  'label' => 'Contratos',  'url' => route('contratos')],
-            ['id' => 'despesas',   'label' => 'Despesas',   'url' => route('despesas')],
-            ['id' => 'agenda',     'label' => 'Agenda',     'url' => route('agenda')],
-            ['id' => 'alertas',    'label' => 'Alertas',    'url' => route('alertas')],
-        ];
+        array_unshift($itens, ['id' => 'painel', 'label' => 'Painel', 'url' => route('painel')]);
     }
+
+    // Gerir utilizadores: exclusivo do admin (Gate 'gerir-utilizadores'). Escondido dos técnicos.
+    if ($u && $u->ehAdmin()) {
+        $itens[] = ['id' => 'utilizadores', 'label' => 'Utilizadores', 'url' => route('utilizadores.adicionar')];
+    }
+
     $itens = array_map(fn ($i) => $i + ['icon' => $icones[$i['id']]], $itens);
 
     $iniciais = $u

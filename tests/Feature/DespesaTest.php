@@ -97,10 +97,10 @@ class DespesaTest extends TestCase
                 && $k['numero'] === 2);
     }
 
-    public function test_so_admin_acede(): void
+    public function test_admin_e_tecnico_acedem(): void
     {
+        // Técnico passou a ter as mesmas permissões que o admin (exceto gerir utilizadores).
         $this->actingAs($this->admin())->get('/despesas')->assertOk();
-        // Técnico não acede a áreas de gestão — o middleware papel redireciona (302).
-        $this->actingAs($this->tecnico())->get('/despesas')->assertRedirect();
+        $this->actingAs($this->tecnico())->get('/despesas')->assertOk();
     }
 }
