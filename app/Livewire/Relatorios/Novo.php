@@ -18,7 +18,6 @@ use App\Services\GeradorRelatorio;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -54,10 +53,6 @@ class Novo extends Component
     // ---- Constatações ----
     public string $resumo = '';
 
-    // ---- Checklist em etapas ----
-    // Estrutura: [['uid','titulo','itens'=>[['uid','descricao','concluido','observacao'],...]], ...]
-    public array $etapas = [];
-
     // ---- Fichas de medição (só modo contrato) ----
     // Uma por equipamento coberto, keyed por equipamento_id. Estrutura em FichaMedicao::estruturaVazia().
     public array $fichas = [];
@@ -80,7 +75,7 @@ class Novo extends Component
                 return;
             }
 
-            $intervencao = $relatorio->intervencao()->with('checklistEtapas.itens', 'contrato.cliente', 'equipamento.local.cliente')->firstOrFail();
+            $intervencao = $relatorio->intervencao()->with('contrato.cliente', 'equipamento.local.cliente')->firstOrFail();
             $this->relatorioId = $relatorio->id;
             $this->intervencaoId = $intervencao->id;
             $this->equipamento_id = $intervencao->equipamento_id;
@@ -102,33 +97,11 @@ class Novo extends Component
 
             $this->prioridade = ($intervencao->diagnostico['prioridade'] ?? null) ?: 'Normal';
 
-            $this->etapas = $intervencao->checklistEtapas->map(fn ($et) => [
-                'uid' => $this->novoUid(),
-                'titulo' => $et->titulo,
-                'itens' => $et->itens->map(fn ($it) => [
-                    'uid' => $this->novoUid(),
-                    'descricao' => $it->descricao,
-                    'concluido' => (bool) $it->concluido,
-                    'observacao' => $it->observacao ?? '',
-                ])->all(),
-            ])->all();
-
             return;
         }
 
         // Novo relatório.
         $this->data = now()->format('Y-m-d');
-        $this->etapas = [
-            [
-                'uid' => $this->novoUid(),
-                'titulo' => 'Inspeção',
-                'itens' => [
-                    ['uid' => $this->novoUid(), 'descricao' => 'Inspeção visual', 'concluido' => false, 'observacao' => ''],
-                    ['uid' => $this->novoUid(), 'descricao' => 'Verificação de funcionamento', 'concluido' => false, 'observacao' => ''],
-                    ['uid' => $this->novoUid(), 'descricao' => 'Limpeza geral', 'concluido' => false, 'observacao' => ''],
-                ],
-            ],
-        ];
     }
 
     public function ehRascunho(): bool
@@ -268,11 +241,6 @@ class Novo extends Component
             ->get();
     }
 
-    private function novoUid(): string
-    {
-        return (string) Str::uuid();
-    }
-
     // Validação COMPLETA (finalizar).
     protected function rules(): array
     {
@@ -301,79 +269,6 @@ class Novo extends Component
         return [
             'contrato_id' => [$this->modo === 'contrato' ? 'required' : 'nullable', 'integer', 'exists:contratos,id'],
         ];
-    }
-
-    // ---- Etapas ----
-    public function adicionarEtapa(): void
-    {
-        $this->etapas[] = ['uid' => $this->novoUid(), 'titulo' => '', 'itens' => []];
-    }
-
-    public function removerEtapa(string $uid): void
-    {
-        $this->etapas = array_values(array_filter($this->etapas, fn ($e) => $e['uid'] !== $uid));
-    }
-
-    // ---- Itens ----
-    public function adicionarItem(string $etapaUid): void
-    {
-        foreach ($this->etapas as $i => $etapa) {
-            if ($etapa['uid'] === $etapaUid) {
-                $this->etapas[$i]['itens'][] = ['uid' => $this->novoUid(), 'descricao' => '', 'concluido' => false, 'observacao' => ''];
-
-                return;
-            }
-        }
-    }
-
-    public function removerItem(string $etapaUid, string $itemUid): void
-    {
-        foreach ($this->etapas as $i => $etapa) {
-            if ($etapa['uid'] === $etapaUid) {
-                $this->etapas[$i]['itens'] = array_values(array_filter($etapa['itens'], fn ($it) => $it['uid'] !== $itemUid));
-
-                return;
-            }
-        }
-    }
-
-    // ---- Reordenação (drag-and-drop) ----
-    public function reordenar(array $estrutura): void
-    {
-        $etapasPorUid = [];
-        $itensPorUid = [];
-        foreach ($this->etapas as $etapa) {
-            $etapasPorUid[$etapa['uid']] = $etapa;
-            foreach ($etapa['itens'] as $item) {
-                $itensPorUid[$item['uid']] = $item;
-            }
-        }
-
-        $novas = [];
-        foreach ($estrutura as $entrada) {
-            $etapaUid = $entrada['etapa'] ?? null;
-            if (! $etapaUid || ! isset($etapasPorUid[$etapaUid])) {
-                continue;
-            }
-
-            $itens = [];
-            foreach (($entrada['itens'] ?? []) as $itemUid) {
-                if (isset($itensPorUid[$itemUid])) {
-                    $itens[] = $itensPorUid[$itemUid];
-                }
-            }
-
-            $novas[] = [
-                'uid' => $etapaUid,
-                'titulo' => $etapasPorUid[$etapaUid]['titulo'],
-                'itens' => $itens,
-            ];
-        }
-
-        $totalItensDepois = array_sum(array_map(fn ($e) => count($e['itens']), $novas));
-        if (count($novas) === count($this->etapas) && $totalItensDepois === count($itensPorUid)) {
-            $this->etapas = $novas;
-        }
     }
 
     // ---- Fotos já guardadas (em edição) ----
