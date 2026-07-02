@@ -141,9 +141,9 @@
         </table>
     @endif
 
-    {{-- Checklist antiga: só nos relatórios INDIVIDUAIS. Nos de contrato é substituída
-         pelas fichas de medição (abaixo). --}}
-    @if (! $i->contrato)
+    {{-- Checklist antiga: só quando NÃO há fichas de medição (relatórios legados). Os relatórios
+         novos (contrato ou individual) usam as fichas por equipamento (abaixo). --}}
+    @if ($i->fichasMedicao->isEmpty())
         @if ($i->checklistEtapas->count())
             <h2>Checklist</h2>
             @foreach ($i->checklistEtapas as $etapa)
@@ -175,15 +175,15 @@
         @endforeach
     @endif
 
-    {{-- ===== FICHAS DE MEDIÇÃO (relatório de contrato) — uma por página =====
+    {{-- ===== FICHAS DE MEDIÇÃO — uma por página (contrato e individual) =====
          Nota: usar sempre a forma INLINE do PHP (como o resto desta view); um bloco raw
          de PHP partiria a compilação do Blade. --}}
-    @if ($i->contrato && $i->fichasMedicao->isNotEmpty())
+    @if ($i->fichasMedicao->isNotEmpty())
         @foreach ($i->fichasMedicao as $ficha)
             @php($fe = $ficha->equipamento)
             @php($floc = $fe?->local)
             @php($fcli = $floc?->cliente)
-            @php($mostrarClienteFinal = $fcli && $fcli->id !== $i->contrato->cliente_id)
+            @php($mostrarClienteFinal = $fcli && $i->contrato && $fcli->id !== $i->contrato->cliente_id)
             <div class="ficha-pagina">
                 <div class="ficha-titulo">Ficha de Medições — UPS</div>
                 <div class="ficha-sub">Relatório {{ $relatorio->numero }} · {{ $ficha->serie ?: ($fe?->numero_serie ?? '—') }}</div>
@@ -191,7 +191,7 @@
                 <div class="ficha-seccao">Identificação</div>
                 <table class="ficha-tab">
                     <tr>
-                        <td style="width:50%;"><span class="ficha-rot">Cliente</span><br>{{ $i->contrato->cliente?->nome ?? $fcli?->nome ?? '—' }}</td>
+                        <td style="width:50%;"><span class="ficha-rot">Cliente</span><br>{{ $i->contrato?->cliente?->nome ?? $fcli?->nome ?? '—' }}</td>
                         <td><span class="ficha-rot">Intervenção nº</span><br>{{ $relatorio->numero }}</td>
                     </tr>
                     @if ($mostrarClienteFinal)

@@ -23,12 +23,12 @@
                 <span class="etiqueta {{ \App\Enums\EstadoRelatorio::Rascunho->classesEtiqueta() }} uppercase tracking-wide">Rascunho</span>
             </div>
 
-            {{-- Tabs: Dados Gerais / Diagnóstico + (modo contrato) um separador por equipamento. --}}
+            {{-- Tabs: Dados Gerais / Diagnóstico + um separador por equipamento (ambos os modos). --}}
             <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-1 border-b border-borda">
                 <button @click="tab='gerais'" :class="tab==='gerais' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">Dados Gerais</button>
                 <button @click="tab='diagnostico'" :class="tab==='diagnostico' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">Diagnóstico</button>
 
-                @if ($modo === 'contrato' && ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty()))
+                @if ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty())
                     <span class="mx-1 h-4 w-px bg-borda" aria-hidden="true"></span>
                     @if ($equipamentoPrincipal)
                         <button wire:key="tab-btn-{{ $equipamentoPrincipal->id }}" @click="tab='equip-{{ $equipamentoPrincipal->id }}'" :class="tab==='equip-{{ $equipamentoPrincipal->id }}' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm transition">
@@ -266,70 +266,6 @@
                     </div>
                 </section>
 
-                {{-- Checklist (relatório individual) --}}
-                @if ($modo !== 'contrato')
-                <section class="cartao" x-data="{ aberto: true }">
-                    <button @click="aberto=!aberto" class="cartao-cabecalho">
-                        <span class="flex items-center gap-3">
-                            <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7l2 2 4-4"/></svg></span>
-                            <span class="text-lg font-semibold text-texto-forte">Checklist</span>
-                        </span>
-                        <svg :class="aberto && 'rotate-180'" class="h-5 w-5 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                    </button>
-                    <div x-show="aberto" x-transition class="space-y-4 px-6 pb-7" x-data="checklist">
-                        {{-- Contentor das etapas (SortableJS — reordenar etapas) --}}
-                        <div data-etapas-root class="space-y-4">
-                            @foreach ($etapas as $ei => $etapa)
-                                @php($total = count($etapa['itens']))
-                                @php($feitos = collect($etapa['itens'])->where('concluido', true)->count())
-                                <div wire:key="etapa-{{ $etapa['uid'] }}" data-etapa="{{ $etapa['uid'] }}" x-data="{ aberta: true }" class="rounded-lg border border-borda bg-fundo/40">
-                                    {{-- Cabeçalho da etapa --}}
-                                    <div class="flex items-center gap-2 px-3 py-2.5">
-                                        <span class="pega-etapa cursor-grab text-texto-fraco transition hover:text-texto-medio" title="Arrastar etapa">
-                                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01"/></svg>
-                                        </span>
-                                        <input wire:model="etapas.{{ $ei }}.titulo" type="text" class="campo-input flex-1 font-medium" placeholder="Título da etapa (ex.: Inspeção)">
-                                        <span class="shrink-0 whitespace-nowrap text-xs text-texto-fraco">{{ $feitos }}/{{ $total }} concluídos</span>
-                                        <button type="button" @click="aberta=!aberta" class="shrink-0 text-texto-fraco transition hover:text-texto-medio" title="Colapsar/expandir">
-                                            <svg :class="aberta && 'rotate-180'" class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                                        </button>
-                                        <button type="button" wire:click="removerEtapa('{{ $etapa['uid'] }}')" @if ($total) wire:confirm="Remover esta etapa e os seus {{ $total }} {{ \Illuminate\Support\Str::plural('item', $total) }}?" @endif class="shrink-0 text-texto-fraco transition hover:text-perigo-500" title="Remover etapa">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                                        </button>
-                                    </div>
-
-                                    {{-- Itens da etapa --}}
-                                    <div x-show="aberta" x-transition class="space-y-2 px-3 pb-3">
-                                        <div data-itens="{{ $etapa['uid'] }}" class="space-y-2">
-                                            @foreach ($etapa['itens'] as $ii => $item)
-                                                <div wire:key="item-{{ $item['uid'] }}" data-item="{{ $item['uid'] }}" class="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5">
-                                                    <span class="pega-item cursor-grab text-texto-fraco transition hover:text-texto-medio" title="Arrastar item">
-                                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01"/></svg>
-                                                    </span>
-                                                    <input wire:model.live="etapas.{{ $ei }}.itens.{{ $ii }}.concluido" type="checkbox" class="h-4 w-4 shrink-0 rounded border-borda text-verde-600 focus:ring-verde-500">
-                                                    <input wire:model="etapas.{{ $ei }}.itens.{{ $ii }}.descricao" type="text" class="campo-input flex-1" placeholder="Item de verificação...">
-                                                    <input wire:model="etapas.{{ $ei }}.itens.{{ $ii }}.observacao" type="text" class="campo-input w-48" placeholder="Observação">
-                                                    <button type="button" wire:click="removerItem('{{ $etapa['uid'] }}', '{{ $item['uid'] }}')" class="shrink-0 text-texto-fraco transition hover:text-perigo-500" title="Remover item"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                        <button type="button" wire:click="adicionarItem('{{ $etapa['uid'] }}')" class="inline-flex items-center gap-1.5 text-sm font-medium text-verde-600 hover:text-verde-700">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
-                                            Adicionar item
-                                        </button>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-
-                        <button type="button" wire:click="adicionarEtapa" class="inline-flex items-center gap-1.5 text-sm font-medium text-verde-600 hover:text-verde-700">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
-                            Adicionar etapa
-                        </button>
-                    </div>
-                </section>
-                @endif
-
                 {{-- Recomendações e Próximos Passos --}}
                 <section class="cartao" x-data="{ aberto: true }">
                     <button @click="aberto=!aberto" class="cartao-cabecalho">
@@ -419,10 +355,9 @@
                 </section>
             </div>
 
-            {{-- ===== FICHAS DE MEDIÇÃO (uma "página" por equipamento do contrato) ===== --}}
-            {{-- Nota: construir a lista com diretivas INLINE. Este ficheiro já usa a forma
-                 inline na checklist; um bloco raw de PHP partiria a compilação do Blade. --}}
-            @if ($modo === 'contrato')
+            {{-- ===== FICHAS DE MEDIÇÃO (uma "página" por equipamento) — ambos os modos ===== --}}
+            {{-- Nota: construir a lista com diretivas INLINE (bloco raw de PHP partiria a compilação). --}}
+            @if ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty())
                 @php($equipamentosFicha = collect())
                 @if ($equipamentoPrincipal) @php($equipamentosFicha->push(['e' => $equipamentoPrincipal, 'principal' => true])) @endif
                 @foreach ($cobertosSelecionados as $e) @php($equipamentosFicha->push(['e' => $e, 'principal' => false])) @endforeach

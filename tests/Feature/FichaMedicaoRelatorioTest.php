@@ -225,7 +225,8 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->get(route('relatorios.novo'))
             ->assertOk()
             ->assertSee('Dados Gerais')
-            ->assertSee('Checklist'); // secção do modo individual
+            ->assertSee('Registo Fotográfico')
+            ->assertDontSee('Checklist'); // checklist genérica foi removida (fichas em ambos os modos)
     }
 
     public function test_render_http_formulario_contrato_mostra_abas_e_ficha(): void
@@ -272,7 +273,7 @@ class FichaMedicaoRelatorioTest extends TestCase
         $this->assertNotNull($relatorio->fresh()->pdf_path); // PDF gerado (queue sync) sem 500
     }
 
-    public function test_modo_individual_nao_cria_fichas_e_mantem_checklist(): void
+    public function test_modo_individual_cria_ficha_por_equipamento_e_sem_checklist(): void
     {
         [$admin, , $e1] = $this->cenarioContrato();
 
@@ -280,11 +281,32 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->call('definirModo', 'individual')
             ->set('equipamento_id', $e1->id)
             ->set('data', now()->toDateString())
+            ->set("fichas.{$e1->id}.ve_ln_l1", '230.00') // medição → ficha persiste
             ->call('guardarRascunho')
             ->assertHasNoErrors();
 
         $interv = Intervencao::where('equipamento_id', $e1->id)->firstOrFail();
-        $this->assertSame(0, $interv->fichasMedicao()->count());
-        $this->assertGreaterThan(0, $interv->checklistEtapas()->count()); // checklist mantém-se
+        $this->assertSame(1, $interv->fichasMedicao()->count());   // individual também tem ficha
+        $this->assertSame(0, $interv->checklistEtapas()->count()); // relatório novo nasce sem checklist
+    }
+
+    public function test_reabrir_e_gravar_relatorio_legado_nao_apaga_a_checklist(): void
+    {
+        [$admin, , $e1] = $this->cenarioContrato();
+
+        // Relatório LEGADO: intervenção individual com checklist antiga (etapa + item) e SEM fichas.
+        $interv = Intervencao::create(['equipamento_id' => $e1->id, 'tipo' => 'corretiva', 'estado' => 'concluida', 'data_inicio' => now()]);
+        $etapa = $interv->checklistEtapas()->create(['titulo' => 'Inspeção', 'ordem' => 0]);
+        $etapa->itens()->create(['intervencao_id' => $interv->id, 'descricao' => 'Verificar ventoinhas', 'concluido' => true, 'ordem' => 0]);
+        $relatorio = $interv->relatorio()->create(['numero' => '2026/0500', 'data' => now(), 'estado' => 'finalizado']);
+
+        // Reabrir no editor e gravar (sem tocar na checklist).
+        Livewire::actingAs($admin)->test(Novo::class, ['relatorio' => $relatorio])
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        // A checklist legada CONTINUA intacta na BD — nada foi apagado.
+        $this->assertSame(1, $interv->checklistEtapas()->count());
+        $this->assertDatabaseHas('checklist_itens', ['intervencao_id' => $interv->id, 'descricao' => 'Verificar ventoinhas']);
     }
 }

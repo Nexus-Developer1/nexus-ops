@@ -82,7 +82,8 @@ class PdfFichaMedicaoTest extends TestCase
         $this->assertStringNotContainsString('<h2>Checklist</h2>', $html);
     }
 
-    public function test_pdf_individual_mantem_checklist_e_sem_ficha(): void
+    // Legado: relatório SEM fichas (só checklist antiga) continua a mostrar a checklist (fallback).
+    public function test_pdf_legado_sem_ficha_mostra_checklist(): void
     {
         [, $local] = $this->contexto();
         $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-IND']);
@@ -95,9 +96,30 @@ class PdfFichaMedicaoTest extends TestCase
 
         $this->assertStringContainsString('<h2>Checklist</h2>', $html);
         $this->assertStringContainsString('Verificar ventoinhas', $html);
-        $this->assertStringNotContainsString('Valores elétricos', $html); // sem ficha no individual
-        // A classe existe sempre no CSS; o que não pode existir é uma ficha renderizada.
+        $this->assertStringNotContainsString('Valores elétricos', $html); // sem fichas → sem secção de ficha
         $this->assertStringNotContainsString('<div class="ficha-pagina">', $html);
+    }
+
+    // Individual (sem contrato) COM ficha → o PDF mostra a ficha, não a checklist, e não rebenta
+    // com o contrato nulo.
+    public function test_pdf_individual_com_ficha_mostra_ficha_sem_contrato(): void
+    {
+        [, $local, $e1] = $this->contexto();
+        $interv = Intervencao::create(['equipamento_id' => $e1->id, 'tipo' => 'preventiva', 'estado' => 'concluida']); // sem contrato_id
+        $relatorio = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/9302', 'data' => now(), 'estado' => EstadoRelatorio::Finalizado]);
+
+        FichaMedicao::create([
+            'intervencao_id' => $interv->id, 'equipamento_id' => $e1->id, 'tipo_equipamento' => 'ups',
+            'marca' => 'Riello', 've_ln_l1' => '231.40',
+        ]);
+
+        $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
+
+        $this->assertStringContainsString('Valores elétricos', $html);           // ficha renderizada
+        $this->assertStringContainsString('<div class="ficha-pagina">', $html);
+        $this->assertStringContainsString('231.40', $html);
+        $this->assertStringNotContainsString('<h2>Checklist</h2>', $html);        // sem checklist quando há ficha
+        $this->assertStringNotContainsString('null', $html);                      // contrato nulo não vira "null"
     }
 
     // CRÍTICO: estado null NÃO marca nem OK nem NOK. Nunca default para NOK.

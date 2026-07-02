@@ -466,40 +466,11 @@ class Novo extends Component
                 array_values(array_diff($this->equipamentosCobertos, [$this->equipamento_id])),
             );
 
-            // Modo contrato: a checklist genérica é substituída pela ficha de medições (uma por
-            // equipamento coberto). Modo individual: mantém a checklist em etapas.
-            if ($this->modo === 'contrato') {
-                $this->persistirFichas($intervencao);
-            } else {
-                // Etapas + itens: substitui o conjunto, com a ordem.
-                $intervencao->checklistEtapas()->delete();
-                foreach (array_values($this->etapas) as $ordemEtapa => $etapa) {
-                    $titulo = trim($etapa['titulo'] ?? '');
-                    $itens = array_values(array_filter(
-                        $etapa['itens'] ?? [],
-                        fn ($it) => trim($it['descricao'] ?? '') !== '',
-                    ));
-
-                    if ($titulo === '' && count($itens) === 0) {
-                        continue;
-                    }
-
-                    $etapaModel = $intervencao->checklistEtapas()->create([
-                        'titulo' => $titulo !== '' ? $titulo : 'Sem título',
-                        'ordem' => $ordemEtapa,
-                    ]);
-
-                    foreach ($itens as $ordemItem => $it) {
-                        $etapaModel->itens()->create([
-                            'intervencao_id' => $intervencao->id,
-                            'descricao' => trim($it['descricao']),
-                            'concluido' => (bool) ($it['concluido'] ?? false),
-                            'observacao' => trim($it['observacao'] ?? '') ?: null,
-                            'ordem' => $ordemItem,
-                        ]);
-                    }
-                }
-            }
+            // O trabalho passou a registar-se em fichas de medição por equipamento (ambos os
+            // modos). Relatórios novos nascem só com fichas; NÃO se cria checklist para eles.
+            // A checklist antiga de relatórios LEGADOS NUNCA é apagada aqui — fica preservada na
+            // BD (histórico de manutenção). No PDF, o fallback mostra-a só quando não há fichas.
+            $this->persistirFichas($intervencao);
 
             // Fotos novas (anexa às existentes).
             foreach ($this->fotos as $foto) {
@@ -576,16 +547,10 @@ class Novo extends Component
             ->delete();
     }
 
-    // Garante uma ficha de medições (pré-preenchida) para cada equipamento coberto no modo
-    // contrato, sem sobrepor dados já introduzidos. Só o modo contrato usa fichas.
+    // Garante uma ficha de medições (pré-preenchida) para cada equipamento coberto, sem
+    // sobrepor dados já introduzidos. Aplica-se a AMBOS os modos (contrato e individual).
     private function sincronizarFichas(): void
     {
-        if ($this->modo !== 'contrato') {
-            $this->fichas = [];
-
-            return;
-        }
-
         $ids = array_values(array_unique(array_filter(
             array_merge([$this->equipamento_id], $this->equipamentosCobertos)
         )));
