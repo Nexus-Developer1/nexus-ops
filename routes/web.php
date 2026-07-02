@@ -91,7 +91,21 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
     // "Abrir intervenção": o trabalho preenche-se no EDITOR DE RELATÓRIO (fonte única — abas
     // de equipamento, ficha de medições, etc.). Garante um rascunho ligado e redireciona.
     Route::get('/intervencoes/{intervencao}', function (\App\Models\Intervencao $intervencao) {
-        $relatorio = $intervencao->relatorio()->firstOrCreate([], [
+        // withTrashed: distingue relatório VIVO / ELIMINADO / inexistente numa só query. O
+        // "nulls first" faz um relatório vivo ganhar a um eliminado (dados já corrompidos pela
+        // bug antiga não bloqueiam indevidamente).
+        $relatorio = $intervencao->relatorio()->withTrashed()
+            ->orderByRaw('deleted_at asc nulls first')
+            ->first();
+
+        // Relatório eliminado → NÃO ressuscita nem cria fantasma. Explica e volta à listagem.
+        if ($relatorio && $relatorio->trashed()) {
+            return redirect()->route('relatorios')
+                ->with('erro', 'O relatório desta intervenção foi eliminado.');
+        }
+
+        // Vivo → abre esse; nunca existiu → cria o rascunho.
+        $relatorio ??= $intervencao->relatorio()->create([
             'estado' => \App\Enums\EstadoRelatorio::Rascunho,
             'data' => now(),
         ]);

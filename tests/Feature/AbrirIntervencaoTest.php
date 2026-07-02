@@ -57,4 +57,21 @@ class AbrirIntervencaoTest extends TestCase
         $resp->assertRedirect(route('relatorios.editar', $existente));
         $this->assertSame(1, Relatorio::where('intervencao_id', $interv->id)->count()); // não duplicou
     }
+
+    public function test_intervencao_com_relatorio_eliminado_nao_ressuscita(): void
+    {
+        $interv = $this->intervencao();
+        $relatorio = $interv->relatorio()->create(['estado' => 'rascunho', 'data' => now()]);
+        $relatorio->delete(); // soft delete
+
+        $resp = $this->actingAs($this->admin())->get(route('intervencoes.formulario', $interv));
+
+        // NÃO cria um novo relatório (continua 1 no total, incluindo o eliminado — não passa a 2).
+        $this->assertSame(1, Relatorio::withTrashed()->where('intervencao_id', $interv->id)->count());
+        $this->assertSame(0, Relatorio::where('intervencao_id', $interv->id)->count()); // nenhum vivo
+
+        // Redireciona para a listagem com a mensagem, sem abrir o editor.
+        $resp->assertRedirect(route('relatorios'));
+        $resp->assertSessionHas('erro', 'O relatório desta intervenção foi eliminado.');
+    }
 }
