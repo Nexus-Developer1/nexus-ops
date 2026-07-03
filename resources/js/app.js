@@ -27,7 +27,7 @@ document.addEventListener('alpine:init', () => {
     // na vista de DIA (a semana fica ilegível a 375px).
     const ecraEstreito = () => window.innerWidth < 640;
     const toolbarResponsiva = (estreito) => estreito
-        ? { left: 'prev,next', center: 'title', right: 'timeGridDay,dayGridMonth' }
+        ? { left: 'prev,next', center: 'title', right: 'timeGridDay,timeGridWeek,dayGridMonth' }
         : { left: 'prev,next today', center: 'title', right: 'timeGridDay,timeGridWeek,dayGridMonth' };
 
     window.Alpine.data('agendaCalendario', () => ({
@@ -49,13 +49,9 @@ document.addEventListener('alpine:init', () => {
                 expandRows: true,
                 height: 'auto',
                 headerToolbar: toolbarResponsiva(estreito),
-                // Ao rodar/redimensionar, reajusta a barra e evita a vista de semana em ecrã estreito.
+                // Ao rodar/redimensionar, reajusta a barra (mantém a vista escolhida pelo utilizador).
                 windowResize: () => {
-                    const e = ecraEstreito();
-                    this.calendar.setOption('headerToolbar', toolbarResponsiva(e));
-                    if (e && this.calendar.view.type === 'timeGridWeek') {
-                        this.calendar.changeView('timeGridDay');
-                    }
+                    this.calendar.setOption('headerToolbar', toolbarResponsiva(ecraEstreito()));
                 },
                 editable: true,
                 selectable: true,
