@@ -62,9 +62,9 @@
                 </div>
             </div>
 
-            {{-- Tabela --}}
-            <div class="cartao mt-5 overflow-hidden">
-                <table class="w-full text-sm">
+            {{-- Tabela (scroll horizontal no telemóvel em vez de cortar as colunas) --}}
+            <div class="cartao mt-5 overflow-x-auto">
+                <table class="w-full min-w-[720px] text-sm">
                     <thead>
                         <tr class="border-b border-borda text-left text-xs uppercase tracking-wide text-texto-fraco">
                             <th class="px-6 py-3 font-semibold">Data</th>

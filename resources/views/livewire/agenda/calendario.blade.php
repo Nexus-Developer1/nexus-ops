@@ -9,7 +9,7 @@
                     <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Agenda</h1>
                     <p class="mt-2 text-sm text-texto-medio">Arraste para reagendar · selecione um intervalo livre para criar evento ou ausência.</p>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex w-full flex-wrap items-center gap-3 sm:w-auto">
                     @unless (auth()->user()->ehCliente())
                         <button type="button" wire:click="abrirAusencia" class="botao-secundario" title="Marcar ausência de um técnico">
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
@@ -18,7 +18,7 @@
                     @endunless
                     {{-- Filtro por técnico (pelo nome usado nos eventos). Disponível para todos
                          (técnico = admin). Vazio = todos os técnicos. --}}
-                    <select wire:model.live="tecnicoNome" class="campo-select w-56">
+                    <select wire:model.live="tecnicoNome" class="campo-select w-full sm:w-56">
                         <option value="">Todos os técnicos</option>
                         @foreach ($nomesTecnicos as $t)
                             <option value="{{ $t['nome'] }}">{{ $t['nome'] }}</option>
@@ -43,7 +43,7 @@
             </div>
 
             {{-- Calendário (FullCalendar montado pelo Alpine) --}}
-            <div class="cartao mt-6 p-5">
+            <div class="cartao mt-6 p-3 sm:p-5">
                 <div x-ref="cal" wire:ignore></div>
             </div>
 
@@ -75,7 +75,7 @@
                             <div class="flex justify-between gap-4"><dt class="text-texto-fraco">Técnico</dt><dd class="text-right font-medium text-texto-forte">{{ $evento->tecnico_label ?? 'Por atribuir' }}</dd></div>
                         </dl>
 
-                        <div class="flex items-center justify-end gap-3 border-t border-borda px-6 py-4">
+                        <div class="flex flex-wrap items-center justify-end gap-3 border-t border-borda px-6 py-4">
                             @if ($evento->intervencao_id)
                                 @php($rel = $evento->intervencao?->relatorio)
                                 @if ($evento->tipo !== \App\Enums\TipoEvento::VisitaPreventiva)
@@ -119,7 +119,7 @@
                             <div class="flex justify-between gap-4"><dt class="text-texto-fraco">De</dt><dd class="text-right font-medium text-texto-forte">{{ $ausencia->inicio->translatedFormat('d M Y · H:i') }}</dd></div>
                             <div class="flex justify-between gap-4"><dt class="text-texto-fraco">Até</dt><dd class="text-right font-medium text-texto-forte">{{ $ausencia->fim->translatedFormat('d M Y · H:i') }}</dd></div>
                         </dl>
-                        <div class="flex items-center justify-end gap-3 border-t border-borda px-6 py-4">
+                        <div class="flex flex-wrap items-center justify-end gap-3 border-t border-borda px-6 py-4">
                             <button wire:click="fecharAusencia" class="botao-secundario">Fechar</button>
                             <button wire:click="removerAusencia" wire:confirm="Remover esta ausência?" class="botao inline-flex items-center gap-2 bg-perigo-600 px-5 py-2.5 text-white hover:bg-perigo-500">Remover</button>
                         </div>
@@ -317,7 +317,7 @@
                             @endif
                         </div>
 
-                        <div class="flex items-center justify-end gap-3 border-t border-borda px-6 py-4">
+                        <div class="flex flex-wrap items-center justify-end gap-3 border-t border-borda px-6 py-4">
                             <button type="button" wire:click="fecharCriar" class="botao-secundario">Cancelar</button>
                             <button type="submit" class="botao-primario">Criar</button>
                         </div>
@@ -368,7 +368,7 @@
                             </div>
                         </div>
 
-                        <div class="flex items-center justify-end gap-3 border-t border-borda px-6 py-4">
+                        <div class="flex flex-wrap items-center justify-end gap-3 border-t border-borda px-6 py-4">
                             <button type="button" wire:click="fecharMarcarAusencia" class="botao-secundario">Cancelar</button>
                             <button type="submit" class="botao-primario">Marcar ausência</button>
                         </div>

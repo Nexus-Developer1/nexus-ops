@@ -42,6 +42,15 @@
 .fc-event {
     @apply cursor-pointer border-l-2 text-xs;
 }
+/* Telemóvel: a barra do calendário faz wrap (título + botões não cabem numa linha a 375px). */
+@media (max-width: 639px) {
+    .fc .fc-toolbar.fc-header-toolbar {
+        @apply flex-wrap justify-center gap-2;
+    }
+    .fc .fc-toolbar-title {
+        @apply text-base;
+    }
+}
 
 @layer components {
     /* ---- Campos de formulario ---- */

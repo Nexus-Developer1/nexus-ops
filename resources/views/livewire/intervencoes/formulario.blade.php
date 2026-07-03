@@ -8,7 +8,7 @@
         <div class="mx-auto max-w-5xl">
 
             {{-- Cabeçalho --}}
-            <div class="flex items-start justify-between">
+            <div class="flex flex-wrap items-start justify-between gap-y-2">
                 <div>
                     <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Relatório de Intervenção Técnica</h1>
                     <p class="mt-2 text-sm text-texto-medio">Preencha todos os campos obrigatórios para submeter a folha de obra.</p>
@@ -17,7 +17,7 @@
             </div>
 
             {{-- Tabs --}}
-            <div class="mt-8 flex gap-8 border-b border-borda">
+            <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-1 border-b border-borda">
                 <button @click="tab='gerais'" :class="tab==='gerais' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">Dados Gerais</button>
                 <button @click="tab='diagnostico'" :class="tab==='diagnostico' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">Diagnóstico</button>
                 <button @click="tab='fotografias'" :class="tab==='fotografias' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">Fotografias</button>

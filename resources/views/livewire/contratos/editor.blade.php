@@ -4,7 +4,7 @@
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <form wire:submit="guardar" class="mx-auto max-w-4xl">
 
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ $contrato ? 'Editar contrato' : 'Novo contrato' }}</h1>
                 <div class="flex items-center gap-3">
                     <a href="{{ $contrato ? route('contratos.ficha', $contrato) : route('contratos') }}" wire:navigate class="botao-secundario">Cancelar</a>

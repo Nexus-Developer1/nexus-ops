@@ -22,14 +22,23 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
+    // Toolbar/vista responsivos: num telemóvel a barra do FullCalendar (prev/next/today +
+    // título + 3 botões de vista) não cabe. Em ecrã estreito reduzimos os botões e abrimos
+    // na vista de DIA (a semana fica ilegível a 375px).
+    const ecraEstreito = () => window.innerWidth < 640;
+    const toolbarResponsiva = (estreito) => estreito
+        ? { left: 'prev,next', center: 'title', right: 'timeGridDay,dayGridMonth' }
+        : { left: 'prev,next today', center: 'title', right: 'timeGridDay,timeGridWeek,dayGridMonth' };
+
     window.Alpine.data('agendaCalendario', () => ({
         calendar: null,
         erro: '',
 
         init() {
+            const estreito = ecraEstreito();
             this.calendar = new Calendar(this.$refs.cal, {
                 plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
-                initialView: 'timeGridWeek',
+                initialView: estreito ? 'timeGridDay' : 'timeGridWeek',
                 locale: ptLocale,
                 timeZone: 'local',
                 firstDay: 1,
@@ -39,10 +48,14 @@ document.addEventListener('alpine:init', () => {
                 nowIndicator: true,
                 expandRows: true,
                 height: 'auto',
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'timeGridDay,timeGridWeek,dayGridMonth',
+                headerToolbar: toolbarResponsiva(estreito),
+                // Ao rodar/redimensionar, reajusta a barra e evita a vista de semana em ecrã estreito.
+                windowResize: () => {
+                    const e = ecraEstreito();
+                    this.calendar.setOption('headerToolbar', toolbarResponsiva(e));
+                    if (e && this.calendar.view.type === 'timeGridWeek') {
+                        this.calendar.changeView('timeGridDay');
+                    }
                 },
                 editable: true,
                 selectable: true,

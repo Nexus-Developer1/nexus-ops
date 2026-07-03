@@ -18,7 +18,7 @@
                     <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     <input wire:model.live.debounce.400ms="pesquisa" type="text" class="campo-input pl-10" placeholder="Pesquisar por nº de série, modelo ou cliente...">
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                     <button wire:click="filtrarTipo('')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $tipo === '' ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">Todos</button>
                     @foreach ($tipos as $t)
                         <button wire:click="filtrarTipo('{{ $t->value }}')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $tipo === $t->value ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">{{ $t->rotulo() }}</button>
