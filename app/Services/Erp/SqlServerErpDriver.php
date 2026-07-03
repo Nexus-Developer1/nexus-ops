@@ -116,14 +116,18 @@ class SqlServerErpDriver implements ErpSyncDriver
                   AND no IS NOT NULL AND no <> 0";
 
         foreach (DB::connection('erp')->select($sql) as $r) {
+            // TRIM obrigatório nos campos de texto: as colunas char do PHC vêm com padding de
+            // espaços à direita. Em especial o mastamp — os 16.761 já em produção foram carregados
+            // pelo Python COM trim; sem trim aqui o id_erp não casava ("...001 " ≠ "...001") e o
+            // updateOrCreate criava duplicados. Espelha o limpar()/.strip() do import_equip_riello.py.
             yield new EquipamentoErp(
-                idErp: (string) $r->mastamp,
+                idErp: trim((string) $r->mastamp),
                 numeroSerie: $r->serie !== null ? trim((string) $r->serie) : null,
-                modelo: $r->design,
+                modelo: $r->design !== null ? trim((string) $r->design) : null,
                 dataInstalacao: $r->instal ? \Illuminate\Support\Carbon::parse($r->instal)->format('Y-m-d') : null,
                 // ma.no é numeric(10,0) → texto sem casas decimais, para casar com clientes.id_erp.
                 clienteNo: $r->no !== null ? (string) (int) $r->no : null,
-                marca: $r->marca,
+                marca: $r->marca !== null ? trim((string) $r->marca) : null,
             );
         }
     }
