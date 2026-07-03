@@ -31,9 +31,10 @@ class RelatorioParaCliente extends Mailable
 
     public function content(): Content
     {
-        // O corpo é a mensagem escrita à mão; o PDF vai em anexo.
+        // O corpo é a mensagem escrita à mão; o PDF vai em anexo. View HTML própria
+        // (verde/branco, no tema do site) em vez do markdown genérico.
         return new Content(
-            markdown: 'emails.relatorio',
+            view: 'emails.relatorio',
             with: [
                 'relatorio' => $this->relatorio,
                 'mensagem' => $this->mensagem,

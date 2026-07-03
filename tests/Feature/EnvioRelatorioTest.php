@@ -81,6 +81,21 @@ class EnvioRelatorioTest extends TestCase
             && $job->mensagem === 'Olá, segue o relatório.');
     }
 
+    public function test_email_do_relatorio_usa_o_template_verde_do_site(): void
+    {
+        $relatorio = $this->relatorioPara('cliente@exemplo.pt');
+
+        // Renderiza a view do email → tema verde + mensagem à mão + nº do relatório + anexo.
+        $html = view('emails.relatorio', ['relatorio' => $relatorio, 'mensagem' => "Olá,\n\nSegue o relatório."])->render();
+
+        $this->assertStringContainsString('#16a34a', $html);         // verde do site
+        $this->assertStringContainsString('Nexus Ops', $html);
+        $this->assertStringContainsString('Segue o relatório.', $html); // mensagem escrita à mão
+        $this->assertStringContainsString('2026/9001', $html);        // nº do relatório
+        $this->assertStringContainsString('Em anexo', $html);
+        $this->assertStringNotContainsString('mail::message', $html); // já não é o markdown genérico
+    }
+
     public function test_composicao_exige_destinatario_valido(): void
     {
         Queue::fake();
