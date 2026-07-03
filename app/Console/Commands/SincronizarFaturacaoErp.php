@@ -30,6 +30,36 @@ class SincronizarFaturacaoErp extends Command
         $atualizados = 0;
         $erros = 0;
 
+        try {
+            $this->sincronizar($erp, $limite, $criados, $atualizados, $erros);
+        } catch (Throwable $e) {
+            // Falha de LIGAÇÃO/timeout (PHC em baixo) → loga e devolve FAILURE, sem rebentar
+            // com exceção não tratada (não parte o scheduler nem os outros syncs).
+            $this->error('Sync de faturação FALHOU: '.$e->getMessage());
+            Log::error('Sync de faturação do ERP falhou.', ['driver' => $driver, 'erro' => $e->getMessage()]);
+
+            return self::FAILURE;
+        }
+
+        $resumo = "{$criados} criadas, {$atualizados} atualizadas, {$erros} erros.";
+        $this->info("Sincronização concluída: {$resumo}");
+
+        // Auditoria do sync (CLAUDE.md §11).
+        Log::info('Sync de faturação do ERP concluído.', [
+            'driver' => $driver,
+            'limite' => $limite,
+            'criados' => $criados,
+            'atualizados' => $atualizados,
+            'erros' => $erros,
+        ]);
+
+        return $erros > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    // Percorre o ERP e faz upsert. Erros por linha são contados (não param o sync); uma falha
+    // de ligação propaga para o handle(), que a trata como FAILURE.
+    private function sincronizar(ErpSyncDriver $erp, ?int $limite, int &$criados, int &$atualizados, int &$erros): void
+    {
         foreach ($erp->obterLinhasFatura($limite) as $linhaErp) {
             try {
                 // Upsert por id_erp: existe → atualiza; não existe → cria.
@@ -57,19 +87,5 @@ class SincronizarFaturacaoErp extends Command
                 ]);
             }
         }
-
-        $resumo = "{$criados} criadas, {$atualizados} atualizadas, {$erros} erros.";
-        $this->info("Sincronização concluída: {$resumo}");
-
-        // Auditoria do sync (CLAUDE.md §11).
-        Log::info('Sync de faturação do ERP concluído.', [
-            'driver' => $driver,
-            'limite' => $limite,
-            'criados' => $criados,
-            'atualizados' => $atualizados,
-            'erros' => $erros,
-        ]);
-
-        return $erros > 0 ? self::FAILURE : self::SUCCESS;
     }
 }

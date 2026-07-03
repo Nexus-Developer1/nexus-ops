@@ -8,20 +8,23 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Sincronização diária dos clientes do ERP (hora em config/erp.php). Só sincroniza
-// a sério quando há um driver ERP configurado — com ERP_DRIVER vazio resolve o
-// NullErpDriver, por isso evitamos correr o comando à toa.
+// Sincronização do ERP 3x/dia (08h, 13h, 19h) para o site ter dados atualizados. Só corre a
+// sério quando há um driver ERP configurado (com ERP_DRIVER vazio resolve o NullErpDriver).
+// - runInBackground: cada sync corre em processo próprio → uma falha não parte a outra nem o
+//   scheduler; o schedule:run não fica bloqueado à espera da faturação (a pesada).
+// - withoutOverlapping: se o sync anterior ainda corre, o novo não arranca por cima.
+// - Escalonados para NÃO haver duas ligações simultâneas ao PHC: clientes às :00, faturação às :10.
 Schedule::command('erp:sincronizar-clientes')
-    ->dailyAt(config('erp.sync_hora'))
+    ->cron('0 8,13,19 * * *')
     ->withoutOverlapping()
+    ->runInBackground()
     ->onOneServer()
     ->when(fn () => filled(config('erp.driver')));
 
-// Sincronização diária das linhas de faturação do ERP (mesmo critério: só com driver
-// ERP configurado). Só linhas com nº de série (equipamentos) — ver SincronizarFaturacaoErp.
 Schedule::command('erp:sincronizar-faturacao')
-    ->dailyAt(config('erp.sync_hora'))
+    ->cron('10 8,13,19 * * *')
     ->withoutOverlapping()
+    ->runInBackground()
     ->onOneServer()
     ->when(fn () => filled(config('erp.driver')));
 

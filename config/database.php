@@ -125,6 +125,12 @@ return [
             'username' => env('ERP_DB_USERNAME'),
             'password' => env('ERP_DB_PASSWORD'),
             'charset' => 'utf8',
+            // Timeout de query (segundos): um PHC lento aborta em vez de pendurar o processo —
+            // crítico com withoutOverlapping (um pendurado bloquearia os syncs seguintes).
+            // pdo_dblib/FreeTDS respeita o PDO::ATTR_TIMEOUT.
+            'options' => [
+                PDO::ATTR_TIMEOUT => (int) env('ERP_DB_TIMEOUT', 30),
+            ],
         ],
 
     ],
