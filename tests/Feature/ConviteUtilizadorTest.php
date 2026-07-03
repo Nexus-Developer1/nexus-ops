@@ -49,6 +49,66 @@ class ConviteUtilizadorTest extends TestCase
         Notification::assertSentTo($novo, ConviteDefinirPassword::class);
     }
 
+    public function test_lista_de_tecnicos_distingue_convite_pendente_de_aceite(): void
+    {
+        // Pendente: sem password (convite enviado, ainda não aceitou).
+        User::create(['nome' => 'Pendente Silva', 'email' => 'pendente@nexus.pt', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+        // Aceite: com password (já definiu pelo link do convite).
+        User::create(['nome' => 'Aceite Costa', 'email' => 'aceite@nexus.pt', 'password' => 'segredo123', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+        // Não-técnicos: não devem aparecer na lista.
+        User::create(['nome' => 'Outro Admin', 'email' => 'outroadmin@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
+        User::create(['nome' => 'Cliente Zé', 'email' => 'clienteze@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Cliente, 'ativo' => true]);
+
+        Livewire::actingAs($this->admin())->test(Adicionar::class)
+            ->assertSee('Pendente Silva')
+            ->assertSee('pendente@nexus.pt')
+            ->assertSee('Convite pendente')
+            ->assertSee('Aceite Costa')
+            ->assertSee('aceite@nexus.pt')
+            ->assertSee('Ativo')
+            // Só técnicos: admins e clientes ficam de fora.
+            ->assertDontSee('outroadmin@nexus.pt')
+            ->assertDontSee('clienteze@nexus.pt');
+    }
+
+    public function test_admin_reenvia_convite_a_tecnico_pendente(): void
+    {
+        Notification::fake();
+        $pendente = User::create(['nome' => 'Pendente Silva', 'email' => 'pendente@nexus.pt', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+
+        Livewire::actingAs($this->admin())->test(Adicionar::class)
+            ->call('reenviar', $pendente->id)
+            ->assertHasNoErrors();
+
+        Notification::assertSentTo($pendente, ConviteDefinirPassword::class);
+        $this->assertNull($pendente->fresh()->password); // continua pendente até aceitar
+    }
+
+    public function test_reenviar_nao_dispara_a_quem_ja_aceitou(): void
+    {
+        Notification::fake();
+        $aceite = User::create(['nome' => 'Aceite Costa', 'email' => 'aceite@nexus.pt', 'password' => 'segredo123', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+
+        Livewire::actingAs($this->admin())->test(Adicionar::class)
+            ->call('reenviar', $aceite->id)
+            ->assertHasNoErrors();
+
+        // Já tem password → nada é reenviado (guarda de negócio).
+        Notification::assertNothingSent();
+    }
+
+    public function test_tecnico_nao_reenvia_convite(): void
+    {
+        Notification::fake();
+        $pendente = User::create(['nome' => 'Pendente Silva', 'email' => 'pendente@nexus.pt', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+
+        // Um técnico não gere utilizadores: nem chega ao componente (403 no mount).
+        Livewire::actingAs($this->tecnico())->test(Adicionar::class)
+            ->assertForbidden();
+
+        Notification::assertNothingSent();
+    }
+
     public function test_tecnico_leva_403_no_componente(): void
     {
         // Guarda no componente (mount) → 403 direto (não é só esconder o link).

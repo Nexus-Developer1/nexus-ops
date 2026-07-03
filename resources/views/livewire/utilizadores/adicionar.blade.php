@@ -41,6 +41,51 @@
                 </section>
             </form>
 
+            {{-- Técnicos já no site: convite pendente (ainda não aceitou) vs aceite (ativo). --}}
+            <section class="cartao mt-8">
+                <div class="flex items-center justify-between border-b border-borda px-6 py-4">
+                    <div>
+                        <h2 class="text-base font-semibold text-texto-forte">Técnicos</h2>
+                        <p class="mt-0.5 text-xs text-texto-medio">Convites enviados e contas já ativas.</p>
+                    </div>
+                    <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-texto-medio">{{ $tecnicos->count() }}</span>
+                </div>
+
+                <ul class="divide-y divide-borda">
+                    @forelse ($tecnicos as $tecnico)
+                        @php($pendente = $tecnico->password === null)
+                        <li class="flex items-center justify-between gap-4 px-6 py-4">
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-medium text-texto-forte">{{ $tecnico->nome }}</p>
+                                <p class="truncate text-xs text-texto-medio">{{ $tecnico->email }}</p>
+                            </div>
+
+                            @if ($pendente)
+                                <div class="flex shrink-0 items-center gap-3">
+                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-aviso-100 px-2.5 py-1 text-xs font-medium text-aviso-500">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-aviso-500"></span>
+                                        Convite pendente
+                                    </span>
+                                    <button type="button" wire:click="reenviar({{ $tecnico->id }})"
+                                        wire:loading.attr="disabled" wire:target="reenviar({{ $tecnico->id }})"
+                                        class="text-xs font-medium text-verde-700 hover:text-verde-800 disabled:opacity-50">
+                                        <span wire:loading.remove wire:target="reenviar({{ $tecnico->id }})">Reenviar convite</span>
+                                        <span wire:loading wire:target="reenviar({{ $tecnico->id }})">A enviar…</span>
+                                    </button>
+                                </div>
+                            @else
+                                <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-verde-50 px-2.5 py-1 text-xs font-medium text-verde-700">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-verde-600"></span>
+                                    Ativo
+                                </span>
+                            @endif
+                        </li>
+                    @empty
+                        <li class="px-6 py-8 text-center text-sm text-texto-medio">Ainda não há técnicos convidados.</li>
+                    @endforelse
+                </ul>
+            </section>
+
         </div>
     </main>
 </div>

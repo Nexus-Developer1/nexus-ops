@@ -56,8 +56,39 @@ class Adicionar extends Component
         return redirect()->route('utilizadores.adicionar');
     }
 
+    // Reenvia o convite a um técnico que ainda não o aceitou (ex.: email perdido). Gera um token
+    // novo (o anterior fica sem efeito) e reenvia o email. Só admin; só para convites pendentes.
+    public function reenviar(int $id): void
+    {
+        abort_unless(Gate::allows('gerir-utilizadores'), 403);
+
+        $user = User::where('papel', PapelUtilizador::Tecnico)->findOrFail($id);
+
+        // Guarda de negócio: só reenviar a quem ainda não definiu password (convite pendente).
+        if ($user->password !== null) {
+            session()->flash('sucesso', "{$user->email} já aceitou o convite.");
+
+            return;
+        }
+
+        $token = Password::broker('invites')->createToken($user);
+        $user->notify(new ConviteDefinirPassword($token));
+
+        session()->flash('sucesso', "Convite reenviado para {$user->email}.");
+    }
+
     public function render()
     {
-        return view('livewire.utilizadores.adicionar');
+        // Lista de técnicos já no site: convite pendente (password NULL, ainda não aceitaram) vs
+        // aceite (password definida). Pendentes primeiro, depois por nome. Só o admin chega aqui
+        // (mount aborta 403 para os restantes), por isso a lista é intrinsecamente só-admin.
+        $tecnicos = User::where('papel', PapelUtilizador::Tecnico)
+            ->orderByRaw('(password is null) desc') // pendentes no topo (acionáveis)
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'email', 'password']);
+
+        return view('livewire.utilizadores.adicionar', [
+            'tecnicos' => $tecnicos,
+        ]);
     }
 }
