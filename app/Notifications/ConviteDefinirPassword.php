@@ -27,14 +27,13 @@ class ConviteDefinirPassword extends Notification
 
         $validade = (int) (config('auth.passwords.invites.expire') / (60 * 24)); // dias
 
+        // View HTML própria (verde/branco, no tema do site) em vez do markdown genérico.
         return (new MailMessage)
             ->subject('Convite para o Nexus Ops — defina a sua palavra-passe')
-            ->greeting('Olá '.$notifiable->nome.',')
-            ->line('Foi convidado(a) para aceder ao Nexus Ops.')
-            ->line('Para ativar a sua conta, defina a sua palavra-passe no botão abaixo.')
-            ->action('Definir palavra-passe', $url)
-            ->line('Este convite expira em '.$validade.' dias.')
-            ->line('Se não estava à espera deste convite, ignore este email.')
-            ->salutation('Cumprimentos, equipa Nexus Ops');
+            ->view('emails.convite', [
+                'nome' => $notifiable->nome,
+                'url' => $url,
+                'validade' => $validade,
+            ]);
     }
 }

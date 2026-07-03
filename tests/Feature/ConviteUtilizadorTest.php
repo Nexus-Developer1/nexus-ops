@@ -105,6 +105,24 @@ class ConviteUtilizadorTest extends TestCase
             ->assertHasErrors('email'); // token inválido/expirado
     }
 
+    public function test_email_de_convite_usa_o_template_verde_do_site(): void
+    {
+        $user = User::create(['nome' => 'Rui Moreira', 'email' => 'rui@nexus.pt', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+
+        $mail = (new ConviteDefinirPassword('tok-123'))->toMail($user);
+
+        // Usa a view HTML própria (não o markdown genérico).
+        $this->assertSame('emails.convite', $mail->view);
+
+        // Renderiza → tema verde do site + botão + link com o token + nome.
+        $html = view($mail->view, $mail->viewData)->render();
+        $this->assertStringContainsString('Definir palavra-passe', $html);
+        $this->assertStringContainsString('#16a34a', $html);          // verde do site
+        $this->assertStringContainsString('Nexus Ops', $html);
+        $this->assertStringContainsString('convite/tok-123', $html);  // link seguro com o token
+        $this->assertStringContainsString('Rui Moreira', $html);
+    }
+
     public function test_email_duplicado_e_bloqueado(): void
     {
         Notification::fake();
