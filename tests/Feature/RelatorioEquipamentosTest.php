@@ -36,41 +36,47 @@ class RelatorioEquipamentosTest extends TestCase
         return [$admin, $mk('SN-PRINC'), $mk('SN-EX1'), $mk('SN-EX2')];
     }
 
-    public function test_relatorio_cobre_varios_equipamentos_sem_duplicar_o_principal(): void
+    public function test_relatorio_cobre_todos_os_equipamentos_do_cliente(): void
     {
         [$admin, $principal, $extra1, $extra2] = $this->cenario();
+        $cliente = Cliente::firstOrFail();
 
+        // Escolher o cliente anexa TODOS os equipamentos dele (principal + cobertos), sem duplicar.
         Livewire::actingAs($admin)->test(Novo::class)
-            ->set('equipamento_id', $principal->id)
+            ->call('selecionarCliente', $cliente->id)
             ->set('data', now()->toDateString())
-            ->call('adicionarEquipamentoCoberto', $extra1->id)
-            ->call('adicionarEquipamentoCoberto', $extra2->id)
-            ->call('adicionarEquipamentoCoberto', $principal->id) // o principal é ignorado
-            ->call('adicionarEquipamentoCoberto', $extra1->id)    // repetido é ignorado
             ->call('guardarRascunho')
             ->assertHasNoErrors();
 
-        $interv = Intervencao::where('equipamento_id', $principal->id)->firstOrFail();
-        $cobertos = $interv->equipamentosCobertos()->pluck('equipamentos.id')->sort()->values()->all();
+        $interv = Intervencao::whereNotNull('equipamento_id')->firstOrFail();
+        $todos = collect([$interv->equipamento_id])
+            ->merge($interv->equipamentosCobertos()->pluck('equipamentos.id'))
+            ->unique()->sort()->values()->all();
 
-        $this->assertSame([$extra1->id, $extra2->id], $cobertos);
+        $this->assertSame(
+            collect([$principal->id, $extra1->id, $extra2->id])->sort()->values()->all(),
+            $todos,
+        );
     }
 
     public function test_reabrir_rascunho_carrega_os_equipamentos_cobertos(): void
     {
-        [$admin, $principal, $extra1, $extra2] = $this->cenario();
+        [$admin] = $this->cenario();
+        $cliente = Cliente::firstOrFail();
 
-        Livewire::actingAs($admin)->test(Novo::class)
-            ->set('equipamento_id', $principal->id)
-            ->set('data', now()->toDateString())
-            ->call('adicionarEquipamentoCoberto', $extra1->id)
-            ->call('adicionarEquipamentoCoberto', $extra2->id)
-            ->call('guardarRascunho');
+        $c = Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->set('data', now()->toDateString());
+        $cobertosEsperados = collect($c->get('equipamentosCobertos'))->sort()->values()->all();
+        $c->call('guardarRascunho');
 
-        $relatorio = Intervencao::where('equipamento_id', $principal->id)->firstOrFail()->relatorio;
+        $relatorio = Intervencao::whereNotNull('equipamento_id')->firstOrFail()->relatorio;
 
-        Livewire::actingAs($admin)->test(Novo::class, ['relatorio' => $relatorio])
-            ->assertSet('equipamentosCobertos', [$extra1->id, $extra2->id]);
+        $reaberto = Livewire::actingAs($admin)->test(Novo::class, ['relatorio' => $relatorio]);
+        $this->assertSame(
+            $cobertosEsperados,
+            collect($reaberto->get('equipamentosCobertos'))->sort()->values()->all(),
+        );
     }
 
     public function test_ficha_inclui_cobertos_sem_duplicar_e_mantem_ordenacao(): void
@@ -122,6 +128,28 @@ class RelatorioEquipamentosTest extends TestCase
             ->merge($interv->equipamentosCobertos()->pluck('equipamentos.id'))
             ->sort()->values()->all();
         $this->assertSame([$e1->id, $e2->id], $todos);
+    }
+
+    public function test_selecionar_cliente_anexa_todos_os_equipamentos_como_principal_e_cobertos(): void
+    {
+        [$admin, $principal, $extra1, $extra2] = $this->cenario();
+        $cliente = Cliente::firstOrFail();
+
+        // Equipamento de OUTRO cliente não deve ser anexado.
+        $outroCliente = Cliente::create(['nome' => 'BETA', 'ativo' => true]);
+        $outroLocal = Local::create(['cliente_id' => $outroCliente->id, 'designacao' => 'DC-B']);
+        Equipamento::create(['local_id' => $outroLocal->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-BETA']);
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id);
+
+        // Um principal + o resto cobertos = os 3 equipamentos do cliente (e só esses).
+        $this->assertNotNull($c->get('equipamento_id'));
+        $todos = collect([$c->get('equipamento_id')])->merge($c->get('equipamentosCobertos'))->sort()->values()->all();
+        $this->assertSame(
+            collect([$principal->id, $extra1->id, $extra2->id])->sort()->values()->all(),
+            $todos,
+        );
     }
 
     public function test_modo_individual_nao_liga_contrato(): void
@@ -222,37 +250,34 @@ class RelatorioEquipamentosTest extends TestCase
         $this->assertSame($e1->id, $c->get('equipamento_id'));
     }
 
-    public function test_pesquisa_de_equipamento_e_server_side(): void
+    public function test_pesquisa_de_cliente_e_server_side(): void
     {
-        [$admin, $e1] = $this->cenario(); // e1: SN-PRINC · Riello NPW
+        [$admin] = $this->cenario(); // cliente ACME com equipamentos
+        $cliente = Cliente::firstOrFail();
 
         $c = Livewire::actingAs($admin)->test(Novo::class);
 
-        // Sem texto → não carrega nada (não traz os ~17k).
-        $c->assertViewHas('equipamentosPrincipalFiltrados', fn ($r) => $r->isEmpty());
+        // Sem texto → não carrega nada (não traz os milhares de clientes).
+        $c->assertViewHas('clientesFiltrados', fn ($r) => $r->isEmpty());
 
         // Com texto → traz os que batem certo (limit server-side).
-        $c->set('equipamentoBusca', 'SN-PRINC')
-            ->assertViewHas('equipamentosPrincipalFiltrados', fn ($r) => $r->contains('id', $e1->id));
+        $c->set('clienteBusca', 'ACME')
+            ->assertViewHas('clientesFiltrados', fn ($r) => $r->contains('id', $cliente->id));
 
-        // Selecionar fixa o id.
-        $c->call('selecionarEquipamentoPrincipal', $e1->id)
-            ->assertSet('equipamento_id', $e1->id);
-
-        // Escrever de novo desfaz a seleção (até escolher outro).
-        $c->set('equipamentoBusca', 'outro')
-            ->assertSet('equipamento_id', null);
+        // Selecionar o cliente fixa o id E anexa os equipamentos dele.
+        $c->call('selecionarCliente', $cliente->id)
+            ->assertSet('cliente_id', $cliente->id);
+        $this->assertNotNull($c->get('equipamento_id'));
     }
 
-    public function test_comboboxes_tem_wire_key_distinto_e_equipamento_sem_filtrados(): void
+    public function test_comboboxes_tem_wire_key_distinto_e_cliente_sem_filtrados(): void
     {
         [$admin] = $this->cenario();
 
-        // Modo individual (default): comboboxes de equipamento server-side, SEM a expressão Alpine `filtrados`.
+        // Modo individual (default): combobox de cliente server-side, SEM a expressão Alpine `filtrados`.
         $individual = Livewire::actingAs($admin)->test(Novo::class)->html();
-        $this->assertStringContainsString('wire:key="combo-equip-principal"', $individual);
-        $this->assertStringContainsString('wire:key="combo-equip-coberto"', $individual);
-        $this->assertStringNotContainsString('filtrados', $individual); // equipamento não usa Alpine `filtrados`
+        $this->assertStringContainsString('wire:key="combo-cliente"', $individual);
+        $this->assertStringNotContainsString('filtrados', $individual); // cliente não usa Alpine `filtrados`
 
         // Modo contrato: picker de contratos (o único com `filtrados`), com a sua própria key.
         $contrato = Livewire::actingAs($admin)->test(Novo::class)->call('definirModo', 'contrato')->html();

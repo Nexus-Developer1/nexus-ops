@@ -136,74 +136,60 @@
                                 @error('equipamento_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
                         @else
-                        <div>
-                            <label class="campo-label" for="equip-combo">Equipamento <span class="text-perigo-500">*</span></label>
-                            {{-- Pesquisa server-side (~20 resultados): não carrega os ~17k equipamentos. --}}
-                            <div wire:key="combo-equip-principal" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
-                                <input id="equip-combo" type="text"
-                                    wire:model.live.debounce.300ms="equipamentoBusca"
+                        {{-- Individual: escolhe-se o CLIENTE e anexam-se todos os equipamentos dele. --}}
+                        <div class="sm:col-span-2">
+                            <label class="campo-label" for="cliente-combo">Cliente <span class="text-perigo-500">*</span></label>
+                            {{-- Pesquisa server-side (~20 resultados): não carrega os milhares de clientes. --}}
+                            <div wire:key="combo-cliente" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
+                                <input id="cliente-combo" type="text"
+                                    wire:model.live.debounce.300ms="clienteBusca"
                                     @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
-                                    @keydown.arrow-down.prevent="aberto = true; if ($refs['e' + (destaque + 1)]) destaque++"
+                                    @keydown.arrow-down.prevent="aberto = true; if ($refs['c' + (destaque + 1)]) destaque++"
                                     @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
-                                    @keydown.enter.prevent="$refs['e' + destaque]?.click()"
-                                    class="campo-input pr-10" placeholder="Pesquisar por nº de série, fabricante ou cliente..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
+                                    @keydown.enter.prevent="$refs['c' + destaque]?.click()"
+                                    class="campo-input pr-10" placeholder="Pesquisar cliente por nome ou NIF..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
                                 <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                                 <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
-                                    @forelse ($equipamentosPrincipalFiltrados as $idx => $e)
-                                        <li x-ref="e{{ $idx }}" wire:key="ep-{{ $e->id }}"
-                                            wire:click="selecionarEquipamentoPrincipal({{ $e->id }})" @click="aberto = false"
+                                    @forelse ($clientesFiltrados as $idx => $c)
+                                        <li x-ref="c{{ $idx }}" wire:key="cl-{{ $c->id }}"
+                                            wire:click="selecionarCliente({{ $c->id }})" @click="aberto = false"
                                             @mouseenter="destaque = {{ $idx }}"
                                             :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
                                             class="cursor-pointer px-4 py-2 text-sm" role="option">
-                                            {{ $e->local?->cliente?->nome ?? '—' }} · {{ trim($e->tipo->rotulo() . ' ' . $e->modelo) }} ({{ $e->numero_serie ?? '—' }})
+                                            {{ $c->nome }}@if ($c->nif) <span class="text-texto-fraco">· {{ $c->nif }}</span>@endif
                                         </li>
                                     @empty
-                                        <li class="px-4 py-2 text-sm text-texto-medio">{{ $equipamentoBusca === '' ? 'Escreva para pesquisar…' : 'Nenhum equipamento encontrado.' }}</li>
+                                        <li class="px-4 py-2 text-sm text-texto-medio">{{ $clienteBusca === '' ? 'Escreva para pesquisar…' : 'Nenhum cliente encontrado.' }}</li>
                                     @endforelse
                                 </ul>
                             </div>
-                            @error('equipamento_id') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                         </div>
 
-                        {{-- Equipamentos adicionais cobertos pelo mesmo relatório (além do principal). --}}
+                        {{-- Equipamentos do cliente: aparecem como separadores no topo (ao lado de
+                             "Dados Gerais"); clicar num deles abre a ficha de medições desse equipamento. --}}
                         <div class="sm:col-span-2">
-                            <label class="campo-label">Equipamentos adicionais cobertos</label>
-                            {{-- Pesquisa server-side (~20 resultados); ao escolher, adiciona o chip. --}}
-                            <div wire:key="combo-equip-coberto" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
-                                <input type="text" wire:model.live.debounce.300ms="cobertoBusca"
-                                    @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
-                                    @keydown.arrow-down.prevent="aberto = true; if ($refs['co' + (destaque + 1)]) destaque++"
-                                    @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
-                                    @keydown.enter.prevent="$refs['co' + destaque]?.click()"
-                                    class="campo-input" placeholder="Pesquisar e adicionar outro equipamento..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
-                                <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
-                                    @forelse ($equipamentosCobertosFiltrados as $idx => $e)
-                                        <li x-ref="co{{ $idx }}" wire:key="eco-{{ $e->id }}"
-                                            wire:click="adicionarEquipamentoCoberto({{ $e->id }})" @click="aberto = false"
-                                            @mouseenter="destaque = {{ $idx }}"
-                                            :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
-                                            class="cursor-pointer px-4 py-2 text-sm" role="option">
-                                            {{ $e->local?->cliente?->nome ?? '—' }} · {{ trim($e->tipo->rotulo() . ' ' . $e->modelo) }} ({{ $e->numero_serie ?? '—' }})
-                                        </li>
-                                    @empty
-                                        <li class="px-4 py-2 text-sm text-texto-medio">{{ $cobertoBusca === '' ? 'Escreva para pesquisar…' : 'Nenhum equipamento encontrado.' }}</li>
-                                    @endforelse
-                                </ul>
-                            </div>
-
-                            @if ($cobertosSelecionados->isNotEmpty())
-                                <div class="mt-2 flex flex-wrap gap-2">
+                            <label class="campo-label">Equipamentos do cliente</label>
+                            @if ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty())
+                                <div class="flex flex-wrap gap-2">
+                                    @if ($equipamentoPrincipal)
+                                        <button type="button" wire:key="chip-{{ $equipamentoPrincipal->id }}" @click="tab='equip-{{ $equipamentoPrincipal->id }}'" class="inline-flex items-center gap-1.5 rounded-full border border-verde-200 bg-verde-50 px-3 py-1 text-xs font-medium text-verde-700 hover:bg-verde-100 transition">
+                                            {{ $equipamentoPrincipal->numero_serie ?? '—' }}
+                                            <span class="text-[10px] uppercase tracking-wide text-verde-600/70">principal</span>
+                                        </button>
+                                    @endif
                                     @foreach ($cobertosSelecionados as $e)
-                                        <span class="inline-flex items-center gap-1.5 rounded-full border border-borda bg-fundo px-3 py-1 text-xs text-texto-forte" wire:key="coberto-{{ $e->id }}">
-                                            {{ $e->numero_serie ?? '—' }} · {{ trim($e->fabricante . ' ' . $e->modelo) ?: '—' }}
-                                            <button type="button" wire:click="removerEquipamentoCoberto({{ $e->id }})" class="text-texto-fraco hover:text-perigo-600" title="Remover">
-                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                                            </button>
-                                        </span>
+                                        <button type="button" wire:key="chip-{{ $e->id }}" @click="tab='equip-{{ $e->id }}'" class="inline-flex items-center gap-1.5 rounded-full border border-borda bg-fundo px-3 py-1 text-xs text-texto-forte hover:border-verde-300 hover:text-verde-700 transition">
+                                            {{ $e->numero_serie ?? '—' }}
+                                        </button>
                                     @endforeach
                                 </div>
+                                <p class="mt-1.5 text-xs text-texto-fraco">Clica num equipamento (aqui ou no separador em cima) para preencher a sua ficha. Podes remover os que não interessam dentro de cada ficha.</p>
+                            @elseif ($cliente_id)
+                                <p class="text-sm text-texto-medio">Este cliente não tem equipamentos associados.</p>
+                            @else
+                                <p class="text-sm text-texto-medio">Escolhe um cliente para carregar os equipamentos.</p>
                             @endif
-                            <p class="mt-1.5 text-xs text-texto-fraco">O equipamento principal acima é a referência da intervenção; estes são cobertos pelo mesmo relatório.</p>
+                            @error('equipamento_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                         </div>
                         @endif
 
