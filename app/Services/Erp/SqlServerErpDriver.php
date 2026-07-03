@@ -13,9 +13,8 @@ class SqlServerErpDriver implements ErpSyncDriver
 {
     public function obterClientes(?int $limite = null): iterable
     {
-        // Forma final quando houver acesso ao PHC. A ligação 'erp' (sqlsrv, read-only)
-        // fica definida em config/database.php e lê de uma VIEW dedicada, nunca da
-        // tabela bruta. Mapeamento PHC (tabela cl) → campos da aplicação:
+        // Lê os clientes da tabela cl do PHC pela ligação 'erp' (dblib/FreeTDS), a MESMA que a
+        // faturação já usa com sucesso. Correlação por cl.no → id_erp. Mapeamento PHC → aplicação:
         //
         //   cl.no       → id_erp      (nº de cliente; chave de correlação do upsert)
         //   cl.nome     → nome
@@ -28,27 +27,30 @@ class SqlServerErpDriver implements ErpSyncDriver
         //   cl.vendedor → vendedor
         //   cl.vendnm   → vendnm
         //
-        // return DB::connection('erp')
-        //     ->table('vw_clientes')             // view dedicada, nunca a tabela bruta
-        //     ->select('no', 'nome', 'ncont', 'morada', 'codpost', 'email', 'telefone', 'tlmvl', 'vendedor', 'vendnm')
-        //     ->when($limite, fn ($q) => $q->limit($limite))
-        //     ->cursor()
-        //     ->map(fn ($r) => new ClienteErp(
-        //         idErp: (string) $r->no,
-        //         nome: $r->nome,
-        //         nif: $r->ncont,
-        //         email: $r->email,
-        //         telefone: $r->telefone,
-        //         morada: $r->morada,
-        //         codpost: $r->codpost,
-        //         tlmvl: $r->tlmvl,
-        //         vendedor: $r->vendedor !== null ? (int) $r->vendedor : null,
-        //         vendnm: $r->vendnm,
-        //     ));
+        // Opção A (sem view): lê direto de cl porque ainda não há acesso de ESCRITA ao PHC para
+        // criar a view. §5 do CLAUDE.md: quando houver, envolver numa VIEW read-only dedicada
+        // (vw_clientes) e ler dessa view, nunca da tabela bruta. (Igual à faturação — ver abaixo.)
+        //
+        // SQL Server: o limite usa TOP (não LIMIT). É um inteiro, interpolado em segurança.
+        $top = $limite !== null ? 'TOP ' . (int) $limite . ' ' : '';
 
-        throw new \RuntimeException(
-            'Driver SQL Server do ERP ainda não implementado. Definir ERP_DRIVER=fake ou configurar a ligação read-only.'
-        );
+        $sql = "SELECT {$top}no, nome, ncont, morada, codpost, email, telefone, tlmvl, vendedor, vendnm
+                FROM cl";
+
+        foreach (DB::connection('erp')->select($sql) as $r) {
+            yield new ClienteErp(
+                idErp: (string) $r->no,
+                nome: $r->nome,
+                nif: $r->ncont,
+                email: $r->email,
+                telefone: $r->telefone,
+                morada: $r->morada,
+                codpost: $r->codpost,
+                tlmvl: $r->tlmvl,
+                vendedor: $r->vendedor !== null ? (int) $r->vendedor : null,
+                vendnm: $r->vendnm,
+            );
+        }
     }
 
     public function obterLinhasFatura(?int $limite = null): iterable
