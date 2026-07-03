@@ -41,6 +41,45 @@ class FakeErpDriver implements ErpSyncDriver
         }
     }
 
+    public function obterEquipamentos(?int $limite = null): iterable
+    {
+        $n = max(1, $limite ?? self::PADRAO);
+
+        // Simula o WHERE marca LIKE '%RIELLO%' do PHC: geramos candidatos (alguns de outra marca)
+        // mas só devolvemos os RIELLO — tal como a query real filtra server-side.
+        for ($i = 0; $i < $n; $i++) {
+            $equip = $this->gerarEquipamento($i);
+
+            if (! str_contains(mb_strtoupper((string) $equip->marca), 'RIELLO')) {
+                continue; // outra marca → filtrada (só Riello entra)
+            }
+
+            yield $equip;
+        }
+    }
+
+    private function gerarEquipamento(int $i): EquipamentoErp
+    {
+        // Determinístico por índice — o equipamento i é sempre igual (mesmo mastamp), tornando o
+        // upsert por mastamp reproduzível (2.ª corrida = atualizações, não duplicados).
+        mt_srand(self::SEMENTE + 8000 + $i);
+
+        $modelos = ['UPS RIELLO NPW 2000VA', 'UPS RIELLO SDU 10000VA', 'UPS RIELLO VST 1100', 'UPS RIELLO MST 8000', 'UPS RIELLO SEP 3300'];
+
+        // 1 em cada 4 candidatos é de outra marca (será filtrado pelo WHERE marca).
+        $marca = ($i % 4) === 3 ? 'EATON' : 'RIELLO';
+        $idx = mt_rand(0, count($modelos) - 1);
+
+        return new EquipamentoErp(
+            idErp: sprintf('MA25%010d,%07d-%d', $i, mt_rand(1000000, 9999999), mt_rand(0, 9)), // ma.mastamp único por i
+            numeroSerie: sprintf('MH%02dVNPW%07d', mt_rand(10, 30), mt_rand(1, 9999999)),
+            modelo: $modelos[$idx],
+            dataInstalacao: sprintf('20%02d-%02d-%02d', mt_rand(18, 24), mt_rand(1, 12), mt_rand(1, 28)),
+            clienteNo: (string) (1000 + ($i % 10)), // liga aos clientes fake (id_erp 1000..1009)
+            marca: $marca,
+        );
+    }
+
     private function gerarLinhaFatura(int $i): LinhaFaturaErp
     {
         // Determinístico por índice — a linha i é sempre igual (mesmo fistamp), tornando o

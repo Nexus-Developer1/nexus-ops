@@ -28,6 +28,7 @@ class Equipamento extends Model
 
     /** @var list<string> */
     protected $fillable = [
+        'id_erp',
         'local_id',
         'tipo',
         'fabricante',

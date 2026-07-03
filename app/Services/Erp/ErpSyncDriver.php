@@ -21,4 +21,12 @@ interface ErpSyncDriver
      * @return iterable<LinhaFaturaErp>
      */
     public function obterLinhasFatura(?int $limite = null): iterable;
+
+    /**
+     * Devolve os equipamentos do ERP (tabela ma, só marca RIELLO — filtro server-side).
+     *
+     * @param  int|null  $limite  Nº máximo de equipamentos a devolver (null = decisão do driver).
+     * @return iterable<EquipamentoErp>
+     */
+    public function obterEquipamentos(?int $limite = null): iterable;
 }

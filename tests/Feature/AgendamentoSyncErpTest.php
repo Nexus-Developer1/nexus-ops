@@ -31,6 +31,11 @@ class AgendamentoSyncErpTest extends TestCase
             {
                 throw new RuntimeException('SQLSTATE[HY000]: Unable to connect to server');
             }
+
+            public function obterEquipamentos(?int $limite = null): iterable
+            {
+                throw new RuntimeException('SQLSTATE[HY000]: Unable to connect to server');
+            }
         };
     }
 
@@ -55,7 +60,17 @@ class AgendamentoSyncErpTest extends TestCase
         Log::shouldHaveReceived('error')->withArgs(fn ($msg) => str_contains($msg, 'Sync de faturação do ERP falhou'))->once();
     }
 
-    public function test_agendamento_regista_os_dois_syncs_nas_horas_certas(): void
+    public function test_sync_equipamentos_com_ligacao_a_falhar_loga_e_devolve_failure(): void
+    {
+        Log::spy();
+        $this->app->bind(ErpSyncDriver::class, fn () => $this->erpQueFalha());
+
+        $this->artisan('erp:sincronizar-equipamentos')->assertExitCode(1);
+
+        Log::shouldHaveReceived('error')->withArgs(fn ($msg) => str_contains($msg, 'Sync de equipamentos do ERP falhou'))->once();
+    }
+
+    public function test_agendamento_regista_os_tres_syncs_nas_horas_certas(): void
     {
         $eventos = app(Schedule::class)->events();
 
@@ -69,9 +84,11 @@ class AgendamentoSyncErpTest extends TestCase
             return null;
         };
 
-        // 08h/13h/19h — clientes ao minuto :00, faturação escalonada a :10 (nunca em simultâneo).
+        // 08h/13h/19h — escalonados para não haver ligações simultâneas ao PHC:
+        // clientes :00, faturação :10, equipamentos :20 (equipamentos depois de clientes).
         $this->assertSame('0 8,13,19 * * *', $expressao('erp:sincronizar-clientes'));
         $this->assertSame('10 8,13,19 * * *', $expressao('erp:sincronizar-faturacao'));
+        $this->assertSame('20 8,13,19 * * *', $expressao('erp:sincronizar-equipamentos'));
     }
 
     public function test_sync_continua_idempotente_em_corrida_repetida(): void

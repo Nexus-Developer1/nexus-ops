@@ -13,7 +13,9 @@ Artisan::command('inspire', function () {
 // - runInBackground: cada sync corre em processo próprio → uma falha não parte a outra nem o
 //   scheduler; o schedule:run não fica bloqueado à espera da faturação (a pesada).
 // - withoutOverlapping: se o sync anterior ainda corre, o novo não arranca por cima.
-// - Escalonados para NÃO haver duas ligações simultâneas ao PHC: clientes às :00, faturação às :10.
+// - Escalonados para NÃO haver duas ligações simultâneas ao PHC: clientes às :00, faturação às
+//   :10, equipamentos às :20. Os equipamentos correm DEPOIS dos clientes porque dependem de
+//   clientes.id_erp já estar sincronizado (correlação ma.no → clientes.id_erp).
 Schedule::command('erp:sincronizar-clientes')
     ->cron('0 8,13,19 * * *')
     ->withoutOverlapping()
@@ -23,6 +25,13 @@ Schedule::command('erp:sincronizar-clientes')
 
 Schedule::command('erp:sincronizar-faturacao')
     ->cron('10 8,13,19 * * *')
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onOneServer()
+    ->when(fn () => filled(config('erp.driver')));
+
+Schedule::command('erp:sincronizar-equipamentos')
+    ->cron('20 8,13,19 * * *')
     ->withoutOverlapping()
     ->runInBackground()
     ->onOneServer()

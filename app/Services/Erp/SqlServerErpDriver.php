@@ -87,4 +87,44 @@ class SqlServerErpDriver implements ErpSyncDriver
             );
         }
     }
+
+    public function obterEquipamentos(?int $limite = null): iterable
+    {
+        // Lê os equipamentos da tabela ma do PHC pela ligação 'erp' (dblib/FreeTDS), a MESMA que
+        // clientes e faturação já usam. Correlação por ma.mastamp → id_erp (é a chave única com que
+        // os 16.761 já foram carregados — casar por aqui é o que torna o re-sync idempotente).
+        // Cliente por ma.no → clientes.id_erp. Mapeamento PHC → aplicação:
+        //
+        //   ma.mastamp → id_erp          (chave de correlação do upsert)
+        //   ma.serie   → numero_serie
+        //   ma.design  → modelo
+        //   ma.instal  → data_instalacao
+        //   ma.no      → cliente (clientes.id_erp)
+        //   ma.marca   → só filtro (fabricante fixa em 'Riello')
+        //
+        // Filtro RIELLO server-side (só marca Riello atravessa a ligação), + guardas do carregamento
+        // original: série preenchida e nº de cliente válido. Leitura direta da ma (§5: envolver numa
+        // VIEW read-only quando houver acesso de escrita ao PHC para a criar).
+        //
+        // SQL Server: o limite usa TOP (não LIMIT). É um inteiro, interpolado em segurança.
+        $top = $limite !== null ? 'TOP ' . (int) $limite . ' ' : '';
+
+        $sql = "SELECT {$top}mastamp, serie, design, instal, no, marca
+                FROM ma
+                WHERE marca LIKE '%RIELLO%'
+                  AND serie IS NOT NULL AND LTRIM(RTRIM(serie)) <> ''
+                  AND no IS NOT NULL AND no <> 0";
+
+        foreach (DB::connection('erp')->select($sql) as $r) {
+            yield new EquipamentoErp(
+                idErp: (string) $r->mastamp,
+                numeroSerie: $r->serie !== null ? trim((string) $r->serie) : null,
+                modelo: $r->design,
+                dataInstalacao: $r->instal ? \Illuminate\Support\Carbon::parse($r->instal)->format('Y-m-d') : null,
+                // ma.no é numeric(10,0) → texto sem casas decimais, para casar com clientes.id_erp.
+                clienteNo: $r->no !== null ? (string) (int) $r->no : null,
+                marca: $r->marca,
+            );
+        }
+    }
 }
