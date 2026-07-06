@@ -36,6 +36,18 @@ class RelatorioEquipamentosTest extends TestCase
         return [$admin, $mk('SN-PRINC'), $mk('SN-EX1'), $mk('SN-EX2')];
     }
 
+    // Cliente com N equipamentos (para o ramo "muitos" — acima do limite de 10 do componente).
+    private function clienteGrande(int $n): Cliente
+    {
+        $cliente = Cliente::create(['nome' => 'WALLFUTURE', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sala']);
+        for ($i = 1; $i <= $n; $i++) {
+            Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => sprintf('WF-%04d', $i)]);
+        }
+
+        return $cliente;
+    }
+
     public function test_relatorio_cobre_todos_os_equipamentos_do_cliente(): void
     {
         [$admin, $principal, $extra1, $extra2] = $this->cenario();
@@ -150,6 +162,73 @@ class RelatorioEquipamentosTest extends TestCase
             collect([$principal->id, $extra1->id, $extra2->id])->sort()->values()->all(),
             $todos,
         );
+    }
+
+    public function test_cliente_grande_nao_anexa_automaticamente_e_liga_pesquisa(): void
+    {
+        [$admin] = $this->cenario();
+        $cliente = $this->clienteGrande(12); // > 10 → não anexa
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->assertSet('cliente_id', $cliente->id)
+            ->assertSet('clienteExcedeLimite', true)   // liga a pesquisa
+            ->assertSet('equipamento_id', null)        // NADA anexado (era isto que causava o 500)
+            ->assertSet('equipamentosCobertos', []);
+    }
+
+    public function test_pesquisa_de_equipamento_filtra_so_ao_cliente_escolhido(): void
+    {
+        [$admin] = $this->cenario();               // ACME (SN-PRINC, SN-EX1, SN-EX2)
+        $cliente = $this->clienteGrande(12);        // WALLFUTURE (WF-0001..0012)
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)->call('selecionarCliente', $cliente->id);
+
+        // Pesquisa por um nº de série do cliente escolhido → aparece.
+        $c->set('equipamentoBusca', 'WF-0003')
+            ->assertViewHas('equipamentosClienteFiltrados', fn ($r) => $r->count() === 1 && $r->first()->numero_serie === 'WF-0003');
+
+        // Nº de série de OUTRO cliente (ACME) → NÃO aparece (filtrado ao cliente).
+        $c->set('equipamentoBusca', 'SN-PRINC')
+            ->assertViewHas('equipamentosClienteFiltrados', fn ($r) => $r->isEmpty());
+    }
+
+    public function test_adicionar_equipamento_anexa_e_rejeita_de_outro_cliente(): void
+    {
+        [$admin, $acmeEquip] = $this->cenario();    // equipamento de ACME
+        $cliente = $this->clienteGrande(12);
+        $eqs = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))
+            ->orderBy('numero_serie')->pluck('id')->all();
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)->call('selecionarCliente', $cliente->id);
+
+        // 1.º adicionado → principal; 2.º → coberto.
+        $c->call('adicionarEquipamento', $eqs[0])->assertSet('equipamento_id', $eqs[0]);
+        $c->call('adicionarEquipamento', $eqs[1]);
+        $this->assertSame([$eqs[1]], $c->get('equipamentosCobertos'));
+
+        // Equipamento de OUTRO cliente é rejeitado (guarda whereHas do cliente).
+        $c->call('adicionarEquipamento', $acmeEquip->id);
+        $this->assertSame($eqs[0], $c->get('equipamento_id'));
+        $this->assertSame([$eqs[1]], $c->get('equipamentosCobertos'));
+    }
+
+    public function test_cliente_com_mais_de_100_equipamentos_nao_rebenta_a_pagina(): void
+    {
+        [$admin] = $this->cenario();
+        $cliente = $this->clienteGrande(120); // como o WALLFUTURE real (1.053) — aqui 120 chega
+
+        // Selecionar o cliente renderiza SEM exceção e NÃO monta as fichas (a causa do 500).
+        $c = Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->assertSet('clienteExcedeLimite', true)
+            ->assertSet('equipamento_id', null)
+            ->assertSet('equipamentosCobertos', []);
+
+        // Renderiza o campo de PESQUISA, não centenas de fichas.
+        $c->assertSee('Adicionar equipamento')
+            ->assertSeeHtml('wire:key="combo-equip-cliente"')
+            ->assertDontSeeHtml('wire:key="tab-ficha-'); // nenhuma ficha/aba montada
     }
 
     public function test_modo_individual_nao_liga_contrato(): void

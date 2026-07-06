@@ -42,9 +42,17 @@ class Novo extends Component
     public ?int $contrato_id = null;
     public string $contratoBusca = '';
 
-    // Modo individual: escolhe-se o cliente e anexam-se todos os equipamentos dele.
+    // Acima deste nº de equipamentos, escolher o cliente NÃO anexa tudo (senão o Blade tentaria
+    // montar centenas/milhares de fichas → 500). Em vez disso mostra-se uma pesquisa filtrada ao
+    // cliente e o técnico anexa só os que precisa. Fácil de afinar.
+    private const MAX_EQUIPAMENTOS_AUTO = 10;
+
+    // Modo individual: escolhe-se o cliente e anexam-se os equipamentos dele.
     public ?int $cliente_id = null;
     public string $clienteBusca = '';        // pesquisa server-side do cliente
+    // Cliente com mais equipamentos que o limite → não se anexa tudo; mostra-se a pesquisa.
+    public bool $clienteExcedeLimite = false;
+    public string $equipamentoBusca = '';    // pesquisa server-side do equipamento (filtrada ao cliente)
 
     public ?int $equipamento_id = null;      // 1.º equipamento (principal da intervenção)
     /** @var list<int> Restantes equipamentos cobertos pelo mesmo relatório. */
@@ -92,11 +100,18 @@ class Novo extends Component
                 ? trim($intervencao->contrato->numero . ' · ' . ($intervencao->contrato->cliente?->nome ?? ''))
                 : '';
 
-            // Modo individual: mostra no picker o cliente do equipamento principal.
+            // Modo individual: mostra no picker o cliente do equipamento principal. Carrega SÓ os
+            // equipamentos já gravados (acima); se o cliente for grande, liga a pesquisa para
+            // acrescentar mais — mas nunca anexa tudo (senão editar um cliente grande dava 500).
             if ($this->modo === 'individual') {
                 $cliente = $intervencao->equipamento?->local?->cliente;
                 $this->cliente_id = $cliente?->id;
                 $this->clienteBusca = $cliente?->nome ?? '';
+
+                if ($cliente) {
+                    $total = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))->count();
+                    $this->clienteExcedeLimite = $total > self::MAX_EQUIPAMENTOS_AUTO;
+                }
             }
             $this->tipo = $intervencao->tipo->value;
             $this->data = $intervencao->data_inicio?->format('Y-m-d') ?? '';
@@ -135,6 +150,8 @@ class Novo extends Component
         // (individual = escolher cliente; contrato = escolher contrato).
         $this->equipamento_id = null;
         $this->equipamentosCobertos = [];
+        $this->equipamentoBusca = '';
+        $this->clienteExcedeLimite = false;
 
         if ($novo === 'individual') {
             // O modo individual não tem contrato.
@@ -177,8 +194,10 @@ class Novo extends Component
         $this->removerEquipamentoCoberto($id);
     }
 
-    // Modo individual: escolhe o CLIENTE e anexa TODOS os equipamentos dele (1.º = principal,
-    // restantes = cobertos) — aparecem como abas no topo, tal como no modo contrato.
+    // Modo individual: escolhe o CLIENTE. Se o cliente tiver POUCOS equipamentos (≤ limite),
+    // anexa-os todos (1.º = principal, resto = cobertos) — como no modo contrato. Se tiver MUITOS,
+    // NÃO anexa nada (senão o Blade montaria centenas de fichas → 500): liga a pesquisa filtrada
+    // ao cliente para o técnico anexar só os que precisa.
     public function selecionarCliente(int $id): void
     {
         $cliente = Cliente::find($id);
@@ -189,8 +208,20 @@ class Novo extends Component
         $this->modo = 'individual';
         $this->cliente_id = $cliente->id;
         $this->clienteBusca = $cliente->nome ?? '';
+        $this->equipamentoBusca = '';
 
-        // Todos os equipamentos do cliente (via locais), ordenados por nº de série.
+        $total = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))->count();
+        $this->clienteExcedeLimite = $total > self::MAX_EQUIPAMENTOS_AUTO;
+
+        if ($this->clienteExcedeLimite) {
+            // Cliente grande → não anexa nada; o técnico pesquisa e adiciona à mão.
+            $this->equipamento_id = null;
+            $this->equipamentosCobertos = [];
+
+            return;
+        }
+
+        // Cliente pequeno → anexa todos, ordenados por nº de série.
         $ids = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))
             ->orderBy('numero_serie')
             ->pluck('id')
@@ -198,6 +229,34 @@ class Novo extends Component
 
         $this->equipamento_id = $ids[0] ?? null;
         $this->equipamentosCobertos = array_values(array_slice($ids, 1));
+    }
+
+    // Modo individual (cliente grande): anexa ao relatório um equipamento escolhido na pesquisa.
+    // O 1.º vira principal; os seguintes ficam cobertos. Só aceita equipamentos DAQUELE cliente.
+    public function adicionarEquipamento(int $id): void
+    {
+        if ($this->cliente_id === null) {
+            return;
+        }
+
+        // Confirma que o equipamento é mesmo do cliente selecionado (não de outro).
+        $doCliente = Equipamento::whereKey($id)
+            ->whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
+            ->exists();
+
+        if (! $doCliente) {
+            $this->equipamentoBusca = '';
+
+            return;
+        }
+
+        if ($this->equipamento_id === null) {
+            $this->equipamento_id = $id;
+        } elseif ($id !== $this->equipamento_id && ! in_array($id, $this->equipamentosCobertos, true)) {
+            $this->equipamentosCobertos[] = $id;
+        }
+
+        $this->equipamentoBusca = ''; // limpa para a próxima pesquisa
     }
 
     public function removerEquipamentoCoberto(int $id): void
@@ -235,6 +294,30 @@ class Novo extends Component
             ->orderBy('nome')
             ->limit(20)
             ->get(['id', 'nome', 'nif']);
+    }
+
+    // Pesquisa server-side de equipamentos DE UM cliente (nº série / modelo sem acentos), limitada.
+    // É o picker antigo de equipamento, agora com whereHas do cliente em vez dos ~17k globais.
+    // Vazia quando não há texto — nunca carrega os (potencialmente milhares) equipamentos do cliente.
+    private function equipamentosDoClienteFiltrados(string $busca): Collection
+    {
+        if ($this->cliente_id === null || trim($busca) === '') {
+            return collect();
+        }
+
+        $termo = '%' . $busca . '%';
+        $norm = '%' . $this->normalizarBusca($busca) . '%';
+        $semAcentos = "translate(lower(coalesce(modelo, '')), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
+
+        return Equipamento::query()
+            ->whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
+            ->where(function ($q) use ($termo, $norm, $semAcentos) {
+                $q->where('numero_serie', 'ilike', $termo)
+                    ->orWhereRaw($semAcentos . ' like ?', [$norm]);
+            })
+            ->orderBy('numero_serie')
+            ->limit(20)
+            ->get(['id', 'numero_serie', 'fabricante', 'modelo']);
     }
 
     // Validação COMPLETA (finalizar).
@@ -481,6 +564,7 @@ class Novo extends Component
 
         return view('livewire.relatorios.novo', [
             'clientesFiltrados' => $this->clientesFiltrados($this->clienteBusca),
+            'equipamentosClienteFiltrados' => $this->equipamentosDoClienteFiltrados($this->equipamentoBusca),
             'tipos' => TipoIntervencao::cases(),
             'anexosExistentes' => $anexosExistentes,
             'cobertosSelecionados' => $cobertosSelecionados,

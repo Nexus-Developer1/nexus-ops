@@ -165,10 +165,44 @@
                             </div>
                         </div>
 
-                        {{-- Equipamentos do cliente: aparecem como separadores no topo (ao lado de
+                        {{-- Cliente com MUITOS equipamentos: não se anexa tudo (evita montar centenas de
+                             fichas → 500). Pesquisa filtrada a este cliente; anexa-se um a um. --}}
+                        @if ($clienteExcedeLimite)
+                            <div class="sm:col-span-2">
+                                <label class="campo-label" for="equip-cliente-combo">Adicionar equipamento</label>
+                                {{-- Pesquisa server-side (~20 resultados), filtrada a este cliente — nunca carrega todos. --}}
+                                <div wire:key="combo-equip-cliente" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
+                                    <input id="equip-cliente-combo" type="text"
+                                        wire:model.live.debounce.300ms="equipamentoBusca"
+                                        @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
+                                        @keydown.arrow-down.prevent="aberto = true; if ($refs['ec' + (destaque + 1)]) destaque++"
+                                        @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
+                                        @keydown.enter.prevent="$refs['ec' + destaque]?.click()"
+                                        class="campo-input pr-10" placeholder="Pesquisar por nº de série ou modelo..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
+                                    <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                    <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
+                                        @forelse ($equipamentosClienteFiltrados as $idx => $e)
+                                            <li x-ref="ec{{ $idx }}" wire:key="ecl-{{ $e->id }}"
+                                                wire:click="adicionarEquipamento({{ $e->id }})" @click="aberto = false"
+                                                @mouseenter="destaque = {{ $idx }}"
+                                                :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
+                                                class="cursor-pointer px-4 py-2 text-sm" role="option">
+                                                <span class="font-medium">{{ $e->numero_serie ?? '—' }}</span>
+                                                <span class="text-xs text-texto-fraco"> · {{ trim($e->fabricante . ' ' . $e->modelo) ?: '—' }}</span>
+                                            </li>
+                                        @empty
+                                            <li class="px-4 py-2 text-sm text-texto-medio">{{ $equipamentoBusca === '' ? 'Escreva o nº de série para pesquisar…' : 'Nenhum equipamento encontrado.' }}</li>
+                                        @endforelse
+                                    </ul>
+                                </div>
+                                <p class="mt-1.5 text-xs text-texto-fraco">Este cliente tem muitos equipamentos — pesquisa e adiciona só os que vais intervencionar (não são anexados todos automaticamente).</p>
+                            </div>
+                        @endif
+
+                        {{-- Equipamentos do relatório: aparecem como separadores no topo (ao lado de
                              "Dados Gerais"); clicar num deles abre a ficha de medições desse equipamento. --}}
                         <div class="sm:col-span-2">
-                            <label class="campo-label">Equipamentos do cliente</label>
+                            <label class="campo-label">Equipamentos do relatório</label>
                             @if ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty())
                                 <div class="flex flex-wrap gap-2">
                                     @if ($equipamentoPrincipal)
@@ -184,6 +218,8 @@
                                     @endforeach
                                 </div>
                                 <p class="mt-1.5 text-xs text-texto-fraco">Clica num equipamento (aqui ou no separador em cima) para preencher a sua ficha. Podes remover os que não interessam dentro de cada ficha.</p>
+                            @elseif ($clienteExcedeLimite)
+                                <p class="text-sm text-texto-medio">Pesquisa em cima e adiciona os equipamentos deste cliente que vais intervencionar.</p>
                             @elseif ($cliente_id)
                                 <p class="text-sm text-texto-medio">Este cliente não tem equipamentos associados.</p>
                             @else
