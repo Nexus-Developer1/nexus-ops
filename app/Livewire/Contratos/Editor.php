@@ -8,6 +8,8 @@ use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\ModeloFaturacao;
+use App\Support\FaixaEquipamentos;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -37,8 +39,13 @@ class Editor extends Component
     public bool $renovacao_automatica = false;
     public int $periodo_aviso_dias = 30;
 
-    /** @var array<int, int> */
+    /** @var array<int, int> Cobertura do contrato (ids em contrato_equipamentos). */
     public array $equipamentoIds = [];
+
+    // Faixa do fluxo de equipamentos por nº do cliente (auto/lista/pesquisa) — evita renderizar
+    // 1.053 checkboxes de um cliente grande. Ver App\Support\FaixaEquipamentos.
+    public string $faixaEquipamentos = '';
+    public string $equipamentoBusca = ''; // pesquisa server-side (faixa 'pesquisa')
 
     /** @var array<int, array<string, mixed>> */
     public array $slas = [];
@@ -63,6 +70,8 @@ class Editor extends Component
             $this->renovacao_automatica = $contrato->renovacao_automatica;
             $this->periodo_aviso_dias = $contrato->periodo_aviso_dias;
             $this->equipamentoIds = $contrato->equipamentos->pluck('id')->all();
+            // Faixa pela contagem do cliente (só count — NÃO carrega os equipamentos todos).
+            $this->faixaEquipamentos = FaixaEquipamentos::para($this->totalEquipamentosCliente());
             $this->slas = $contrato->slas->map(fn ($s) => [
                 'prioridade' => $s->prioridade->value,
                 'tempo_resposta_horas' => $s->tempo_resposta_horas,
@@ -193,14 +202,75 @@ class Editor extends Component
         return redirect()->route('contratos.ficha', $this->contrato);
     }
 
-    // Seleciona um cliente do combobox: guarda o id e mostra o nome no input.
+    // Seleciona um cliente do combobox: guarda o id, mostra o nome, decide a faixa e RECOMEÇA a
+    // cobertura (cliente novo = equipamentos novos). Não carrega os equipamentos todos.
     public function selecionarCliente(int $id): void
     {
         $cliente = Cliente::find($id);
-        if ($cliente) {
-            $this->cliente_id = $cliente->id;
-            $this->clienteBusca = $cliente->nome;
+        if (! $cliente) {
+            return;
         }
+
+        $this->cliente_id = $cliente->id;
+        $this->clienteBusca = $cliente->nome;
+        $this->equipamentoIds = [];
+        $this->equipamentoBusca = '';
+        $this->faixaEquipamentos = FaixaEquipamentos::para($this->totalEquipamentosCliente());
+    }
+
+    // Nº de equipamentos do cliente escolhido (só contagem).
+    private function totalEquipamentosCliente(): int
+    {
+        return $this->cliente_id
+            ? Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))->count()
+            : 0;
+    }
+
+    // Faixa 'lista' (11-50): marca todos os equipamentos do cliente. Query limitada a
+    // MAX_LISTA_CHECKBOXES (50) — garante que nunca se cobrem/renderizam >50.
+    public function selecionarTodosEquipamentos(): void
+    {
+        if ($this->cliente_id === null) {
+            return;
+        }
+
+        $this->equipamentoIds = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
+            ->orderBy('numero_serie')
+            ->limit(FaixaEquipamentos::MAX_LISTA_CHECKBOXES)
+            ->pluck('id')
+            ->all();
+    }
+
+    // Faixa 'lista': limpa a cobertura (para o "Selecionar todos" alternar com "Limpar").
+    public function limparEquipamentos(): void
+    {
+        $this->equipamentoIds = [];
+    }
+
+    // Faixa 'pesquisa' (>50): acrescenta um equipamento à cobertura (só do cliente escolhido).
+    public function adicionarEquipamento(int $id): void
+    {
+        if ($this->cliente_id === null || in_array($id, $this->equipamentoIds, true)) {
+            $this->equipamentoBusca = '';
+
+            return;
+        }
+
+        $doCliente = Equipamento::whereKey($id)
+            ->whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
+            ->exists();
+
+        if ($doCliente) {
+            $this->equipamentoIds[] = $id;
+        }
+
+        $this->equipamentoBusca = '';
+    }
+
+    // Remove um equipamento da cobertura (chip da faixa 'pesquisa' ou desmarcar).
+    public function removerEquipamento(int $id): void
+    {
+        $this->equipamentoIds = array_values(array_filter($this->equipamentoIds, fn ($e) => $e !== $id));
     }
 
     // Normaliza o termo de pesquisa (minúsculas, sem acentos) para casar com a
@@ -214,15 +284,46 @@ class Editor extends Component
         return str_replace($de, $para, $valor);
     }
 
+    // Pesquisa server-side de equipamentos do cliente (nº série / modelo sem acentos), limitada.
+    // Faixa 'pesquisa': vazia sem texto — NUNCA carrega os (potencialmente milhares) do cliente.
+    private function equipamentosDoClienteFiltrados(): Collection
+    {
+        if ($this->cliente_id === null || trim($this->equipamentoBusca) === '') {
+            return collect();
+        }
+
+        $termo = '%' . $this->equipamentoBusca . '%';
+        $norm = '%' . $this->normalizarBusca($this->equipamentoBusca) . '%';
+        $semAcentos = "translate(lower(coalesce(modelo, '')), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
+
+        return Equipamento::query()
+            ->with('local')
+            ->whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
+            ->where(function ($q) use ($termo, $norm, $semAcentos) {
+                $q->where('numero_serie', 'ilike', $termo)
+                    ->orWhereRaw($semAcentos . ' like ?', [$norm]);
+            })
+            ->orderBy('numero_serie')
+            ->limit(20)
+            ->get();
+    }
+
     public function render()
     {
-        // Equipamentos disponíveis para o cliente escolhido (âmbito do contrato).
-        $equipamentos = $this->cliente_id
+        // Checkboxes (faixas 'auto'/'lista'): carrega os equipamentos do cliente, limitado a
+        // MAX_LISTA_CHECKBOXES (≤50). Nas outras faixas fica vazio (não carrega os 1.053).
+        $equipamentos = in_array($this->faixaEquipamentos, ['auto', 'lista'], true)
             ? Equipamento::query()
                 ->whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
                 ->with('local')
-                ->orderBy('id')
+                ->orderBy('numero_serie')
+                ->limit(FaixaEquipamentos::MAX_LISTA_CHECKBOXES)
                 ->get()
+            : collect();
+
+        // Faixa 'pesquisa': equipamentos JÁ cobertos (para os mostrar) — só os selecionados (punhado).
+        $equipamentosAdicionados = ($this->faixaEquipamentos === 'pesquisa' && $this->equipamentoIds !== [])
+            ? Equipamento::with('local')->whereIn('id', $this->equipamentoIds)->orderBy('numero_serie')->get()
             : collect();
 
         // Pesquisa de clientes server-side (nome sem acentos + NIF + nº ERP), limitada.
@@ -243,6 +344,8 @@ class Editor extends Component
         return view('livewire.contratos.editor', [
             'clientesFiltrados' => $clientesFiltrados,
             'equipamentos' => $equipamentos,
+            'equipamentosFiltrados' => $this->equipamentosDoClienteFiltrados(),
+            'equipamentosAdicionados' => $equipamentosAdicionados,
             'tiposContrato' => TipoContrato::cases(),
             'modelosFaturacao' => ModeloFaturacao::orderBy('nome')->get(),
             'prioridades' => PrioridadeSla::cases(),
