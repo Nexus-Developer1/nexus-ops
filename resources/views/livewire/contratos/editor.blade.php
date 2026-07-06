@@ -155,81 +155,46 @@
                 <div class="border-t border-borda px-6 py-6">
                     @if (! $cliente_id)
                         <p class="text-sm text-texto-medio">Selecione um cliente para ver os equipamentos disponíveis.</p>
-
-                    {{-- Faixas 'auto' (≤10) e 'lista' (11-50): checkboxes de todos os equipamentos do
-                         cliente (no máx. 50). Na 'lista' junta-se "Selecionar todos / Limpar". --}}
-                    @elseif (in_array($faixaEquipamentos, ['auto', 'lista'], true))
-                        @if ($equipamentos->isEmpty())
-                            <p class="text-sm text-texto-medio">Este cliente não tem equipamentos registados.</p>
-                        @else
-                            @if ($faixaEquipamentos === 'lista')
-                                @php($todosMarcados = $equipamentos->every(fn ($e) => in_array($e->id, $equipamentoIds)))
-                                <div class="mb-3 flex items-center justify-between">
-                                    <span class="text-xs text-texto-medio">{{ count($equipamentoIds) }} selecionado(s)</span>
-                                    <button type="button" wire:click="{{ $todosMarcados ? 'limparEquipamentos' : 'selecionarTodosEquipamentos' }}" class="text-xs font-medium text-verde-700 hover:text-verde-800">
-                                        {{ $todosMarcados ? 'Limpar' : 'Selecionar todos' }}
-                                    </button>
-                                </div>
-                            @endif
+                    @elseif ($equipamentos->isEmpty())
+                        <p class="text-sm text-texto-medio">Este cliente não tem equipamentos registados.</p>
+                    @else
+                        <div
+                            x-data="{
+                                busca: '',
+                                itens: @js($equipamentos->map(fn ($e) => ['nome' => trim($e->fabricante . ' ' . $e->modelo), 'serie' => $e->numero_serie ?? ''])->values()),
+                                norm(s) { return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); },
+                                visivel(i) {
+                                    const n = this.norm(this.busca);
+                                    if (n === '') return true;
+                                    const it = this.itens[i];
+                                    return this.norm(it.nome).includes(n) || this.norm(it.serie).includes(n);
+                                },
+                                get nenhum() {
+                                    const n = this.norm(this.busca);
+                                    if (n === '') return false;
+                                    return !this.itens.some(it => this.norm(it.nome).includes(n) || this.norm(it.serie).includes(n));
+                                },
+                            }"
+                        >
+                            <div class="relative mb-4">
+                                <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 17a6 6 0 100-12 6 6 0 000 12z"/></svg>
+                                <input type="text" x-model="busca" placeholder="Pesquisar por nome ou nº de série..." autocomplete="off" class="campo-input pl-10 pr-10">
+                                <button type="button" x-show="busca !== ''" x-cloak @click="busca = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-texto-fraco hover:text-texto-forte" aria-label="Limpar pesquisa">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
                             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                 @foreach ($equipamentos as $e)
-                                    <label class="flex items-center gap-3 rounded-lg border border-borda px-4 py-3 hover:bg-fundo" wire:key="equip-{{ $e->id }}">
+                                    <label x-show="visivel({{ $loop->index }})" class="flex items-center gap-3 rounded-lg border border-borda px-4 py-3 hover:bg-fundo" wire:key="equip-{{ $e->id }}">
                                         <input wire:model="equipamentoIds" type="checkbox" value="{{ $e->id }}" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-600">
                                         <span class="min-w-0">
-                                            <span class="block truncate text-sm font-medium text-texto-forte">{{ trim($e->fabricante . ' ' . $e->modelo) ?: 'UPS' }}</span>
+                                            <span class="block truncate text-sm font-medium text-texto-forte">{{ $e->fabricante }} {{ $e->modelo }}</span>
                                             <span class="block truncate text-xs text-texto-fraco">{{ $e->numero_serie ?? '—' }} · {{ $e->local->designacao }}</span>
                                         </span>
                                     </label>
                                 @endforeach
                             </div>
-                        @endif
-
-                    {{-- Faixa 'pesquisa' (>50): pesquisa server-side para ADICIONAR + lista dos já cobertos.
-                         Nunca carrega os (centenas/milhares) equipamentos do cliente de uma vez. --}}
-                    @else
-                        <div wire:key="combo-equip-contrato" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
-                            <input type="text"
-                                wire:model.live.debounce.300ms="equipamentoBusca"
-                                @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
-                                @keydown.arrow-down.prevent="aberto = true; if ($refs['ec' + (destaque + 1)]) destaque++"
-                                @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
-                                @keydown.enter.prevent="$refs['ec' + destaque]?.click()"
-                                class="campo-input pr-10" placeholder="Pesquisar por nº de série ou modelo para adicionar..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
-                            <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                            <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
-                                @forelse ($equipamentosFiltrados as $idx => $e)
-                                    <li x-ref="ec{{ $idx }}" wire:key="ecf-{{ $e->id }}"
-                                        wire:click="adicionarEquipamento({{ $e->id }})" @click="aberto = false"
-                                        @mouseenter="destaque = {{ $idx }}"
-                                        :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
-                                        class="cursor-pointer px-4 py-2 text-sm" role="option">
-                                        <span class="font-medium text-texto-forte">{{ $e->numero_serie ?? '—' }}</span>
-                                        <span class="text-xs text-texto-fraco"> · {{ trim($e->fabricante . ' ' . $e->modelo) ?: '—' }} · {{ $e->local->designacao }}</span>
-                                    </li>
-                                @empty
-                                    <li class="px-4 py-2 text-sm text-texto-medio">{{ $equipamentoBusca === '' ? 'Escreva o nº de série para pesquisar…' : 'Nenhum equipamento encontrado.' }}</li>
-                                @endforelse
-                            </ul>
-                        </div>
-                        <p class="mt-1.5 text-xs text-texto-fraco">Este cliente tem muitos equipamentos — pesquisa e adiciona os cobertos pelo contrato.</p>
-
-                        {{-- Já cobertos (a cobertura tem de se ver): chips removíveis. --}}
-                        <div class="mt-4">
-                            <p class="text-xs font-medium text-texto-medio">Cobertos ({{ count($equipamentoIds) }})</p>
-                            @if ($equipamentosAdicionados->isNotEmpty())
-                                <div class="mt-2 flex flex-wrap gap-2">
-                                    @foreach ($equipamentosAdicionados as $e)
-                                        <span class="inline-flex items-center gap-1.5 rounded-full border border-borda bg-fundo px-3 py-1 text-xs text-texto-forte" wire:key="cob-{{ $e->id }}">
-                                            {{ $e->numero_serie ?? '—' }} · {{ trim($e->fabricante . ' ' . $e->modelo) ?: '—' }}
-                                            <button type="button" wire:click="removerEquipamento({{ $e->id }})" class="text-texto-fraco hover:text-perigo-600" title="Remover">
-                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                                            </button>
-                                        </span>
-                                    @endforeach
-                                </div>
-                            @else
-                                <p class="mt-1 text-sm text-texto-medio">Ainda não adicionaste equipamentos a este contrato.</p>
-                            @endif
+                            <p x-show="nenhum" x-cloak class="mt-1 text-sm text-texto-medio">Sem equipamentos correspondentes.</p>
                         </div>
                     @endif
                 </div>

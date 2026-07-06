@@ -16,7 +16,6 @@ use App\Models\Intervencao;
 use App\Models\Relatorio;
 use App\Services\Agenda\GeradorEventoDeRelatorio;
 use App\Services\GeradorRelatorio;
-use App\Support\FaixaEquipamentos;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -43,9 +42,13 @@ class Novo extends Component
     public ?int $contrato_id = null;
     public string $contratoBusca = '';
 
-    // Modo individual: 3 faixas por nº de equipamentos do cliente (auto/lista/pesquisa), para
-    // escolher os equipamentos sem montar centenas/milhares de fichas (→ 500). Os limites e a
-    // decisão da faixa vivem em App\Support\FaixaEquipamentos (partilhado com o editor de contratos).
+    // Modo individual: 3 faixas por nº de equipamentos do cliente, para escolher os equipamentos
+    // sem risco de montar centenas/milhares de fichas (→ 500):
+    //   ≤ MAX_ANEXA_AUTO ......... anexa todos direto
+    //   ≤ MAX_LISTA_CHECKBOXES ... lista de checkboxes (marca/desmarca em tempo real)
+    //   acima .................... pesquisa server-side (anexa um a um) — o caminho que corrigiu o 500
+    private const MAX_ANEXA_AUTO = 10;
+    private const MAX_LISTA_CHECKBOXES = 50;
 
     // Modo individual: escolhe-se o cliente e anexam-se os equipamentos dele.
     public ?int $cliente_id = null;
@@ -110,7 +113,7 @@ class Novo extends Component
 
                 if ($cliente) {
                     $total = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))->count();
-                    $this->faixaEquipamentos = FaixaEquipamentos::para($total);
+                    $this->faixaEquipamentos = $this->faixaPara($total);
                 }
             }
             $this->tipo = $intervencao->tipo->value;
@@ -194,6 +197,19 @@ class Novo extends Component
         $this->removerEquipamentoCoberto($id);
     }
 
+    // Faixa do fluxo de equipamentos conforme o total do cliente.
+    private function faixaPara(int $total): string
+    {
+        if ($total <= self::MAX_ANEXA_AUTO) {
+            return 'auto';
+        }
+        if ($total <= self::MAX_LISTA_CHECKBOXES) {
+            return 'lista';
+        }
+
+        return 'pesquisa';
+    }
+
     // Modo individual: escolhe o CLIENTE e decide a faixa pela contagem de equipamentos:
     //   'auto' (≤10)      → anexa todos direto (1.º = principal, resto = cobertos);
     //   'lista' (11-50)   → não anexa nada; mostra lista de checkboxes;
@@ -211,7 +227,7 @@ class Novo extends Component
         $this->equipamentoBusca = '';
 
         $total = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))->count();
-        $this->faixaEquipamentos = FaixaEquipamentos::para($total);
+        $this->faixaEquipamentos = $this->faixaPara($total);
 
         if ($this->faixaEquipamentos !== 'auto') {
             // 'lista' e 'pesquisa' → o técnico escolhe; não se anexa nada automaticamente.
@@ -267,7 +283,7 @@ class Novo extends Component
 
         $ids = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
             ->orderBy('numero_serie')
-            ->limit(FaixaEquipamentos::MAX_LISTA_CHECKBOXES)
+            ->limit(self::MAX_LISTA_CHECKBOXES)
             ->pluck('id')
             ->all();
 
@@ -380,7 +396,7 @@ class Novo extends Component
         return Equipamento::query()
             ->whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
             ->orderBy('numero_serie')
-            ->limit(FaixaEquipamentos::MAX_LISTA_CHECKBOXES)
+            ->limit(self::MAX_LISTA_CHECKBOXES)
             ->get(['id', 'numero_serie', 'fabricante', 'modelo']);
     }
 
