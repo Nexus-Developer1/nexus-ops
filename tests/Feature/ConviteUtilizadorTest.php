@@ -109,6 +109,50 @@ class ConviteUtilizadorTest extends TestCase
         Notification::assertNothingSent();
     }
 
+    public function test_admin_elimina_tecnico_e_preserva_historico(): void
+    {
+        $tecnico = User::create(['nome' => 'A Sair', 'email' => 'sair@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+
+        // Trabalho do técnico: ao eliminar, a intervenção mantém-se (tecnico_id → null).
+        $cliente = \App\Models\Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = \App\Models\Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $equipamento = \App\Models\Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
+        $intervencao = \App\Models\Intervencao::create([
+            'equipamento_id' => $equipamento->id, 'tipo' => 'preventiva', 'estado' => 'concluida', 'tecnico_id' => $tecnico->id,
+        ]);
+
+        Livewire::actingAs($this->admin())->test(Adicionar::class)
+            ->call('eliminar', $tecnico->id)
+            ->assertHasNoErrors();
+
+        $this->assertNull(User::find($tecnico->id));                       // conta apagada
+        $this->assertNotNull($intervencao->fresh());                       // histórico preservado…
+        $this->assertNull($intervencao->fresh()->tecnico_id);              // …sem técnico associado
+    }
+
+    public function test_eliminar_nao_apaga_um_admin(): void
+    {
+        $outroAdmin = User::create(['nome' => 'Chefe', 'email' => 'chefe@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
+
+        // O método só actua sobre técnicos → sobre um admin é no-op silencioso (não apaga).
+        Livewire::actingAs($this->admin())->test(Adicionar::class)
+            ->call('eliminar', $outroAdmin->id)
+            ->assertHasNoErrors();
+
+        $this->assertNotNull(User::find($outroAdmin->id)); // continua lá
+    }
+
+    public function test_tecnico_nao_elimina(): void
+    {
+        $alvo = User::create(['nome' => 'Alvo', 'email' => 'alvo@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+
+        // Técnico nem chega ao componente (403 no mount) → não elimina ninguém.
+        Livewire::actingAs($this->tecnico())->test(Adicionar::class)
+            ->assertForbidden();
+
+        $this->assertNotNull(User::find($alvo->id));
+    }
+
     public function test_tecnico_leva_403_no_componente(): void
     {
         // Guarda no componente (mount) → 403 direto (não é só esconder o link).

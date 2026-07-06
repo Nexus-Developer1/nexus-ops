@@ -77,6 +77,26 @@ class Adicionar extends Component
         session()->flash('sucesso', "Convite reenviado para {$user->email}.");
     }
 
+    // Elimina PERMANENTEMENTE um técnico (só admin). O histórico mantém-se — as FKs fazem
+    // nullOnDelete (intervenções/relatórios/eventos/despesas ficam sem técnico associado);
+    // só as ausências do técnico são apagadas (cascade). Não recuperável (User sem soft-delete).
+    public function eliminar(int $id): void
+    {
+        abort_unless(Gate::allows('gerir-utilizadores'), 403);
+
+        // Só elimina TÉCNICOS — nunca admins nem a própria conta do admin (que não é técnico).
+        // Se o id não for de um técnico, no-op silencioso (defesa; o botão só aparece a técnicos).
+        $user = User::where('papel', PapelUtilizador::Tecnico)->find($id);
+        if (! $user) {
+            return;
+        }
+
+        $nome = $user->nome;
+        $user->delete();
+
+        session()->flash('sucesso', "Técnico {$nome} eliminado.");
+    }
+
     public function render()
     {
         // Lista de técnicos já no site: convite pendente (password NULL, ainda não aceitaram) vs

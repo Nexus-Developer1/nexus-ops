@@ -60,8 +60,8 @@
                                 <p class="truncate text-xs text-texto-medio">{{ $tecnico->email }}</p>
                             </div>
 
-                            @if ($pendente)
-                                <div class="flex shrink-0 items-center gap-3">
+                            <div class="flex shrink-0 items-center gap-3">
+                                @if ($pendente)
                                     <span class="inline-flex items-center gap-1.5 rounded-full bg-aviso-100 px-2.5 py-1 text-xs font-medium text-aviso-500">
                                         <span class="h-1.5 w-1.5 rounded-full bg-aviso-500"></span>
                                         Convite pendente
@@ -72,13 +72,22 @@
                                         <span wire:loading.remove wire:target="reenviar({{ $tecnico->id }})">Reenviar convite</span>
                                         <span wire:loading wire:target="reenviar({{ $tecnico->id }})">A enviar…</span>
                                     </button>
-                                </div>
-                            @else
-                                <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-verde-50 px-2.5 py-1 text-xs font-medium text-verde-700">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-verde-600"></span>
-                                    Ativo
-                                </span>
-                            @endif
+                                @else
+                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-verde-50 px-2.5 py-1 text-xs font-medium text-verde-700">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-verde-600"></span>
+                                        Ativo
+                                    </span>
+                                @endif
+
+                                {{-- Eliminar técnico: permanente, com confirmação (só admin chega aqui). --}}
+                                <button type="button" wire:click="eliminar({{ $tecnico->id }})"
+                                    wire:confirm="Eliminar o técnico {{ $tecnico->nome }}? Esta ação é permanente e não pode ser desfeita."
+                                    wire:loading.attr="disabled" wire:target="eliminar({{ $tecnico->id }})"
+                                    title="Eliminar técnico"
+                                    class="text-texto-fraco transition hover:text-perigo-600 disabled:opacity-50">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                </button>
+                            </div>
                         </li>
                     @empty
                         <li class="px-6 py-8 text-center text-sm text-texto-medio">Ainda não há técnicos convidados.</li>
