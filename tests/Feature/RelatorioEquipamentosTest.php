@@ -36,10 +36,10 @@ class RelatorioEquipamentosTest extends TestCase
         return [$admin, $mk('SN-PRINC'), $mk('SN-EX1'), $mk('SN-EX2')];
     }
 
-    // Cliente com N equipamentos (para o ramo "muitos" — acima do limite de 10 do componente).
-    private function clienteGrande(int $n): Cliente
+    // Cliente com N equipamentos (para as faixas 'lista' 11-50 e 'pesquisa' >50).
+    private function clienteComN(int $n, string $nome = 'WALLFUTURE'): Cliente
     {
-        $cliente = Cliente::create(['nome' => 'WALLFUTURE', 'ativo' => true]);
+        $cliente = Cliente::create(['nome' => $nome, 'ativo' => true]);
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sala']);
         for ($i = 1; $i <= $n; $i++) {
             Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => sprintf('WF-%04d', $i)]);
@@ -164,25 +164,95 @@ class RelatorioEquipamentosTest extends TestCase
         );
     }
 
-    public function test_cliente_grande_nao_anexa_automaticamente_e_liga_pesquisa(): void
+    public function test_faixa_por_contagem_de_equipamentos(): void
     {
         [$admin] = $this->cenario();
-        $cliente = $this->clienteGrande(12); // > 10 → não anexa
 
-        Livewire::actingAs($admin)->test(Novo::class)
-            ->call('selecionarCliente', $cliente->id)
-            ->assertSet('cliente_id', $cliente->id)
-            ->assertSet('clienteExcedeLimite', true)   // liga a pesquisa
-            ->assertSet('equipamento_id', null)        // NADA anexado (era isto que causava o 500)
+        $faixa = function (int $n, string $nome) use ($admin) {
+            $cliente = $this->clienteComN($n, $nome);
+
+            return Livewire::actingAs($admin)->test(Novo::class)
+                ->call('selecionarCliente', $cliente->id)
+                ->get('faixaEquipamentos');
+        };
+
+        $this->assertSame('auto', $faixa(10, 'C10'));       // ≤10 → anexa todos
+        $this->assertSame('lista', $faixa(11, 'C11'));      // 11 → lista de checkboxes
+        $this->assertSame('lista', $faixa(50, 'C50'));      // 50 → ainda lista (limite superior)
+        $this->assertSame('pesquisa', $faixa(51, 'C51'));   // 51 → pesquisa (NUNCA lista)
+    }
+
+    public function test_faixa_lista_nao_anexa_automaticamente_e_mostra_checkboxes(): void
+    {
+        [$admin] = $this->cenario();
+        $cliente = $this->clienteComN(20); // 11-50 → lista
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)->call('selecionarCliente', $cliente->id);
+
+        // Não anexa nada automaticamente (nada de montar fichas).
+        $c->assertSet('faixaEquipamentos', 'lista')
+            ->assertSet('equipamento_id', null)
+            ->assertSet('equipamentosCobertos', []);
+
+        // Mostra os checkboxes + "Selecionar todos", NÃO a pesquisa, NÃO fichas.
+        $c->assertSeeHtml('wire:click="alternarEquipamento(')
+            ->assertSee('Selecionar todos')
+            ->assertSee('WF-0005')                                // um nº de série na lista
+            ->assertDontSeeHtml('wire:key="combo-equip-cliente"') // não é o caminho da pesquisa
+            ->assertDontSeeHtml('wire:key="tab-ficha-');          // nenhuma ficha montada
+    }
+
+    public function test_faixa_lista_marcar_anexa_e_desmarcar_remove_com_promocao(): void
+    {
+        [$admin] = $this->cenario();
+        $cliente = $this->clienteComN(20);
+        $eqs = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))
+            ->orderBy('numero_serie')->pluck('id')->all();
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)->call('selecionarCliente', $cliente->id);
+
+        // Marcar A → principal; marcar B → coberto.
+        $c->call('alternarEquipamento', $eqs[0])->assertSet('equipamento_id', $eqs[0]);
+        $c->call('alternarEquipamento', $eqs[1]);
+        $this->assertSame([$eqs[1]], $c->get('equipamentosCobertos'));
+
+        // Desmarcar o principal (A) → promove B a principal.
+        $c->call('alternarEquipamento', $eqs[0])
+            ->assertSet('equipamento_id', $eqs[1])
+            ->assertSet('equipamentosCobertos', []);
+
+        // Desmarcar B → fica sem nada.
+        $c->call('alternarEquipamento', $eqs[1])
+            ->assertSet('equipamento_id', null)
             ->assertSet('equipamentosCobertos', []);
     }
 
-    public function test_pesquisa_de_equipamento_filtra_so_ao_cliente_escolhido(): void
+    public function test_faixa_lista_selecionar_todos_anexa_todos_e_limpar(): void
+    {
+        [$admin] = $this->cenario();
+        $cliente = $this->clienteComN(50); // limite superior da lista
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->call('selecionarTodosEquipamentos');
+
+        // 50 anexados (1 principal + 49 cobertos) — nunca mais que MAX_LISTA_CHECKBOXES.
+        $this->assertNotNull($c->get('equipamento_id'));
+        $this->assertCount(49, $c->get('equipamentosCobertos'));
+
+        // "Limpar seleção" → volta a zero.
+        $c->call('limparEquipamentos')
+            ->assertSet('equipamento_id', null)
+            ->assertSet('equipamentosCobertos', []);
+    }
+
+    public function test_faixa_pesquisa_filtra_so_ao_cliente_escolhido(): void
     {
         [$admin] = $this->cenario();               // ACME (SN-PRINC, SN-EX1, SN-EX2)
-        $cliente = $this->clienteGrande(12);        // WALLFUTURE (WF-0001..0012)
+        $cliente = $this->clienteComN(60);          // > 50 → pesquisa (WF-0001..0060)
 
-        $c = Livewire::actingAs($admin)->test(Novo::class)->call('selecionarCliente', $cliente->id);
+        $c = Livewire::actingAs($admin)->test(Novo::class)->call('selecionarCliente', $cliente->id)
+            ->assertSet('faixaEquipamentos', 'pesquisa');
 
         // Pesquisa por um nº de série do cliente escolhido → aparece.
         $c->set('equipamentoBusca', 'WF-0003')
@@ -193,10 +263,10 @@ class RelatorioEquipamentosTest extends TestCase
             ->assertViewHas('equipamentosClienteFiltrados', fn ($r) => $r->isEmpty());
     }
 
-    public function test_adicionar_equipamento_anexa_e_rejeita_de_outro_cliente(): void
+    public function test_faixa_pesquisa_adicionar_anexa_e_rejeita_de_outro_cliente(): void
     {
         [$admin, $acmeEquip] = $this->cenario();    // equipamento de ACME
-        $cliente = $this->clienteGrande(12);
+        $cliente = $this->clienteComN(60);          // > 50 → pesquisa
         $eqs = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))
             ->orderBy('numero_serie')->pluck('id')->all();
 
@@ -216,19 +286,20 @@ class RelatorioEquipamentosTest extends TestCase
     public function test_cliente_com_mais_de_100_equipamentos_nao_rebenta_a_pagina(): void
     {
         [$admin] = $this->cenario();
-        $cliente = $this->clienteGrande(120); // como o WALLFUTURE real (1.053) — aqui 120 chega
+        $cliente = $this->clienteComN(120); // como o WALLFUTURE real (1.053) — aqui 120 chega
 
         // Selecionar o cliente renderiza SEM exceção e NÃO monta as fichas (a causa do 500).
         $c = Livewire::actingAs($admin)->test(Novo::class)
             ->call('selecionarCliente', $cliente->id)
-            ->assertSet('clienteExcedeLimite', true)
+            ->assertSet('faixaEquipamentos', 'pesquisa')
             ->assertSet('equipamento_id', null)
             ->assertSet('equipamentosCobertos', []);
 
-        // Renderiza o campo de PESQUISA, não centenas de fichas.
+        // Renderiza o campo de PESQUISA, não centenas de fichas nem a lista de checkboxes.
         $c->assertSee('Adicionar equipamento')
             ->assertSeeHtml('wire:key="combo-equip-cliente"')
-            ->assertDontSeeHtml('wire:key="tab-ficha-'); // nenhuma ficha/aba montada
+            ->assertDontSeeHtml('wire:click="alternarEquipamento(') // não é a lista
+            ->assertDontSeeHtml('wire:key="tab-ficha-');            // nenhuma ficha/aba montada
     }
 
     public function test_modo_individual_nao_liga_contrato(): void

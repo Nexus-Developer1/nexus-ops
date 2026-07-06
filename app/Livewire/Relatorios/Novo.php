@@ -42,16 +42,19 @@ class Novo extends Component
     public ?int $contrato_id = null;
     public string $contratoBusca = '';
 
-    // Acima deste nº de equipamentos, escolher o cliente NÃO anexa tudo (senão o Blade tentaria
-    // montar centenas/milhares de fichas → 500). Em vez disso mostra-se uma pesquisa filtrada ao
-    // cliente e o técnico anexa só os que precisa. Fácil de afinar.
-    private const MAX_EQUIPAMENTOS_AUTO = 10;
+    // Modo individual: 3 faixas por nº de equipamentos do cliente, para escolher os equipamentos
+    // sem risco de montar centenas/milhares de fichas (→ 500):
+    //   ≤ MAX_ANEXA_AUTO ......... anexa todos direto
+    //   ≤ MAX_LISTA_CHECKBOXES ... lista de checkboxes (marca/desmarca em tempo real)
+    //   acima .................... pesquisa server-side (anexa um a um) — o caminho que corrigiu o 500
+    private const MAX_ANEXA_AUTO = 10;
+    private const MAX_LISTA_CHECKBOXES = 50;
 
     // Modo individual: escolhe-se o cliente e anexam-se os equipamentos dele.
     public ?int $cliente_id = null;
     public string $clienteBusca = '';        // pesquisa server-side do cliente
-    // Cliente com mais equipamentos que o limite → não se anexa tudo; mostra-se a pesquisa.
-    public bool $clienteExcedeLimite = false;
+    // Faixa do fluxo de equipamentos: '' (sem cliente) | 'auto' | 'lista' | 'pesquisa'.
+    public string $faixaEquipamentos = '';
     public string $equipamentoBusca = '';    // pesquisa server-side do equipamento (filtrada ao cliente)
 
     public ?int $equipamento_id = null;      // 1.º equipamento (principal da intervenção)
@@ -110,7 +113,7 @@ class Novo extends Component
 
                 if ($cliente) {
                     $total = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))->count();
-                    $this->clienteExcedeLimite = $total > self::MAX_EQUIPAMENTOS_AUTO;
+                    $this->faixaEquipamentos = $this->faixaPara($total);
                 }
             }
             $this->tipo = $intervencao->tipo->value;
@@ -151,7 +154,7 @@ class Novo extends Component
         $this->equipamento_id = null;
         $this->equipamentosCobertos = [];
         $this->equipamentoBusca = '';
-        $this->clienteExcedeLimite = false;
+        $this->faixaEquipamentos = '';
 
         if ($novo === 'individual') {
             // O modo individual não tem contrato.
@@ -194,10 +197,23 @@ class Novo extends Component
         $this->removerEquipamentoCoberto($id);
     }
 
-    // Modo individual: escolhe o CLIENTE. Se o cliente tiver POUCOS equipamentos (≤ limite),
-    // anexa-os todos (1.º = principal, resto = cobertos) — como no modo contrato. Se tiver MUITOS,
-    // NÃO anexa nada (senão o Blade montaria centenas de fichas → 500): liga a pesquisa filtrada
-    // ao cliente para o técnico anexar só os que precisa.
+    // Faixa do fluxo de equipamentos conforme o total do cliente.
+    private function faixaPara(int $total): string
+    {
+        if ($total <= self::MAX_ANEXA_AUTO) {
+            return 'auto';
+        }
+        if ($total <= self::MAX_LISTA_CHECKBOXES) {
+            return 'lista';
+        }
+
+        return 'pesquisa';
+    }
+
+    // Modo individual: escolhe o CLIENTE e decide a faixa pela contagem de equipamentos:
+    //   'auto' (≤10)      → anexa todos direto (1.º = principal, resto = cobertos);
+    //   'lista' (11-50)   → não anexa nada; mostra lista de checkboxes;
+    //   'pesquisa' (>50)  → não anexa nada; mostra pesquisa (nunca renderiza centenas de fichas → 500).
     public function selecionarCliente(int $id): void
     {
         $cliente = Cliente::find($id);
@@ -211,17 +227,17 @@ class Novo extends Component
         $this->equipamentoBusca = '';
 
         $total = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))->count();
-        $this->clienteExcedeLimite = $total > self::MAX_EQUIPAMENTOS_AUTO;
+        $this->faixaEquipamentos = $this->faixaPara($total);
 
-        if ($this->clienteExcedeLimite) {
-            // Cliente grande → não anexa nada; o técnico pesquisa e adiciona à mão.
+        if ($this->faixaEquipamentos !== 'auto') {
+            // 'lista' e 'pesquisa' → o técnico escolhe; não se anexa nada automaticamente.
             $this->equipamento_id = null;
             $this->equipamentosCobertos = [];
 
             return;
         }
 
-        // Cliente pequeno → anexa todos, ordenados por nº de série.
+        // 'auto' (≤10) → anexa todos, ordenados por nº de série.
         $ids = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))
             ->orderBy('numero_serie')
             ->pluck('id')
@@ -231,23 +247,71 @@ class Novo extends Component
         $this->equipamentosCobertos = array_values(array_slice($ids, 1));
     }
 
-    // Modo individual (cliente grande): anexa ao relatório um equipamento escolhido na pesquisa.
-    // O 1.º vira principal; os seguintes ficam cobertos. Só aceita equipamentos DAQUELE cliente.
+    // Faixa 'pesquisa' (>50): anexa um equipamento escolhido na pesquisa (1.º = principal).
     public function adicionarEquipamento(int $id): void
+    {
+        if (! $this->anexarEquipamentoDoCliente($id)) {
+            return;
+        }
+
+        $this->equipamentoBusca = ''; // limpa para a próxima pesquisa
+    }
+
+    // Faixa 'lista' (11-50): marca/desmarca um equipamento (checkbox) em tempo real.
+    // Marcar anexa (1.º = principal); desmarcar remove (se principal, promove o próximo).
+    public function alternarEquipamento(int $id): void
+    {
+        $anexado = $id === $this->equipamento_id || in_array($id, $this->equipamentosCobertos, true);
+
+        if ($anexado) {
+            $this->removerEquipamentoDoRelatorio($id);
+
+            return;
+        }
+
+        $this->anexarEquipamentoDoCliente($id);
+    }
+
+    // Faixa 'lista': anexa TODOS os equipamentos do cliente. Query limitada a MAX_LISTA_CHECKBOXES
+    // (50) — garante que nunca se anexam >50 (logo nunca se montam >50 fichas), mesmo que os dados
+    // mudem entretanto. Só faz sentido nesta faixa (onde o total já é ≤50).
+    public function selecionarTodosEquipamentos(): void
     {
         if ($this->cliente_id === null) {
             return;
         }
 
-        // Confirma que o equipamento é mesmo do cliente selecionado (não de outro).
+        $ids = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
+            ->orderBy('numero_serie')
+            ->limit(self::MAX_LISTA_CHECKBOXES)
+            ->pluck('id')
+            ->all();
+
+        $this->equipamento_id = $ids[0] ?? null;
+        $this->equipamentosCobertos = array_values(array_slice($ids, 1));
+    }
+
+    // Faixa 'lista': limpa a seleção (para o "Selecionar todos" alternar com "Limpar seleção").
+    public function limparEquipamentos(): void
+    {
+        $this->equipamento_id = null;
+        $this->equipamentosCobertos = [];
+    }
+
+    // Anexa um equipamento ao relatório, garantindo que é DAQUELE cliente (não de outro).
+    // Devolve true se anexou/já estava, false se rejeitou. 1.º vira principal, seguintes cobertos.
+    private function anexarEquipamentoDoCliente(int $id): bool
+    {
+        if ($this->cliente_id === null) {
+            return false;
+        }
+
         $doCliente = Equipamento::whereKey($id)
             ->whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
             ->exists();
 
         if (! $doCliente) {
-            $this->equipamentoBusca = '';
-
-            return;
+            return false;
         }
 
         if ($this->equipamento_id === null) {
@@ -256,7 +320,7 @@ class Novo extends Component
             $this->equipamentosCobertos[] = $id;
         }
 
-        $this->equipamentoBusca = ''; // limpa para a próxima pesquisa
+        return true;
     }
 
     public function removerEquipamentoCoberto(int $id): void
@@ -317,6 +381,22 @@ class Novo extends Component
             })
             ->orderBy('numero_serie')
             ->limit(20)
+            ->get(['id', 'numero_serie', 'fabricante', 'modelo']);
+    }
+
+    // Faixa 'lista' (11-50): lista dos equipamentos do cliente para os checkboxes. Limitada a
+    // MAX_LISTA_CHECKBOXES (50) — nesta faixa o total já é ≤50, mas o limite garante que nunca se
+    // renderiza mais que 50 linhas. Vazia nas outras faixas (nunca carrega listas de centenas).
+    private function equipamentosDoClienteLista(): Collection
+    {
+        if ($this->faixaEquipamentos !== 'lista' || $this->cliente_id === null) {
+            return collect();
+        }
+
+        return Equipamento::query()
+            ->whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
+            ->orderBy('numero_serie')
+            ->limit(self::MAX_LISTA_CHECKBOXES)
             ->get(['id', 'numero_serie', 'fabricante', 'modelo']);
     }
 
@@ -562,9 +642,14 @@ class Novo extends Component
             ->orderByDesc('data_inicio')
             ->get();
 
+        // Ids anexados (principal + cobertos) — para marcar os checkboxes da faixa 'lista'.
+        $anexadosIds = array_values(array_filter(array_merge([$this->equipamento_id], $this->equipamentosCobertos)));
+
         return view('livewire.relatorios.novo', [
             'clientesFiltrados' => $this->clientesFiltrados($this->clienteBusca),
             'equipamentosClienteFiltrados' => $this->equipamentosDoClienteFiltrados($this->equipamentoBusca),
+            'equipamentosClienteLista' => $this->equipamentosDoClienteLista(),
+            'anexadosIds' => $anexadosIds,
             'tipos' => TipoIntervencao::cases(),
             'anexosExistentes' => $anexosExistentes,
             'cobertosSelecionados' => $cobertosSelecionados,
