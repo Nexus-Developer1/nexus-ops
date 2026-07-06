@@ -25,47 +25,32 @@
                         <label class="campo-label" for="equip-combo">Equipamento <span class="text-perigo-500">*</span></label>
 
                         @if ($equipamentoFixo)
-                            @php($eqSel = $equipamentos->firstWhere('id', $equipamento_id))
-                            <input type="text" class="campo-input bg-fundo" value="{{ $eqSel ? ($eqSel->local?->cliente?->nome ?? '—') . ' · ' . trim($eqSel->tipo->rotulo() . ' ' . $eqSel->modelo) . ' (' . ($eqSel->numero_serie ?? '—') . ')' : '—' }}" disabled>
+                            {{-- Veio da ficha: equipamento fixo (carregado individualmente, não os 17k). --}}
+                            <input type="text" class="campo-input bg-fundo" value="{{ $equipamentoAtual ? ($equipamentoAtual->local?->cliente?->nome ?? '—') . ' · ' . trim($equipamentoAtual->tipo->rotulo() . ' ' . $equipamentoAtual->modelo) . ' (' . ($equipamentoAtual->numero_serie ?? '—') . ')' : '—' }}" disabled>
                         @else
-                            <div
-                                x-data="{
-                                    equipamentos: @js($equipamentos->map(fn ($e) => ['id' => $e->id, 'label' => ($e->local?->cliente?->nome ?? '—') . ' · ' . trim($e->tipo->rotulo() . ' ' . $e->modelo) . ' (' . ($e->numero_serie ?? '—') . ')'])->values()),
-                                    inicial: @js((string) $equipamento_id),
-                                    query: '',
-                                    aberto: false,
-                                    destaque: 0,
-                                    norm(s) { return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); },
-                                    get filtrados() {
-                                        const n = this.norm(this.query);
-                                        if (n === '') return this.equipamentos;
-                                        return this.equipamentos.filter(e => this.norm(e.label).includes(n));
-                                    },
-                                    init() {
-                                        const sel = this.equipamentos.find(e => String(e.id) === String(this.inicial));
-                                        if (sel) this.query = sel.label;
-                                    },
-                                    abrir() { this.aberto = true; this.destaque = 0; },
-                                    fechar() { this.aberto = false; },
-                                    mover(d) { if (!this.aberto) { this.abrir(); return; } const n = this.filtrados.length; if (n === 0) return; this.destaque = (this.destaque + d + n) % n; },
-                                    escolherDestaque() { const e = this.filtrados[this.destaque]; if (e) this.escolher(e); },
-                                    escolher(e) { this.query = e.label; this.aberto = false; this.$wire.set('equipamento_id', e.id, false); },
-                                }"
-                                @click.outside="fechar()"
-                                @keydown.escape.stop="fechar()"
-                                class="relative"
-                            >
-                                <input id="equip-combo" type="text" x-model="query" @focus="abrir()" @click="abrir()" @input="abrir()"
-                                    @keydown.arrow-down.prevent="mover(1)" @keydown.arrow-up.prevent="mover(-1)" @keydown.enter.prevent="escolherDestaque()"
-                                    class="campo-input pr-10" placeholder="Pesquisar por cliente, modelo ou nº de série..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
+                            {{-- Associação livre: pesquisa server-side (~30 resultados) — nunca carrega os 17k. --}}
+                            <div wire:key="combo-equip" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
+                                <input id="equip-combo" type="text"
+                                    wire:model.live.debounce.300ms="equipamentoBusca"
+                                    @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
+                                    @keydown.arrow-down.prevent="aberto = true; if ($refs['e' + (destaque + 1)]) destaque++"
+                                    @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
+                                    @keydown.enter.prevent="$refs['e' + destaque]?.click()"
+                                    class="campo-input pr-10" placeholder="Pesquisar por nº de série, fabricante ou modelo..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
                                 <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                                 <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
-                                    <template x-for="(e, i) in filtrados" :key="e.id">
-                                        <li @click="escolher(e)" @mouseenter="destaque = i" :class="i === destaque ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'" class="cursor-pointer px-4 py-2 text-sm" role="option">
-                                            <span x-text="e.label"></span>
+                                    @forelse ($equipamentosFiltrados as $idx => $e)
+                                        <li x-ref="e{{ $idx }}" wire:key="eq-{{ $e->id }}"
+                                            wire:click="selecionarEquipamento({{ $e->id }})" @click="aberto = false"
+                                            @mouseenter="destaque = {{ $idx }}"
+                                            :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
+                                            class="cursor-pointer px-4 py-2 text-sm" role="option">
+                                            <span class="font-medium text-texto-forte">{{ $e->numero_serie ?? '—' }}</span>
+                                            <span class="text-xs text-texto-fraco"> · {{ trim($e->tipo->rotulo() . ' ' . $e->modelo) ?: '—' }} · {{ $e->local?->cliente?->nome ?? 'sem cliente' }}</span>
                                         </li>
-                                    </template>
-                                    <li x-show="filtrados.length === 0" class="px-4 py-2 text-sm text-texto-medio">Nenhum equipamento encontrado.</li>
+                                    @empty
+                                        <li class="px-4 py-2 text-sm text-texto-medio">{{ $equipamentoBusca === '' ? 'Escreva para pesquisar…' : 'Nenhum equipamento encontrado.' }}</li>
+                                    @endforelse
                                 </ul>
                             </div>
                         @endif
@@ -75,44 +60,29 @@
                     {{-- Local --}}
                     <div>
                         <label class="campo-label" for="local-combo">Local <span class="text-perigo-500">*</span></label>
-                        <div
-                            x-data="{
-                                locais: @js($locais->map(fn ($l) => ['id' => $l->id, 'label' => ($l->cliente->nome ?? '—') . ' · ' . $l->designacao])->values()),
-                                inicial: @js((string) $local_id),
-                                query: '',
-                                aberto: false,
-                                destaque: 0,
-                                norm(s) { return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); },
-                                get filtrados() {
-                                    const n = this.norm(this.query);
-                                    if (n === '') return this.locais;
-                                    return this.locais.filter(l => this.norm(l.label).includes(n));
-                                },
-                                init() {
-                                    const sel = this.locais.find(l => String(l.id) === String(this.inicial));
-                                    if (sel) this.query = sel.label;
-                                },
-                                abrir() { this.aberto = true; this.destaque = 0; },
-                                fechar() { this.aberto = false; },
-                                mover(d) { if (!this.aberto) { this.abrir(); return; } const n = this.filtrados.length; if (n === 0) return; this.destaque = (this.destaque + d + n) % n; },
-                                escolherDestaque() { const l = this.filtrados[this.destaque]; if (l) this.escolher(l); },
-                                escolher(l) { this.query = l.label; this.aberto = false; this.$wire.set('local_id', l.id, false); },
-                            }"
-                            @click.outside="fechar()"
-                            @keydown.escape.stop="fechar()"
-                            class="relative"
-                        >
-                            <input id="local-combo" type="text" x-model="query" @focus="abrir()" @click="abrir()" @input="abrir()"
-                                @keydown.arrow-down.prevent="mover(1)" @keydown.arrow-up.prevent="mover(-1)" @keydown.enter.prevent="escolherDestaque()"
+                        {{-- Pesquisa server-side (~30 resultados) — nunca carrega os ~600 locais. --}}
+                        <div wire:key="combo-local" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
+                            <input id="local-combo" type="text"
+                                wire:model.live.debounce.300ms="localBusca"
+                                @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
+                                @keydown.arrow-down.prevent="aberto = true; if ($refs['l' + (destaque + 1)]) destaque++"
+                                @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
+                                @keydown.enter.prevent="$refs['l' + destaque]?.click()"
                                 class="campo-input pr-10" placeholder="Pesquisar local por cliente ou designação..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
                             <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                             <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
-                                <template x-for="(l, i) in filtrados" :key="l.id">
-                                    <li @click="escolher(l)" @mouseenter="destaque = i" :class="i === destaque ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'" class="cursor-pointer px-4 py-2 text-sm" role="option">
-                                        <span x-text="l.label"></span>
+                                @forelse ($locaisFiltrados as $idx => $l)
+                                    <li x-ref="l{{ $idx }}" wire:key="lo-{{ $l->id }}"
+                                        wire:click="selecionarLocal({{ $l->id }})" @click="aberto = false"
+                                        @mouseenter="destaque = {{ $idx }}"
+                                        :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
+                                        class="cursor-pointer px-4 py-2 text-sm" role="option">
+                                        <span class="font-medium text-texto-forte">{{ $l->cliente?->nome ?? '—' }}</span>
+                                        <span class="text-xs text-texto-fraco"> · {{ $l->designacao }}</span>
                                     </li>
-                                </template>
-                                <li x-show="filtrados.length === 0" class="px-4 py-2 text-sm text-texto-medio">Nenhum local encontrado.</li>
+                                @empty
+                                    <li class="px-4 py-2 text-sm text-texto-medio">{{ $localBusca === '' ? 'Escreva para pesquisar…' : 'Nenhum local encontrado.' }}</li>
+                                @endforelse
                             </ul>
                         </div>
                         @error('local_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
