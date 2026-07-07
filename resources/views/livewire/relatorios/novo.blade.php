@@ -111,30 +111,8 @@
                                 @error('contrato_id') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
 
-                            {{-- Equipamentos do contrato: aparecem como separadores no topo (ao lado de
-                                 "Dados Gerais"); clicar num deles abre a ficha de medições desse equipamento. --}}
-                            <div class="sm:col-span-2">
-                                <label class="campo-label">Equipamentos do contrato</label>
-                                @if ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty())
-                                    <div class="flex flex-wrap gap-2">
-                                        @if ($equipamentoPrincipal)
-                                            <button type="button" wire:key="chip-{{ $equipamentoPrincipal->id }}" @click="tab='equip-{{ $equipamentoPrincipal->id }}'" class="inline-flex items-center gap-1.5 rounded-full border border-verde-200 bg-verde-50 px-3 py-1 text-xs font-medium text-verde-700 hover:bg-verde-100 transition">
-                                                {{ $equipamentoPrincipal->numero_serie ?? '—' }}
-                                                <span class="text-[10px] uppercase tracking-wide text-verde-600/70">principal</span>
-                                            </button>
-                                        @endif
-                                        @foreach ($cobertosSelecionados as $e)
-                                            <button type="button" wire:key="chip-{{ $e->id }}" @click="tab='equip-{{ $e->id }}'" class="inline-flex items-center gap-1.5 rounded-full border border-borda bg-fundo px-3 py-1 text-xs text-texto-forte hover:border-verde-300 hover:text-verde-700 transition">
-                                                {{ $e->numero_serie ?? '—' }}
-                                            </button>
-                                        @endforeach
-                                    </div>
-                                    <p class="mt-1.5 text-xs text-texto-fraco">Clica num equipamento (aqui ou no separador em cima) para preencher a sua ficha de medições.</p>
-                                @else
-                                    <p class="text-sm text-texto-medio">Escolhe um contrato para carregar os equipamentos.</p>
-                                @endif
-                                @error('equipamento_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            </div>
+                            {{-- Escolha de equipamentos por faixa (auto/lista/pesquisa), filtrada ao CONTRATO. --}}
+                            @include('livewire.relatorios.selecao-equipamentos')
                         @else
                         {{-- Individual: escolhe-se o CLIENTE e anexam-se todos os equipamentos dele. --}}
                         <div class="sm:col-span-2">
@@ -165,98 +143,8 @@
                             </div>
                         </div>
 
-                        {{-- Faixa 11-50: lista de checkboxes. Marcar/desmarcar anexa/remove a aba em tempo
-                             real. São no máx. 50 linhas (checkboxes leves); as fichas só montam para os
-                             marcados. As abas já anexadas não se re-renderizam (wire:key estáveis). --}}
-                        @if ($faixaEquipamentos === 'lista')
-                            <div class="sm:col-span-2">
-                                @php($todosMarcados = $equipamentosClienteLista->isNotEmpty() && $equipamentosClienteLista->every(fn ($e) => in_array($e->id, $anexadosIds, true)))
-                                <div class="mb-2 flex items-center justify-between">
-                                    <label class="campo-label mb-0">Equipamentos do cliente</label>
-                                    <button type="button" wire:click="{{ $todosMarcados ? 'limparEquipamentos' : 'selecionarTodosEquipamentos' }}" class="text-xs font-medium text-verde-700 hover:text-verde-800">
-                                        {{ $todosMarcados ? 'Limpar seleção' : 'Selecionar todos' }}
-                                    </button>
-                                </div>
-                                <div class="max-h-72 space-y-0.5 overflow-auto rounded-lg border border-borda p-2">
-                                    @foreach ($equipamentosClienteLista as $e)
-                                        <label wire:key="chk-{{ $e->id }}" class="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 hover:bg-fundo">
-                                            <input type="checkbox" wire:click="alternarEquipamento({{ $e->id }})" @checked(in_array($e->id, $anexadosIds, true)) class="h-4 w-4 shrink-0 rounded border-borda text-verde-600 focus:ring-verde-500">
-                                            <span class="min-w-0 truncate text-sm">
-                                                <span class="font-medium text-texto-forte">{{ $e->numero_serie ?? '—' }}</span>
-                                                <span class="text-texto-fraco"> · {{ trim($e->fabricante . ' ' . $e->modelo) ?: '—' }}</span>
-                                            </span>
-                                        </label>
-                                    @endforeach
-                                </div>
-                                <p class="mt-1.5 text-xs text-texto-fraco">Marca os equipamentos a intervencionar — cada um vira uma aba com ficha em cima. O primeiro marcado é o principal.</p>
-                                @error('equipamento_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            </div>
-
-                        {{-- Faixa >50: pesquisa server-side (o caminho que corrigiu o 500 do WALLFUTURE).
-                             Uma lista de centenas/milhares não se renderiza; anexa-se um a um. --}}
-                        @elseif ($faixaEquipamentos === 'pesquisa')
-                            <div class="sm:col-span-2">
-                                <label class="campo-label" for="equip-cliente-combo">Adicionar equipamento</label>
-                                {{-- Pesquisa server-side (~20 resultados), filtrada a este cliente — nunca carrega todos. --}}
-                                <div wire:key="combo-equip-cliente" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
-                                    <input id="equip-cliente-combo" type="text"
-                                        wire:model.live.debounce.300ms="equipamentoBusca"
-                                        @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
-                                        @keydown.arrow-down.prevent="aberto = true; if ($refs['ec' + (destaque + 1)]) destaque++"
-                                        @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
-                                        @keydown.enter.prevent="$refs['ec' + destaque]?.click()"
-                                        class="campo-input pr-10" placeholder="Pesquisar por nº de série ou modelo..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
-                                    <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                                    <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
-                                        @forelse ($equipamentosClienteFiltrados as $idx => $e)
-                                            <li x-ref="ec{{ $idx }}" wire:key="ecl-{{ $e->id }}"
-                                                wire:click="adicionarEquipamento({{ $e->id }})" @click="aberto = false"
-                                                @mouseenter="destaque = {{ $idx }}"
-                                                :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
-                                                class="cursor-pointer px-4 py-2 text-sm" role="option">
-                                                <span class="font-medium">{{ $e->numero_serie ?? '—' }}</span>
-                                                <span class="text-xs text-texto-fraco"> · {{ trim($e->fabricante . ' ' . $e->modelo) ?: '—' }}</span>
-                                            </li>
-                                        @empty
-                                            <li class="px-4 py-2 text-sm text-texto-medio">{{ $equipamentoBusca === '' ? 'Escreva o nº de série para pesquisar…' : 'Nenhum equipamento encontrado.' }}</li>
-                                        @endforelse
-                                    </ul>
-                                </div>
-                                <p class="mt-1.5 text-xs text-texto-fraco">Este cliente tem muitos equipamentos — pesquisa e adiciona só os que vais intervencionar (não são anexados todos automaticamente).</p>
-                            </div>
-                        @endif
-
-                        {{-- Equipamentos do relatório: aparecem como separadores no topo (ao lado de
-                             "Dados Gerais"); clicar num deles abre a ficha. Na faixa 'lista' a seleção
-                             é feita pelos checkboxes acima, por isso este bloco não se mostra aí. --}}
-                        @if ($faixaEquipamentos !== 'lista')
-                            <div class="sm:col-span-2">
-                                <label class="campo-label">Equipamentos do relatório</label>
-                                @if ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty())
-                                    <div class="flex flex-wrap gap-2">
-                                        @if ($equipamentoPrincipal)
-                                            <button type="button" wire:key="chip-{{ $equipamentoPrincipal->id }}" @click="tab='equip-{{ $equipamentoPrincipal->id }}'" class="inline-flex items-center gap-1.5 rounded-full border border-verde-200 bg-verde-50 px-3 py-1 text-xs font-medium text-verde-700 hover:bg-verde-100 transition">
-                                                {{ $equipamentoPrincipal->numero_serie ?? '—' }}
-                                                <span class="text-[10px] uppercase tracking-wide text-verde-600/70">principal</span>
-                                            </button>
-                                        @endif
-                                        @foreach ($cobertosSelecionados as $e)
-                                            <button type="button" wire:key="chip-{{ $e->id }}" @click="tab='equip-{{ $e->id }}'" class="inline-flex items-center gap-1.5 rounded-full border border-borda bg-fundo px-3 py-1 text-xs text-texto-forte hover:border-verde-300 hover:text-verde-700 transition">
-                                                {{ $e->numero_serie ?? '—' }}
-                                            </button>
-                                        @endforeach
-                                    </div>
-                                    <p class="mt-1.5 text-xs text-texto-fraco">Clica num equipamento (aqui ou no separador em cima) para preencher a sua ficha. Podes remover os que não interessam dentro de cada ficha.</p>
-                                @elseif ($faixaEquipamentos === 'pesquisa')
-                                    <p class="text-sm text-texto-medio">Pesquisa em cima e adiciona os equipamentos deste cliente que vais intervencionar.</p>
-                                @elseif ($cliente_id)
-                                    <p class="text-sm text-texto-medio">Este cliente não tem equipamentos associados.</p>
-                                @else
-                                    <p class="text-sm text-texto-medio">Escolhe um cliente para carregar os equipamentos.</p>
-                                @endif
-                                @error('equipamento_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            </div>
-                        @endif
+                        {{-- Escolha de equipamentos por faixa (auto/lista/pesquisa), filtrada ao CLIENTE. --}}
+                        @include('livewire.relatorios.selecao-equipamentos')
                         @endif
 
                         <div>

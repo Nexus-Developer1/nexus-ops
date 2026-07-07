@@ -198,7 +198,7 @@ class RelatorioEquipamentosTest extends TestCase
         $c->assertSeeHtml('wire:click="alternarEquipamento(')
             ->assertSee('Selecionar todos')
             ->assertSee('WF-0005')                                // um nº de série na lista
-            ->assertDontSeeHtml('wire:key="combo-equip-cliente"') // não é o caminho da pesquisa
+            ->assertDontSeeHtml('wire:key="combo-equip-selecao"') // não é o caminho da pesquisa
             ->assertDontSeeHtml('wire:key="tab-ficha-');          // nenhuma ficha montada
     }
 
@@ -256,11 +256,11 @@ class RelatorioEquipamentosTest extends TestCase
 
         // Pesquisa por um nº de série do cliente escolhido → aparece.
         $c->set('equipamentoBusca', 'WF-0003')
-            ->assertViewHas('equipamentosClienteFiltrados', fn ($r) => $r->count() === 1 && $r->first()->numero_serie === 'WF-0003');
+            ->assertViewHas('equipamentosFiltrados', fn ($r) => $r->count() === 1 && $r->first()->numero_serie === 'WF-0003');
 
         // Nº de série de OUTRO cliente (ACME) → NÃO aparece (filtrado ao cliente).
         $c->set('equipamentoBusca', 'SN-PRINC')
-            ->assertViewHas('equipamentosClienteFiltrados', fn ($r) => $r->isEmpty());
+            ->assertViewHas('equipamentosFiltrados', fn ($r) => $r->isEmpty());
     }
 
     public function test_faixa_pesquisa_adicionar_anexa_e_rejeita_de_outro_cliente(): void
@@ -297,7 +297,7 @@ class RelatorioEquipamentosTest extends TestCase
 
         // Renderiza o campo de PESQUISA, não centenas de fichas nem a lista de checkboxes.
         $c->assertSee('Adicionar equipamento')
-            ->assertSeeHtml('wire:key="combo-equip-cliente"')
+            ->assertSeeHtml('wire:key="combo-equip-selecao"')
             ->assertDontSeeHtml('wire:click="alternarEquipamento(') // não é a lista
             ->assertDontSeeHtml('wire:key="tab-ficha-');            // nenhuma ficha/aba montada
     }
@@ -492,5 +492,138 @@ class RelatorioEquipamentosTest extends TestCase
         // Combina com estado: de contrato + rascunho → nenhum (o de contrato é finalizado).
         Livewire::actingAs($admin)->test(RelatoriosListagem::class)->set('tipo', 'contrato')->set('estado', 'rascunho')
             ->assertViewHas('relatorios', fn ($p) => ! in_array($rC->id, $ids($p), true) && ! in_array($rI->id, $ids($p), true));
+    }
+
+    // ---- Modo CONTRATO: mesmas faixas do individual, mas a fonte é o CONTRATO ----
+
+    /** Contrato que cobre $nCobertos equipamentos; o cliente pode ter $extraNaoCobertos NÃO cobertos. */
+    private function contratoComN(int $nCobertos, int $extraNaoCobertos = 0): Contrato
+    {
+        $cliente = Cliente::create(['nome' => 'CONTR', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sala']);
+
+        $cobertos = [];
+        for ($i = 1; $i <= $nCobertos; $i++) {
+            $cobertos[] = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => sprintf('CT-%04d', $i)])->id;
+        }
+        // Equipamentos do MESMO cliente mas NÃO cobertos pelo contrato (para provar o filtro ao contrato).
+        for ($i = 1; $i <= $extraNaoCobertos; $i++) {
+            Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => sprintf('NC-%04d', $i)]);
+        }
+
+        $contrato = Contrato::create([
+            'numero' => '2026/' . (9000 + $nCobertos + $extraNaoCobertos), 'cliente_id' => $cliente->id,
+            'data_inicio' => now()->subMonth(), 'data_fim' => now()->addYear(),
+            'estado' => 'ativo', 'tipo' => 'preventiva', 'modelo_faturacao_id' => ModeloFaturacao::query()->value('id'),
+        ]);
+        $contrato->equipamentos()->sync($cobertos);
+
+        return $contrato;
+    }
+
+    public function test_contrato_pequeno_anexa_todos_os_seus_equipamentos(): void
+    {
+        [$admin] = $this->cenario();
+        $contrato = $this->contratoComN(3); // ≤10 → auto
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->assertSet('faixaEquipamentos', 'auto');
+
+        $this->assertNotNull($c->get('equipamento_id'));
+        $todos = collect([$c->get('equipamento_id')])->merge($c->get('equipamentosCobertos'))->filter()->all();
+        $this->assertCount(3, $todos); // anexa os 3 do contrato (como hoje)
+    }
+
+    public function test_contrato_faixa_lista_nao_anexa_e_selecionar_todos_ate_50(): void
+    {
+        [$admin] = $this->cenario();
+        $contrato = $this->contratoComN(20); // 11-50 → lista
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->assertSet('faixaEquipamentos', 'lista')
+            ->assertSet('equipamento_id', null)
+            ->assertSet('equipamentosCobertos', []);
+
+        $c->call('selecionarTodosEquipamentos');
+        $this->assertCount(20, collect([$c->get('equipamento_id')])->merge($c->get('equipamentosCobertos'))->filter()->all());
+    }
+
+    public function test_contrato_grande_nao_monta_fichas_e_mostra_pesquisa(): void
+    {
+        [$admin] = $this->cenario();
+        $contrato = $this->contratoComN(60); // > 50 → pesquisa
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->assertSet('faixaEquipamentos', 'pesquisa')
+            ->assertSet('equipamento_id', null)
+            ->assertSet('equipamentosCobertos', []);
+
+        // Não monta as fichas (a causa do 500); mostra a pesquisa.
+        $c->assertViewHas('equipamentosLista', fn ($r) => $r->isEmpty())
+            ->assertSeeHtml('wire:key="combo-equip-selecao"')
+            ->assertDontSeeHtml('wire:key="tab-ficha-');
+    }
+
+    public function test_contrato_pesquisa_so_traz_equipamentos_do_contrato_nao_do_cliente(): void
+    {
+        [$admin] = $this->cenario();
+        $contrato = $this->contratoComN(60, 5); // 60 cobertos + 5 do cliente NÃO cobertos
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id);
+
+        // Coberto pelo contrato → aparece.
+        $c->set('equipamentoBusca', 'CT-0003')
+            ->assertViewHas('equipamentosFiltrados', fn ($r) => $r->count() === 1 && $r->first()->numero_serie === 'CT-0003');
+
+        // Do mesmo cliente mas NÃO coberto → NÃO aparece (filtro ao contrato, não ao cliente).
+        $c->set('equipamentoBusca', 'NC-0001')
+            ->assertViewHas('equipamentosFiltrados', fn ($r) => $r->isEmpty());
+    }
+
+    public function test_contrato_escolher_equipamento_monta_a_ficha(): void
+    {
+        [$admin] = $this->cenario();
+        $contrato = $this->contratoComN(60);
+        $ids = Equipamento::whereHas('contratos', fn ($q) => $q->where('contratos.id', $contrato->id))
+            ->orderBy('numero_serie')->pluck('id')->all();
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->call('adicionarEquipamento', $ids[0])
+            ->assertSet('equipamento_id', $ids[0]); // 1.º = principal
+
+        $c->assertSeeHtml('wire:key="tab-ficha-' . $ids[0] . '"'); // a ficha desse equipamento é montada
+    }
+
+    public function test_editar_relatorio_de_contrato_grande_carrega_so_os_cobertos(): void
+    {
+        [$admin] = $this->cenario();
+        $contrato = $this->contratoComN(120); // grande → pesquisa
+        $cobertos = Equipamento::whereHas('contratos', fn ($q) => $q->where('contratos.id', $contrato->id))
+            ->orderBy('numero_serie')->limit(3)->pluck('id')->all();
+
+        // Relatório de contrato que mede só 3 dos 120.
+        $interv = Intervencao::create(['equipamento_id' => $cobertos[0], 'contrato_id' => $contrato->id, 'tipo' => 'preventiva', 'estado' => 'em_curso', 'data_inicio' => now()]);
+        $interv->equipamentosCobertos()->sync([$cobertos[1], $cobertos[2]]);
+        $rel = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => null, 'data' => now(), 'estado' => 'rascunho']);
+
+        $c = Livewire::actingAs($admin)->test(Novo::class, ['relatorio' => $rel])
+            ->assertSet('faixaEquipamentos', 'pesquisa');
+
+        // Carrega só os 3 gravados — NÃO os 120.
+        $this->assertSame(
+            collect($cobertos)->sort()->values()->all(),
+            collect([$c->get('equipamento_id')])->merge($c->get('equipamentosCobertos'))->sort()->values()->all(),
+        );
+        $c->assertViewHas('equipamentosLista', fn ($r) => $r->isEmpty()); // não carregou a lista dos 120
     }
 }

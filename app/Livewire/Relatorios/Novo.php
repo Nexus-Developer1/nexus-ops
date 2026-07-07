@@ -16,6 +16,7 @@ use App\Models\Intervencao;
 use App\Models\Relatorio;
 use App\Services\Agenda\GeradorEventoDeRelatorio;
 use App\Services\GeradorRelatorio;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -112,9 +113,15 @@ class Novo extends Component
                 $this->clienteBusca = $cliente?->nome ?? '';
 
                 if ($cliente) {
-                    $total = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))->count();
-                    $this->faixaEquipamentos = $this->faixaPara($total);
+                    $this->faixaEquipamentos = $this->faixaPara($this->equipamentosCandidatos()->count());
                 }
+            }
+
+            // Modo contrato: faixa pela contagem de equipamentos DO CONTRATO. Carrega SÓ os cobertos
+            // já gravados (acima); se o contrato for grande, mostra a pesquisa para acrescentar mais
+            // — nunca monta as fichas todas (editar um contrato de cobertura ampla não rebenta).
+            if ($this->modo === 'contrato') {
+                $this->faixaEquipamentos = $this->faixaPara($this->equipamentosCandidatos()->count());
             }
             $this->tipo = $intervencao->tipo->value;
             $this->data = $intervencao->data_inicio?->format('Y-m-d') ?? '';
@@ -167,11 +174,13 @@ class Novo extends Component
         }
     }
 
-    // Modo contrato: ao escolher o contrato, carrega os seus equipamentos (1.º = principal,
-    // restantes = cobertos) e liga a intervenção ao contrato. Ficam editáveis.
+    // Modo contrato: ao escolher o contrato, decide a faixa pelo nº de equipamentos DO CONTRATO
+    // (mesma lógica do individual, mas a fonte é o contrato). Contratos pequenos (≤10) anexam todos
+    // como hoje; grandes (>10) NÃO anexam nada — o técnico escolhe os que vai medir nesta visita
+    // (senão montaria centenas de fichas → 500 por memory_limit).
     public function selecionarContrato(int $id): void
     {
-        $contrato = Contrato::with('cliente', 'equipamentos')->find($id);
+        $contrato = Contrato::with('cliente')->find($id);
         if (! $contrato) {
             return;
         }
@@ -179,8 +188,20 @@ class Novo extends Component
         $this->modo = 'contrato';
         $this->contrato_id = $contrato->id;
         $this->contratoBusca = trim($contrato->numero . ' · ' . ($contrato->cliente?->nome ?? ''));
+        $this->equipamentoBusca = '';
 
-        $ids = $contrato->equipamentos->pluck('id')->all();
+        $this->faixaEquipamentos = $this->faixaPara($this->equipamentosCandidatos()->count());
+
+        if ($this->faixaEquipamentos !== 'auto') {
+            // >10 equipamentos no contrato → o técnico escolhe (lista/pesquisa); não anexa nada.
+            $this->equipamento_id = null;
+            $this->equipamentosCobertos = [];
+
+            return;
+        }
+
+        // ≤10 → anexa todos os do contrato, ordenados por nº de série (1.º = principal).
+        $ids = $this->equipamentosCandidatos()->orderBy('numero_serie')->pluck('id')->all();
         $this->equipamento_id = $ids[0] ?? null;
         $this->equipamentosCobertos = array_values(array_slice($ids, 1));
     }
@@ -197,7 +218,21 @@ class Novo extends Component
         $this->removerEquipamentoCoberto($id);
     }
 
-    // Faixa do fluxo de equipamentos conforme o total do cliente.
+    // Query base dos equipamentos CANDIDATOS a serem escolhidos, consciente do modo:
+    //   - contrato   → equipamentos do CONTRATO (pivot contrato_equipamentos);
+    //   - individual → equipamentos do CLIENTE (via local) — exatamente o de hoje.
+    // Todas as faixas (lista/pesquisa/selecionar-todos/guard) bebem daqui, por isso a mesma
+    // mecânica serve os dois modos — só muda a fonte. Com id em falta, a query não devolve nada.
+    private function equipamentosCandidatos(): Builder
+    {
+        if ($this->modo === 'contrato') {
+            return Equipamento::whereHas('contratos', fn ($q) => $q->where('contratos.id', $this->contrato_id ?? 0));
+        }
+
+        return Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id ?? 0));
+    }
+
+    // Faixa do fluxo de equipamentos conforme o total (do cliente ou do contrato).
     private function faixaPara(int $total): string
     {
         if ($total <= self::MAX_ANEXA_AUTO) {
@@ -226,8 +261,7 @@ class Novo extends Component
         $this->clienteBusca = $cliente->nome ?? '';
         $this->equipamentoBusca = '';
 
-        $total = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))->count();
-        $this->faixaEquipamentos = $this->faixaPara($total);
+        $this->faixaEquipamentos = $this->faixaPara($this->equipamentosCandidatos()->count());
 
         if ($this->faixaEquipamentos !== 'auto') {
             // 'lista' e 'pesquisa' → o técnico escolhe; não se anexa nada automaticamente.
@@ -238,10 +272,7 @@ class Novo extends Component
         }
 
         // 'auto' (≤10) → anexa todos, ordenados por nº de série.
-        $ids = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))
-            ->orderBy('numero_serie')
-            ->pluck('id')
-            ->all();
+        $ids = $this->equipamentosCandidatos()->orderBy('numero_serie')->pluck('id')->all();
 
         $this->equipamento_id = $ids[0] ?? null;
         $this->equipamentosCobertos = array_values(array_slice($ids, 1));
@@ -272,16 +303,12 @@ class Novo extends Component
         $this->anexarEquipamentoDoCliente($id);
     }
 
-    // Faixa 'lista': anexa TODOS os equipamentos do cliente. Query limitada a MAX_LISTA_CHECKBOXES
-    // (50) — garante que nunca se anexam >50 (logo nunca se montam >50 fichas), mesmo que os dados
-    // mudem entretanto. Só faz sentido nesta faixa (onde o total já é ≤50).
+    // Faixa 'lista': anexa TODOS os candidatos (do cliente ou do contrato). Query limitada a
+    // MAX_LISTA_CHECKBOXES (50) — garante que nunca se anexam >50 (logo nunca se montam >50 fichas),
+    // mesmo que os dados mudem. Só faz sentido nesta faixa (onde o total já é ≤50).
     public function selecionarTodosEquipamentos(): void
     {
-        if ($this->cliente_id === null) {
-            return;
-        }
-
-        $ids = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
+        $ids = $this->equipamentosCandidatos()
             ->orderBy('numero_serie')
             ->limit(self::MAX_LISTA_CHECKBOXES)
             ->pluck('id')
@@ -298,19 +325,14 @@ class Novo extends Component
         $this->equipamentosCobertos = [];
     }
 
-    // Anexa um equipamento ao relatório, garantindo que é DAQUELE cliente (não de outro).
-    // Devolve true se anexou/já estava, false se rejeitou. 1.º vira principal, seguintes cobertos.
+    // Anexa um equipamento ao relatório, garantindo que é um CANDIDATO válido (do cliente ou do
+    // contrato, conforme o modo). Devolve true se anexou/já estava, false se rejeitou.
+    // 1.º vira principal, seguintes cobertos.
     private function anexarEquipamentoDoCliente(int $id): bool
     {
-        if ($this->cliente_id === null) {
-            return false;
-        }
+        $valido = $this->equipamentosCandidatos()->whereKey($id)->exists();
 
-        $doCliente = Equipamento::whereKey($id)
-            ->whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
-            ->exists();
-
-        if (! $doCliente) {
+        if (! $valido) {
             return false;
         }
 
@@ -360,12 +382,12 @@ class Novo extends Component
             ->get(['id', 'nome', 'nif']);
     }
 
-    // Pesquisa server-side de equipamentos DE UM cliente (nº série / modelo sem acentos), limitada.
-    // É o picker antigo de equipamento, agora com whereHas do cliente em vez dos ~17k globais.
-    // Vazia quando não há texto — nunca carrega os (potencialmente milhares) equipamentos do cliente.
-    private function equipamentosDoClienteFiltrados(string $busca): Collection
+    // Faixa 'pesquisa': pesquisa server-side dos CANDIDATOS (nº série / modelo sem acentos),
+    // filtrada ao cliente OU ao contrato conforme o modo. Vazia sem texto — nunca carrega os
+    // (potencialmente milhares) equipamentos de uma vez.
+    private function equipamentosFiltrados(string $busca): Collection
     {
-        if ($this->cliente_id === null || trim($busca) === '') {
+        if (trim($busca) === '') {
             return collect();
         }
 
@@ -373,8 +395,7 @@ class Novo extends Component
         $norm = '%' . $this->normalizarBusca($busca) . '%';
         $semAcentos = "translate(lower(coalesce(modelo, '')), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
 
-        return Equipamento::query()
-            ->whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
+        return $this->equipamentosCandidatos()
             ->where(function ($q) use ($termo, $norm, $semAcentos) {
                 $q->where('numero_serie', 'ilike', $termo)
                     ->orWhereRaw($semAcentos . ' like ?', [$norm]);
@@ -384,17 +405,15 @@ class Novo extends Component
             ->get(['id', 'numero_serie', 'fabricante', 'modelo']);
     }
 
-    // Faixa 'lista' (11-50): lista dos equipamentos do cliente para os checkboxes. Limitada a
-    // MAX_LISTA_CHECKBOXES (50) — nesta faixa o total já é ≤50, mas o limite garante que nunca se
-    // renderiza mais que 50 linhas. Vazia nas outras faixas (nunca carrega listas de centenas).
-    private function equipamentosDoClienteLista(): Collection
+    // Faixa 'lista' (11-50): lista dos candidatos para os checkboxes (cliente ou contrato).
+    // Limitada a MAX_LISTA_CHECKBOXES (50); vazia nas outras faixas (nunca carrega centenas).
+    private function equipamentosLista(): Collection
     {
-        if ($this->faixaEquipamentos !== 'lista' || $this->cliente_id === null) {
+        if ($this->faixaEquipamentos !== 'lista') {
             return collect();
         }
 
-        return Equipamento::query()
-            ->whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
+        return $this->equipamentosCandidatos()
             ->orderBy('numero_serie')
             ->limit(self::MAX_LISTA_CHECKBOXES)
             ->get(['id', 'numero_serie', 'fabricante', 'modelo']);
@@ -647,8 +666,8 @@ class Novo extends Component
 
         return view('livewire.relatorios.novo', [
             'clientesFiltrados' => $this->clientesFiltrados($this->clienteBusca),
-            'equipamentosClienteFiltrados' => $this->equipamentosDoClienteFiltrados($this->equipamentoBusca),
-            'equipamentosClienteLista' => $this->equipamentosDoClienteLista(),
+            'equipamentosFiltrados' => $this->equipamentosFiltrados($this->equipamentoBusca),
+            'equipamentosLista' => $this->equipamentosLista(),
             'anexadosIds' => $anexadosIds,
             'tipos' => TipoIntervencao::cases(),
             'anexosExistentes' => $anexosExistentes,
