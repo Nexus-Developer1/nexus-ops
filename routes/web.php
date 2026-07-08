@@ -81,7 +81,8 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
 });
 
 // ---- Operação de campo (admin + técnico) — agenda, intervenções, relatórios ----
-// Para técnicos, os dados são filtrados aos seus (global scopes RestritoAoTecnico).
+// O técnico é um espelho do admin: vê toda a operação (sem filtro por técnico). O único
+// isolamento na camada de dados é por CLIENTE, no portal (global scope RestritoAoCliente).
 Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($servirPdf) {
     // Consulta de clientes (só leitura — origem ERP).
     Route::get('/clientes', \App\Livewire\Clientes\Index::class)->name('clientes');

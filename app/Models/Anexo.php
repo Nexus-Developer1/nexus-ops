@@ -31,12 +31,6 @@ class Anexo extends Model
         return $this->belongsTo(User::class, 'criado_por');
     }
 
-    // URL pública servida pela aplicação (proxy ao object storage).
-    public function url(): string
-    {
-        return route('anexos.ver', $this);
-    }
-
     public function conteudo(): string
     {
         return Storage::disk()->get($this->storage_key);
