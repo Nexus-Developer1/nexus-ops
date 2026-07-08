@@ -2,8 +2,10 @@
 
 namespace App\Jobs;
 
+use App\Enums\EstadoEvento;
 use App\Enums\EstadoRelatorio;
 use App\Mail\RelatorioParaCliente;
+use App\Models\EventoAgenda;
 use App\Models\Relatorio;
 use App\Services\GeradorRelatorio;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -47,6 +49,17 @@ class EnviarRelatorioPorEmail implements ShouldQueue
             'enviado_em' => now(),
             'enviado_para' => $this->para,
         ]);
+
+        // Fecha o evento de agenda associado (regra de ouro §6): o evento fecha quando o relatório
+        // é ENVIADO, não ao finalizar — um relatório finalizado ainda é editável, só o envio o
+        // torna definitivo. Sem evento associado → nada a fazer. withoutGlobalScopes: transição de
+        // sistema, não navegação.
+        $eventoId = $this->relatorio->intervencao?->evento_agenda_id;
+        if ($eventoId) {
+            EventoAgenda::withoutGlobalScopes()
+                ->whereKey($eventoId)
+                ->update(['estado' => EstadoEvento::Concluido->value]);
+        }
 
         // Auditoria de envios de relatórios (CLAUDE.md §11).
         Log::info('Relatório enviado ao cliente.', [
