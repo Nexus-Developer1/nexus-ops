@@ -75,15 +75,8 @@ class TecnicoTest extends TestCase
     {
         $tec = $this->tecnico('t@nexus.pt');
 
-        $this->actingAs($tec)->get('/painel')->assertOk();
         $this->actingAs($tec)->get('/agenda')->assertOk();
         $this->actingAs($tec)->get('/relatorios')->assertOk();
-    }
-
-    public function test_admin_nao_aterra_no_painel_do_tecnico(): void
-    {
-        $admin = User::create(['nome' => 'Admin', 'email' => 'admin@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
-        $this->actingAs($admin)->get('/painel')->assertRedirect(route('dashboard'));
     }
 
     public function test_login_de_tecnico_aterra_no_dashboard_como_admin(): void

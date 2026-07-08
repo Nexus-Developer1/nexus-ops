@@ -80,11 +80,6 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
     Route::get('/utilizadores/adicionar', \App\Livewire\Utilizadores\Adicionar::class)->name('utilizadores.adicionar');
 });
 
-// ---- Painel inicial do técnico (a sua operação) ----
-Route::middleware(['auth', 'papel:tecnico'])->group(function () {
-    Route::get('/painel', \App\Livewire\Painel\Tecnico::class)->name('painel');
-});
-
 // ---- Operação de campo (admin + técnico) — agenda, intervenções, relatórios ----
 // Para técnicos, os dados são filtrados aos seus (global scopes RestritoAoTecnico).
 Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($servirPdf) {
