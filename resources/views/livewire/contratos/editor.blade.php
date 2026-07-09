@@ -176,6 +176,14 @@
                                 },
                             }"
                         >
+                            {{-- Marcar/desmarcar todos de uma vez (conveniência para contratos que cobrem muitos). --}}
+                            <div class="mb-3 flex items-center justify-between">
+                                <span class="text-xs text-texto-medio">{{ count($equipamentoIds) }} selecionado(s)</span>
+                                <div class="flex items-center gap-4">
+                                    <button type="button" wire:click="selecionarTodosEquipamentos" class="text-xs font-medium text-verde-700 hover:text-verde-800">Selecionar todos</button>
+                                    <button type="button" wire:click="limparEquipamentos" class="text-xs font-medium text-texto-medio hover:text-texto-forte">Limpar</button>
+                                </div>
+                            </div>
                             <div class="relative mb-4">
                                 <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 17a6 6 0 100-12 6 6 0 000 12z"/></svg>
                                 <input type="text" x-model="busca" placeholder="Pesquisar por nome ou nº de série..." autocomplete="off" class="campo-input pl-10 pr-10">

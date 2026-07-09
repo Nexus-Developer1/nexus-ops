@@ -203,6 +203,26 @@ class Editor extends Component
         }
     }
 
+    // Conveniência: marca TODOS os equipamentos do cliente atual como cobertos (evita marcar
+    // centenas de checkboxes à mão). Só ids inteiros. Equipamentos novos continuam a ser
+    // adicionados à mão — isto é só o "marcar de uma vez".
+    public function selecionarTodosEquipamentos(): void
+    {
+        if (! $this->cliente_id) {
+            return;
+        }
+
+        $this->equipamentoIds = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
+            ->pluck('id')
+            ->all();
+    }
+
+    // Desmarca todos.
+    public function limparEquipamentos(): void
+    {
+        $this->equipamentoIds = [];
+    }
+
     // Normaliza o termo de pesquisa (minúsculas, sem acentos) para casar com a
     // expressão translate() aplicada ao nome.
     private function normalizarBusca(string $valor): string

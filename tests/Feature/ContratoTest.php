@@ -116,4 +116,23 @@ class ContratoTest extends TestCase
 
         $this->assertSame(EstadoContrato::Ativo, $contrato->fresh()->estado);
     }
+
+    public function test_selecionar_todos_e_limpar_equipamentos(): void
+    {
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $ids = collect(range(1, 4))
+            ->map(fn ($i) => Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => "SN-$i"])->id)
+            ->all();
+
+        $c = Livewire::actingAs($this->admin())->test(Editor::class)
+            ->call('selecionarCliente', $cliente->id);
+
+        // Selecionar todos → equipamentoIds = todos os do cliente (só inteiros).
+        $c->call('selecionarTodosEquipamentos');
+        $this->assertSame(collect($ids)->sort()->values()->all(), collect($c->get('equipamentoIds'))->sort()->values()->all());
+
+        // Limpar → vazio.
+        $c->call('limparEquipamentos')->assertSet('equipamentoIds', []);
+    }
 }
