@@ -139,11 +139,6 @@ class Novo extends Component
         $this->data = now()->format('Y-m-d');
     }
 
-    public function ehRascunho(): bool
-    {
-        return true; // este formulário só edita rascunhos / cria novos (que nascem rascunho)
-    }
-
     // Alterna entre relatório de contrato e individual.
     public function definirModo(string $modo): void
     {
