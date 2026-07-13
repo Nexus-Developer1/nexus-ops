@@ -134,15 +134,15 @@
                         <input wire:model="periodo_aviso_dias" type="number" class="campo-input" placeholder="30">
                         @error('periodo_aviso_dias') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
-                    <div class="flex items-center gap-3 pt-7">
+                    <div class="flex items-center gap-3 sm:pt-7">
                         <input wire:model="renovacao_automatica" type="checkbox" id="renov" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-600">
                         <label for="renov" class="text-sm text-texto-medio">Renovação automática</label>
                     </div>
-                    <div class="col-span-2">
+                    <div class="sm:col-span-2">
                         <label class="campo-label">Coberturas</label>
                         <textarea wire:model="coberturas" rows="2" class="campo-input" placeholder="O que está incluído no contrato..."></textarea>
                     </div>
-                    <div class="col-span-2">
+                    <div class="sm:col-span-2">
                         <label class="campo-label">Exclusões</label>
                         <textarea wire:model="exclusoes" rows="2" class="campo-input" placeholder="O que fica de fora..."></textarea>
                     </div>
@@ -216,8 +216,8 @@
                 </div>
                 <div class="border-t border-borda px-6 py-6">
                     @forelse ($slas as $i => $sla)
-                        <div class="mb-3 grid grid-cols-1 sm:grid-cols-12 items-start gap-3 last:mb-0" wire:key="sla-{{ $i }}">
-                            <div class="col-span-3">
+                        <div class="mb-4 grid grid-cols-2 sm:grid-cols-12 items-start gap-3 border-b border-borda pb-4 last:mb-0 last:border-0 last:pb-0 sm:border-0 sm:pb-0" wire:key="sla-{{ $i }}">
+                            <div class="col-span-2 sm:col-span-3">
                                 <select wire:model="slas.{{ $i }}.prioridade" class="campo-select">
                                     <option value="">Prioridade...</option>
                                     @foreach ($prioridades as $p)
@@ -226,21 +226,22 @@
                                 </select>
                                 @error('slas.'.$i.'.prioridade') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
-                            <div class="col-span-3">
+                            <div class="sm:col-span-3">
                                 <input wire:model="slas.{{ $i }}.tempo_resposta_horas" type="number" class="campo-input" placeholder="Resposta (h)">
                             </div>
-                            <div class="col-span-3">
+                            <div class="sm:col-span-3">
                                 <input wire:model="slas.{{ $i }}.tempo_resolucao_horas" type="number" class="campo-input" placeholder="Resolução (h)">
                             </div>
-                            <div class="col-span-2">
+                            <div class="sm:col-span-2">
                                 <select wire:model="slas.{{ $i }}.horario_cobertura" class="campo-select">
                                     <option value="8x5">8x5</option>
                                     <option value="24x7">24x7</option>
                                 </select>
                             </div>
-                            <div class="col-span-1 flex justify-end pt-2">
-                                <button type="button" wire:click="removerSla({{ $i }})" class="text-texto-fraco hover:text-perigo-600" title="Remover">
+                            <div class="col-span-2 flex justify-end sm:col-span-1 sm:pt-2">
+                                <button type="button" wire:click="removerSla({{ $i }})" class="inline-flex items-center gap-1.5 text-sm font-medium text-texto-fraco hover:text-perigo-600 sm:gap-0" title="Remover">
                                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    <span class="sm:hidden">Remover</span>
                                 </button>
                             </div>
                         </div>
