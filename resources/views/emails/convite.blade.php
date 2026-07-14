@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Convite Nexus Ops</title>
+    <title>Convite Nexus Infra</title>
 </head>
 <body style="margin:0; padding:0; background-color:#f3f4f6; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;">
@@ -16,7 +16,7 @@
                     {{-- Cabeçalho / marca --}}
                     <tr>
                         <td style="padding:28px 36px 6px;">
-                            <div style="font-size:22px; font-weight:800; color:#16a34a; line-height:1;">Nexus Ops</div>
+                            <div style="font-size:22px; font-weight:800; color:#16a34a; line-height:1;">Nexus Infra</div>
                             <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#9ca3af; margin-top:3px;">Technical Suite</div>
                         </td>
                     </tr>
@@ -25,7 +25,7 @@
                     <tr>
                         <td style="padding:14px 36px 4px;">
                             <h1 style="margin:0 0 14px; font-size:20px; font-weight:600; color:#111827;">Olá {{ $nome }},</h1>
-                            <p style="margin:0 0 12px; font-size:15px; line-height:1.6; color:#374151;">Foi convidado(a) para aceder ao <strong style="color:#111827;">Nexus Ops</strong>.</p>
+                            <p style="margin:0 0 12px; font-size:15px; line-height:1.6; color:#374151;">Foi convidado(a) para aceder ao <strong style="color:#111827;">Nexus Infra</strong>.</p>
                             <p style="margin:0 0 26px; font-size:15px; line-height:1.6; color:#374151;">Para ativar a sua conta, defina a sua palavra-passe no botão abaixo.</p>
 
                             {{-- Botão (verde) --}}

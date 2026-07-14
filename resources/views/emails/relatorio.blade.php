@@ -16,7 +16,7 @@
                     {{-- Cabeçalho / marca --}}
                     <tr>
                         <td style="padding:28px 36px 6px;">
-                            <div style="font-size:22px; font-weight:800; color:#16a34a; line-height:1;">Nexus Ops</div>
+                            <div style="font-size:22px; font-weight:800; color:#16a34a; line-height:1;">Nexus Infra</div>
                             <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#9ca3af; margin-top:3px;">Technical Suite</div>
                         </td>
                     </tr>
@@ -45,7 +45,7 @@
                     <tr>
                         <td style="padding:22px 36px 30px;">
                             <div style="border-top:1px solid #e5e7eb; padding-top:16px;">
-                                <p style="margin:0; font-size:12px; line-height:1.5; color:#9ca3af;">Relatório de intervenção técnica emitido pelo Nexus Ops.</p>
+                                <p style="margin:0; font-size:12px; line-height:1.5; color:#9ca3af;">Relatório de intervenção técnica emitido pelo Nexus Infra.</p>
                             </div>
                         </td>
                     </tr>

@@ -21,8 +21,8 @@ class EnviarEmailTeste extends Command
         $this->info('A enviar email de teste para '.$para.' via mailer "'.config('mail.default').'"...');
 
         try {
-            Mail::raw('Email de teste do Nexus Ops. Se recebeste isto, o transporte de email está a funcionar.', function ($m) use ($para) {
-                $m->to($para)->subject('Nexus Ops — email de teste');
+            Mail::raw('Email de teste do Nexus Infra. Se recebeste isto, o transporte de email está a funcionar.', function ($m) use ($para) {
+                $m->to($para)->subject('Nexus Infra — email de teste');
             });
         } catch (\Throwable $e) {
             $this->error('Falhou: '.$e->getMessage());

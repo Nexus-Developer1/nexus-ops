@@ -89,7 +89,7 @@ class EnvioRelatorioTest extends TestCase
         $html = view('emails.relatorio', ['relatorio' => $relatorio, 'mensagem' => "Olá,\n\nSegue o relatório."])->render();
 
         $this->assertStringContainsString('#16a34a', $html);         // verde do site
-        $this->assertStringContainsString('Nexus Ops', $html);
+        $this->assertStringContainsString('Nexus Infra', $html);
         $this->assertStringContainsString('Segue o relatório.', $html); // mensagem escrita à mão
         $this->assertStringContainsString('2026/9001', $html);        // nº do relatório
         $this->assertStringContainsString('Em anexo', $html);

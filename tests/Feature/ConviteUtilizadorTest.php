@@ -222,7 +222,7 @@ class ConviteUtilizadorTest extends TestCase
         $html = view($mail->view, $mail->viewData)->render();
         $this->assertStringContainsString('Definir palavra-passe', $html);
         $this->assertStringContainsString('#16a34a', $html);          // verde do site
-        $this->assertStringContainsString('Nexus Ops', $html);
+        $this->assertStringContainsString('Nexus Infra', $html);
         $this->assertStringContainsString('convite/tok-123', $html);  // link seguro com o token
         $this->assertStringContainsString('Rui Moreira', $html);
     }

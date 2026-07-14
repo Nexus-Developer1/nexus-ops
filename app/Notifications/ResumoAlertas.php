@@ -23,7 +23,7 @@ class ResumoAlertas extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $mail = (new MailMessage)
-            ->subject('Nexus Ops · ' . $this->alertas->count() . ' alertas requerem atenção')
+            ->subject('Nexus Infra · ' . $this->alertas->count() . ' alertas requerem atenção')
             ->greeting('Olá ' . $notifiable->nome . ',')
             ->line('Há ' . $this->alertas->count() . ' alertas em aberto na operação:');
 

@@ -66,13 +66,13 @@ class AppServiceProvider extends ServiceProvider
             ]);
 
             return (new MailMessage)
-                ->subject('Redefinição de palavra-passe — Nexus Ops')
+                ->subject('Redefinição de palavra-passe — Nexus Infra')
                 ->greeting('Olá,')
                 ->line('Recebemos um pedido para redefinir a palavra-passe da sua conta.')
                 ->action('Redefinir palavra-passe', $url)
                 ->line('Este link expira em ' . config('auth.passwords.users.expire') . ' minutos.')
                 ->line('Se não foi você que fez este pedido, ignore este email.')
-                ->salutation('Cumprimentos, equipa Nexus Ops');
+                ->salutation('Cumprimentos, equipa Nexus Infra');
         });
     }
 }

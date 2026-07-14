@@ -49,7 +49,7 @@
         <table>
             <tr>
                 <td>
-                    <div class="marca">Nexus Ops</div>
+                    <div class="marca">Nexus Infra</div>
                     <div class="suite">TECHNICAL SUITE</div>
                 </td>
                 <td align="right">

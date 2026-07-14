@@ -1,7 +1,7 @@
 <div class="flex min-h-screen items-center justify-center bg-white px-6 py-12">
     <div class="w-full max-w-sm">
         <div class="mb-10">
-            <div class="text-2xl font-bold leading-none text-verde-500">Nexus Ops</div>
+            <div class="text-2xl font-bold leading-none text-verde-500">Nexus Infra</div>
             <div class="mt-1 text-[11px] font-medium uppercase tracking-[0.22em] text-texto-fraco">Technical Suite</div>
         </div>
 

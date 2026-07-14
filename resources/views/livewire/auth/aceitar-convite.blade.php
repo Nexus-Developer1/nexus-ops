@@ -1,11 +1,11 @@
 <div class="flex min-h-screen items-center justify-center bg-white px-6 py-12">
     <div class="w-full max-w-sm">
         <div class="mb-10">
-            <div class="text-2xl font-bold leading-none text-verde-500">Nexus Ops</div>
+            <div class="text-2xl font-bold leading-none text-verde-500">Nexus Infra</div>
             <div class="mt-1 text-[11px] font-medium uppercase tracking-[0.22em] text-texto-fraco">Technical Suite</div>
         </div>
 
-        <h1 class="text-2xl font-semibold tracking-tight text-texto-forte">Bem-vindo(a) ao Nexus Ops</h1>
+        <h1 class="text-2xl font-semibold tracking-tight text-texto-forte">Bem-vindo(a) ao Nexus Infra</h1>
         <p class="mt-2 text-sm text-texto-medio">Defina a sua palavra-passe para ativar a conta.</p>
 
         <form wire:submit="definir" class="mt-9 space-y-5">

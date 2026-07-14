@@ -25,7 +25,7 @@ class EventoAtribuido extends Notification
         return (new MailMessage)
             ->subject('Novo agendamento: ' . $this->evento->titulo)
             ->greeting('Olá ' . $notifiable->nome . ',')
-            ->line('Foi-lhe atribuído um novo evento na agenda da Nexus Ops.')
+            ->line('Foi-lhe atribuído um novo evento na agenda da Nexus Infra.')
             ->line('**' . $this->evento->titulo . '**')
             ->line('Quando: ' . $this->evento->inicio->translatedFormat('d/m/Y H:i') . ' – ' . $this->evento->fim->format('H:i'))
             ->action('Ver agenda', route('agenda'));

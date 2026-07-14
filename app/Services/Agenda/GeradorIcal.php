@@ -19,7 +19,7 @@ class GeradorIcal
             ->orderBy('inicio')
             ->get();
 
-        return $this->montar($eventos, 'Nexus Ops · ' . $tecnico->nome);
+        return $this->montar($eventos, 'Nexus Infra · ' . $tecnico->nome);
     }
 
     private function montar(Collection $eventos, string $nome): string
@@ -27,7 +27,7 @@ class GeradorIcal
         $linhas = [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
-            'PRODID:-//Nexus Ops//Agenda//PT',
+            'PRODID:-//Nexus Infra//Agenda//PT',
             'CALSCALE:GREGORIAN',
             'METHOD:PUBLISH',
             'X-WR-CALNAME:' . $this->escapar($nome),

@@ -6,7 +6,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $titulo ? $titulo . ' — Nexus Ops' : 'Nexus Ops' }}</title>
+    <title>{{ $titulo ? $titulo . ' — Nexus Infra' : 'Nexus Infra' }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -28,7 +28,7 @@
                         class="flex h-10 w-10 items-center justify-center rounded-lg text-texto-medio transition hover:bg-fundo">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
-                <span class="text-lg font-bold text-verde-600">Nexus Ops</span>
+                <span class="text-lg font-bold text-verde-600">Nexus Infra</span>
             </header>
 
             {{ $slot }}

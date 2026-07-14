@@ -29,7 +29,7 @@ class ConviteDefinirPassword extends Notification
 
         // View HTML própria (verde/branco, no tema do site) em vez do markdown genérico.
         return (new MailMessage)
-            ->subject('Convite para o Nexus Ops — defina a sua palavra-passe')
+            ->subject('Convite para o Nexus Infra — defina a sua palavra-passe')
             ->view('emails.convite', [
                 'nome' => $notifiable->nome,
                 'url' => $url,

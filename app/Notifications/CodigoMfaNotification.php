@@ -27,7 +27,7 @@ class CodigoMfaNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('O seu código de acesso — Nexus Ops')
+            ->subject('O seu código de acesso — Nexus Infra')
             ->view('emails.codigo-mfa', [
                 'nome' => $notifiable->nome,
                 'codigo' => $this->codigo,

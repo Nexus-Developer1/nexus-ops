@@ -44,7 +44,7 @@
        :class="sidebarAberta && '!translate-x-0'">
     <div class="flex items-start justify-between px-2">
         <div>
-            <div class="text-2xl font-bold leading-none text-verde-400">Nexus Ops</div>
+            <div class="text-2xl font-bold leading-none text-verde-400">Nexus Infra</div>
             <div class="mt-1 text-[11px] font-medium uppercase tracking-[0.22em] text-white/40">Technical Suite</div>
         </div>
         <button @click="sidebarAberta = false" aria-label="Fechar menu" class="flex h-9 w-9 items-center justify-center rounded-lg text-white/60 transition hover:bg-white/10 hover:text-white lg:hidden">

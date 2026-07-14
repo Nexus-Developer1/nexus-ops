@@ -6,7 +6,7 @@
         <div class="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-verde-700/10 blur-3xl"></div>
 
         <div>
-            <div class="text-2xl font-bold leading-none text-verde-400">Nexus Ops</div>
+            <div class="text-2xl font-bold leading-none text-verde-400">Nexus Infra</div>
             <div class="mt-1 text-[11px] font-medium uppercase tracking-[0.22em] text-white/40">Technical Suite</div>
         </div>
 
@@ -30,7 +30,7 @@
     <div class="flex w-full items-center justify-center bg-white px-6 py-12 lg:w-1/2">
         <div class="w-full max-w-sm">
             <div class="mb-10 lg:hidden">
-                <div class="text-2xl font-bold leading-none text-verde-500">Nexus Ops</div>
+                <div class="text-2xl font-bold leading-none text-verde-500">Nexus Infra</div>
                 <div class="mt-1 text-[11px] font-medium uppercase tracking-[0.22em] text-texto-fraco">Technical Suite</div>
             </div>
 
