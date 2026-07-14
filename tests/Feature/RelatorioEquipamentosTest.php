@@ -626,4 +626,64 @@ class RelatorioEquipamentosTest extends TestCase
         );
         $c->assertViewHas('equipamentosLista', fn ($r) => $r->isEmpty()); // não carregou a lista dos 120
     }
+
+    // ---- Atalho por nº de série (modo individual) ----
+
+    public function test_pesquisa_por_serie_e_global_entre_clientes(): void
+    {
+        [$admin] = $this->cenario(); // ACME (SN-PRINC, SN-EX1, SN-EX2)
+        $outro = Cliente::create(['nome' => 'BETA', 'ativo' => true]);
+        $lb = Local::create(['cliente_id' => $outro->id, 'designacao' => 'DC-B']);
+        $eb = Equipamento::create(['local_id' => $lb->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-BETA']);
+
+        $c = Livewire::actingAs($admin)->test(Novo::class);
+
+        // Sem texto → vazio (não carrega tudo).
+        $c->assertViewHas('equipamentosPorSerie', fn ($r) => $r->isEmpty());
+
+        // Pesquisa por um SN de OUTRO cliente → aparece (a pesquisa é global, não filtrada ao cliente).
+        $c->set('serieBusca', 'SN-BETA')
+            ->assertViewHas('equipamentosPorSerie', fn ($r) => $r->count() === 1 && $r->first()->id === $eb->id);
+    }
+
+    public function test_selecionar_por_serie_resolve_o_cliente_e_fixa_principal(): void
+    {
+        [$admin, $princ] = $this->cenario();
+        $acme = Cliente::firstOrFail();
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->set('modo', 'individual')
+            ->call('selecionarPorSerie', $princ->id)
+            ->assertSet('modo', 'individual')
+            ->assertSet('cliente_id', $acme->id)      // cliente resolvido a partir do equipamento
+            ->assertSet('equipamento_id', $princ->id); // o pesquisado fica principal
+    }
+
+    public function test_selecionar_por_serie_cliente_pequeno_anexa_todos_com_pesquisado_principal(): void
+    {
+        [$admin, $princ, $ex1, $ex2] = $this->cenario(); // 3 equipamentos → 'auto'
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarPorSerie', $ex1->id)
+            ->assertSet('faixaEquipamentos', 'auto')
+            ->assertSet('equipamento_id', $ex1->id); // pesquisado = principal (não o 1.º por nº de série)
+
+        $todos = collect([$c->get('equipamento_id')])->merge($c->get('equipamentosCobertos'))->sort()->values()->all();
+        $this->assertSame(collect([$princ->id, $ex1->id, $ex2->id])->sort()->values()->all(), $todos);
+    }
+
+    public function test_selecionar_por_serie_cliente_grande_fixa_so_o_principal(): void
+    {
+        [$admin] = $this->cenario();
+        $cliente = $this->clienteComN(60); // > 50 → 'pesquisa'
+        $equip = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))
+            ->orderBy('numero_serie')->firstOrFail();
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarPorSerie', $equip->id)
+            ->assertSet('cliente_id', $cliente->id)
+            ->assertSet('faixaEquipamentos', 'pesquisa')
+            ->assertSet('equipamento_id', $equip->id)
+            ->assertSet('equipamentosCobertos', []); // não anexa os 60
+    }
 }

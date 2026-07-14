@@ -114,6 +114,40 @@
                             {{-- Escolha de equipamentos por faixa (auto/lista/pesquisa), filtrada ao CONTRATO. --}}
                             @include('livewire.relatorios.selecao-equipamentos')
                         @else
+                        {{-- Atalho: pesquisa GLOBAL por nº de série → resolve o cliente automaticamente. --}}
+                        <div class="sm:col-span-2">
+                            <label class="campo-label" for="serie-combo">Nº de série do equipamento</label>
+                            <div wire:key="combo-serie" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
+                                <input id="serie-combo" type="text"
+                                    wire:model.live.debounce.300ms="serieBusca"
+                                    @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
+                                    @keydown.arrow-down.prevent="aberto = true; if ($refs['s' + (destaque + 1)]) destaque++"
+                                    @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
+                                    @keydown.enter.prevent="$refs['s' + destaque]?.click()"
+                                    class="campo-input pr-10" placeholder="Escreve o nº de série — o cliente é preenchido automaticamente..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
+                                <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
+                                    @forelse ($equipamentosPorSerie as $idx => $e)
+                                        <li x-ref="s{{ $idx }}" wire:key="es-{{ $e->id }}"
+                                            wire:click="selecionarPorSerie({{ $e->id }})" @click="aberto = false"
+                                            @mouseenter="destaque = {{ $idx }}"
+                                            :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
+                                            class="cursor-pointer px-4 py-2 text-sm" role="option">
+                                            <span class="font-medium">{{ $e->numero_serie ?? '—' }}</span>
+                                            <span class="text-xs text-texto-fraco"> · {{ trim($e->fabricante . ' ' . $e->modelo) ?: '—' }} · {{ $e->local?->cliente?->nome ?? '—' }}</span>
+                                        </li>
+                                    @empty
+                                        <li class="px-4 py-2 text-sm text-texto-medio">{{ trim($serieBusca) === '' ? 'Escreve o nº de série…' : 'Nenhum equipamento com esse nº de série.' }}</li>
+                                    @endforelse
+                                </ul>
+                            </div>
+                            <p class="mt-1.5 text-xs text-texto-fraco">Atalho: escolhe o equipamento pelo nº de série e o cliente é resolvido automaticamente.</p>
+                        </div>
+
+                        <div class="sm:col-span-2 flex items-center gap-3 text-xs uppercase tracking-wide text-texto-fraco">
+                            <span class="h-px flex-1 bg-borda"></span>ou escolhe o cliente<span class="h-px flex-1 bg-borda"></span>
+                        </div>
+
                         {{-- Individual: escolhe-se o CLIENTE e anexam-se todos os equipamentos dele. --}}
                         <div class="sm:col-span-2">
                             <label class="campo-label" for="cliente-combo">Cliente <span class="text-perigo-500">*</span></label>

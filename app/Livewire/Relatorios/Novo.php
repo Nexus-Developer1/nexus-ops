@@ -57,6 +57,7 @@ class Novo extends Component
     // Modo individual: escolhe-se o cliente e anexam-se os equipamentos dele.
     public ?int $cliente_id = null;
     public string $clienteBusca = '';        // pesquisa server-side do cliente
+    public string $serieBusca = '';          // atalho: pesquisa GLOBAL por nº de série → resolve o cliente
     // Faixa do fluxo de equipamentos: '' (sem cliente) | 'auto' | 'lista' | 'pesquisa'.
     public string $faixaEquipamentos = '';
     public string $equipamentoBusca = '';    // pesquisa server-side do equipamento (filtrada ao cliente)
@@ -289,6 +290,40 @@ class Novo extends Component
         $this->equipamentosCobertos = array_values(array_slice($ids, 1));
     }
 
+    // Atalho do modo individual: escolher o equipamento pelo nº de série resolve o CLIENTE
+    // automaticamente (equipamento → local → cliente) e fixa esse equipamento como principal.
+    // Mantém a coerência com selecionarCliente: cliente pequeno ('auto') anexa todos (com o
+    // pesquisado como principal); cliente grande fica só com o principal (acrescenta-se o resto
+    // na lista/pesquisa) — nunca monta centenas de fichas.
+    public function selecionarPorSerie(int $equipamentoId): void
+    {
+        $equipamento = Equipamento::with('local.cliente')->find($equipamentoId);
+        $cliente = $equipamento?->local?->cliente;
+        if (! $cliente) {
+            return;
+        }
+
+        $this->modo = 'individual';
+        $this->cliente_id = $cliente->id;
+        $this->clienteBusca = $cliente->nome ?? '';
+        $this->serieBusca = '';
+        $this->equipamentoBusca = '';
+
+        $this->faixaEquipamentos = $this->faixaPara($this->equipamentosCandidatos()->count());
+
+        if ($this->faixaEquipamentos === 'auto') {
+            $ids = $this->equipamentosCandidatos()->orderBy('numero_serie')->pluck('id')->all();
+            $this->equipamento_id = $equipamento->id;
+            $this->equipamentosCobertos = array_values(array_diff($ids, [$equipamento->id]));
+
+            return;
+        }
+
+        // 'lista'/'pesquisa' (cliente grande): só o pesquisado como principal.
+        $this->equipamento_id = $equipamento->id;
+        $this->equipamentosCobertos = [];
+    }
+
     // Faixa 'pesquisa' (>50): anexa um equipamento escolhido na pesquisa (1.º = principal).
     public function adicionarEquipamento(int $id): void
     {
@@ -414,6 +449,24 @@ class Novo extends Component
             ->orderBy('numero_serie')
             ->limit(20)
             ->get(['id', 'numero_serie', 'fabricante', 'modelo']);
+    }
+
+    // Atalho (modo individual): pesquisa GLOBAL por nº de série — de TODOS os clientes, não
+    // filtrada. Traz o cliente (via local) para se mostrar na lista e resolver ao escolher.
+    // Vazia sem texto; limitada. (Admin/técnico veem tudo; o global scope só filtra clientes.)
+    private function equipamentosPorSerie(string $busca): Collection
+    {
+        if (trim($busca) === '') {
+            return collect();
+        }
+
+        return Equipamento::query()
+            ->where('numero_serie', 'ilike', '%' . trim($busca) . '%')
+            ->whereHas('local.cliente')
+            ->with('local.cliente:id,nome')
+            ->orderBy('numero_serie')
+            ->limit(20)
+            ->get(['id', 'numero_serie', 'fabricante', 'modelo', 'local_id']);
     }
 
     // Faixa 'lista' (11-50): lista dos candidatos para os checkboxes (cliente ou contrato).
@@ -708,6 +761,7 @@ class Novo extends Component
 
         return view('livewire.relatorios.novo', [
             'clientesFiltrados' => $this->clientesFiltrados($this->clienteBusca),
+            'equipamentosPorSerie' => $this->equipamentosPorSerie($this->serieBusca),
             'equipamentosFiltrados' => $this->equipamentosFiltrados($this->equipamentoBusca),
             'equipamentosLista' => $this->equipamentosLista(),
             'anexadosIds' => $anexadosIds,
