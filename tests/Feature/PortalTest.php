@@ -66,6 +66,21 @@ class PortalTest extends TestCase
         $this->actingAs($userA)->get(route('portal.relatorios.pdf', $relatorioB))->assertNotFound();
     }
 
+    public function test_cliente_sem_cliente_id_nao_ve_nada(): void
+    {
+        // Existem dados reais de um cliente.
+        $this->clienteComRelatorio('A');
+
+        // Conta de cliente mal formada (sem cliente_id): NÃO pode ver tudo — fail-closed → vê nada.
+        $orfao = User::create(['nome' => 'Órfão', 'email' => 'orfao@x.pt', 'password' => 'x',
+            'papel' => PapelUtilizador::Cliente, 'cliente_id' => null, 'ativo' => true]);
+
+        $this->actingAs($orfao);
+
+        $this->assertSame(0, Relatorio::count());
+        $this->assertSame(0, Equipamento::count());
+    }
+
     public function test_login_de_cliente_aterra_no_portal(): void
     {
         [, $user] = $this->clienteComRelatorio('A');

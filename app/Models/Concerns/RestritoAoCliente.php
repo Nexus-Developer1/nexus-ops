@@ -17,9 +17,19 @@ trait RestritoAoCliente
         static::addGlobalScope('cliente', function (Builder $query) {
             $utilizador = auth()->user();
 
-            if ($utilizador && $utilizador->ehCliente() && $utilizador->cliente_id) {
-                static::restringirAoCliente($query, (int) $utilizador->cliente_id);
+            if (! $utilizador || ! $utilizador->ehCliente()) {
+                return; // admin/técnico e operações de sistema (sem auth) não são filtrados
             }
+
+            if ($utilizador->cliente_id) {
+                static::restringirAoCliente($query, (int) $utilizador->cliente_id);
+
+                return;
+            }
+
+            // Cliente sem cliente_id: FAIL-CLOSED. Nunca deixar passar tudo — não vê nada.
+            // Evita o fail-open em que uma conta de cliente mal formada veria todos os dados.
+            $query->whereRaw('1 = 0');
         });
     }
 }
