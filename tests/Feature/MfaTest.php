@@ -129,6 +129,25 @@ class MfaTest extends TestCase
         $this->assertNotNull(CodigoMfa::where('user_id', $user->id)->first()->usado_em);
     }
 
+    public function test_login_bloqueia_apos_demasiadas_tentativas(): void
+    {
+        Notification::fake();
+        $this->utilizador();
+
+        $componente = Livewire::test(Login::class)->set('email', 'admin@nexus.pt');
+
+        // 5 tentativas falhadas esgotam o limite.
+        for ($i = 0; $i < 5; $i++) {
+            $componente->set('password', 'errada')->call('autenticar')->assertHasErrors('email');
+        }
+
+        // 6.ª tentativa: bloqueada mesmo com a password CERTA (nem envia código).
+        $componente->set('password', 'segredo123')->call('autenticar')->assertHasErrors('email');
+
+        $this->assertGuest();
+        Notification::assertNothingSent();
+    }
+
     public function test_pagina_verificar_sem_sessao_pendente_volta_ao_login(): void
     {
         Livewire::test(VerificarCodigo::class)
