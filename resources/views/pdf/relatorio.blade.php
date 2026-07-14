@@ -109,7 +109,9 @@
     <table class="grelha">
         <tr>
             <td><div class="campo-rotulo">Tipo</div><div class="campo-valor">{{ $i->tipo->rotulo() }}</div></td>
-            <td><div class="campo-rotulo">Técnico</div><div class="campo-valor">{{ $i->tecnico?->nome ?? '—' }}</div></td>
+            {{-- Principal + colaboradores, sem repetir, para o campo "Técnicos". --}}
+            @php($nomesTecnicos = collect([$i->tecnico?->nome])->merge($i->tecnicos->pluck('nome'))->filter()->unique()->implode(', '))
+            <td><div class="campo-rotulo">{{ $i->tecnicos->isEmpty() ? 'Técnico' : 'Técnicos' }}</div><div class="campo-valor">{{ $nomesTecnicos ?: '—' }}</div></td>
         </tr>
         <tr>
             <td><div class="campo-rotulo">Data de início</div><div class="campo-valor">{{ $i->data_inicio?->format('d/m/Y H:i') ?? '—' }}</div></td>

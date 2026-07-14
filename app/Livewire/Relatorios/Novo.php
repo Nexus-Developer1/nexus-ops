@@ -5,6 +5,7 @@ namespace App\Livewire\Relatorios;
 use App\Enums\EstadoContrato;
 use App\Enums\EstadoIntervencao;
 use App\Enums\EstadoRelatorio;
+use App\Enums\PapelUtilizador;
 use App\Enums\TipoIntervencao;
 use App\Jobs\GerarRelatorioPdf;
 use App\Models\Anexo;
@@ -14,12 +15,14 @@ use App\Models\Equipamento;
 use App\Models\FichaMedicao;
 use App\Models\Intervencao;
 use App\Models\Relatorio;
+use App\Models\User;
 use App\Services\Agenda\GeradorEventoDeRelatorio;
 use App\Services\GeradorRelatorio;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -65,6 +68,14 @@ class Novo extends Component
     public string $data = '';
     public string $hora_inicio = '';
     public string $hora_fim = '';
+
+    // ---- Técnicos ----
+    // Principal = quem cria (fica em intervencoes.tecnico_id). Colaboradores = técnicos
+    // adicionais escolhidos, guardados no pivot intervencao_tecnicos. A lista de técnicos
+    // disponíveis é lida da BD a cada render → atualiza-se à medida que entram novos técnicos.
+    public ?int $tecnicoPrincipalId = null;
+    /** @var list<int> Ids dos técnicos colaboradores (além do principal). */
+    public array $colaboradorIds = [];
 
     // ---- Constatações ----
     public string $resumo = '';
@@ -132,11 +143,16 @@ class Novo extends Component
 
             $this->prioridade = ($intervencao->diagnostico['prioridade'] ?? null) ?: 'Normal';
 
+            // Técnico principal (o da intervenção) + colaboradores já guardados.
+            $this->tecnicoPrincipalId = $intervencao->tecnico_id;
+            $this->colaboradorIds = $intervencao->tecnicos()->pluck('utilizadores.id')->all();
+
             return;
         }
 
-        // Novo relatório.
+        // Novo relatório: o principal é quem está a criar.
         $this->data = now()->format('Y-m-d');
+        $this->tecnicoPrincipalId = auth()->id();
     }
 
     // Alterna entre relatório de contrato e individual.
@@ -424,7 +440,7 @@ class Novo extends Component
             'hora_inicio' => ['nullable', 'date_format:H:i'],
             'hora_fim' => ['nullable', 'date_format:H:i', 'after_or_equal:hora_inicio'],
             'fotos.*' => ['image', 'max:8192'], // 8 MB
-        ] + $this->regrasContrato();
+        ] + $this->regrasContrato() + $this->regrasColaboradores();
     }
 
     // Regras das horas reutilizadas no rascunho (sempre opcionais, mas coerentes).
@@ -441,6 +457,20 @@ class Novo extends Component
     {
         return [
             'contrato_id' => [$this->modo === 'contrato' ? 'required' : 'nullable', 'integer', 'exists:contratos,id'],
+        ];
+    }
+
+    // Colaboradores: opcionais, mas cada um tem de ser um técnico ativo (não confia no cliente).
+    protected function regrasColaboradores(): array
+    {
+        return [
+            'colaboradorIds' => ['array'],
+            'colaboradorIds.*' => [
+                'integer',
+                Rule::exists('utilizadores', 'id')
+                    ->where('papel', PapelUtilizador::Tecnico->value)
+                    ->where('ativo', true),
+            ],
         ];
     }
 
@@ -482,14 +512,13 @@ class Novo extends Component
             $this->validate([
                 'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
                 'fotos.*' => ['image', 'max:8192'],
-            ] + $this->regrasHoras() + $this->regrasContrato());
+            ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasColaboradores());
         }
 
         $relatorio = DB::transaction(function () use ($gerador, $geradorEvento, $finalizar) {
             $dados = [
                 'equipamento_id' => $this->equipamento_id,
                 'contrato_id' => $this->modo === 'contrato' ? $this->contrato_id : null,
-                'tecnico_id' => auth()->id(),
                 'tipo' => $this->tipo,
                 'estado' => $finalizar ? EstadoIntervencao::Concluida : EstadoIntervencao::EmCurso,
                 'data_inicio' => $this->data ?: null,
@@ -511,10 +540,17 @@ class Novo extends Component
                 ));
                 $intervencao->update($dados);
             } else {
+                // O principal é quem cria; na edição preserva-se o técnico original (não se sobrepõe).
+                $dados['tecnico_id'] = auth()->id();
                 $dados['diagnostico'] = array_filter(['prioridade' => $this->prioridade ?: null]);
                 $intervencao = Intervencao::create($dados);
                 $this->intervencaoId = $intervencao->id;
             }
+
+            // Técnicos colaboradores (exclui o principal, que já está em tecnico_id).
+            $intervencao->tecnicos()->sync(
+                array_values(array_diff(array_map('intval', $this->colaboradorIds), [$intervencao->tecnico_id])),
+            );
 
             // Equipamentos adicionais cobertos (exclui o principal, para não duplicar).
             $intervencao->equipamentosCobertos()->sync(
@@ -659,6 +695,17 @@ class Novo extends Component
         // Ids anexados (principal + cobertos) — para marcar os checkboxes da faixa 'lista'.
         $anexadosIds = array_values(array_filter(array_merge([$this->equipamento_id], $this->equipamentosCobertos)));
 
+        // Técnicos disponíveis (lidos a cada render → refletem quem for entrando) e o principal
+        // (quem cria, ou o técnico original em edição) para o mostrar fixo e o excluir da lista.
+        $tecnicos = User::query()
+            ->where('papel', PapelUtilizador::Tecnico)
+            ->where('ativo', true)
+            ->orderBy('nome')
+            ->get(['id', 'nome']);
+        $tecnicoPrincipal = ($this->tecnicoPrincipalId ?? auth()->id())
+            ? User::find($this->tecnicoPrincipalId ?? auth()->id())
+            : null;
+
         return view('livewire.relatorios.novo', [
             'clientesFiltrados' => $this->clientesFiltrados($this->clienteBusca),
             'equipamentosFiltrados' => $this->equipamentosFiltrados($this->equipamentoBusca),
@@ -669,6 +716,8 @@ class Novo extends Component
             'cobertosSelecionados' => $cobertosSelecionados,
             'equipamentoPrincipal' => $equipamentoPrincipal,
             'contratos' => $contratos,
+            'tecnicos' => $tecnicos,
+            'tecnicoPrincipal' => $tecnicoPrincipal,
         ]);
     }
 }

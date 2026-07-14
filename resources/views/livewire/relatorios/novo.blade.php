@@ -187,6 +187,34 @@
                             @error('hora_inicio') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             @error('hora_fim') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                         </div>
+
+                        {{-- Técnicos: o principal (quem cria) fica fixo; podem juntar-se outros técnicos.
+                             A lista vem da BD a cada render, por isso reflete quem for entrando. --}}
+                        <div class="sm:col-span-2">
+                            <label class="campo-label">Técnicos</label>
+                            <div class="flex flex-wrap gap-2">
+                                @if ($tecnicoPrincipal)
+                                    <span class="inline-flex items-center gap-1.5 rounded-lg border border-verde-300 bg-verde-50 px-3 py-2 text-sm font-medium text-verde-700">
+                                        {{ $tecnicoPrincipal->nome }}
+                                        <span class="text-xs font-normal text-verde-600">· principal</span>
+                                    </span>
+                                @endif
+
+                                @foreach ($tecnicos as $t)
+                                    @if (! $tecnicoPrincipal || $t->id !== $tecnicoPrincipal->id)
+                                        <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition {{ in_array($t->id, $colaboradorIds) ? 'border-verde-400 bg-verde-50 text-verde-700' : 'border-borda text-texto-medio hover:bg-fundo' }}">
+                                            <input type="checkbox" wire:model.live="colaboradorIds" value="{{ $t->id }}" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-600">
+                                            {{ $t->nome }}
+                                        </label>
+                                    @endif
+                                @endforeach
+                            </div>
+
+                            @if ($tecnicos->where('id', '!=', optional($tecnicoPrincipal)->id)->isEmpty())
+                                <p class="mt-1.5 text-xs text-texto-fraco">Não há outros técnicos para adicionar.</p>
+                            @endif
+                            @error('colaboradorIds.*') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                        </div>
                     </div>
                 </section>
 

@@ -76,6 +76,12 @@ class Intervencao extends Model
         return $this->belongsTo(User::class, 'tecnico_id');
     }
 
+    // Técnicos ADICIONAIS (colaboradores) que participaram, além do principal (tecnico_id).
+    public function tecnicos(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'intervencao_tecnicos', 'intervencao_id', 'user_id');
+    }
+
     public function contrato(): BelongsTo
     {
         return $this->belongsTo(Contrato::class);
