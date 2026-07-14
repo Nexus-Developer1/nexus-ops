@@ -71,10 +71,7 @@ class PortalTest extends TestCase
         [, $user] = $this->clienteComRelatorio('A');
         $user->update(['password' => 'segredo123']);
 
-        \Livewire\Livewire::test(\App\Livewire\Auth\Login::class)
-            ->set('email', $user->email)
-            ->set('password', 'segredo123')
-            ->call('autenticar')
+        $this->loginComMfa($user->email, 'segredo123')
             ->assertRedirect(route('portal.dashboard'));
     }
 }

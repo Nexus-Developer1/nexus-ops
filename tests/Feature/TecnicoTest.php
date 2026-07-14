@@ -85,10 +85,7 @@ class TecnicoTest extends TestCase
         $tec = $this->tecnico('t@nexus.pt');
         $tec->update(['password' => 'segredo123']);
 
-        \Livewire\Livewire::test(\App\Livewire\Auth\Login::class)
-            ->set('email', 't@nexus.pt')
-            ->set('password', 'segredo123')
-            ->call('autenticar')
+        $this->loginComMfa('t@nexus.pt', 'segredo123')
             ->assertRedirect(route('dashboard'));
     }
 }

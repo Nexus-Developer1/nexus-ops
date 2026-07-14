@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
 use App\Livewire\Auth\EsqueciPassword;
-use App\Livewire\Auth\Login;
 use App\Livewire\Utilizadores\Adicionar;
 use App\Models\User;
 use App\Notifications\ConviteDefinirPassword;
@@ -31,10 +30,9 @@ class NormalizacaoEmailTest extends TestCase
     {
         User::create(['nome' => 'Admin', 'email' => 'suporte@nxs.pt', 'password' => 'segredo123', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
 
-        Livewire::test(Login::class)
-            ->set('email', 'Suporte@NXS.pt')   // capitalização diferente
-            ->set('password', 'segredo123')
-            ->call('autenticar')
+        // Login em duas etapas: a capitalização diferente encontra a conta minúscula,
+        // envia o código e, após verificação, autentica a conta certa.
+        $this->loginComMfa('Suporte@NXS.pt', 'segredo123')   // capitalização diferente
             ->assertHasNoErrors();
 
         $this->assertAuthenticated();

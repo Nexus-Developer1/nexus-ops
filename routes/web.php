@@ -10,6 +10,9 @@ Route::get('/', fn () => redirect()->route('dashboard'));
 Route::middleware('guest')->group(function () {
     Route::get('/login', Login::class)->name('login');
 
+    // Segunda etapa do login (MFA por email): introduzir o código enviado.
+    Route::get('/verificar-codigo', \App\Livewire\Auth\VerificarCodigo::class)->name('mfa.verificar');
+
     // Recuperação de palavra-passe (broker nativo do Laravel).
     Route::get('/esqueci-password', \App\Livewire\Auth\EsqueciPassword::class)->name('password.request');
     Route::get('/redefinir-password/{token}', \App\Livewire\Auth\RedefinirPassword::class)->name('password.reset');
