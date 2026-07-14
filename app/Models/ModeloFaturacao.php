@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 // Modelo de faturação (lookup extensível pela app). Substitui o antigo enum.
 class ModeloFaturacao extends Model
@@ -15,11 +14,6 @@ class ModeloFaturacao extends Model
         'nome',
         'nome_normalizado',
     ];
-
-    public function contratos(): HasMany
-    {
-        return $this->hasMany(Contrato::class, 'modelo_faturacao_id');
-    }
 
     // Forma normalizada para deteção de duplicados (minúsculas, sem acentos, espaços colapsados).
     public static function normalizar(string $valor): string

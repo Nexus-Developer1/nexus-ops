@@ -57,9 +57,4 @@ class Despesa extends Model
     {
         return $this->belongsTo(Contrato::class);
     }
-
-    public function criadoPor(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'criado_por');
-    }
 }

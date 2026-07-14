@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Facades\Storage;
 
 // Anexo polimórfico (fotos/documentos). Só metadados na BD; o ficheiro vive no object storage.
@@ -20,16 +18,6 @@ class Anexo extends Model
         'tamanho',
         'criado_por',
     ];
-
-    public function anexavel(): MorphTo
-    {
-        return $this->morphTo();
-    }
-
-    public function criador(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'criado_por');
-    }
 
     public function conteudo(): string
     {

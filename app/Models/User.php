@@ -66,11 +66,6 @@ class User extends Authenticatable
         return $this->papel === PapelUtilizador::Admin;
     }
 
-    public function ehTecnico(): bool
-    {
-        return $this->papel === PapelUtilizador::Tecnico;
-    }
-
     public function ehCliente(): bool
     {
         return $this->papel === PapelUtilizador::Cliente;

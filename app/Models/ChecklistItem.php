@@ -32,9 +32,4 @@ class ChecklistItem extends Model
     {
         return $this->belongsTo(Intervencao::class);
     }
-
-    public function etapa(): BelongsTo
-    {
-        return $this->belongsTo(ChecklistEtapa::class, 'etapa_id');
-    }
 }
