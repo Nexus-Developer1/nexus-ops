@@ -5,6 +5,8 @@ namespace App\Livewire\Despesas;
 use App\Models\CategoriaDespesa;
 use App\Models\Cliente;
 use App\Models\Despesa;
+use App\Models\Intervencao;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -26,6 +28,15 @@ class Editor extends Component
     public ?int $cliente_id = null;
     public string $clienteBusca = '';
 
+    // Intervenção (opcional) — pesquisa GLOBAL server-side (nº relatório / nº série / cliente).
+    // Ao associar, herda cliente + equipamento + contrato da intervenção.
+    public ?int $intervencao_id = null;
+    public string $intervencaoBusca = '';
+    public string $intervencaoRotulo = '';   // rótulo da intervenção escolhida (para mostrar)
+    // Herdados da intervenção (gravados; não editáveis à mão neste ecrã).
+    public ?int $equipamento_id = null;
+    public ?int $contrato_id = null;
+
     public function mount(?Despesa $despesa = null): void
     {
         if ($despesa && $despesa->exists) {
@@ -37,6 +48,16 @@ class Editor extends Component
             $this->faturavel = $despesa->faturavel;
             $this->cliente_id = $despesa->cliente_id;
             $this->clienteBusca = $despesa->cliente?->nome ?? '';
+
+            if ($despesa->intervencao_id) {
+                $this->intervencao_id = $despesa->intervencao_id;
+                $this->equipamento_id = $despesa->equipamento_id;
+                $this->contrato_id = $despesa->contrato_id;
+                $intervencao = $despesa->intervencao()->with(['equipamento.local.cliente', 'relatorio'])->first();
+                if ($intervencao) {
+                    $this->intervencaoRotulo = $this->rotuloIntervencao($intervencao);
+                }
+            }
 
             return;
         }
@@ -57,6 +78,57 @@ class Editor extends Component
     {
         $this->cliente_id = null;
         $this->clienteBusca = '';
+    }
+
+    // Associa a despesa a uma intervenção e HERDA dela o cliente, o equipamento e o contrato
+    // (fonte da verdade — essencial para faturação: incluído no contrato vs à parte).
+    public function selecionarIntervencao(int $id): void
+    {
+        $intervencao = Intervencao::with(['equipamento.local.cliente', 'relatorio'])->find($id);
+        if (! $intervencao) {
+            return;
+        }
+
+        $this->intervencao_id = $intervencao->id;
+        $this->intervencaoBusca = '';
+        $this->intervencaoRotulo = $this->rotuloIntervencao($intervencao);
+
+        $cliente = $intervencao->equipamento?->local?->cliente;
+        $this->cliente_id = $cliente?->id;
+        $this->clienteBusca = $cliente?->nome ?? '';
+        $this->equipamento_id = $intervencao->equipamento_id;
+        $this->contrato_id = $intervencao->contrato_id;
+    }
+
+    public function limparIntervencao(): void
+    {
+        // Desassocia a intervenção e os campos herdados dela. O cliente mantém-se (o utilizador
+        // pode querer conservá-lo); pode limpá-lo à parte em "Remover cliente".
+        $this->intervencao_id = null;
+        $this->intervencaoRotulo = '';
+        $this->equipamento_id = null;
+        $this->contrato_id = null;
+    }
+
+    // Rótulo legível de uma intervenção: nº do relatório (se já tiver), senão "Intervenção #id",
+    // + equipamento + cliente + data.
+    private function rotuloIntervencao(Intervencao $intervencao): string
+    {
+        $partes = [$intervencao->relatorio?->numero
+            ? 'Relatório ' . $intervencao->relatorio->numero
+            : 'Intervenção #' . $intervencao->id];
+
+        if ($sn = $intervencao->equipamento?->numero_serie) {
+            $partes[] = $sn;
+        }
+        if ($nome = $intervencao->equipamento?->local?->cliente?->nome) {
+            $partes[] = $nome;
+        }
+        if ($data = $intervencao->data_inicio) {
+            $partes[] = $data->format('d/m/Y');
+        }
+
+        return implode(' · ', $partes);
     }
 
     // Guarda uma nova categoria (lookup que cresce) e seleciona-a. Idempotente:
@@ -100,6 +172,7 @@ class Editor extends Component
             'valor' => ['required', 'numeric', 'min:0'],
             'faturavel' => ['boolean'],
             'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
+            'intervencao_id' => ['nullable', 'integer', 'exists:intervencoes,id'],
         ]);
 
         // Categoria fica guardada para reutilização futura (lookup que cresce com o uso);
@@ -110,8 +183,21 @@ class Editor extends Component
         );
         $dados['categoria'] = $categoria->nome;
 
-        // O contrato/equipamento herdados ficam para uma fase seguinte; por agora liga ao cliente.
-        $dados['cliente_id'] = $this->cliente_id;
+        // Ligações. Com intervenção associada, o cliente/equipamento/contrato são HERDADOS dela
+        // (fonte da verdade, re-lida no servidor — não se confia no que vem do cliente). Sem
+        // intervenção, liga-se apenas ao cliente escolhido à mão.
+        if ($this->intervencao_id) {
+            $intervencao = Intervencao::with('equipamento.local')->findOrFail($this->intervencao_id);
+            $dados['intervencao_id'] = $intervencao->id;
+            $dados['equipamento_id'] = $intervencao->equipamento_id;
+            $dados['contrato_id'] = $intervencao->contrato_id;
+            $dados['cliente_id'] = $intervencao->equipamento?->local?->cliente_id;
+        } else {
+            $dados['intervencao_id'] = null;
+            $dados['equipamento_id'] = null;
+            $dados['contrato_id'] = null;
+            $dados['cliente_id'] = $this->cliente_id;
+        }
 
         if ($this->despesaId) {
             Despesa::findOrFail($this->despesaId)->update($dados);
@@ -123,6 +209,30 @@ class Editor extends Component
         }
 
         return redirect()->route('despesas');
+    }
+
+    // Pesquisa GLOBAL de intervenções por nº de relatório, nº de série do equipamento ou nome do
+    // cliente (sem acentos). whereHas evita duplicar linhas dos joins. Vazia sem texto; limitada.
+    private function intervencoesFiltradas(): Collection
+    {
+        $busca = trim($this->intervencaoBusca);
+        if ($busca === '') {
+            return collect();
+        }
+
+        $termo = '%' . $busca . '%';
+        $nomeNorm = '%' . $this->normalizarBusca($busca) . '%';
+
+        return Intervencao::query()
+            ->with(['equipamento.local.cliente', 'relatorio'])
+            ->where(function ($q) use ($termo, $nomeNorm) {
+                $q->whereHas('relatorio', fn ($r) => $r->where('numero', 'ilike', $termo))
+                    ->orWhereHas('equipamento', fn ($e) => $e->where('numero_serie', 'ilike', $termo))
+                    ->orWhereHas('equipamento.local.cliente', fn ($c) => $c->whereRaw(self::NOME_SEM_ACENTOS . ' like ?', [$nomeNorm]));
+            })
+            ->orderByDesc('data_inicio')
+            ->limit(20)
+            ->get();
     }
 
     public function render()
@@ -141,6 +251,7 @@ class Editor extends Component
         return view('livewire.despesas.editor', [
             'categorias' => CategoriaDespesa::orderBy('nome')->get(),
             'clientesFiltrados' => $clientesFiltrados,
+            'intervencoesFiltradas' => $this->intervencoesFiltradas(),
         ]);
     }
 }
