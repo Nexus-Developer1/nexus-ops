@@ -18,8 +18,8 @@
        :class="sidebarAberta && '!translate-x-0'">
     <div class="flex items-start justify-between px-2">
         <div>
-            <div class="text-2xl font-bold leading-none text-verde-400">Nexus Infra</div>
-            <div class="mt-1 text-[11px] font-medium uppercase tracking-[0.22em] text-white/40">Portal do Cliente</div>
+            <img src="{{ asset('img/nexus-1.png') }}" alt="Nexus Infra" class="h-7 w-auto">
+            <div class="mt-2 text-[11px] font-medium uppercase tracking-[0.22em] text-white/40">Portal do Cliente</div>
         </div>
         <button @click="sidebarAberta = false" aria-label="Fechar menu" class="flex h-9 w-9 items-center justify-center rounded-lg text-white/60 transition hover:bg-white/10 hover:text-white lg:hidden">
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
