@@ -96,6 +96,9 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
     Route::get('/clientes/{cliente}/faturacao', \App\Livewire\Clientes\Faturacao::class)->name('clientes.faturacao');
     Route::get('/clientes/{cliente}/faturacao/{linha}', \App\Livewire\Clientes\Fatura::class)->name('clientes.fatura');
 
+    // Registo manual de equipamento (não vindo do ERP). /novo ANTES de {equipamento} para não colidir.
+    Route::get('/ativos/novo', \App\Livewire\Equipamentos\Novo::class)->name('equipamentos.novo');
+
     // Ficha de equipamento (leitura em campo — ex.: QR code).
     Route::get('/ativos/{equipamento}', \App\Livewire\Equipamentos\Ficha::class)->name('equipamentos.ficha');
 
