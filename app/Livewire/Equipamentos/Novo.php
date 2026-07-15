@@ -42,10 +42,16 @@ class Novo extends Component
     // Especificações UPS (guardadas em atributos JSONB) + próxima troca de baterias (coluna própria).
     public string $potencia_kva = '';
     public string $topologia = '';
-    public string $num_baterias = '';
-    public string $data_baterias = '';
     public string $autonomia_min = '';
     public string $firmware = '';
+
+    // Banco de baterias (parte do mesmo equipamento). Identidade nova em atributos; nº de baterias
+    // e datas reutilizam os campos de bateria existentes.
+    public string $banco_numero_serie = '';
+    public string $banco_modelo = '';
+    public string $banco_capacidade = '';
+    public string $num_baterias = '';
+    public string $data_baterias = '';
     public string $proxima_troca_baterias = '';
 
     public function selecionarCliente(int $id): void
@@ -85,10 +91,13 @@ class Novo extends Component
             'notas' => ['nullable', 'string', 'max:5000'],
             'potencia_kva' => ['nullable', 'numeric', 'min:0'],
             'topologia' => ['nullable', 'string', 'max:100'],
-            'num_baterias' => ['nullable', 'integer', 'min:0'],
-            'data_baterias' => ['nullable', 'date'],
             'autonomia_min' => ['nullable', 'integer', 'min:0'],
             'firmware' => ['nullable', 'string', 'max:100'],
+            'banco_numero_serie' => ['nullable', 'string', 'max:255'],
+            'banco_modelo' => ['nullable', 'string', 'max:255'],
+            'banco_capacidade' => ['nullable', 'string', 'max:100'],
+            'num_baterias' => ['nullable', 'integer', 'min:0'],
+            'data_baterias' => ['nullable', 'date'],
             'proxima_troca_baterias' => ['nullable', 'date'],
         ]);
 
@@ -101,10 +110,13 @@ class Novo extends Component
         $atributos = array_filter([
             'potencia_kva' => $this->potencia_kva !== '' ? (float) $this->potencia_kva : null,
             'topologia' => trim($this->topologia) ?: null,
-            'num_baterias' => $this->num_baterias !== '' ? (int) $this->num_baterias : null,
-            'data_baterias' => $this->data_baterias ?: null,
             'autonomia_min' => $this->autonomia_min !== '' ? (int) $this->autonomia_min : null,
             'firmware' => trim($this->firmware) ?: null,
+            'banco_numero_serie' => trim($this->banco_numero_serie) ?: null,
+            'banco_modelo' => trim($this->banco_modelo) ?: null,
+            'banco_capacidade' => trim($this->banco_capacidade) ?: null,
+            'num_baterias' => $this->num_baterias !== '' ? (int) $this->num_baterias : null,
+            'data_baterias' => $this->data_baterias ?: null,
         ], fn ($v) => $v !== null);
 
         $equipamento = Equipamento::create([

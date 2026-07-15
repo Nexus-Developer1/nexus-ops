@@ -21,12 +21,28 @@ class Ficha extends Component
     public string $clienteFinal = '';
     public string $localizacaoInstalacao = '';
 
+    // Banco de baterias (parte do equipamento). Identidade em atributos; datas na coluna própria.
+    public string $bancoNumeroSerie = '';
+    public string $bancoModelo = '';
+    public string $bancoCapacidade = '';
+    public string $numBaterias = '';
+    public string $dataBaterias = '';
+    public string $proximaTrocaBaterias = '';
+
     public function mount(Equipamento $equipamento): void
     {
         $this->equipamento = $equipamento->load('local.cliente');
         $this->notas = $equipamento->notas ?? '';
         $this->clienteFinal = $equipamento->cliente_final ?? '';
         $this->localizacaoInstalacao = $equipamento->localizacao_instalacao ?? '';
+
+        $attrs = $equipamento->atributos ?? [];
+        $this->bancoNumeroSerie = (string) ($attrs['banco_numero_serie'] ?? '');
+        $this->bancoModelo = (string) ($attrs['banco_modelo'] ?? '');
+        $this->bancoCapacidade = (string) ($attrs['banco_capacidade'] ?? '');
+        $this->numBaterias = isset($attrs['num_baterias']) ? (string) $attrs['num_baterias'] : '';
+        $this->dataBaterias = ! empty($attrs['data_baterias']) ? Carbon::parse($attrs['data_baterias'])->format('Y-m-d') : '';
+        $this->proximaTrocaBaterias = $equipamento->proxima_troca_baterias?->format('Y-m-d') ?? '';
     }
 
     // Guarda as notas livres do equipamento.
@@ -59,6 +75,36 @@ class Ficha extends Component
         session()->flash('sucesso', 'Identificação guardada.');
     }
 
+    // Guarda o banco de baterias (parte do equipamento). Preserva os restantes atributos.
+    public function guardarBanco(): void
+    {
+        abort_if(auth()->user()->ehCliente(), 403);
+
+        $this->validate([
+            'bancoNumeroSerie' => ['nullable', 'string', 'max:255'],
+            'bancoModelo' => ['nullable', 'string', 'max:255'],
+            'bancoCapacidade' => ['nullable', 'string', 'max:100'],
+            'numBaterias' => ['nullable', 'integer', 'min:0'],
+            'dataBaterias' => ['nullable', 'date'],
+            'proximaTrocaBaterias' => ['nullable', 'date'],
+        ]);
+
+        $attrs = $this->equipamento->atributos ?? [];
+        $attrs['banco_numero_serie'] = trim($this->bancoNumeroSerie) ?: null;
+        $attrs['banco_modelo'] = trim($this->bancoModelo) ?: null;
+        $attrs['banco_capacidade'] = trim($this->bancoCapacidade) ?: null;
+        $attrs['num_baterias'] = $this->numBaterias !== '' ? (int) $this->numBaterias : null;
+        $attrs['data_baterias'] = $this->dataBaterias ?: null;
+        $attrs = array_filter($attrs, fn ($v) => $v !== null); // mantém o JSON limpo
+
+        $this->equipamento->update([
+            'atributos' => $attrs ?: null,
+            'proxima_troca_baterias' => $this->proximaTrocaBaterias ?: null,
+        ]);
+
+        session()->flash('sucesso', 'Banco de baterias guardado.');
+    }
+
     // Inicia uma nova intervenção corretiva e abre o formulário de execução.
     public function novaIntervencao()
     {
@@ -81,8 +127,6 @@ class Ficha extends Component
             'potencia_kva' => fn ($v) => ['Potência', $v . ' kVA'],
             'topologia' => fn ($v) => ['Topologia', $v],
             'autonomia_min' => fn ($v) => ['Autonomia', $v . ' min'],
-            'num_baterias' => fn ($v) => ['Nº de baterias', $v],
-            'data_baterias' => fn ($v) => ['Data das baterias', Carbon::parse($v)->translatedFormat('M Y')],
             'firmware' => fn ($v) => ['Firmware', $v],
             'combustivel' => fn ($v) => ['Combustível', $v],
             'horas_funcionamento' => fn ($v) => ['Horas de funcionamento', number_format($v, 0, ',', '.') . ' h'],

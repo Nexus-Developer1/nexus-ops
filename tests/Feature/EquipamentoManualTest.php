@@ -161,4 +161,54 @@ class EquipamentoManualTest extends TestCase
         $this->assertStringContainsString('Localização da instalação', $html);
         $this->assertStringContainsString('Edifício B, piso 2', $html);
     }
+
+    // ---- Banco de baterias (parte do equipamento) ----
+
+    public function test_novo_equipamento_guarda_banco_de_baterias(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->set('modelo', 'UPS B')
+            ->set('banco_numero_serie', 'BANK-001')
+            ->set('banco_modelo', 'Riello 12V')
+            ->set('banco_capacidade', '7 Ah / 384 V')
+            ->set('num_baterias', '16')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $eq = Equipamento::where('modelo', 'UPS B')->firstOrFail();
+        $this->assertSame('BANK-001', $eq->atributos['banco_numero_serie']);
+        $this->assertSame('Riello 12V', $eq->atributos['banco_modelo']);
+        $this->assertSame('7 Ah / 384 V', $eq->atributos['banco_capacidade']);
+        $this->assertEquals(16, $eq->atributos['num_baterias']);
+    }
+
+    public function test_ficha_edita_banco_de_baterias_e_preserva_outros_atributos(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $eq = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-ERP',
+            'atributos' => ['potencia_kva' => 5]]);
+
+        Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $eq])
+            ->set('bancoNumeroSerie', 'BANK-9')
+            ->set('bancoModelo', 'Eaton')
+            ->set('bancoCapacidade', '9 Ah')
+            ->set('numBaterias', '20')
+            ->set('proximaTrocaBaterias', '2027-01-15')
+            ->call('guardarBanco')
+            ->assertHasNoErrors();
+
+        $eq->refresh();
+        $this->assertSame('BANK-9', $eq->atributos['banco_numero_serie']);
+        $this->assertSame('Eaton', $eq->atributos['banco_modelo']);
+        $this->assertEquals(20, $eq->atributos['num_baterias']);
+        $this->assertEquals(5, $eq->atributos['potencia_kva']);              // atributo existente preservado
+        $this->assertSame('2027-01-15', $eq->proxima_troca_baterias->format('Y-m-d'));
+    }
 }

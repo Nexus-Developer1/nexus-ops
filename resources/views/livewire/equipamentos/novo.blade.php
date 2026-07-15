@@ -148,16 +148,6 @@
                         @error('topologia') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="campo-label">Nº de baterias</label>
-                        <input wire:model="num_baterias" type="number" min="0" class="campo-input" placeholder="Ex: 16">
-                        @error('num_baterias') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="campo-label">Data das baterias</label>
-                        <input wire:model="data_baterias" type="date" class="campo-input">
-                        @error('data_baterias') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
                         <label class="campo-label">Autonomia (min)</label>
                         <input wire:model="autonomia_min" type="number" min="0" class="campo-input" placeholder="Ex: 10">
                         @error('autonomia_min') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
@@ -167,8 +157,43 @@
                         <input wire:model="firmware" type="text" class="campo-input" placeholder="Ex: v3.1">
                         @error('firmware') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
+                </div>
+            </section>
+
+            {{-- Banco de baterias (parte do mesmo equipamento) --}}
+            <section class="cartao mt-8">
+                <div class="px-6 py-5">
+                    <h2 class="text-lg font-semibold text-texto-forte">Banco de baterias</h2>
+                    <p class="mt-1 text-xs text-texto-fraco">Faz parte deste equipamento (não é um equipamento à parte).</p>
+                </div>
+                <div class="grid grid-cols-1 gap-x-8 gap-y-6 border-t border-borda px-6 py-6 sm:grid-cols-2">
                     <div>
-                        <label class="campo-label">Próxima troca de baterias</label>
+                        <label class="campo-label">Nº de série do banco</label>
+                        <input wire:model="banco_numero_serie" type="text" class="campo-input" placeholder="Identificação do banco">
+                        @error('banco_numero_serie') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="campo-label">Modelo / fabricante</label>
+                        <input wire:model="banco_modelo" type="text" class="campo-input" placeholder="Ex: Riello / bloco 12V">
+                        @error('banco_modelo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="campo-label">Capacidade (Ah / V)</label>
+                        <input wire:model="banco_capacidade" type="text" class="campo-input" placeholder="Ex: 7 Ah / 384 V">
+                        @error('banco_capacidade') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="campo-label">Nº de baterias</label>
+                        <input wire:model="num_baterias" type="number" min="0" class="campo-input" placeholder="Ex: 16">
+                        @error('num_baterias') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="campo-label">Data de instalação</label>
+                        <input wire:model="data_baterias" type="date" class="campo-input">
+                        @error('data_baterias') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="campo-label">Próxima troca</label>
                         <input wire:model="proxima_troca_baterias" type="date" class="campo-input">
                         <p class="mt-1.5 text-xs text-texto-fraco">Usado nos alertas de manutenção.</p>
                         @error('proxima_troca_baterias') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror

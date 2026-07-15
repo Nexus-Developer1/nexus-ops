@@ -73,6 +73,50 @@
                         </div>
                     </section>
 
+                    {{-- Banco de baterias (parte deste equipamento). --}}
+                    <section class="cartao">
+                        <div class="flex items-center gap-3 px-6 py-5">
+                            <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
+                            <h2 class="text-lg font-semibold text-texto-forte">Banco de baterias</h2>
+                        </div>
+                        <div class="grid grid-cols-1 gap-x-8 gap-y-6 border-t border-borda px-6 py-6 sm:grid-cols-2">
+                            <div>
+                                <label class="campo-label">Nº de série do banco</label>
+                                <input wire:model="bancoNumeroSerie" type="text" class="campo-input" placeholder="Identificação do banco">
+                                @error('bancoNumeroSerie') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label class="campo-label">Modelo / fabricante</label>
+                                <input wire:model="bancoModelo" type="text" class="campo-input" placeholder="Ex: Riello / bloco 12V">
+                                @error('bancoModelo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label class="campo-label">Capacidade (Ah / V)</label>
+                                <input wire:model="bancoCapacidade" type="text" class="campo-input" placeholder="Ex: 7 Ah / 384 V">
+                                @error('bancoCapacidade') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label class="campo-label">Nº de baterias</label>
+                                <input wire:model="numBaterias" type="number" min="0" class="campo-input" placeholder="Ex: 16">
+                                @error('numBaterias') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label class="campo-label">Data de instalação</label>
+                                <input wire:model="dataBaterias" type="date" class="campo-input">
+                                @error('dataBaterias') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label class="campo-label">Próxima troca</label>
+                                <input wire:model="proximaTrocaBaterias" type="date" class="campo-input">
+                                <p class="mt-1.5 text-xs text-texto-fraco">Usado nos alertas de manutenção.</p>
+                                @error('proximaTrocaBaterias') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            </div>
+                            <div class="sm:col-span-2 flex justify-end">
+                                <button wire:click="guardarBanco" wire:loading.attr="disabled" wire:target="guardarBanco" class="botao-primario">Guardar</button>
+                            </div>
+                        </div>
+                    </section>
+
                     {{-- Notas --}}
                     <section class="cartao">
                         <div class="flex items-center gap-3 px-6 py-5">
