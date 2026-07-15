@@ -70,6 +70,11 @@ class FakeErpDriver implements ErpSyncDriver
         $marca = ($i % 4) === 3 ? 'EATON' : 'RIELLO';
         $idx = mt_rand(0, count($modelos) - 1);
 
+        // Famílias variadas (simula st.familia/st.faminome): a maioria são UPS, mas 1 em cada 5 é
+        // "peças/reparação" — o cenário que motiva o filtro por família.
+        $ehPeca = ($i % 5) === 4;
+        [$familia, $faminome] = $ehPeca ? ['920', 'Peças / Reparação'] : ['100', 'UPS'];
+
         return new EquipamentoErp(
             idErp: sprintf('MA25%010d,%07d-%d', $i, mt_rand(1000000, 9999999), mt_rand(0, 9)), // ma.mastamp único por i
             numeroSerie: sprintf('MH%02dVNPW%07d', mt_rand(10, 30), mt_rand(1, 9999999)),
@@ -77,6 +82,8 @@ class FakeErpDriver implements ErpSyncDriver
             dataInstalacao: sprintf('20%02d-%02d-%02d', mt_rand(18, 24), mt_rand(1, 12), mt_rand(1, 28)),
             clienteNo: (string) (1000 + ($i % 10)), // liga aos clientes fake (id_erp 1000..1009)
             marca: $marca,
+            familia: $familia,
+            faminome: $faminome,
         );
     }
 

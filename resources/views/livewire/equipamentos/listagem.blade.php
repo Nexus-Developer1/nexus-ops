@@ -27,6 +27,16 @@
                     @foreach ($tipos as $t)
                         <button wire:click="filtrarTipo('{{ $t->value }}')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $tipo === $t->value ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">{{ $t->rotulo() }}</button>
                     @endforeach
+
+                    {{-- Filtro por família (nome, vindo do PHC) — só aparece quando há famílias sincronizadas. --}}
+                    @if ($familias->isNotEmpty())
+                        <select wire:model.live="familia" class="campo-select w-auto min-w-[11rem]">
+                            <option value="">Todas as famílias</option>
+                            @foreach ($familias as $f)
+                                <option value="{{ $f }}">{{ $f }}</option>
+                            @endforeach
+                        </select>
+                    @endif
                 </div>
             </div>
 

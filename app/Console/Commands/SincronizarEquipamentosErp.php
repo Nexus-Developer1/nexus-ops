@@ -126,6 +126,8 @@ class SincronizarEquipamentosErp extends Command
                 'numero_serie' => $equipErp->numeroSerie,
                 'data_instalacao' => $equipErp->dataInstalacao,
                 'estado' => EstadoEquipamento::Operacional,
+                'familia' => $equipErp->familia,
+                'faminome' => $equipErp->faminome,
                 'qr_code' => $equipErp->idErp,
             ]);
             $equip->save();
@@ -151,6 +153,12 @@ class SincronizarEquipamentosErp extends Command
         if (blank($equip->tipo)) {
             $equip->tipo = TipoEquipamento::Ups;
         }
+
+        // Família é do ERP (read-only na app, não editável pelo técnico) → mantém-se SEMPRE
+        // alinhada com o PHC (não é coalesce). É isto que preenche a família nos equipamentos
+        // que já existiam, na primeira corrida após a migração.
+        $equip->familia = $equipErp->familia;
+        $equip->faminome = $equipErp->faminome;
 
         // Só grava se algum campo vazio foi preenchido (evita updated_at à toa).
         if ($equip->isDirty()) {

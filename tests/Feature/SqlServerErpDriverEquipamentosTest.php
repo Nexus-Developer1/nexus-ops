@@ -30,11 +30,19 @@ class SqlServerErpDriverEquipamentosTest extends TestCase
 
         Schema::connection('erp')->create('ma', function ($t) {
             $t->string('mastamp');
+            $t->string('ref')->nullable();
             $t->string('serie')->nullable();
             $t->string('design')->nullable();
             $t->string('marca')->nullable();
             $t->date('instal')->nullable();
             $t->integer('no')->nullable();
+        });
+
+        // Artigos (para a família, via LEFT JOIN st ON st.ref = ma.ref).
+        Schema::connection('erp')->create('st', function ($t) {
+            $t->string('ref');
+            $t->string('familia')->nullable();
+            $t->string('faminome')->nullable();
         });
 
         // Força o driver real (que lê da ligação 'erp' = SQLite acima).
@@ -44,6 +52,7 @@ class SqlServerErpDriverEquipamentosTest extends TestCase
     protected function tearDown(): void
     {
         Schema::connection('erp')->dropIfExists('ma');
+        Schema::connection('erp')->dropIfExists('st');
         DB::purge('erp');
 
         parent::tearDown();
@@ -111,5 +120,20 @@ class SqlServerErpDriverEquipamentosTest extends TestCase
         $existente->refresh();
         $this->assertSame($localReal->id, $existente->local_id);
         $this->assertSame('2027-01-01', $existente->proxima_troca_baterias->format('Y-m-d'));
+    }
+
+    public function test_traz_a_familia_do_artigo_via_join_st(): void
+    {
+        // Artigo (st) com família; ma liga-lhe por ref.
+        DB::connection('erp')->table('st')->insert(['ref' => 'A100', 'familia' => '100', 'faminome' => 'UPS  ']); // padding
+
+        DB::connection('erp')->table('ma')->insert([
+            'mastamp' => 'MAX001', 'ref' => 'A100', 'serie' => 'SN-1',
+            'design' => 'UPS RIELLO', 'marca' => 'RIELLO', 'instal' => '2023-05-10', 'no' => 1000,
+        ]);
+
+        $e = iterator_to_array((new SqlServerErpDriver())->obterEquipamentos())[0];
+        $this->assertSame('100', $e->familia);
+        $this->assertSame('UPS', $e->faminome); // trimado
     }
 }

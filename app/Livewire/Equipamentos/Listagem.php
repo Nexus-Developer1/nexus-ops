@@ -20,7 +20,16 @@ class Listagem extends Component
     #[Url]
     public string $tipo = '';
 
+    // Filtro por família do artigo (faminome, vem do PHC) — ex.: ver só UPS, esconder "Peças".
+    #[Url]
+    public string $familia = '';
+
     public function updatingPesquisa(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFamilia(): void
     {
         $this->resetPage();
     }
@@ -36,6 +45,7 @@ class Listagem extends Component
         $equipamentos = Equipamento::query()
             ->with('local.cliente')
             ->when($this->tipo, fn ($q) => $q->where('tipo', $this->tipo))
+            ->when($this->familia, fn ($q) => $q->where('faminome', $this->familia))
             ->when($this->pesquisa, function ($q) {
                 $termo = '%' . $this->pesquisa . '%';
                 $q->where(function ($q) use ($termo) {
@@ -47,9 +57,17 @@ class Listagem extends Component
             ->orderBy('id')
             ->paginate(10);
 
+        // Famílias disponíveis (nomes distintos já presentes) para o dropdown do filtro.
+        $familias = Equipamento::query()
+            ->whereNotNull('faminome')
+            ->distinct()
+            ->orderBy('faminome')
+            ->pluck('faminome');
+
         return view('livewire.equipamentos.listagem', [
             'equipamentos' => $equipamentos,
             'tipos' => TipoEquipamento::cases(),
+            'familias' => $familias,
         ]);
     }
 }

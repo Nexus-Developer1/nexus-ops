@@ -106,4 +106,30 @@ class SincronizarEquipamentosErpTest extends TestCase
         $this->assertEquals(['potencia_kva' => 10, 'topologia' => 'online'], $equip->atributos);
         $this->assertSame(EstadoEquipamento::Degradado, $equip->estado);           // não voltou a "operacional"
     }
+
+    public function test_sync_traz_a_familia_do_erp(): void
+    {
+        $this->sincronizarClientes();
+        $this->artisan('erp:sincronizar-equipamentos', ['--limit' => 8])->assertSuccessful();
+
+        // O Fake gera famílias: a maioria "UPS", mas 1 em cada 5 é "Peças / Reparação" (i=4).
+        $this->assertTrue(Equipamento::where('faminome', 'UPS')->exists());
+        $this->assertTrue(Equipamento::where('faminome', 'Peças / Reparação')->exists());
+        // O código da família também vem preenchido.
+        $this->assertNotNull(Equipamento::where('faminome', 'UPS')->value('familia'));
+    }
+
+    public function test_familia_e_do_erp_e_atualiza_no_resync(): void
+    {
+        $this->sincronizarClientes();
+        $this->artisan('erp:sincronizar-equipamentos', ['--limit' => 8])->assertSuccessful();
+
+        // Alguém "sujou" a família de um equipamento; como é campo do ERP, o re-sync corrige-a.
+        $equip = Equipamento::where('faminome', 'UPS')->firstOrFail();
+        $equip->update(['faminome' => 'ERRADO']);
+
+        $this->artisan('erp:sincronizar-equipamentos', ['--limit' => 8])->assertSuccessful();
+
+        $this->assertSame('UPS', $equip->fresh()->faminome); // realinhada com o PHC
+    }
 }

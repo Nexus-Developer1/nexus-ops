@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
 use App\Livewire\Equipamentos\Ficha;
+use App\Livewire\Equipamentos\Listagem;
 use App\Livewire\Equipamentos\Novo;
 use App\Livewire\Relatorios\Novo as RelatorioNovo;
 use App\Models\Cliente;
@@ -92,6 +93,22 @@ class EquipamentoManualTest extends TestCase
         Livewire::actingAs($admin)->test(RelatorioNovo::class)
             ->call('selecionarCliente', $cliente->id)
             ->assertSet('equipamento_id', $eq->id);
+    }
+
+    public function test_listagem_filtra_por_familia(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $ups = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-UPS', 'faminome' => 'UPS']);
+        $peca = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-PECA', 'faminome' => 'Peças / Reparação']);
+
+        Livewire::actingAs($admin)->test(Listagem::class)
+            // O dropdown lista as famílias presentes.
+            ->assertViewHas('familias', fn ($f) => $f->contains('UPS') && $f->contains('Peças / Reparação'))
+            // Filtrar por "UPS" esconde as peças.
+            ->set('familia', 'UPS')
+            ->assertViewHas('equipamentos', fn ($p) => $p->pluck('id')->contains($ups->id) && ! $p->pluck('id')->contains($peca->id));
     }
 
     public function test_cliente_e_obrigatorio(): void

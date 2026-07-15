@@ -101,19 +101,22 @@ class SqlServerErpDriver implements ErpSyncDriver
         //   ma.instal  → data_instalacao
         //   ma.no      → cliente (clientes.id_erp)
         //   ma.marca   → só filtro (fabricante fixa em 'Riello')
+        //   st.familia / st.faminome → família do artigo (LEFT JOIN st ON st.ref = ma.ref)
         //
         // Filtro RIELLO server-side (só marca Riello atravessa a ligação), + guardas do carregamento
         // original: série preenchida e nº de cliente válido. Leitura direta da ma (§5: envolver numa
-        // VIEW read-only quando houver acesso de escrita ao PHC para a criar).
+        // VIEW read-only quando houver acesso de escrita ao PHC para a criar). LEFT JOIN à st para a
+        // família (a ligação ma.ref = st.ref é a mesma que o sync antigo em Python usava).
         //
         // SQL Server: o limite usa TOP (não LIMIT). É um inteiro, interpolado em segurança.
         $top = $limite !== null ? 'TOP ' . (int) $limite . ' ' : '';
 
-        $sql = "SELECT {$top}mastamp, serie, design, instal, no, marca
+        $sql = "SELECT {$top}ma.mastamp, ma.serie, ma.design, ma.instal, ma.no, ma.marca, st.familia, st.faminome
                 FROM ma
-                WHERE marca LIKE '%RIELLO%'
-                  AND serie IS NOT NULL AND LTRIM(RTRIM(serie)) <> ''
-                  AND no IS NOT NULL AND no <> 0";
+                LEFT JOIN st ON st.ref = ma.ref
+                WHERE ma.marca LIKE '%RIELLO%'
+                  AND ma.serie IS NOT NULL AND LTRIM(RTRIM(ma.serie)) <> ''
+                  AND ma.no IS NOT NULL AND ma.no <> 0";
 
         foreach (DB::connection('erp')->select($sql) as $r) {
             // TRIM obrigatório nos campos de texto: as colunas char do PHC vêm com padding de
@@ -128,6 +131,8 @@ class SqlServerErpDriver implements ErpSyncDriver
                 // ma.no é numeric(10,0) → texto sem casas decimais, para casar com clientes.id_erp.
                 clienteNo: $r->no !== null ? (string) (int) $r->no : null,
                 marca: $r->marca !== null ? trim((string) $r->marca) : null,
+                familia: isset($r->familia) && trim((string) $r->familia) !== '' ? trim((string) $r->familia) : null,
+                faminome: isset($r->faminome) && trim((string) $r->faminome) !== '' ? trim((string) $r->faminome) : null,
             );
         }
     }

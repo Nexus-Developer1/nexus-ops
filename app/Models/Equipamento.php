@@ -33,6 +33,8 @@ class Equipamento extends Model
         'tipo',
         'fabricante',
         'modelo',
+        'familia',
+        'faminome',
         'numero_serie',
         'cliente_final',
         'localizacao_instalacao',

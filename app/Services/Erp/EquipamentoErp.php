@@ -11,6 +11,8 @@ namespace App\Services\Erp;
 //   ma.instal  → dataInstalacao (data de instalação, 'Y-m-d')
 //   ma.no      → clienteNo      (nº de cliente; = clientes.id_erp)
 //   ma.marca   → marca          (só Riello chega até aqui; fabricante fixa em 'Riello')
+//   st.familia → familia        (código da família do artigo; via LEFT JOIN st ON st.ref = ma.ref)
+//   st.faminome→ faminome       (nome da família — usado para o filtro na listagem)
 final readonly class EquipamentoErp
 {
     public function __construct(
@@ -20,5 +22,7 @@ final readonly class EquipamentoErp
         public ?string $dataInstalacao = null,   // 'Y-m-d'
         public ?string $clienteNo = null,          // PHC ma.no = clientes.id_erp
         public ?string $marca = null,
+        public ?string $familia = null,            // PHC st.familia (via ma.ref = st.ref)
+        public ?string $faminome = null,           // PHC st.faminome
     ) {}
 }
