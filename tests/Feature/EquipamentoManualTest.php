@@ -3,11 +3,14 @@
 namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
+use App\Livewire\Equipamentos\Ficha;
 use App\Livewire\Equipamentos\Novo;
 use App\Livewire\Relatorios\Novo as RelatorioNovo;
 use App\Models\Cliente;
 use App\Models\Equipamento;
+use App\Models\Intervencao;
 use App\Models\Local;
+use App\Models\Relatorio;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -99,5 +102,63 @@ class EquipamentoManualTest extends TestCase
             ->set('modelo', 'Sem cliente')
             ->call('guardar')
             ->assertHasErrors('cliente_id');
+    }
+
+    // ---- Cliente final e localização da instalação ----
+
+    public function test_novo_equipamento_guarda_cliente_final_e_localizacao(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->set('modelo', 'UPS X')
+            ->set('cliente_final', 'Hospital Central')
+            ->set('localizacao_instalacao', 'Edifício B, piso 2')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $eq = Equipamento::where('modelo', 'UPS X')->firstOrFail();
+        $this->assertSame('Hospital Central', $eq->cliente_final);
+        $this->assertSame('Edifício B, piso 2', $eq->localizacao_instalacao);
+    }
+
+    public function test_ficha_edita_cliente_final_e_localizacao(): void
+    {
+        // Equipamento já existente (ex.: vindo do ERP) — a ficha é a forma de lhes pôr estes campos.
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $eq = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-ERP']);
+
+        Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $eq])
+            ->set('clienteFinal', 'Cliente Final X')
+            ->set('localizacaoInstalacao', 'Sala 12')
+            ->call('guardarIdentificacao')
+            ->assertHasNoErrors();
+
+        $this->assertSame('Cliente Final X', $eq->fresh()->cliente_final);
+        $this->assertSame('Sala 12', $eq->fresh()->localizacao_instalacao);
+    }
+
+    public function test_relatorio_pdf_mostra_cliente_final_e_localizacao_explicitos(): void
+    {
+        $cliente = Cliente::create(['nome' => 'Parceiro Lda', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Instalação principal']);
+        $eq = Equipamento::create([
+            'local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'fabricante' => 'APC', 'modelo' => 'SRT', 'numero_serie' => 'SN-9',
+            'cliente_final' => 'Hospital Central', 'localizacao_instalacao' => 'Edifício B, piso 2',
+        ]);
+        $interv = Intervencao::create(['equipamento_id' => $eq->id, 'tipo' => 'preventiva', 'estado' => 'concluida', 'data_inicio' => now()]);
+        $relatorio = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/0500', 'data' => now(), 'estado' => 'finalizado']);
+
+        $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
+
+        $this->assertStringContainsString('Cliente final', $html);
+        $this->assertStringContainsString('Hospital Central', $html);
+        $this->assertStringContainsString('Localização da instalação', $html);
+        $this->assertStringContainsString('Edifício B, piso 2', $html);
     }
 }

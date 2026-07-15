@@ -32,6 +32,8 @@ class Novo extends Component
     public string $fabricante = '';
     public string $modelo = '';
     public string $numero_serie = '';
+    public string $cliente_final = '';
+    public string $localizacao_instalacao = '';
     public string $estado = 'operacional';
     public string $data_instalacao = '';
     public string $fim_garantia = '';
@@ -75,6 +77,8 @@ class Novo extends Component
             'fabricante' => ['nullable', 'string', 'max:255'],
             'modelo' => ['nullable', 'string', 'max:255'],
             'numero_serie' => ['nullable', 'string', 'max:255'],
+            'cliente_final' => ['nullable', 'string', 'max:255'],
+            'localizacao_instalacao' => ['nullable', 'string', 'max:255'],
             'estado' => ['required', Rule::enum(EstadoEquipamento::class)],
             'data_instalacao' => ['nullable', 'date'],
             'fim_garantia' => ['nullable', 'date'],
@@ -110,6 +114,8 @@ class Novo extends Component
             'fabricante' => trim($this->fabricante) ?: null,
             'modelo' => trim($this->modelo) ?: null,
             'numero_serie' => trim($this->numero_serie) ?: null,
+            'cliente_final' => trim($this->cliente_final) ?: null,
+            'localizacao_instalacao' => trim($this->localizacao_instalacao) ?: null,
             'estado' => $this->estado,
             'data_instalacao' => $this->data_instalacao ?: null,
             'fim_garantia' => $this->fim_garantia ?: null,

@@ -87,6 +87,15 @@
             <td><div class="campo-rotulo">Equipamento</div><div class="campo-valor">{{ $e->numero_serie }} · {{ $e->fabricante }} {{ $e->modelo }}</div></td>
             <td><div class="campo-rotulo">Tipo</div><div class="campo-valor">{{ $e->tipo->rotulo() }}</div></td>
         </tr>
+        {{-- Cliente final / localização do equipamento (campos explícitos) — só quando preenchidos. --}}
+        @php($eCliFinal = trim((string) ($e->cliente_final ?? '')))
+        @php($eLocaliz = trim((string) ($e->localizacao_instalacao ?? '')))
+        @if ($eCliFinal !== '' || $eLocaliz !== '')
+            <tr>
+                <td><div class="campo-rotulo">Cliente final</div><div class="campo-valor">{{ $eCliFinal !== '' ? $eCliFinal : '—' }}</div></td>
+                <td><div class="campo-rotulo">Localização da instalação</div><div class="campo-valor">{{ $eLocaliz !== '' ? $eLocaliz : '—' }}</div></td>
+            </tr>
+        @endif
         @if ($i->contrato)
             {{-- Relatório no âmbito de um contrato. Individual (sem contrato) → linha omitida. --}}
             <tr>
@@ -172,7 +181,12 @@
             @php($fe = $ficha->equipamento)
             @php($floc = $fe?->local)
             @php($fcli = $floc?->cliente)
-            @php($mostrarClienteFinal = $fcli && $i->contrato && $fcli->id !== $i->contrato->cliente_id)
+            {{-- Campo explícito do equipamento tem prioridade; senão, cai na lógica derivada. --}}
+            @php($cfTexto = trim((string) ($fe?->cliente_final ?? '')))
+            @php($locTexto = trim((string) ($fe?->localizacao_instalacao ?? '')))
+            @php($locDerivado = ($floc?->designacao ?? '—') . (trim((string) $floc?->morada) !== '' ? ' · ' . $floc->morada : ''))
+            @php($mostrarClienteFinal = $cfTexto !== '' || ($fcli && $i->contrato && $fcli->id !== $i->contrato->cliente_id))
+            @php($clienteFinalValor = $cfTexto !== '' ? $cfTexto : ($fcli?->nome ?? '—'))
             <div class="ficha-pagina">
                 <div class="ficha-titulo">Ficha de Medições — UPS</div>
                 <div class="ficha-sub">Relatório {{ $relatorio->numero }} · {{ $ficha->serie ?: ($fe?->numero_serie ?? '—') }}</div>
@@ -184,11 +198,11 @@
                         <td><span class="ficha-rot">Intervenção nº</span><br>{{ $relatorio->numero }}</td>
                     </tr>
                     @if ($mostrarClienteFinal)
-                        <tr><td colspan="2"><span class="ficha-rot">Cliente final</span><br>{{ $fcli->nome }}</td></tr>
+                        <tr><td colspan="2"><span class="ficha-rot">Cliente final</span><br>{{ $clienteFinalValor }}</td></tr>
                     @endif
                     <tr>
                         <td><span class="ficha-rot">Data</span><br>{{ $i->data_inicio?->format('d/m/Y') ?? $relatorio->data->format('d/m/Y') }}</td>
-                        <td><span class="ficha-rot">Local de instalação</span><br>{{ $floc?->designacao ?? '—' }}@if (trim((string) $floc?->morada) !== '') · {{ $floc->morada }}@endif</td>
+                        <td><span class="ficha-rot">Local de instalação</span><br>{{ $locTexto !== '' ? $locTexto : $locDerivado }}</td>
                     </tr>
                 </table>
 

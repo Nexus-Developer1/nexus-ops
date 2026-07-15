@@ -105,6 +105,16 @@
                         <input wire:model="numero_serie" type="text" class="campo-input" placeholder="Ex: 3S2145X01234">
                         @error('numero_serie') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
+                    <div>
+                        <label class="campo-label">Cliente final</label>
+                        <input wire:model="cliente_final" type="text" class="campo-input" placeholder="Utilizador real (mesmo que não esteja no sistema)">
+                        @error('cliente_final') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="campo-label">Localização da instalação</label>
+                        <input wire:model="localizacao_instalacao" type="text" class="campo-input" placeholder="Ex: Edifício B, piso 2, sala UPS">
+                        @error('localizacao_instalacao') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                    </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="campo-label">Instalação</label>

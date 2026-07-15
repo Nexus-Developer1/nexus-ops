@@ -17,10 +17,16 @@ class Ficha extends Component
 
     public string $notas = '';
 
+    // Identificação editável: cliente final (texto livre) e localização física da instalação.
+    public string $clienteFinal = '';
+    public string $localizacaoInstalacao = '';
+
     public function mount(Equipamento $equipamento): void
     {
         $this->equipamento = $equipamento->load('local.cliente');
         $this->notas = $equipamento->notas ?? '';
+        $this->clienteFinal = $equipamento->cliente_final ?? '';
+        $this->localizacaoInstalacao = $equipamento->localizacao_instalacao ?? '';
     }
 
     // Guarda as notas livres do equipamento.
@@ -33,6 +39,24 @@ class Ficha extends Component
         $this->equipamento->update(['notas' => trim($this->notas) ?: null]);
 
         session()->flash('sucesso', 'Notas guardadas.');
+    }
+
+    // Guarda o cliente final e a localização da instalação (texto livre).
+    public function guardarIdentificacao(): void
+    {
+        abort_if(auth()->user()->ehCliente(), 403);
+
+        $this->validate([
+            'clienteFinal' => ['nullable', 'string', 'max:255'],
+            'localizacaoInstalacao' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $this->equipamento->update([
+            'cliente_final' => trim($this->clienteFinal) ?: null,
+            'localizacao_instalacao' => trim($this->localizacaoInstalacao) ?: null,
+        ]);
+
+        session()->flash('sucesso', 'Identificação guardada.');
     }
 
     // Inicia uma nova intervenção corretiva e abre o formulário de execução.

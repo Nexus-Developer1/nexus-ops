@@ -50,6 +50,29 @@
                         @endif
                     </section>
 
+                    {{-- Identificação: cliente final + localização da instalação (texto livre). --}}
+                    <section class="cartao">
+                        <div class="flex items-center gap-3 px-6 py-5">
+                            <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
+                            <h2 class="text-lg font-semibold text-texto-forte">Cliente final e localização</h2>
+                        </div>
+                        <div class="grid grid-cols-1 gap-x-8 gap-y-6 border-t border-borda px-6 py-6 sm:grid-cols-2">
+                            <div>
+                                <label class="campo-label">Cliente final</label>
+                                <input wire:model="clienteFinal" type="text" class="campo-input" placeholder="Utilizador real do equipamento">
+                                @error('clienteFinal') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label class="campo-label">Localização da instalação</label>
+                                <input wire:model="localizacaoInstalacao" type="text" class="campo-input" placeholder="Ex: Edifício B, piso 2, sala UPS">
+                                @error('localizacaoInstalacao') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            </div>
+                            <div class="sm:col-span-2 flex justify-end">
+                                <button wire:click="guardarIdentificacao" wire:loading.attr="disabled" wire:target="guardarIdentificacao" class="botao-primario">Guardar</button>
+                            </div>
+                        </div>
+                    </section>
+
                     {{-- Notas --}}
                     <section class="cartao">
                         <div class="flex items-center gap-3 px-6 py-5">

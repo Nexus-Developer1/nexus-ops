@@ -34,6 +34,8 @@ class Equipamento extends Model
         'fabricante',
         'modelo',
         'numero_serie',
+        'cliente_final',
+        'localizacao_instalacao',
         'data_instalacao',
         'fim_garantia',
         'estado',
