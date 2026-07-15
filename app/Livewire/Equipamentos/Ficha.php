@@ -29,6 +29,10 @@ class Ficha extends Component
     public string $dataBaterias = '';
     public string $proximaTrocaBaterias = '';
 
+    // Componentes do sistema (equipamentos compostos) — { designacao, quantidade }.
+    /** @var list<array{designacao: string, quantidade: string|int}> */
+    public array $componentes = [];
+
     public function mount(Equipamento $equipamento): void
     {
         $this->equipamento = $equipamento->load('local.cliente');
@@ -43,6 +47,42 @@ class Ficha extends Component
         $this->numBaterias = isset($attrs['num_baterias']) ? (string) $attrs['num_baterias'] : '';
         $this->dataBaterias = ! empty($attrs['data_baterias']) ? Carbon::parse($attrs['data_baterias'])->format('Y-m-d') : '';
         $this->proximaTrocaBaterias = $equipamento->proxima_troca_baterias?->format('Y-m-d') ?? '';
+        $this->componentes = array_values($attrs['componentes'] ?? []);
+    }
+
+    public function adicionarComponente(): void
+    {
+        $this->componentes[] = ['designacao' => '', 'quantidade' => 1];
+    }
+
+    public function removerComponente(int $indice): void
+    {
+        unset($this->componentes[$indice]);
+        $this->componentes = array_values($this->componentes);
+    }
+
+    // Guarda a lista de componentes (só linhas preenchidas). Preserva os restantes atributos.
+    public function guardarComponentes(): void
+    {
+        abort_if(auth()->user()->ehCliente(), 403);
+
+        $componentes = collect($this->componentes)
+            ->map(fn ($c) => ['designacao' => trim((string) ($c['designacao'] ?? '')), 'quantidade' => (int) ($c['quantidade'] ?? 0)])
+            ->filter(fn ($c) => $c['designacao'] !== '')
+            ->values()
+            ->all();
+
+        $attrs = $this->equipamento->atributos ?? [];
+        if ($componentes === []) {
+            unset($attrs['componentes']);
+        } else {
+            $attrs['componentes'] = $componentes;
+        }
+
+        $this->equipamento->update(['atributos' => $attrs ?: null]);
+        $this->componentes = $componentes;
+
+        session()->flash('sucesso', 'Componentes guardados.');
     }
 
     // Guarda as notas livres do equipamento.

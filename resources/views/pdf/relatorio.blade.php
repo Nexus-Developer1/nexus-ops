@@ -96,6 +96,18 @@
                 <td><div class="campo-rotulo">Localização da instalação</div><div class="campo-valor">{{ $eLocaliz !== '' ? $eLocaliz : '—' }}</div></td>
             </tr>
         @endif
+        {{-- Componentes do sistema (equipamentos compostos, ex.: deteção de incêndio). --}}
+        @php($eComponentes = collect($e->atributos['componentes'] ?? [])->filter(fn ($c) => trim((string) ($c['designacao'] ?? '')) !== ''))
+        @if ($eComponentes->isNotEmpty())
+            <tr>
+                <td colspan="2">
+                    <div class="campo-rotulo">Componentes do sistema</div>
+                    @foreach ($eComponentes as $comp)
+                        <div class="cliente-linha">{{ $comp['designacao'] }}@if ((int) ($comp['quantidade'] ?? 0) > 0) · {{ (int) $comp['quantidade'] }} un.@endif</div>
+                    @endforeach
+                </td>
+            </tr>
+        @endif
         @if ($i->contrato)
             {{-- Relatório no âmbito de um contrato. Individual (sem contrato) → linha omitida. --}}
             <tr>

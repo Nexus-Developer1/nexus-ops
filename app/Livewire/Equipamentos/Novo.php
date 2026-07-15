@@ -54,6 +54,35 @@ class Novo extends Component
     public string $data_baterias = '';
     public string $proxima_troca_baterias = '';
 
+    // Componentes do sistema (ex.: sistema de deteção de incêndio) — { designacao, quantidade }.
+    // Guardados em atributos.componentes. Útil para equipamentos compostos, sem nº de série.
+    /** @var list<array{designacao: string, quantidade: string|int}> */
+    public array $componentes = [];
+
+    public function adicionarComponente(): void
+    {
+        $this->componentes[] = ['designacao' => '', 'quantidade' => 1];
+    }
+
+    public function removerComponente(int $indice): void
+    {
+        unset($this->componentes[$indice]);
+        $this->componentes = array_values($this->componentes);
+    }
+
+    // Normaliza a lista de componentes: designação limpa, quantidade inteira; ignora linhas vazias.
+    private function componentesNormalizados(): array
+    {
+        return collect($this->componentes)
+            ->map(fn ($c) => [
+                'designacao' => trim((string) ($c['designacao'] ?? '')),
+                'quantidade' => (int) ($c['quantidade'] ?? 0),
+            ])
+            ->filter(fn ($c) => $c['designacao'] !== '')
+            ->values()
+            ->all();
+    }
+
     public function selecionarCliente(int $id): void
     {
         $cliente = Cliente::find($id);
@@ -118,6 +147,12 @@ class Novo extends Component
             'num_baterias' => $this->num_baterias !== '' ? (int) $this->num_baterias : null,
             'data_baterias' => $this->data_baterias ?: null,
         ], fn ($v) => $v !== null);
+
+        // Componentes do sistema (lista { designacao, quantidade }), só linhas preenchidas.
+        $componentes = $this->componentesNormalizados();
+        if ($componentes !== []) {
+            $atributos['componentes'] = $componentes;
+        }
 
         $equipamento = Equipamento::create([
             'id_erp' => null, // manual — não vendido por nós

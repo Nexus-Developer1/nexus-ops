@@ -117,6 +117,36 @@
                         </div>
                     </section>
 
+                    {{-- Componentes do sistema (equipamentos compostos, ex.: deteção de incêndio). --}}
+                    <section class="cartao">
+                        <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
+                            <div class="flex items-center gap-3">
+                                <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg></span>
+                                <h2 class="text-lg font-semibold text-texto-forte">Componentes do sistema</h2>
+                            </div>
+                            <button wire:click="adicionarComponente" class="botao-secundario">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
+                                Componente
+                            </button>
+                        </div>
+                        <div class="border-t border-borda px-6 py-6">
+                            @forelse ($componentes as $i => $comp)
+                                <div class="mb-3 flex items-start gap-3 last:mb-0" wire:key="fcomp-{{ $i }}">
+                                    <input wire:model="componentes.{{ $i }}.designacao" type="text" class="campo-input flex-1" placeholder="Ex: Detetor ótico convencional 701P">
+                                    <input wire:model="componentes.{{ $i }}.quantidade" type="number" min="1" class="campo-input w-24" placeholder="Qtd">
+                                    <button wire:click="removerComponente({{ $i }})" class="mt-2 shrink-0 text-texto-fraco hover:text-perigo-600" title="Remover">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    </button>
+                                </div>
+                            @empty
+                                <p class="text-sm text-texto-medio">Sem componentes. Usa "+ Componente" para os listar (cilindro, detetores, baterias, botoneiras…).</p>
+                            @endforelse
+                            <div class="mt-4 flex justify-end">
+                                <button wire:click="guardarComponentes" wire:loading.attr="disabled" wire:target="guardarComponentes" class="botao-primario">Guardar componentes</button>
+                            </div>
+                        </div>
+                    </section>
+
                     {{-- Notas --}}
                     <section class="cartao">
                         <div class="flex items-center gap-3 px-6 py-5">

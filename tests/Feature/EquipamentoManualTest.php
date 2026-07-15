@@ -211,4 +211,73 @@ class EquipamentoManualTest extends TestCase
         $this->assertEquals(5, $eq->atributos['potencia_kva']);              // atributo existente preservado
         $this->assertSame('2027-01-15', $eq->proxima_troca_baterias->format('Y-m-d'));
     }
+
+    // ---- Sistema composto (ex.: deteção de incêndio): tipo novo + lista de componentes ----
+
+    public function test_novo_equipamento_incendio_sem_serie_com_componentes(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->set('tipo', 'incendio')
+            ->set('modelo', 'SADI EP 3988')
+            ->call('adicionarComponente')
+            ->set('componentes.0.designacao', 'Cilindro Novec 106L')
+            ->set('componentes.0.quantidade', '1')
+            ->call('adicionarComponente')
+            ->set('componentes.1.designacao', 'Detetor ótico 701P')
+            ->set('componentes.1.quantidade', '4')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $eq = Equipamento::where('modelo', 'SADI EP 3988')->firstOrFail();
+        $this->assertSame('incendio', $eq->tipo->value);
+        $this->assertNull($eq->numero_serie);                                 // sem nº de série
+        $this->assertCount(2, $eq->atributos['componentes']);
+        $this->assertSame('Cilindro Novec 106L', $eq->atributos['componentes'][0]['designacao']);
+        $this->assertEquals(4, $eq->atributos['componentes'][1]['quantidade']);
+    }
+
+    public function test_ficha_edita_componentes_do_sistema(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $eq = Equipamento::create(['local_id' => $local->id, 'tipo' => 'incendio', 'estado' => 'operacional']);
+
+        Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $eq])
+            ->call('adicionarComponente')
+            ->set('componentes.0.designacao', 'Sirene para interior')
+            ->set('componentes.0.quantidade', '2')
+            ->call('guardarComponentes')
+            ->assertHasNoErrors();
+
+        $eq->refresh();
+        $this->assertCount(1, $eq->atributos['componentes']);
+        $this->assertSame('Sirene para interior', $eq->atributos['componentes'][0]['designacao']);
+        $this->assertEquals(2, $eq->atributos['componentes'][0]['quantidade']);
+    }
+
+    public function test_relatorio_pdf_lista_componentes_do_sistema(): void
+    {
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $eq = Equipamento::create(['local_id' => $local->id, 'tipo' => 'incendio', 'estado' => 'operacional', 'modelo' => 'SADI',
+            'atributos' => ['componentes' => [
+                ['designacao' => 'Cilindro Novec 106L', 'quantidade' => 1],
+                ['designacao' => 'Detetor 701P', 'quantidade' => 4],
+            ]]]);
+        $interv = Intervencao::create(['equipamento_id' => $eq->id, 'tipo' => 'preventiva', 'estado' => 'concluida', 'data_inicio' => now()]);
+        $relatorio = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/0600', 'data' => now(), 'estado' => 'finalizado']);
+
+        $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
+
+        $this->assertStringContainsString('Componentes do sistema', $html);
+        $this->assertStringContainsString('Cilindro Novec 106L', $html);
+        $this->assertStringContainsString('Detetor 701P', $html);
+        $this->assertStringContainsString('4 un.', $html);
+    }
 }

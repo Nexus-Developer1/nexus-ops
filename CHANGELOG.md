@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-07-15
 
+- 🧰 **Sistema composto / deteção de incêndio** — novo tipo de equipamento "Deteção de incêndio" + **lista de componentes** (designação + quantidade) no equipamento. Permite criar contratos/relatórios para sistemas sem nº de série e compostos por várias peças (registo + ficha + PDF).
 - 🧰 **Banco de baterias no equipamento** — secção própria (nº de série, modelo/fabricante, capacidade, nº de baterias, data de instalação, próxima troca); parte do mesmo UPS. Editável na ficha. `6c89fb3`
 - 🧰 **Cliente final + localização da instalação** — campos de texto livre no equipamento (registo + ficha + PDF do relatório, com prioridade sobre a lógica derivada). `266793f`
 - 🧰 **Mover equipamento + criar local na hora** — no "Alterar local", modo "Novo local" para transferir um equipamento para um cliente sem locais (mudança de titularidade). `ee88d21`
