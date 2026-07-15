@@ -113,4 +113,61 @@ class AssociarEquipamentoTest extends TestCase
 
         $this->assertSame($novoLocal->id, $equip->fresh()->local_id);
     }
+
+    // ---- Modo "novo local" (mudança de titularidade: mover para um cliente sem locais) ----
+
+    public function test_novo_local_move_equipamento_para_cliente_sem_locais(): void
+    {
+        // Cliente de origem (ex.: Dourogas) com o equipamento.
+        $this->clienteComEquipamentos(1, 'DOUROGAS');
+        $equip = Equipamento::firstOrFail();
+
+        // Cliente de destino (ex.: Sonorgas) SEM locais.
+        $sonorgas = Cliente::create(['nome' => 'SONORGAS', 'ativo' => true]);
+        $this->assertSame(0, Local::where('cliente_id', $sonorgas->id)->count());
+
+        Livewire::actingAs($this->admin())->test(Associar::class, ['equipamento' => $equip])
+            ->call('definirModoLocal', 'novo')
+            ->call('selecionarNovoLocalCliente', $sonorgas->id)
+            ->set('novoLocalDesignacao', 'Instalação principal')
+            ->call('guardar')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('equipamentos.ficha', $equip));
+
+        // Criou o local na Sonorgas e moveu o equipamento para lá.
+        $local = Local::where('cliente_id', $sonorgas->id)->where('designacao', 'Instalação principal')->firstOrFail();
+        $this->assertSame($local->id, $equip->fresh()->local_id);
+        $this->assertSame($sonorgas->id, $equip->fresh()->local->cliente_id);
+    }
+
+    public function test_novo_local_reutiliza_existente_com_a_mesma_designacao(): void
+    {
+        $this->clienteComEquipamentos(1, 'ALFA');
+        $equip = Equipamento::firstOrFail();
+        $sonorgas = Cliente::create(['nome' => 'SONORGAS', 'ativo' => true]);
+        $existente = Local::create(['cliente_id' => $sonorgas->id, 'designacao' => 'Instalação principal']);
+
+        Livewire::actingAs($this->admin())->test(Associar::class, ['equipamento' => $equip])
+            ->call('definirModoLocal', 'novo')
+            ->call('selecionarNovoLocalCliente', $sonorgas->id)
+            ->set('novoLocalDesignacao', 'Instalação principal')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        // Não duplica — reutiliza o local existente.
+        $this->assertSame(1, Local::where('cliente_id', $sonorgas->id)->where('designacao', 'Instalação principal')->count());
+        $this->assertSame($existente->id, $equip->fresh()->local_id);
+    }
+
+    public function test_novo_local_exige_cliente_e_designacao(): void
+    {
+        $this->clienteComEquipamentos(1);
+        $equip = Equipamento::firstOrFail();
+
+        Livewire::actingAs($this->admin())->test(Associar::class, ['equipamento' => $equip])
+            ->call('definirModoLocal', 'novo')
+            ->set('novoLocalDesignacao', '')
+            ->call('guardar')
+            ->assertHasErrors(['novoLocalClienteId', 'novoLocalDesignacao']);
+    }
 }

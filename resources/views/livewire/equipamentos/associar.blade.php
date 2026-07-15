@@ -57,35 +57,89 @@
                         @error('equipamento_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
 
-                    {{-- Local --}}
+                    {{-- Local: escolher um existente OU criar um novo (ex.: mover para um cliente sem locais). --}}
                     <div>
-                        <label class="campo-label" for="local-combo">Local <span class="text-perigo-500">*</span></label>
-                        {{-- Pesquisa server-side (~30 resultados) — nunca carrega os ~600 locais. --}}
-                        <div wire:key="combo-local" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
-                            <input id="local-combo" type="text"
-                                wire:model.live.debounce.300ms="localBusca"
-                                @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
-                                @keydown.arrow-down.prevent="aberto = true; if ($refs['l' + (destaque + 1)]) destaque++"
-                                @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
-                                @keydown.enter.prevent="$refs['l' + destaque]?.click()"
-                                class="campo-input pr-10" placeholder="Pesquisar local por cliente ou designação..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
-                            <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                            <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
-                                @forelse ($locaisFiltrados as $idx => $l)
-                                    <li x-ref="l{{ $idx }}" wire:key="lo-{{ $l->id }}"
-                                        wire:click="selecionarLocal({{ $l->id }})" @click="aberto = false"
-                                        @mouseenter="destaque = {{ $idx }}"
-                                        :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
-                                        class="cursor-pointer px-4 py-2 text-sm" role="option">
-                                        <span class="font-medium text-texto-forte">{{ $l->cliente?->nome ?? '—' }}</span>
-                                        <span class="text-xs text-texto-fraco"> · {{ $l->designacao }}</span>
-                                    </li>
-                                @empty
-                                    <li class="px-4 py-2 text-sm text-texto-medio">{{ $localBusca === '' ? 'Escreva para pesquisar…' : 'Nenhum local encontrado.' }}</li>
-                                @endforelse
-                            </ul>
+                        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                            <label class="campo-label !mb-0">Local <span class="text-perigo-500">*</span></label>
+                            <div class="inline-flex rounded-lg border border-borda bg-fundo p-1">
+                                <button type="button" wire:click="definirModoLocal('existente')" class="rounded-md px-3 py-1 text-xs font-medium transition {{ $modoLocal === 'existente' ? 'bg-white text-texto-forte shadow-sm' : 'text-texto-medio hover:text-texto-forte' }}">Local existente</button>
+                                <button type="button" wire:click="definirModoLocal('novo')" class="rounded-md px-3 py-1 text-xs font-medium transition {{ $modoLocal === 'novo' ? 'bg-white text-texto-forte shadow-sm' : 'text-texto-medio hover:text-texto-forte' }}">Novo local</button>
+                            </div>
                         </div>
-                        @error('local_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+
+                        @if ($modoLocal === 'existente')
+                            {{-- Pesquisa server-side (~30 resultados) — nunca carrega os ~600 locais. --}}
+                            <div wire:key="combo-local" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
+                                <input id="local-combo" type="text"
+                                    wire:model.live.debounce.300ms="localBusca"
+                                    @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
+                                    @keydown.arrow-down.prevent="aberto = true; if ($refs['l' + (destaque + 1)]) destaque++"
+                                    @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
+                                    @keydown.enter.prevent="$refs['l' + destaque]?.click()"
+                                    class="campo-input pr-10" placeholder="Pesquisar local por cliente ou designação..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
+                                <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
+                                    @forelse ($locaisFiltrados as $idx => $l)
+                                        <li x-ref="l{{ $idx }}" wire:key="lo-{{ $l->id }}"
+                                            wire:click="selecionarLocal({{ $l->id }})" @click="aberto = false"
+                                            @mouseenter="destaque = {{ $idx }}"
+                                            :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
+                                            class="cursor-pointer px-4 py-2 text-sm" role="option">
+                                            <span class="font-medium text-texto-forte">{{ $l->cliente?->nome ?? '—' }}</span>
+                                            <span class="text-xs text-texto-fraco"> · {{ $l->designacao }}</span>
+                                        </li>
+                                    @empty
+                                        <li class="px-4 py-2 text-sm text-texto-medio">{{ $localBusca === '' ? 'Escreva para pesquisar…' : 'Nenhum local encontrado.' }}</li>
+                                    @endforelse
+                                </ul>
+                            </div>
+                            @error('local_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                        @else
+                            {{-- Novo local: cliente de destino + designação (+ morada). Cria-o na hora. --}}
+                            <div class="space-y-4 rounded-lg border border-borda bg-fundo px-4 py-4">
+                                <div>
+                                    <label class="campo-label" for="novolocal-cliente">Cliente de destino <span class="text-perigo-500">*</span></label>
+                                    <div wire:key="combo-novolocal-cliente" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
+                                        <input id="novolocal-cliente" type="text"
+                                            wire:model.live.debounce.300ms="novoLocalClienteBusca"
+                                            @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
+                                            @keydown.arrow-down.prevent="aberto = true; if ($refs['nc' + (destaque + 1)]) destaque++"
+                                            @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
+                                            @keydown.enter.prevent="$refs['nc' + destaque]?.click()"
+                                            class="campo-input pr-10" placeholder="Pesquisar cliente por nome ou NIF..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
+                                        <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                        <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
+                                            @forelse ($clientesFiltrados as $idx => $cl)
+                                                <li x-ref="nc{{ $idx }}" wire:key="ncl-{{ $cl->id }}"
+                                                    wire:click="selecionarNovoLocalCliente({{ $cl->id }})" @click="aberto = false"
+                                                    @mouseenter="destaque = {{ $idx }}"
+                                                    :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
+                                                    class="cursor-pointer px-4 py-2 text-sm" role="option">
+                                                    <span class="font-medium">{{ $cl->nome }}</span>
+                                                    <span class="text-xs text-texto-fraco"> · NIF {{ $cl->nif ?? '—' }}</span>
+                                                </li>
+                                            @empty
+                                                <li class="px-4 py-2 text-sm text-texto-medio">{{ $novoLocalClienteBusca === '' ? 'Escreva para pesquisar…' : 'Nenhum cliente encontrado.' }}</li>
+                                            @endforelse
+                                        </ul>
+                                    </div>
+                                    @error('novoLocalClienteId') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                </div>
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <label class="campo-label">Designação <span class="text-perigo-500">*</span></label>
+                                        <input wire:model="novoLocalDesignacao" type="text" class="campo-input" placeholder="Ex: Instalação principal">
+                                        @error('novoLocalDesignacao') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="campo-label">Morada</label>
+                                        <input wire:model="novoLocalMorada" type="text" class="campo-input" placeholder="Opcional">
+                                        @error('novoLocalMorada') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                    </div>
+                                </div>
+                                <p class="text-xs text-texto-fraco">Cria o local para o cliente escolhido e associa-lhe o equipamento. Se já existir um local com esta designação, reutiliza-o.</p>
+                            </div>
+                        @endif
                     </div>
 
                 </div>

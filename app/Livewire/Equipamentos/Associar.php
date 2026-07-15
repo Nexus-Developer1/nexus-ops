@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Equipamentos;
 
+use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\Local;
 use Illuminate\Support\Collection;
@@ -25,6 +26,15 @@ class Associar extends Component
     // Pesquisa server-side (associação livre): texto do equipamento e do local.
     public string $equipamentoBusca = '';
     public string $localBusca = '';
+
+    // Modo do local: 'existente' (escolher um da lista) | 'novo' (criar um para um cliente).
+    // Permite mover um equipamento para um cliente que ainda não tem locais (ex.: mudança de
+    // titularidade — equipamento passa de um parceiro para outro).
+    public string $modoLocal = 'existente';
+    public ?int $novoLocalClienteId = null;
+    public string $novoLocalClienteBusca = '';
+    public string $novoLocalDesignacao = 'Instalação principal';
+    public string $novoLocalMorada = '';
 
     public function mount(?Equipamento $equipamento = null): void
     {
@@ -71,15 +81,54 @@ class Associar extends Component
         $this->local_id = null;
     }
 
+    // Alterna entre escolher um local existente e criar um novo.
+    public function definirModoLocal(string $modo): void
+    {
+        $this->modoLocal = $modo === 'novo' ? 'novo' : 'existente';
+
+        if ($this->modoLocal === 'novo') {
+            $this->local_id = null;
+            $this->localBusca = '';
+        } else {
+            $this->novoLocalClienteId = null;
+            $this->novoLocalClienteBusca = '';
+        }
+    }
+
+    // Modo "novo local": escolhe o cliente a quem o local vai pertencer.
+    public function selecionarNovoLocalCliente(int $id): void
+    {
+        $cliente = Cliente::find($id);
+        if (! $cliente) {
+            return;
+        }
+        $this->novoLocalClienteId = $cliente->id;
+        $this->novoLocalClienteBusca = $cliente->nome ?? '';
+    }
+
     public function guardar()
     {
-        $validado = $this->validate([
-            'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
-            'local_id' => ['required', 'integer', 'exists:locais,id'],
-        ]);
+        $this->validate(['equipamento_id' => ['required', 'integer', 'exists:equipamentos,id']]);
 
-        $equipamento = Equipamento::findOrFail($validado['equipamento_id']);
-        $equipamento->update(['local_id' => $validado['local_id']]);
+        if ($this->modoLocal === 'novo') {
+            // Cria (ou reutiliza) um local para o cliente escolhido e associa o equipamento.
+            $this->validate([
+                'novoLocalClienteId' => ['required', 'integer', 'exists:clientes,id'],
+                'novoLocalDesignacao' => ['required', 'string', 'max:255'],
+                'novoLocalMorada' => ['nullable', 'string', 'max:255'],
+            ]);
+
+            $localId = Local::firstOrCreate(
+                ['cliente_id' => $this->novoLocalClienteId, 'designacao' => trim($this->novoLocalDesignacao)],
+                ['morada' => trim($this->novoLocalMorada) ?: null],
+            )->id;
+        } else {
+            $this->validate(['local_id' => ['required', 'integer', 'exists:locais,id']]);
+            $localId = $this->local_id;
+        }
+
+        $equipamento = Equipamento::findOrFail($this->equipamento_id);
+        $equipamento->update(['local_id' => $localId]);
 
         session()->flash('sucesso', 'Equipamento associado ao local com sucesso.');
 
@@ -154,6 +203,24 @@ class Associar extends Component
             ->get();
     }
 
+    // Pesquisa server-side de clientes (modo "novo local"): nome sem acentos / NIF, limitada.
+    private function clientesFiltrados(): Collection
+    {
+        if (trim($this->novoLocalClienteBusca) === '') {
+            return collect();
+        }
+
+        $termo = '%' . $this->novoLocalClienteBusca . '%';
+        $norm = '%' . $this->normalizarBusca($this->novoLocalClienteBusca) . '%';
+        $semAcentos = "translate(lower(nome), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
+
+        return Cliente::query()
+            ->where(fn ($q) => $q->whereRaw($semAcentos . ' like ?', [$norm])->orWhere('nif', 'ilike', $termo))
+            ->orderBy('nome')
+            ->limit(20)
+            ->get(['id', 'nome', 'nif']);
+    }
+
     public function render()
     {
         // Equipamento fixo (veio da ficha): carrega SÓ esse, não os 17k para firstWhere um.
@@ -165,6 +232,7 @@ class Associar extends Component
             'equipamentoAtual' => $equipamentoAtual,
             'equipamentosFiltrados' => $this->equipamentosFiltrados(),
             'locaisFiltrados' => $this->locaisFiltrados(),
+            'clientesFiltrados' => $this->clientesFiltrados(),
         ]);
     }
 }
