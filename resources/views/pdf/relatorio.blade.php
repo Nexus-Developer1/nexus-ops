@@ -338,6 +338,15 @@
                         <tr><td><span class="ficha-rot">Notas finais</span><br>{{ $ficha->notas_finais }}</td></tr>
                     </table>
                 @endif
+                @if (trim((string) $ficha->recomendacao) !== '')
+                    <div class="ficha-seccao">Recomendações e próximos passos</div>
+                    <table class="ficha-tab">
+                        <tr>
+                            <td style="width:78%;">{{ $ficha->recomendacao }}</td>
+                            <td><span class="ficha-rot">Prioridade</span><br>{{ $ficha->prioridade ?: 'Normal' }}</td>
+                        </tr>
+                    </table>
+                @endif
             </div>
         @endforeach
     @endif

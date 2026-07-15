@@ -29,6 +29,7 @@ class FichaMedicao extends Model
         'vbat_pos', 'vbat_neg', 'temperatura',
         'verificacoes', 'teste_descarga', 'baterias_funcionamento',
         'carga_a_funcionar', 'ups_modo_normal', 'notas_finais',
+        'recomendacao', 'prioridade',
     ];
 
     /** @return array<string, string> */
@@ -143,6 +144,10 @@ class FichaMedicao extends Model
         }
         $ficha['notas_finais'] = '';
 
+        // Recomendações e próximos passos — por equipamento (prioridade Baixa/Normal/Alta).
+        $ficha['recomendacao'] = '';
+        $ficha['prioridade'] = 'Normal';
+
         return $ficha;
     }
 
@@ -159,12 +164,13 @@ class FichaMedicao extends Model
         foreach (self::DECIMAIS as $c) {
             $base[$c] = $this->{$c} === null ? '' : (string) $this->{$c};
         }
-        foreach (['marca', 'modelo', 'serie', 'baterias', 'config_tipo', 'notas_finais'] as $c) {
+        foreach (['marca', 'modelo', 'serie', 'baterias', 'config_tipo', 'notas_finais', 'recomendacao'] as $c) {
             $base[$c] = (string) ($this->{$c} ?? '');
         }
         foreach (self::OKNOK as $c) {
             $base[$c] = (string) ($this->{$c} ?? '');
         }
+        $base['prioridade'] = ($this->prioridade ?: null) ?? 'Normal';
         $base['bypass_externo'] = (bool) $this->bypass_externo;
 
         // Grelhas: preenche as linhas existentes, mantendo MAX_LINHAS slots.
@@ -218,6 +224,10 @@ class FichaMedicao extends Model
         }
         $attrs['bypass_externo'] = (bool) ($dados['bypass_externo'] ?? false);
 
+        // Recomendação: a prioridade só faz sentido quando há recomendação preenchida.
+        $attrs['recomendacao'] = $limpar($dados['recomendacao'] ?? null);
+        $attrs['prioridade'] = $attrs['recomendacao'] !== null ? ($dados['prioridade'] ?: 'Normal') : null;
+
         foreach (['modulos', 'bancos_bateria'] as $grelha) {
             $linhas = array_values(array_filter(
                 $dados[$grelha] ?? [],
@@ -266,6 +276,10 @@ class FichaMedicao extends Model
             }
         }
         if (($attrs['config_tipo'] ?? null) !== null || ($attrs['notas_finais'] ?? null) !== null) {
+            return true;
+        }
+        // Uma recomendação (mesmo sem medições) é conteúdo — a ficha deve persistir para a guardar.
+        if (($attrs['recomendacao'] ?? null) !== null) {
             return true;
         }
         if (! empty($attrs['bypass_externo']) || ! empty($attrs['modulos']) || ! empty($attrs['bancos_bateria'])) {

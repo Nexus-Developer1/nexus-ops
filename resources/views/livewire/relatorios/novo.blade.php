@@ -267,24 +267,7 @@
                     </div>
                 </section>
 
-                {{-- Recomendações e Próximos Passos --}}
-                <section class="cartao" x-data="{ aberto: true }">
-                    <button @click="aberto=!aberto" class="cartao-cabecalho">
-                        <span class="flex items-center gap-3">
-                            <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></span>
-                            <span class="text-lg font-semibold text-texto-forte">Recomendações e Próximos Passos</span>
-                        </span>
-                        <svg :class="aberto && 'rotate-180'" class="h-5 w-5 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                    </button>
-                    <div x-show="aberto" x-transition class="flex gap-3 px-6 pb-7">
-                        <input wire:model="recomendacao" type="text" class="campo-input flex-1" placeholder="Ex: Substituição de baterias">
-                        <select wire:model="prioridade" class="campo-select w-40 shrink-0">
-                            <option value="Baixa">Baixa</option>
-                            <option value="Normal">Normal</option>
-                            <option value="Alta">Alta</option>
-                        </select>
-                    </div>
-                </section>
+                {{-- Recomendações e próximos passos passaram para CADA ficha de equipamento (abaixo). --}}
 
                 {{-- Registo Fotográfico --}}
                 <section class="cartao" x-data="{ aberto: true }">

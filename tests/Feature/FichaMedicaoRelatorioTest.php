@@ -127,6 +127,53 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->assertSet("fichas.{$e1->id}.notas_finais", 'Tudo OK');
     }
 
+    public function test_recomendacao_e_prioridade_sao_por_equipamento(): void
+    {
+        [$admin, $contrato, $e1, $e2] = $this->cenarioContrato();
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->set('data', now()->toDateString())
+            // Recomendações distintas por equipamento (sem qualquer outra medição).
+            ->set("fichas.{$e1->id}.recomendacao", 'Substituir baterias')
+            ->set("fichas.{$e1->id}.prioridade", 'Alta')
+            ->set("fichas.{$e2->id}.recomendacao", 'Rever ventilação')
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $interv = Intervencao::whereNotNull('contrato_id')->firstOrFail();
+
+        // Uma recomendação basta para a ficha persistir (mesmo sem medições).
+        $f1 = FichaMedicao::where('intervencao_id', $interv->id)->where('equipamento_id', $e1->id)->firstOrFail();
+        $this->assertSame('Substituir baterias', $f1->recomendacao);
+        $this->assertSame('Alta', $f1->prioridade);
+
+        // Prioridade default (Normal) quando não escolhida mas há recomendação.
+        $f2 = FichaMedicao::where('intervencao_id', $interv->id)->where('equipamento_id', $e2->id)->firstOrFail();
+        $this->assertSame('Rever ventilação', $f2->recomendacao);
+        $this->assertSame('Normal', $f2->prioridade);
+    }
+
+    public function test_recomendacao_reabre_no_editor(): void
+    {
+        [$admin, $contrato, $e1] = $this->cenarioContrato();
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->set('data', now()->toDateString())
+            ->set("fichas.{$e1->id}.recomendacao", 'Substituir baterias em 2027')
+            ->set("fichas.{$e1->id}.prioridade", 'Alta')
+            ->call('guardarRascunho');
+
+        $relatorio = Intervencao::whereNotNull('contrato_id')->firstOrFail()->relatorio;
+
+        Livewire::actingAs($admin)->test(Novo::class, ['relatorio' => $relatorio])
+            ->assertSet("fichas.{$e1->id}.recomendacao", 'Substituir baterias em 2027')
+            ->assertSet("fichas.{$e1->id}.prioridade", 'Alta');
+    }
+
     public function test_remover_equipamento_coberto_apaga_a_sua_ficha(): void
     {
         [$admin, $contrato, $e1, $e2] = $this->cenarioContrato();

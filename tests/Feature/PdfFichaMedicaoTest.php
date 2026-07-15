@@ -137,6 +137,40 @@ class PdfFichaMedicaoTest extends TestCase
         $this->assertStringNotContainsString('null', $html);                      // contrato nulo não vira "null"
     }
 
+    // A recomendação (e prioridade) é por equipamento: sai na página da ficha respetiva.
+    public function test_pdf_mostra_recomendacao_por_equipamento(): void
+    {
+        [$contrato, , $e1] = $this->contexto();
+        $relatorio = $this->relatorioContrato($contrato, $e1);
+
+        FichaMedicao::create([
+            'intervencao_id' => $relatorio->intervencao->id, 'equipamento_id' => $e1->id, 'tipo_equipamento' => 'ups',
+            'recomendacao' => 'Substituir baterias em 2027', 'prioridade' => 'Alta',
+        ]);
+
+        $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
+
+        $this->assertStringContainsString('Recomendações e próximos passos', $html);
+        $this->assertStringContainsString('Substituir baterias em 2027', $html);
+        $this->assertStringContainsString('Alta', $html);
+    }
+
+    // Ficha sem recomendação → a secção NÃO aparece (não força blocos vazios).
+    public function test_pdf_sem_recomendacao_nao_mostra_seccao(): void
+    {
+        [$contrato, , $e1] = $this->contexto();
+        $relatorio = $this->relatorioContrato($contrato, $e1);
+
+        FichaMedicao::create([
+            'intervencao_id' => $relatorio->intervencao->id, 'equipamento_id' => $e1->id, 'tipo_equipamento' => 'ups',
+            've_ln_l1' => '230.00',
+        ]);
+
+        $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
+
+        $this->assertStringNotContainsString('Recomendações e próximos passos', $html);
+    }
+
     // CRÍTICO: estado null NÃO marca nem OK nem NOK. Nunca default para NOK.
     public function test_verificacao_null_nao_marca_ok_nem_nok(): void
     {

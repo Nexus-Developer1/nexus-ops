@@ -81,13 +81,10 @@ class Novo extends Component
     // ---- Constatações ----
     public string $resumo = '';
 
-    // ---- Fichas de medição (só modo contrato) ----
+    // ---- Fichas de medição (ambos os modos) ----
     // Uma por equipamento coberto, keyed por equipamento_id. Estrutura em FichaMedicao::estruturaVazia().
+    // Inclui as "Recomendações e próximos passos" + prioridade — POR equipamento (não há campo único).
     public array $fichas = [];
-
-    // ---- Recomendações ----
-    public string $recomendacao = '';
-    public string $prioridade = 'Normal';
 
     // ---- Fotos (novos uploads temporários até gravar) ----
     public array $fotos = [];
@@ -140,9 +137,9 @@ class Novo extends Component
             $this->hora_inicio = $intervencao->hora_inicio ? substr($intervencao->hora_inicio, 0, 5) : '';
             $this->hora_fim = $intervencao->hora_fim ? substr($intervencao->hora_fim, 0, 5) : '';
             $this->resumo = $intervencao->trabalho_realizado ?? '';
-            $this->recomendacao = $intervencao->observacoes ?? '';
 
-            $this->prioridade = ($intervencao->diagnostico['prioridade'] ?? null) ?: 'Normal';
+            // Recomendações e prioridade são agora por equipamento (na ficha) — carregadas por
+            // sincronizarFichas() a partir das fichas persistidas. Ver persistirFichas().
 
             // Técnico principal (o da intervenção) + colaboradores já guardados.
             $this->tecnicoPrincipalId = $intervencao->tecnico_id;
@@ -579,23 +576,17 @@ class Novo extends Component
                 'hora_inicio' => $this->hora_inicio ?: null,
                 'hora_fim' => $this->hora_fim ?: null,
                 'trabalho_realizado' => $this->resumo ?: null,
-                'observacoes' => $this->recomendacao ?: null,
+                // observacoes/diagnostico['prioridade'] eram a recomendação ÚNICA do relatório;
+                // agora a recomendação + prioridade são POR equipamento (na ficha). Não se tocam
+                // aqui: em relatórios legados ficam preservados (fallback "Observações gerais" no PDF).
             ];
 
             if ($this->intervencaoId) {
                 $intervencao = Intervencao::findOrFail($this->intervencaoId);
-                // O diagnóstico técnico passou para a ficha de medições; aqui só se atualiza a
-                // prioridade da recomendação. NÃO destrói o diagnóstico legado (estado_geral,
-                // carga, tensões, anomalias) de relatórios antigos — só se acrescenta a prioridade.
-                $dados['diagnostico'] = array_filter(array_merge(
-                    $intervencao->diagnostico ?? [],
-                    ['prioridade' => $this->prioridade ?: null],
-                ));
                 $intervencao->update($dados);
             } else {
                 // O principal é quem cria; na edição preserva-se o técnico original (não se sobrepõe).
                 $dados['tecnico_id'] = auth()->id();
-                $dados['diagnostico'] = array_filter(['prioridade' => $this->prioridade ?: null]);
                 $intervencao = Intervencao::create($dados);
                 $this->intervencaoId = $intervencao->id;
             }

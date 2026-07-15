@@ -8,7 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-07-15
 
-- 🎨 **Filtros dos Ativos reorganizados** — os separadores de tipo passam para uma linha própria; a pesquisa e o filtro de família ficam alinhados por baixo. Mais limpo com muitos tipos/famílias.
+- 🧰 **Recomendações por equipamento** — o campo "Recomendações e próximos passos" (+ prioridade) deixa de ser único no relatório e passa para **cada ficha de equipamento**; sai na página da ficha respetiva no PDF. Uma recomendação, por si só, já faz a ficha persistir. Relatórios legados mantêm a recomendação antiga ("Observações"). Requer migração.
+- 🎨 **Filtros dos Ativos reorganizados** — os separadores de tipo passam para uma linha própria; a pesquisa e o filtro de família ficam alinhados por baixo. Mais limpo com muitos tipos/famílias. `4e81bb6`
 - 🧰 **Filtro por família nos Ativos** — traz a **família** do artigo do PHC (`st.familia`/`st.faminome`, via `ma.ref = st.ref` no sync) e acrescenta um filtro por família na listagem — para separar equipamentos (ex.: UPS) de artigos que não são equipamento (ex.: peças/reparação). Requer re-sync para popular os existentes. `b25944a`
 - 🧰 **Tipo de equipamento "Sistema"** — tipo genérico para soluções compostas (ex.: WiFi por escola do Município do Barreiro). Aproveita a lista de componentes, o "sem nº de série" e a localização (a escola) já existentes. `65b3cc6`
 - 🧰 **Sistema composto / deteção de incêndio** — novo tipo de equipamento "Deteção de incêndio" + **lista de componentes** (designação + quantidade) no equipamento. Permite criar contratos/relatórios para sistemas sem nº de série e compostos por várias peças (registo + ficha + PDF). `93a4854`
