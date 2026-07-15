@@ -8,6 +8,7 @@ enum TipoEquipamento: string
     case Gerador = 'gerador';
     case Pdu = 'pdu';
     case Incendio = 'incendio';
+    case Sistema = 'sistema';
 
     public function rotulo(): string
     {
@@ -16,6 +17,7 @@ enum TipoEquipamento: string
             self::Gerador => 'Gerador',
             self::Pdu => 'PDU',
             self::Incendio => 'Deteção de incêndio',
+            self::Sistema => 'Sistema',
         };
     }
 
@@ -27,6 +29,7 @@ enum TipoEquipamento: string
             self::Gerador => 'bg-aviso-100 text-aviso-500',
             self::Pdu => 'bg-slate-100 text-texto-medio',
             self::Incendio => 'bg-perigo-100 text-perigo-600',
+            self::Sistema => 'bg-verde-50 text-verde-700',
         };
     }
 }

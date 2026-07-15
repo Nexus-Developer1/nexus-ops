@@ -241,6 +241,31 @@ class EquipamentoManualTest extends TestCase
         $this->assertEquals(4, $eq->atributos['componentes'][1]['quantidade']);
     }
 
+    public function test_novo_equipamento_tipo_sistema_wifi_com_localizacao_e_componentes(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'Municipio do Barreiro', 'ativo' => true]);
+        Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sede']);
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->set('tipo', 'sistema')
+            ->set('modelo', 'WiFi EB1')
+            ->set('localizacao_instalacao', 'EB1 do Barreiro')
+            ->call('adicionarComponente')
+            ->set('componentes.0.designacao', 'Access Point')
+            ->set('componentes.0.quantidade', '8')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $eq = Equipamento::where('modelo', 'WiFi EB1')->firstOrFail();
+        $this->assertSame('sistema', $eq->tipo->value);
+        $this->assertNull($eq->numero_serie);
+        $this->assertSame('EB1 do Barreiro', $eq->localizacao_instalacao);   // escola na localização
+        $this->assertCount(1, $eq->atributos['componentes']);
+        $this->assertEquals(8, $eq->atributos['componentes'][0]['quantidade']);
+    }
+
     public function test_ficha_edita_componentes_do_sistema(): void
     {
         $admin = $this->admin();
