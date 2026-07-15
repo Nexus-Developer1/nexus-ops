@@ -61,11 +61,6 @@ class Equipamento extends Model
         return $this->belongsTo(Local::class);
     }
 
-    public function componentes(): HasMany
-    {
-        return $this->hasMany(Componente::class);
-    }
-
     public function intervencoes(): HasMany
     {
         return $this->hasMany(Intervencao::class);
