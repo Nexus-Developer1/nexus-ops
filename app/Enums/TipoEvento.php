@@ -5,9 +5,9 @@ namespace App\Enums;
 // Tipo de evento da agenda (CLAUDE.md §4).
 enum TipoEvento: string
 {
+    // Nota: as ausências dos técnicos não são eventos de agenda — vivem em tecnico_disponibilidade.
     case VisitaPreventiva = 'visita_preventiva';
     case Intervencao = 'intervencao';
-    case Ausencia = 'ausencia';
     case Outro = 'outro';
 
     public function rotulo(): string
@@ -15,7 +15,6 @@ enum TipoEvento: string
         return match ($this) {
             self::VisitaPreventiva => 'Visita preventiva',
             self::Intervencao => 'Intervenção',
-            self::Ausencia => 'Ausência',
             self::Outro => 'Outro',
         };
     }
