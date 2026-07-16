@@ -537,4 +537,21 @@ class AgendaTest extends TestCase
         $this->assertSame($equip->id, $e->equipamento_id);
         $this->assertSame($equip->id, $interv->equipamento_id);
     }
+
+    public function test_tecnicos_diferentes_tem_cores_diferentes(): void
+    {
+        $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
+        // Exatamente o par que colidia no esquema por hash (ambos caíam no índice 1 = azul).
+        foreach (['Davide Fonseca', 'Rui Moreira'] as $nome) {
+            EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'X', 'estado' => 'planeado',
+                'inicio' => now(), 'fim' => now()->addHour(), 'tecnico_nome' => $nome, 'cliente_id' => $cliente->id]);
+        }
+
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->assertViewHas('nomesTecnicos', function ($nomes) {
+                $cores = array_column($nomes, 'cor', 'nome');
+
+                return count($cores) === 2 && $cores['Davide Fonseca'] !== $cores['Rui Moreira'];
+            });
+    }
 }

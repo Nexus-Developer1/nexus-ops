@@ -87,6 +87,9 @@ class Calendario extends Component
         $this->js("window.dispatchEvent(new Event('agenda:refetch'))");
     }
 
+    // Mapa nome→cor calculado por pedido (lazy) — propriedade privada, não vai no snapshot.
+    private ?array $coresTecnicos = null;
+
     private function corTecnico(?string $nome): string
     {
         $nome = trim((string) $nome);
@@ -94,7 +97,21 @@ class Calendario extends Component
             return '#94a3b8'; // por atribuir
         }
 
-        return self::PALETA[abs(crc32($nome)) % count(self::PALETA)];
+        // Cor pela POSIÇÃO na lista ordenada de nomes (1.º nome → 1.ª cor): garante cores
+        // distintas até 6 técnicos. O esquema anterior (hash do nome) podia colidir — com
+        // 2 técnicos havia 1/6 de hipótese de ficarem com a mesma cor (e aconteceu).
+        $this->coresTecnicos ??= EventoAgenda::query()
+            ->whereNotNull('tecnico_nome')
+            ->where('tecnico_nome', '!=', '')
+            ->distinct()
+            ->orderBy('tecnico_nome')
+            ->pluck('tecnico_nome')
+            ->values()
+            ->mapWithKeys(fn (string $n, int $i) => [trim($n) => self::PALETA[$i % count(self::PALETA)]])
+            ->all();
+
+        // Nome fora da lista (não devia acontecer): fallback determinístico por hash.
+        return $this->coresTecnicos[$nome] ?? self::PALETA[abs(crc32($nome)) % count(self::PALETA)];
     }
 
     // ---- Fonte de eventos do FullCalendar (intervalo visível) ----
