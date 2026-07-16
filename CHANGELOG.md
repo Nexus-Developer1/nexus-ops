@@ -8,7 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-07-16
 
-- 🧹 **Limpeza de código morto (2.ª ronda)** — remove a dependência npm `sortablejs` (nunca importada), o método `Equipamento::cliente()` (0 chamadas), a config morta `erp.sync_hora`/`erp.connections` (+ `ERP_SYNC_HORA` do `.env.example`; a ligação real vive em `config/database.php`) e o plumbing do campo órfão `intervencoes.diagnostico` (fillable/cast — a coluna e os dados legados ficam na BD, nada os lê/escreve). Apagado também o diretório local `tools/phc_sync` (sync Python antigo, substituído pelo `erp:sincronizar-equipamentos`; não estava no git). Zero mudanças de comportamento — 260 testes verdes.
+- 🧹 **Limpeza: preview/, rotulo() e README** — apaga a pasta `preview/` (28 protótipos HTML/screenshots de junho, pré-implementação; recuperáveis no histórico do git), remove `PapelUtilizador::rotulo()` (nunca chamado) e substitui o README boilerplate do Laravel por um README real do projeto (stack, setup dev, testes, comandos, convenções). Zero mudanças de comportamento — 260 testes verdes.
+- 🧹 **Limpeza de código morto (2.ª ronda)** — remove a dependência npm `sortablejs` (nunca importada), o método `Equipamento::cliente()` (0 chamadas), a config morta `erp.sync_hora`/`erp.connections` (+ `ERP_SYNC_HORA` do `.env.example`; a ligação real vive em `config/database.php`) e o plumbing do campo órfão `intervencoes.diagnostico` (fillable/cast — a coluna e os dados legados ficam na BD, nada os lê/escreve). Apagado também o diretório local `tools/phc_sync` (sync Python antigo, substituído pelo `erp:sincronizar-equipamentos`; não estava no git). Zero mudanças de comportamento — 260 testes verdes. `b2598b6`
 
 ## 2026-07-15
 
