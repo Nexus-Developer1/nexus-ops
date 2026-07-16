@@ -12,6 +12,7 @@ use App\Models\Local;
 use App\Models\ModeloFaturacao;
 use App\Models\Relatorio;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 // O PDF de um relatório de CONTRATO inclui a ficha de medições (uma por equipamento);
@@ -105,7 +106,10 @@ class PdfFichaMedicaoTest extends TestCase
         [$contrato, , $e1] = $this->contexto();
         $interv = Intervencao::create([
             'equipamento_id' => $e1->id, 'contrato_id' => $contrato->id, 'tipo' => 'preventiva', 'estado' => 'concluida',
-            'diagnostico' => ['estado_geral' => 'Operacional', 'carga' => '55', 'prioridade' => 'Normal'],
+        ]);
+        // Diagnóstico legado semeado direto na BD — o campo saiu do fillable (nada o escreve na app).
+        DB::table('intervencoes')->where('id', $interv->id)->update([
+            'diagnostico' => json_encode(['estado_geral' => 'Operacional', 'carga' => '55', 'prioridade' => 'Normal']),
         ]);
         $relatorio = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/9400', 'data' => now(), 'estado' => EstadoRelatorio::Finalizado]);
 

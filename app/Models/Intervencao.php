@@ -44,8 +44,8 @@ class Intervencao extends Model
         'hora_fim',
         'descricao_problema',
         'trabalho_realizado',
+        // observacoes: legado — a recomendação única dos relatórios antigos; só o PDF a lê.
         'observacoes',
-        'diagnostico',
     ];
 
     /** @return array<string, string> */
@@ -56,7 +56,6 @@ class Intervencao extends Model
             'estado' => EstadoIntervencao::class,
             'data_inicio' => 'datetime',
             'data_fim' => 'datetime',
-            'diagnostico' => 'array',
         ];
     }
 

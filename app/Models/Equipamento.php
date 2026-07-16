@@ -74,10 +74,4 @@ class Equipamento extends Model
     {
         return $this->belongsToMany(Contrato::class, 'contrato_equipamentos')->withTimestamps();
     }
-
-    // Cliente a que o equipamento pertence (via local).
-    public function cliente(): ?Cliente
-    {
-        return $this->local?->cliente;
-    }
 }

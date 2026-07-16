@@ -6,9 +6,13 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-07-16
+
+- 🧹 **Limpeza de código morto (2.ª ronda)** — remove a dependência npm `sortablejs` (nunca importada), o método `Equipamento::cliente()` (0 chamadas), a config morta `erp.sync_hora`/`erp.connections` (+ `ERP_SYNC_HORA` do `.env.example`; a ligação real vive em `config/database.php`) e o plumbing do campo órfão `intervencoes.diagnostico` (fillable/cast — a coluna e os dados legados ficam na BD, nada os lê/escreve). Apagado também o diretório local `tools/phc_sync` (sync Python antigo, substituído pelo `erp:sincronizar-equipamentos`; não estava no git). Zero mudanças de comportamento — 260 testes verdes.
+
 ## 2026-07-15
 
-- 🧰 **Recomendações por equipamento** — o campo "Recomendações e próximos passos" (+ prioridade) deixa de ser único no relatório e passa para **cada ficha de equipamento**; sai na página da ficha respetiva no PDF. Uma recomendação, por si só, já faz a ficha persistir. Relatórios legados mantêm a recomendação antiga ("Observações"). Requer migração.
+- 🧰 **Recomendações por equipamento** — o campo "Recomendações e próximos passos" (+ prioridade) deixa de ser único no relatório e passa para **cada ficha de equipamento**; sai na página da ficha respetiva no PDF. Uma recomendação, por si só, já faz a ficha persistir. Relatórios legados mantêm a recomendação antiga ("Observações"). Requer migração. `ff5f90a`
 - 🎨 **Filtros dos Ativos reorganizados** — os separadores de tipo passam para uma linha própria; a pesquisa e o filtro de família ficam alinhados por baixo. Mais limpo com muitos tipos/famílias. `4e81bb6`
 - 🧰 **Filtro por família nos Ativos** — traz a **família** do artigo do PHC (`st.familia`/`st.faminome`, via `ma.ref = st.ref` no sync) e acrescenta um filtro por família na listagem — para separar equipamentos (ex.: UPS) de artigos que não são equipamento (ex.: peças/reparação). Requer re-sync para popular os existentes. `b25944a`
 - 🧰 **Tipo de equipamento "Sistema"** — tipo genérico para soluções compostas (ex.: WiFi por escola do Município do Barreiro). Aproveita a lista de componentes, o "sem nº de série" e a localização (a escola) já existentes. `65b3cc6`
