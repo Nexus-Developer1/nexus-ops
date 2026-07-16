@@ -4,6 +4,7 @@ namespace App\Livewire\Equipamentos;
 
 use App\Enums\EstadoIntervencao;
 use App\Enums\TipoIntervencao;
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
 use Illuminate\Support\Carbon;
@@ -13,6 +14,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app', ['ativo' => 'ativos'])]
 class Ficha extends Component
 {
+    use ApenasEquipa;
+
     public Equipamento $equipamento;
 
     public string $notas = '';

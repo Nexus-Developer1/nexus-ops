@@ -139,8 +139,15 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
         $disco = \Illuminate\Support\Facades\Storage::disk();
         abort_unless($disco->exists($anexo->storage_key), 404);
 
+        // Nome sanitizado para o cabeçalho (sem aspas/quebras de linha → sem header injection).
+        $nome = preg_replace('/[^\w.\- ]/u', '_', basename($anexo->nome_ficheiro ?? 'anexo')) ?: 'anexo';
+
         return response($disco->get($anexo->storage_key))
-            ->header('Content-Type', $anexo->mime ?? 'application/octet-stream');
+            ->header('Content-Type', $anexo->mime ?? 'application/octet-stream')
+            // nosniff: impede o browser de reinterpretar o conteúdo como HTML/JS (o upload já
+            // valida `image`, mas é defesa em profundidade); inline com nome legível.
+            ->header('X-Content-Type-Options', 'nosniff')
+            ->header('Content-Disposition', 'inline; filename="'.$nome.'"');
     })->name('anexos.ver');
 });
 

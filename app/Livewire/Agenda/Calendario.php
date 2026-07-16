@@ -7,6 +7,7 @@ use App\Enums\EstadoEvento;
 use App\Enums\EstadoRelatorio;
 use App\Enums\PapelUtilizador;
 use App\Enums\TipoEvento;
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\AssuntoEvento;
 use App\Models\Contrato;
 use App\Models\Equipamento;
@@ -26,6 +27,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app', ['ativo' => 'agenda', 'titulo' => 'Agenda'])]
 class Calendario extends Component
 {
+    use ApenasEquipa;
+
     // Filtro por técnico: pelo NOME (os eventos são marcados por tecnico_nome, texto livre),
     // não pela conta. Vazio = todos.
     #[Url]

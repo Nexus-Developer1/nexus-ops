@@ -4,6 +4,7 @@ namespace App\Livewire\Contratos;
 
 use App\Enums\PrioridadeSla;
 use App\Enums\TipoContrato;
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
@@ -15,6 +16,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app', ['ativo' => 'contratos', 'titulo' => 'Contratos'])]
 class Editor extends Component
 {
+    use ApenasEquipa;
+
     public ?Contrato $contrato = null;
 
     // Expressão pura (sem extensão) para pesquisar nome ignorando acentos/maiúsculas.

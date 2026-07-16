@@ -4,6 +4,7 @@ namespace App\Livewire\Equipamentos;
 
 use App\Enums\EstadoEquipamento;
 use App\Enums\TipoEquipamento;
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\Local;
@@ -18,6 +19,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app', ['ativo' => 'ativos', 'titulo' => 'Novo equipamento'])]
 class Novo extends Component
 {
+    use ApenasEquipa;
+
     private const NOME_SEM_ACENTOS = "translate(lower(nome), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
 
     private const LOCAL_PADRAO = 'Instalação principal';

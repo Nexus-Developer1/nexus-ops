@@ -19,6 +19,11 @@ class Login extends Component
 
     private const JANELA_SEGUNDOS = 60;
 
+    // Hash bcrypt (custo 12, igual ao real) de um valor inexistente. Usado quando o email não
+    // corresponde a nenhuma conta, para o Hash::check correr NA MESMA e o tempo de resposta não
+    // revelar se a conta existe (anti-enumeração por timing). Não é segredo — é lixo determinístico.
+    private const HASH_DUMMY = '$2y$12$qy4D3gGol7huqGe9mi3nzet4gRnRocAEf52mRdeo8RRIvnbL6gG3S';
+
     #[Validate('required|email')]
     public string $email = '';
 
@@ -48,7 +53,11 @@ class Login extends Component
 
         // Verifica a password sem iniciar sessão: a autenticação só se completa depois do
         // código MFA (verificação em duas etapas). Mensagem genérica (não revela se o email existe).
-        if (! $user || ! Hash::check($this->password, (string) $user->password)) {
+        // Corre SEMPRE um Hash::check (contra um hash dummy quando não há conta) para que o tempo
+        // de resposta seja igual com ou sem conta — não vaza a existência por timing.
+        $passwordValida = Hash::check($this->password, $user?->password ?? self::HASH_DUMMY);
+
+        if (! $user || ! $passwordValida) {
             RateLimiter::hit($chave, self::JANELA_SEGUNDOS);
             throw ValidationException::withMessages([
                 'email' => 'As credenciais não correspondem aos nossos registos.',

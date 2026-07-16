@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Equipamentos;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\Local;
@@ -17,6 +18,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app', ['ativo' => 'ativos', 'titulo' => 'Associar equipamento'])]
 class Associar extends Component
 {
+    use ApenasEquipa;
+
     public ?int $equipamento_id = null;
     public ?int $local_id = null;
 
