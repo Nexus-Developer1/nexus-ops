@@ -46,8 +46,10 @@ class Calendario extends Component
     // Detalhe de uma ausência (clique numa ausência).
     public ?int $ausenciaSelecionadaId = null;
 
-    // Modal de criação de evento próprio (sempre tipo "outro"; o texto livre vai para o título).
+    // Modal de criação/edição de evento próprio (o texto livre vai para o título).
+    // editandoId preenchido = modo edição (o mesmo modal e validação servem os dois).
     public bool $modalCriar = false;
+    public ?int $editandoId = null;
     public string $formTitulo = '';
     public string $formTecnicoNome = ''; // técnico em texto livre (com histórico); sem conta de utilizador
     public string $formInicio = '';
@@ -253,9 +255,41 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['formTitulo', 'formTecnicoNome', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura']);
+        $this->reset(['editandoId', 'formTitulo', 'formTecnicoNome', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura']);
         $this->formInicio = Carbon::parse($inicio)->format('Y-m-d\TH:i');
         $this->formFim = Carbon::parse($fim)->format('Y-m-d\TH:i');
+        $this->modalCriar = true;
+    }
+
+    // ---- Edição de evento (reutiliza o modal/formulário da criação) ----
+    // Editáveis: eventos ainda NÃO convertidos em intervenção e não-preventivos. As preventivas
+    // são geridas pelo contrato; um evento já com intervenção edita-se no relatório — é a fonte
+    // única de verdade e a camada 3 move o evento (mesmas regras do removerEvento).
+    public function abrirEdicao(): void
+    {
+        abort_if(auth()->user()->ehCliente(), 403);
+
+        $evento = EventoAgenda::with('equipamento')->findOrFail($this->eventoSelecionadoId);
+
+        if ($evento->tipo === TipoEvento::VisitaPreventiva || $evento->intervencao_id) {
+            return; // o botão não aparece nestes casos — guard defensivo
+        }
+
+        $this->resetErrorBag();
+        $this->editandoId = $evento->id;
+        $this->formTitulo = $evento->titulo;
+        $this->formTecnicoNome = $evento->tecnico_nome ?? '';
+        $this->formEquipamentoId = $evento->equipamento_id;
+        $this->formEquipamentoBusca = $evento->equipamento
+            ? trim(($evento->equipamento->numero_serie ?? '—')
+                . ' · ' . trim($evento->equipamento->fabricante . ' ' . $evento->equipamento->modelo))
+            : '';
+        $this->formContratoId = $evento->contrato_id;
+        $this->formCobertura = $evento->cobertura;
+        $this->formInicio = $evento->inicio->format('Y-m-d\TH:i');
+        $this->formFim = $evento->fim->format('Y-m-d\TH:i');
+
+        $this->eventoSelecionadoId = null; // fecha o detalhe; abre o formulário
         $this->modalCriar = true;
     }
 
@@ -297,6 +331,7 @@ class Calendario extends Component
     public function fecharCriar(): void
     {
         $this->modalCriar = false;
+        $this->editandoId = null;
     }
 
     // Guarda um novo assunto de evento próprio (lookup que cresce com o uso) e
@@ -322,6 +357,8 @@ class Calendario extends Component
         return true;
     }
 
+    // Submit do modal de evento: cria um novo OU grava a edição (editandoId preenchido).
+    // Mantém o nome histórico "criarEvento" — é o submit único do formulário.
     public function criarEvento(DetetorConflitos $detetor, GeradorRascunhoDeEvento $geradorRascunho)
     {
         abort_if(auth()->user()->ehCliente(), 403);
@@ -339,13 +376,14 @@ class Calendario extends Component
         $inicio = Carbon::parse($this->formInicio);
         $fim = Carbon::parse($this->formFim);
 
-        // Evento próprio. Verifica horário e conflito de técnico.
+        // Verifica horário e conflito de técnico. Na edição, o próprio evento é excluído da
+        // deteção (senão entraria em conflito consigo mesmo e nunca deixaria gravar).
         if ($razao = $detetor->foraDeHorario($inicio, $fim)) {
             $this->addError('formInicio', $razao);
 
             return;
         }
-        if (filled($this->formTecnicoNome) && $razao = $detetor->conflitoPorNome(trim($this->formTecnicoNome), $inicio, $fim)) {
+        if (filled($this->formTecnicoNome) && $razao = $detetor->conflitoPorNome(trim($this->formTecnicoNome), $inicio, $fim, $this->editandoId)) {
             $this->addError('formInicio', $razao);
 
             return;
@@ -374,12 +412,10 @@ class Calendario extends Component
             $clienteId = Contrato::withoutGlobalScopes()->whereKey($this->formContratoId)->value('cliente_id');
         }
 
-        $evento = EventoAgenda::create([
-            'tipo' => TipoEvento::Outro,
+        $atributos = [
             'titulo' => $titulo,
             'inicio' => $inicio,
             'fim' => $fim,
-            'estado' => EstadoEvento::Planeado,
             'tecnico_nome' => trim($this->formTecnicoNome) ?: null,
             'equipamento_id' => $equipamentoId,
             'local_id' => $localId,
@@ -387,7 +423,29 @@ class Calendario extends Component
             'contrato_id' => $this->formContratoId,
             // Cobertura só se houver contrato (incluída = desconta saldo; extra = faturável).
             'cobertura' => $this->formContratoId ? $this->formCobertura : null,
-        ]);
+        ];
+
+        if ($this->editandoId) {
+            // EDIÇÃO: atualiza o evento existente (tipo e estado ficam como estão). Re-verifica
+            // as regras de elegibilidade — o estado pode ter mudado desde que o modal abriu
+            // (ex.: outro utilizador iniciou a visita entretanto).
+            $evento = EventoAgenda::findOrFail($this->editandoId);
+            if ($evento->tipo === TipoEvento::VisitaPreventiva || $evento->intervencao_id) {
+                session()->flash('erro', 'Este evento já não pode ser editado pela agenda.');
+                $this->modalCriar = false;
+                $this->editandoId = null;
+                $this->recarregar();
+
+                return;
+            }
+
+            $evento->update($atributos);
+        } else {
+            $evento = EventoAgenda::create($atributos + [
+                'tipo' => TipoEvento::Outro,
+                'estado' => EstadoEvento::Planeado,
+            ]);
+        }
 
         // Notifica o técnico atribuído (CLAUDE.md §6).
         if ($evento->tecnico_id) {
@@ -396,11 +454,14 @@ class Calendario extends Component
 
         // Camada 2: evento com equipamento OU contrato + data futura → gera rascunho de
         // relatório ligado (o equipamento do contrato serve de âmbito quando não se escolhe um).
+        // Também na edição: se o equipamento/contrato foi acrescentado agora, o rascunho nasce cá
+        // (gerar() é idempotente — eventos já convertidos nem chegam aqui).
         if (($equipamentoId || $this->formContratoId) && $inicio->isFuture() && $geradorRascunho->gerar($evento)) {
             session()->flash('sucesso', 'Rascunho de relatório criado para esta intervenção.');
         }
 
         $this->modalCriar = false;
+        $this->editandoId = null;
         $this->recarregar();
     }
 

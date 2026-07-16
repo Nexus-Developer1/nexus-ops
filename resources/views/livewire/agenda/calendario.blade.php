@@ -76,6 +76,14 @@
                         </dl>
 
                         <div class="flex flex-wrap items-center justify-end gap-3 border-t border-borda px-6 py-4">
+                            {{-- Editar: só eventos ainda não convertidos e não-preventivos (os outros
+                                 editam-se no relatório / são geridos pelo contrato). --}}
+                            @if (! $evento->intervencao_id && $evento->tipo !== \App\Enums\TipoEvento::VisitaPreventiva)
+                                <button wire:click="abrirEdicao" class="botao-secundario">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    Editar
+                                </button>
+                            @endif
                             @if ($evento->intervencao_id)
                                 @php($rel = $evento->intervencao?->relatorio)
                                 @if ($evento->tipo !== \App\Enums\TipoEvento::VisitaPreventiva)
@@ -127,12 +135,12 @@
                 </div>
             @endif
 
-            {{-- Modal de criação de evento próprio (campo único "Tipo de evento") --}}
+            {{-- Modal de criação/edição de evento próprio (campo único "Tipo de evento") --}}
             @if ($modalCriar)
                 <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4" wire:click.self="fecharCriar">
                     <form wire:submit="criarEvento" class="w-full max-w-md rounded-xl border border-borda bg-white shadow-xl">
                         <div class="flex items-start justify-between border-b border-borda px-6 py-5">
-                            <h2 class="text-lg font-semibold text-texto-forte">Novo evento</h2>
+                            <h2 class="text-lg font-semibold text-texto-forte">{{ $editandoId ? 'Editar evento' : 'Novo evento' }}</h2>
                             <button type="button" wire:click="fecharCriar" class="text-texto-fraco hover:text-texto-forte">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
@@ -319,7 +327,7 @@
 
                         <div class="flex flex-wrap items-center justify-end gap-3 border-t border-borda px-6 py-4">
                             <button type="button" wire:click="fecharCriar" class="botao-secundario">Cancelar</button>
-                            <button type="submit" class="botao-primario">Criar</button>
+                            <button type="submit" class="botao-primario">{{ $editandoId ? 'Guardar' : 'Criar' }}</button>
                         </div>
                     </form>
                 </div>

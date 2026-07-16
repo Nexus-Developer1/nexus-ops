@@ -396,4 +396,105 @@ class AgendaTest extends TestCase
 
         $this->assertEquals('2026-07-21 11:00:00', $e->fresh()->inicio->format('Y-m-d H:i:s'));
     }
+
+    // ---- Edição de evento (abrirEdicao + criarEvento com editandoId) ----
+
+    public function test_editar_evento_proprio_altera_titulo_tecnico_e_horas(): void
+    {
+        $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
+        $e = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Reunião', 'estado' => 'planeado',
+            'inicio' => Carbon::parse('2026-07-06 10:00'), 'fim' => Carbon::parse('2026-07-06 11:00'),
+            'tecnico_nome' => 'João Silva', 'cliente_id' => $cliente->id]);
+
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->call('selecionar', $e->id)
+            ->call('abrirEdicao')
+            // O formulário abre pré-preenchido com os dados do evento.
+            ->assertSet('editandoId', $e->id)
+            ->assertSet('modalCriar', true)
+            ->assertSet('formTitulo', 'Reunião')
+            ->assertSet('formTecnicoNome', 'João Silva')
+            ->assertSet('formInicio', '2026-07-06T10:00')
+            // Altera e grava.
+            ->set('formTitulo', 'Reunião com cliente')
+            ->set('formTecnicoNome', 'Maria Costa')
+            ->set('formInicio', '2026-07-07T14:00')
+            ->set('formFim', '2026-07-07T15:00')
+            ->call('criarEvento')
+            ->assertHasNoErrors()
+            ->assertSet('modalCriar', false)
+            ->assertSet('editandoId', null);
+
+        $e->refresh();
+        $this->assertSame('Reunião com cliente', $e->titulo);
+        $this->assertSame('Maria Costa', $e->tecnico_nome);
+        $this->assertSame('2026-07-07 14:00', $e->inicio->format('Y-m-d H:i'));
+        $this->assertSame(TipoEvento::Outro, $e->tipo); // o tipo não muda na edição
+        $this->assertSame(1, EventoAgenda::count()); // editou — não criou um novo
+    }
+
+    public function test_editar_evento_nao_conflitua_consigo_mesmo(): void
+    {
+        $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
+        $e = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Reunião', 'estado' => 'planeado',
+            'inicio' => Carbon::parse('2026-07-06 10:00'), 'fim' => Carbon::parse('2026-07-06 11:00'),
+            'tecnico_nome' => 'João Silva', 'cliente_id' => $cliente->id]);
+
+        // Guardar SEM mexer nas horas: o próprio evento não pode contar como sobreposição.
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->call('selecionar', $e->id)
+            ->call('abrirEdicao')
+            ->set('formTitulo', 'Reunião (atualizada)')
+            ->call('criarEvento')
+            ->assertHasNoErrors();
+
+        $this->assertSame('Reunião (atualizada)', $e->fresh()->titulo);
+    }
+
+    public function test_editar_deteta_conflito_com_outro_evento_do_tecnico(): void
+    {
+        $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
+        EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Ocupado', 'estado' => 'planeado',
+            'inicio' => Carbon::parse('2026-07-06 14:00'), 'fim' => Carbon::parse('2026-07-06 15:00'),
+            'tecnico_nome' => 'João Silva', 'cliente_id' => $cliente->id]);
+        $e = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Reunião', 'estado' => 'planeado',
+            'inicio' => Carbon::parse('2026-07-06 10:00'), 'fim' => Carbon::parse('2026-07-06 11:00'),
+            'tecnico_nome' => 'João Silva', 'cliente_id' => $cliente->id]);
+
+        // Mover para cima do "Ocupado" → conflito real detetado.
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->call('selecionar', $e->id)
+            ->call('abrirEdicao')
+            ->set('formInicio', '2026-07-06T14:30')
+            ->set('formFim', '2026-07-06T15:30')
+            ->call('criarEvento')
+            ->assertHasErrors('formInicio');
+
+        $this->assertSame('2026-07-06 10:00', $e->fresh()->inicio->format('Y-m-d H:i')); // intacto
+    }
+
+    public function test_preventiva_e_evento_com_intervencao_nao_sao_editaveis(): void
+    {
+        $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
+
+        $preventiva = EventoAgenda::create(['tipo' => 'visita_preventiva', 'titulo' => 'Preventiva', 'estado' => 'planeado',
+            'inicio' => Carbon::parse('2026-07-06 09:00'), 'fim' => Carbon::parse('2026-07-06 10:00'), 'cliente_id' => $cliente->id]);
+
+        $interv = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'preventiva', 'estado' => 'planeada']);
+        $convertido = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Convertido', 'estado' => 'planeado',
+            'inicio' => Carbon::parse('2026-07-06 11:00'), 'fim' => Carbon::parse('2026-07-06 12:00'),
+            'cliente_id' => $cliente->id, 'intervencao_id' => $interv->id]);
+
+        // Nenhum dos dois abre o modal de edição (guard defensivo do abrirEdicao).
+        $admin = $this->admin();
+        foreach ([$preventiva, $convertido] as $evento) {
+            Livewire::actingAs($admin)->test(Calendario::class)
+                ->call('selecionar', $evento->id)
+                ->call('abrirEdicao')
+                ->assertSet('modalCriar', false)
+                ->assertSet('editandoId', null);
+        }
+    }
 }
