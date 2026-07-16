@@ -48,8 +48,11 @@ class Calendario extends Component
 
     // Modal de criação/edição de evento próprio (o texto livre vai para o título).
     // editandoId preenchido = modo edição (o mesmo modal e validação servem os dois).
+    // editandoConvertido = o evento já tem intervenção (rascunho): equipamento e contrato
+    // pertencem ao relatório e ficam trancados no formulário; as datas propagam-se.
     public bool $modalCriar = false;
     public ?int $editandoId = null;
+    public bool $editandoConvertido = false;
     public string $formTitulo = '';
     public string $formTecnicoNome = ''; // técnico em texto livre (com histórico); sem conta de utilizador
     public string $formInicio = '';
@@ -255,27 +258,39 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['editandoId', 'formTitulo', 'formTecnicoNome', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura']);
+        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoNome', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura']);
         $this->formInicio = Carbon::parse($inicio)->format('Y-m-d\TH:i');
         $this->formFim = Carbon::parse($fim)->format('Y-m-d\TH:i');
         $this->modalCriar = true;
     }
 
+    // Um evento é editável pela agenda? Preventivas nunca (geridas pelo contrato). Convertidos
+    // só enquanto o relatório for RASCUNHO — depois de finalizado/enviado é documento oficial e
+    // o evento fica trancado (edita-se abrindo a intervenção). Mesmas regras do removerEvento.
+    private function podeEditar(EventoAgenda $evento): bool
+    {
+        if ($evento->tipo === TipoEvento::VisitaPreventiva) {
+            return false;
+        }
+
+        $relatorio = $evento->intervencao?->relatorio;
+
+        return ! $relatorio || $relatorio->estado === EstadoRelatorio::Rascunho;
+    }
+
     // ---- Edição de evento (reutiliza o modal/formulário da criação) ----
-    // Editáveis: eventos ainda NÃO convertidos em intervenção e não-preventivos. As preventivas
-    // são geridas pelo contrato; um evento já com intervenção edita-se no relatório — é a fonte
-    // única de verdade e a camada 3 move o evento (mesmas regras do removerEvento).
     public function abrirEdicao(): void
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $evento = EventoAgenda::with('equipamento')->findOrFail($this->eventoSelecionadoId);
+        $evento = EventoAgenda::with('equipamento', 'intervencao.relatorio')->findOrFail($this->eventoSelecionadoId);
 
-        if ($evento->tipo === TipoEvento::VisitaPreventiva || $evento->intervencao_id) {
+        if (! $this->podeEditar($evento)) {
             return; // o botão não aparece nestes casos — guard defensivo
         }
 
         $this->resetErrorBag();
+        $this->editandoConvertido = (bool) $evento->intervencao_id;
         $this->editandoId = $evento->id;
         $this->formTitulo = $evento->titulo;
         $this->formTecnicoNome = $evento->tecnico_nome ?? '';
@@ -332,6 +347,7 @@ class Calendario extends Component
     {
         $this->modalCriar = false;
         $this->editandoId = null;
+        $this->editandoConvertido = false;
     }
 
     // Guarda um novo assunto de evento próprio (lookup que cresce com o uso) e
@@ -428,9 +444,9 @@ class Calendario extends Component
         if ($this->editandoId) {
             // EDIÇÃO: atualiza o evento existente (tipo e estado ficam como estão). Re-verifica
             // as regras de elegibilidade — o estado pode ter mudado desde que o modal abriu
-            // (ex.: outro utilizador iniciou a visita entretanto).
-            $evento = EventoAgenda::findOrFail($this->editandoId);
-            if ($evento->tipo === TipoEvento::VisitaPreventiva || $evento->intervencao_id) {
+            // (ex.: outro utilizador finalizou o relatório entretanto).
+            $evento = EventoAgenda::with('intervencao.relatorio')->findOrFail($this->editandoId);
+            if (! $this->podeEditar($evento)) {
                 session()->flash('erro', 'Este evento já não pode ser editado pela agenda.');
                 $this->modalCriar = false;
                 $this->editandoId = null;
@@ -439,7 +455,27 @@ class Calendario extends Component
                 return;
             }
 
-            $evento->update($atributos);
+            if ($evento->intervencao_id) {
+                // Convertido (relatório em rascunho): equipamento/contrato pertencem ao relatório
+                // e não mudam por aqui — só título, técnico, datas e cobertura. As datas/horas
+                // propagam-se à intervenção para os dois lados contarem a mesma história
+                // (única fonte de verdade — CLAUDE.md §6).
+                $evento->update([
+                    'titulo' => $titulo,
+                    'inicio' => $inicio,
+                    'fim' => $fim,
+                    'tecnico_nome' => trim($this->formTecnicoNome) ?: null,
+                    'cobertura' => $evento->contrato_id ? $this->formCobertura : null,
+                ]);
+
+                $evento->intervencao->update([
+                    'data_inicio' => $inicio->toDateString(),
+                    'hora_inicio' => $inicio->format('H:i'),
+                    'hora_fim' => $fim->format('H:i'),
+                ]);
+            } else {
+                $evento->update($atributos);
+            }
         } else {
             $evento = EventoAgenda::create($atributos + [
                 'tipo' => TipoEvento::Outro,
@@ -462,6 +498,7 @@ class Calendario extends Component
 
         $this->modalCriar = false;
         $this->editandoId = null;
+        $this->editandoConvertido = false;
         $this->recarregar();
     }
 
@@ -593,6 +630,7 @@ class Calendario extends Component
             'tecnicos' => $tecnicos,
             'nomesTecnicos' => $nomesTecnicos,
             'evento' => $evento,
+            'eventoEditavel' => $evento && $this->podeEditar($evento),
             'ausencia' => $ausencia,
             'assuntos' => AssuntoEvento::orderBy('nome')->get(),
             'equipamentosFiltrados' => $equipamentosFiltrados,

@@ -473,7 +473,7 @@ class AgendaTest extends TestCase
         $this->assertSame('2026-07-06 10:00', $e->fresh()->inicio->format('Y-m-d H:i')); // intacto
     }
 
-    public function test_preventiva_e_evento_com_intervencao_nao_sao_editaveis(): void
+    public function test_preventiva_e_relatorio_finalizado_nao_sao_editaveis(): void
     {
         $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
@@ -482,19 +482,59 @@ class AgendaTest extends TestCase
         $preventiva = EventoAgenda::create(['tipo' => 'visita_preventiva', 'titulo' => 'Preventiva', 'estado' => 'planeado',
             'inicio' => Carbon::parse('2026-07-06 09:00'), 'fim' => Carbon::parse('2026-07-06 10:00'), 'cliente_id' => $cliente->id]);
 
-        $interv = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'preventiva', 'estado' => 'planeada']);
-        $convertido = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Convertido', 'estado' => 'planeado',
+        // Evento convertido cujo relatório JÁ FOI FINALIZADO — documento oficial, evento trancado.
+        $interv = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'preventiva', 'estado' => 'concluida']);
+        $interv->relatorio()->create(['numero' => '2026/0100', 'data' => now(), 'estado' => 'finalizado']);
+        $finalizado = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Finalizado', 'estado' => 'planeado',
             'inicio' => Carbon::parse('2026-07-06 11:00'), 'fim' => Carbon::parse('2026-07-06 12:00'),
             'cliente_id' => $cliente->id, 'intervencao_id' => $interv->id]);
 
         // Nenhum dos dois abre o modal de edição (guard defensivo do abrirEdicao).
         $admin = $this->admin();
-        foreach ([$preventiva, $convertido] as $evento) {
+        foreach ([$preventiva, $finalizado] as $evento) {
             Livewire::actingAs($admin)->test(Calendario::class)
                 ->call('selecionar', $evento->id)
                 ->call('abrirEdicao')
                 ->assertSet('modalCriar', false)
                 ->assertSet('editandoId', null);
         }
+    }
+
+    public function test_editar_evento_convertido_com_rascunho_propaga_datas_a_intervencao(): void
+    {
+        $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
+
+        // Evento convertido com relatório em RASCUNHO (o caso normal: criado com equipamento).
+        $interv = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'preventiva', 'estado' => 'planeada',
+            'data_inicio' => '2026-07-06', 'hora_inicio' => '10:00', 'hora_fim' => '11:00']);
+        $interv->relatorio()->create(['data' => now(), 'estado' => 'rascunho']);
+        $e = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Serviço', 'estado' => 'planeado',
+            'inicio' => Carbon::parse('2026-07-06 10:00'), 'fim' => Carbon::parse('2026-07-06 11:00'),
+            'cliente_id' => $cliente->id, 'equipamento_id' => $equip->id, 'intervencao_id' => $interv->id]);
+
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->call('selecionar', $e->id)
+            ->call('abrirEdicao')
+            ->assertSet('editandoId', $e->id)
+            ->assertSet('editandoConvertido', true)
+            ->set('formTitulo', 'Serviço (adiado)')
+            ->set('formInicio', '2026-07-07T14:00')
+            ->set('formFim', '2026-07-07T15:30')
+            ->call('criarEvento')
+            ->assertHasNoErrors();
+
+        // Evento atualizado E intervenção sincronizada (datas/horas iguais dos dois lados).
+        $e->refresh();
+        $interv->refresh();
+        $this->assertSame('Serviço (adiado)', $e->titulo);
+        $this->assertSame('2026-07-07 14:00', $e->inicio->format('Y-m-d H:i'));
+        $this->assertSame('2026-07-07', $interv->data_inicio->format('Y-m-d'));
+        $this->assertSame('14:00', substr($interv->hora_inicio, 0, 5));
+        $this->assertSame('15:30', substr($interv->hora_fim, 0, 5));
+        // Equipamento e contrato intactos (geridos no relatório).
+        $this->assertSame($equip->id, $e->equipamento_id);
+        $this->assertSame($equip->id, $interv->equipamento_id);
     }
 }
