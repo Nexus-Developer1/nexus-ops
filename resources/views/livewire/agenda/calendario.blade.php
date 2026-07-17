@@ -56,7 +56,7 @@
                                 <h2 class="text-lg font-semibold text-texto-forte">{{ $evento->titulo }}</h2>
                                 <p class="mt-1 text-sm text-texto-medio">{{ $evento->tipo->rotulo() }} · {{ $evento->estado->rotulo() }}</p>
                             </div>
-                            <button wire:click="fecharModal" class="text-texto-fraco hover:text-texto-forte">
+                            <button wire:click="fecharModal" class="-m-2 flex items-center justify-center rounded-lg p-2 text-texto-fraco transition hover:bg-fundo hover:text-texto-forte">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
@@ -117,7 +117,7 @@
                     <div class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-borda bg-white shadow-xl">
                         <div class="flex items-start justify-between border-b border-borda px-6 py-5">
                             <h2 class="text-lg font-semibold text-texto-forte">Ausência</h2>
-                            <button wire:click="fecharAusencia" class="text-texto-fraco hover:text-texto-forte">
+                            <button wire:click="fecharAusencia" class="-m-2 flex items-center justify-center rounded-lg p-2 text-texto-fraco transition hover:bg-fundo hover:text-texto-forte">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
@@ -141,7 +141,7 @@
                     <form wire:submit="criarEvento" class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-borda bg-white shadow-xl">
                         <div class="flex items-start justify-between border-b border-borda px-6 py-5">
                             <h2 class="text-lg font-semibold text-texto-forte">{{ $editandoId ? 'Editar evento' : 'Novo evento' }}</h2>
-                            <button type="button" wire:click="fecharCriar" class="text-texto-fraco hover:text-texto-forte">
+                            <button type="button" wire:click="fecharCriar" class="-m-2 flex items-center justify-center rounded-lg p-2 text-texto-fraco transition hover:bg-fundo hover:text-texto-forte">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
@@ -346,7 +346,7 @@
                     <form wire:submit="marcarAusencia" class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-borda bg-white shadow-xl">
                         <div class="flex items-start justify-between border-b border-borda px-6 py-5">
                             <h2 class="text-lg font-semibold text-texto-forte">Marcar ausência</h2>
-                            <button type="button" wire:click="fecharMarcarAusencia" class="text-texto-fraco hover:text-texto-forte">
+                            <button type="button" wire:click="fecharMarcarAusencia" class="-m-2 flex items-center justify-center rounded-lg p-2 text-texto-fraco transition hover:bg-fundo hover:text-texto-forte">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
