@@ -8,6 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-07-17
 
+- 🛠️ **Scheduler: removido o `schedule:run` duplicado do crontab do root** — corria em paralelo com o do `www-data` (redundante; a versão root podia criar ficheiros de cache/log com dono errado). Fica só o do `www-data`, que já era quem fazia os syncs. Confirmado no log do cron: pós-remoção só o www-data dispara, a cada minuto. Backup em `/root/crontab.bak-pre-limpeza-schedule`. Infra, sem commit de código.
+
 - 🔒 **Cabeçalhos de segurança versionados (middleware)** — CSP + `nosniff`/`X-Frame`/`Referrer` passam a ser emitidos por um middleware Laravel (`CabecalhosSeguranca`), com a CSP cópia exata da de produção e um teste que garante que nunca desaparecem. Antes viviam só na config do Apache (fora do repo, não revisável, podia derivar). HSTS fica no Apache (é da camada TLS). Esses 4 headers foram removidos da config do Apache (backup `security-headers.conf.bak-pre-middleware`), ficando cada um a sair uma só vez — infra, sem commit. `c1ef8ae`
 - 🔒 **`rel="noopener noreferrer"` nos links `target="_blank"`** — 4.ª revisão de segurança (PWA/frontend/geral) sem falhas críticas/altas/médias; único item de código corrigido: os 4 links que abrem em nova aba (PDFs de relatório, convite) ganham `rel="noopener"` (higiene anti reverse-tabnabbing; eram same-origin, risco já mínimo). `5715b1e`
 - 🧹 **Limpeza: 3 imports `Carbon` sem uso** (Portal/Dashboard, GeradorEventoDeRelatorio, ServicoAlertas) — restos de refactorings; varredura completa não encontrou mais nada morto (imports de `app/` todos usados, assets PWA todos referenciados). 272 testes verdes.
