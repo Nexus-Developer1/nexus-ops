@@ -106,4 +106,21 @@ class SegurancaHardeningTest extends TestCase
             ->assertHasNoErrors()
             ->assertSet('estado', 'Se existir uma conta com esse email, enviámos um link para redefinir a palavra-passe.');
     }
+
+    // Os cabeçalhos de segurança vêm agora da app (middleware versionado), não só do Apache.
+    public function test_cabecalhos_de_seguranca_presentes_em_todas_as_respostas_web(): void
+    {
+        $resp = $this->get(route('login'));
+
+        $csp = $resp->headers->get('Content-Security-Policy');
+        $this->assertNotNull($csp, 'CSP em falta na resposta.');
+        // Diretivas-chave da política (anti-XSS/clickjacking).
+        $this->assertStringContainsString("default-src 'self'", $csp);
+        $this->assertStringContainsString("frame-ancestors 'self'", $csp);
+        $this->assertStringContainsString("object-src 'none'", $csp);
+
+        $resp->assertHeader('X-Content-Type-Options', 'nosniff');
+        $resp->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+        $resp->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    }
 }

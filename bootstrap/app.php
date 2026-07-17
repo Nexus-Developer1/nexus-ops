@@ -14,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'papel' => \App\Http\Middleware\VerificaPapel::class,
         ]);
+
+        // Cabeçalhos de segurança em todas as respostas web (CSP, nosniff, X-Frame, Referrer).
+        // Versionado e testado — antes vivia só na config do Apache. Ver CabecalhosSeguranca.
+        $middleware->web(append: \App\Http\Middleware\CabecalhosSeguranca::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
