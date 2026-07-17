@@ -247,42 +247,18 @@
                                 @error('formEquipamentoId') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
 
-                            {{-- Técnico: texto livre com histórico (sugere nomes já usados; escreve uma vez
-                                 e fica guardado). Não é uma conta de utilizador. --}}
-                            <div
-                                x-data="{
-                                    nomes: @js($tecnicosSugeridos),
-                                    nome: $wire.entangle('formTecnicoNome'),
-                                    aberto: false,
-                                    norm(s) { return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); },
-                                    get filtrados() {
-                                        const n = this.norm(this.nome);
-                                        if (n === '') return this.nomes;
-                                        return this.nomes.filter(x => this.norm(x).includes(n));
-                                    },
-                                    abrir() { this.aberto = true; },
-                                    fechar() { this.aberto = false; },
-                                    escolher(v) { this.nome = v; this.aberto = false; },
-                                }"
-                                @click.outside="fechar()"
-                                @keydown.escape.stop="fechar()"
-                                class="relative"
-                            >
-                                <label class="campo-label" for="tecnico-combo">Técnico (opcional)</label>
-                                <input id="tecnico-combo" type="text" x-model="nome"
-                                    @focus="abrir()" @click="abrir()" @input="abrir()"
-                                    @keydown.enter.prevent="fechar()"
-                                    class="campo-input" placeholder="Escreva o nome do técnico..." autocomplete="off"
-                                    role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
-                                <ul x-show="aberto && filtrados.length" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
-                                    <template x-for="v in filtrados" :key="v">
-                                        <li @click="escolher(v)" class="cursor-pointer px-4 py-2 text-sm text-texto-forte hover:bg-verde-50" role="option">
-                                            <span x-text="v"></span>
-                                        </li>
-                                    </template>
-                                </ul>
-                                <p class="mt-1.5 text-xs text-texto-fraco">Escreva uma vez; fica guardado para os próximos eventos.</p>
-                                @error('formTecnicoNome') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            {{-- Técnico: CONTA de utilizador (mesma lista do relatório). Ligar a conta é o
+                                 que ativa a deteção de ausências, o feed iCal e a notificação ao técnico. --}}
+                            <div>
+                                <label class="campo-label" for="tecnico-evento">Técnico (opcional)</label>
+                                <select id="tecnico-evento" wire:model="formTecnicoId" class="campo-select">
+                                    <option value="">Por atribuir</option>
+                                    @foreach ($tecnicos as $t)
+                                        <option value="{{ $t['id'] }}">{{ $t['nome'] }}</option>
+                                    @endforeach
+                                </select>
+                                <p class="mt-1.5 text-xs text-texto-fraco">O técnico é notificado e o evento entra no calendário (iCal) dele.</p>
+                                @error('formTecnicoId') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

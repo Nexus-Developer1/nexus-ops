@@ -176,50 +176,62 @@ class AgendaTest extends TestCase
             ->assertReturned(fn ($r) => $r['ok'] === false);
     }
 
-    public function test_criar_evento_proprio_guarda_tecnico_em_texto_livre(): void
+    public function test_criar_evento_guarda_conta_do_tecnico_e_notifica(): void
     {
         Notification::fake();
+        $tec = $this->tecnico();
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Reunião de equipa')
-            ->set('formTecnicoNome', 'João Silva')
+            ->set('formTecnicoId', $tec->id)
             ->set('formInicio', '2026-07-06T10:00')
             ->set('formFim', '2026-07-06T11:00')
             ->call('criarEvento')
             ->assertHasNoErrors();
 
-        // Técnico gravado como texto livre (não é conta) e o tipo fica guardado para sugestões.
-        $this->assertDatabaseHas('eventos_agenda', ['titulo' => 'Reunião de equipa', 'tipo' => 'outro', 'tecnico_nome' => 'João Silva', 'tecnico_id' => null]);
+        // Guarda a CONTA (liga ausências/iCal/notificações) + o nome desnormalizado (cores/filtro).
+        $this->assertDatabaseHas('eventos_agenda', ['titulo' => 'Reunião de equipa', 'tipo' => 'outro',
+            'tecnico_id' => $tec->id, 'tecnico_nome' => $tec->nome]);
         $this->assertDatabaseHas('assuntos_evento', ['nome' => 'Reunião de equipa']);
-        Notification::assertNothingSent(); // sem conta → sem notificação automática
+        Notification::assertSentTo($tec, EventoAtribuido::class); // com conta → notificado
     }
 
-    public function test_agenda_sugere_nomes_de_tecnico_ja_usados(): void
+    public function test_criar_evento_deteta_ausencia_do_tecnico(): void
     {
-        $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
-        EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'X', 'estado' => 'planeado',
-            'inicio' => now(), 'fim' => now()->addHour(), 'tecnico_nome' => 'João Silva', 'cliente_id' => $cliente->id]);
-        EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Y', 'estado' => 'planeado',
-            'inicio' => now(), 'fim' => now()->addHour(), 'tecnico_nome' => 'Maria Costa', 'cliente_id' => $cliente->id]);
+        Notification::fake();
+        $tec = $this->tecnico();
+        // Técnico de férias no dia 2026-07-06 (segunda, horário útil).
+        TecnicoDisponibilidade::create(['tecnico_id' => $tec->id, 'tipo' => 'ausencia',
+            'inicio' => Carbon::parse('2026-07-06 00:00'), 'fim' => Carbon::parse('2026-07-07 00:00'), 'motivo' => 'Férias']);
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
-            ->assertViewHas('tecnicosSugeridos', fn ($s) => in_array('João Silva', $s, true) && in_array('Maria Costa', $s, true));
+            ->set('formTitulo', 'Visita')
+            ->set('formTecnicoId', $tec->id)
+            ->set('formInicio', '2026-07-06T10:00')
+            ->set('formFim', '2026-07-06T11:00')
+            ->call('criarEvento')
+            ->assertHasErrors('formInicio'); // com a conta ligada, a ausência É detetada
+
+        $this->assertDatabaseMissing('eventos_agenda', ['titulo' => 'Visita']);
     }
 
-    public function test_criar_evento_deteta_conflito_de_tecnico_por_nome(): void
+    public function test_criar_evento_deteta_conflito_com_evento_legado_por_nome(): void
     {
+        Notification::fake();
+        $tec = $this->tecnico(); // nome 'Téc'
         $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
-        // 2026-07-06 é segunda (horário útil). "João Silva" já tem 10h–11h.
+        // Evento LEGADO: só o nome em texto (sem conta), mesmo nome da conta do técnico.
         EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Existente', 'estado' => 'planeado',
-            'inicio' => Carbon::parse('2026-07-06 10:00'), 'fim' => Carbon::parse('2026-07-06 11:00'), 'tecnico_nome' => 'João Silva', 'cliente_id' => $cliente->id]);
+            'inicio' => Carbon::parse('2026-07-06 10:00'), 'fim' => Carbon::parse('2026-07-06 11:00'),
+            'tecnico_nome' => $tec->nome, 'tecnico_id' => null, 'cliente_id' => $cliente->id]);
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Nova')
-            ->set('formTecnicoNome', 'João Silva')
+            ->set('formTecnicoId', $tec->id)
             ->set('formInicio', '2026-07-06T10:30')
             ->set('formFim', '2026-07-06T11:30')
             ->call('criarEvento')
-            ->assertHasErrors('formInicio'); // sobreposição do mesmo técnico
+            ->assertHasErrors('formInicio'); // sobreposição apanhada pelo NOME (evento legado)
 
         $this->assertDatabaseMissing('eventos_agenda', ['titulo' => 'Nova']);
     }
@@ -401,10 +413,14 @@ class AgendaTest extends TestCase
 
     public function test_editar_evento_proprio_altera_titulo_tecnico_e_horas(): void
     {
+        Notification::fake();
+        $tec = $this->tecnico();
+        $maria = User::create(['nome' => 'Maria Costa', 'email' => 'm@nexus.pt', 'password' => 'x',
+            'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
         $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
         $e = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Reunião', 'estado' => 'planeado',
             'inicio' => Carbon::parse('2026-07-06 10:00'), 'fim' => Carbon::parse('2026-07-06 11:00'),
-            'tecnico_nome' => 'João Silva', 'cliente_id' => $cliente->id]);
+            'tecnico_id' => $tec->id, 'tecnico_nome' => $tec->nome, 'cliente_id' => $cliente->id]);
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->call('selecionar', $e->id)
@@ -413,11 +429,11 @@ class AgendaTest extends TestCase
             ->assertSet('editandoId', $e->id)
             ->assertSet('modalCriar', true)
             ->assertSet('formTitulo', 'Reunião')
-            ->assertSet('formTecnicoNome', 'João Silva')
+            ->assertSet('formTecnicoId', $tec->id)
             ->assertSet('formInicio', '2026-07-06T10:00')
-            // Altera e grava.
+            // Altera e grava (troca o técnico para a Maria).
             ->set('formTitulo', 'Reunião com cliente')
-            ->set('formTecnicoNome', 'Maria Costa')
+            ->set('formTecnicoId', $maria->id)
             ->set('formInicio', '2026-07-07T14:00')
             ->set('formFim', '2026-07-07T15:00')
             ->call('criarEvento')
@@ -427,18 +443,46 @@ class AgendaTest extends TestCase
 
         $e->refresh();
         $this->assertSame('Reunião com cliente', $e->titulo);
+        $this->assertSame($maria->id, $e->tecnico_id);
         $this->assertSame('Maria Costa', $e->tecnico_nome);
         $this->assertSame('2026-07-07 14:00', $e->inicio->format('Y-m-d H:i'));
         $this->assertSame(TipoEvento::Outro, $e->tipo); // o tipo não muda na edição
         $this->assertSame(1, EventoAgenda::count()); // editou — não criou um novo
+        Notification::assertSentTo($maria, EventoAtribuido::class); // o NOVO técnico é notificado
+        Notification::assertNotSentTo($tec, EventoAtribuido::class);
+    }
+
+    public function test_editar_evento_legado_casa_o_nome_com_a_conta(): void
+    {
+        $tec = $this->tecnico(); // conta 'Téc'
+        $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
+        // Evento LEGADO: só o nome em texto, igual ao da conta.
+        $e = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Reunião', 'estado' => 'planeado',
+            'inicio' => Carbon::parse('2026-07-06 10:00'), 'fim' => Carbon::parse('2026-07-06 11:00'),
+            'tecnico_nome' => $tec->nome, 'tecnico_id' => null, 'cliente_id' => $cliente->id]);
+
+        // Ao abrir a edição, o nome legado é casado com a conta e pré-selecionado.
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->call('selecionar', $e->id)
+            ->call('abrirEdicao')
+            ->assertSet('formTecnicoId', $tec->id)
+            ->call('criarEvento')
+            ->assertHasNoErrors();
+
+        // Depois de gravar, o evento legado fica LIGADO à conta (iCal/ausências passam a contar).
+        $e->refresh();
+        $this->assertSame($tec->id, $e->tecnico_id);
+        $this->assertSame($tec->nome, $e->tecnico_nome);
     }
 
     public function test_editar_evento_nao_conflitua_consigo_mesmo(): void
     {
+        Notification::fake();
+        $tec = $this->tecnico();
         $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
         $e = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Reunião', 'estado' => 'planeado',
             'inicio' => Carbon::parse('2026-07-06 10:00'), 'fim' => Carbon::parse('2026-07-06 11:00'),
-            'tecnico_nome' => 'João Silva', 'cliente_id' => $cliente->id]);
+            'tecnico_id' => $tec->id, 'tecnico_nome' => $tec->nome, 'cliente_id' => $cliente->id]);
 
         // Guardar SEM mexer nas horas: o próprio evento não pode contar como sobreposição.
         Livewire::actingAs($this->admin())->test(Calendario::class)
@@ -453,13 +497,15 @@ class AgendaTest extends TestCase
 
     public function test_editar_deteta_conflito_com_outro_evento_do_tecnico(): void
     {
+        Notification::fake();
+        $tec = $this->tecnico();
         $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
         EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Ocupado', 'estado' => 'planeado',
             'inicio' => Carbon::parse('2026-07-06 14:00'), 'fim' => Carbon::parse('2026-07-06 15:00'),
-            'tecnico_nome' => 'João Silva', 'cliente_id' => $cliente->id]);
+            'tecnico_id' => $tec->id, 'tecnico_nome' => $tec->nome, 'cliente_id' => $cliente->id]);
         $e = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Reunião', 'estado' => 'planeado',
             'inicio' => Carbon::parse('2026-07-06 10:00'), 'fim' => Carbon::parse('2026-07-06 11:00'),
-            'tecnico_nome' => 'João Silva', 'cliente_id' => $cliente->id]);
+            'tecnico_id' => $tec->id, 'tecnico_nome' => $tec->nome, 'cliente_id' => $cliente->id]);
 
         // Mover para cima do "Ocupado" → conflito real detetado.
         Livewire::actingAs($this->admin())->test(Calendario::class)

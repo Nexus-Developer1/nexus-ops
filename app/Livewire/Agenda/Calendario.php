@@ -20,6 +20,7 @@ use App\Services\Agenda\DetetorConflitos;
 use App\Services\Agenda\GeradorRascunhoDeEvento;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -54,7 +55,9 @@ class Calendario extends Component
     public ?int $editandoId = null;
     public bool $editandoConvertido = false;
     public string $formTitulo = '';
-    public string $formTecnicoNome = ''; // técnico em texto livre (com histórico); sem conta de utilizador
+    // Técnico do evento: CONTA de utilizador (mesma lista do relatório). Guardar a conta (e não
+    // texto livre) é o que liga o evento às ausências, ao feed iCal e às notificações do técnico.
+    public ?int $formTecnicoId = null;
     public string $formInicio = '';
     public string $formFim = '';
 
@@ -188,6 +191,12 @@ class Calendario extends Component
             return ['ok' => false, 'mensagem' => $razao];
         }
 
+        // Eventos legados (só nome, sem conta): deteta pelo menos a sobreposição por nome.
+        if (! $tecnicoId && $evento->tecnico_nome
+            && $razao = $detetor->conflitoPorNome($evento->tecnico_nome, $novoInicio, $novoFim, $evento->id)) {
+            return ['ok' => false, 'mensagem' => $razao];
+        }
+
         $evento->update(['inicio' => $novoInicio, 'fim' => $novoFim]);
 
         return ['ok' => true];
@@ -261,7 +270,7 @@ class Calendario extends Component
     {
         return [
             'formTitulo' => 'tipo de evento',
-            'formTecnicoNome' => 'técnico',
+            'formTecnicoId' => 'técnico',
             'formEquipamentoId' => 'equipamento',
             'formInicio' => 'início',
             'formFim' => 'fim',
@@ -277,7 +286,7 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoNome', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura']);
+        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoId', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura']);
         $this->formInicio = Carbon::parse($inicio)->format('Y-m-d\TH:i');
         $this->formFim = Carbon::parse($fim)->format('Y-m-d\TH:i');
         $this->modalCriar = true;
@@ -312,7 +321,14 @@ class Calendario extends Component
         $this->editandoConvertido = (bool) $evento->intervencao_id;
         $this->editandoId = $evento->id;
         $this->formTitulo = $evento->titulo;
-        $this->formTecnicoNome = $evento->tecnico_nome ?? '';
+        // Conta do técnico; eventos LEGADOS só têm o nome em texto — tenta casá-lo com uma conta
+        // (é o caso normal: os nomes escritos eram os dos técnicos com conta).
+        $this->formTecnicoId = $evento->tecnico_id
+            ?? ($evento->tecnico_nome
+                ? User::where('papel', PapelUtilizador::Tecnico)->where('ativo', true)
+                    ->whereRaw('lower(nome) = ?', [mb_strtolower(trim($evento->tecnico_nome))])
+                    ->value('id')
+                : null);
         $this->formEquipamentoId = $evento->equipamento_id;
         $this->formEquipamentoBusca = $evento->equipamento
             ? trim(($evento->equipamento->numero_serie ?? '—')
@@ -400,7 +416,11 @@ class Calendario extends Component
 
         $this->validate([
             'formTitulo' => ['required', 'string', 'max:255'],
-            'formTecnicoNome' => ['nullable', 'string', 'max:255'],
+            // Técnico = conta ativa com papel técnico (mesma regra dos colaboradores no relatório).
+            'formTecnicoId' => ['nullable', 'integer',
+                Rule::exists('utilizadores', 'id')
+                    ->where('papel', PapelUtilizador::Tecnico->value)
+                    ->where('ativo', true)],
             'formEquipamentoId' => ['nullable', 'exists:equipamentos,id'],
             'formInicio' => ['required', 'date'],
             'formFim' => ['required', 'date', 'after:formInicio'],
@@ -410,6 +430,7 @@ class Calendario extends Component
 
         $inicio = Carbon::parse($this->formInicio);
         $fim = Carbon::parse($this->formFim);
+        $tecnico = $this->formTecnicoId ? User::find($this->formTecnicoId) : null;
 
         // Verifica horário e conflito de técnico. Na edição, o próprio evento é excluído da
         // deteção (senão entraria em conflito consigo mesmo e nunca deixaria gravar).
@@ -418,10 +439,16 @@ class Calendario extends Component
 
             return;
         }
-        if (filled($this->formTecnicoNome) && $razao = $detetor->conflitoPorNome(trim($this->formTecnicoNome), $inicio, $fim, $this->editandoId)) {
-            $this->addError('formInicio', $razao);
+        if ($tecnico) {
+            // Por CONTA: sobreposição com eventos ligados à conta + AUSÊNCIAS/férias do técnico.
+            // Por NOME: apanha também eventos legados (só texto, sem conta) do mesmo técnico.
+            $razao = $detetor->conflito($tecnico->id, $inicio, $fim, $this->editandoId)
+                ?? $detetor->conflitoPorNome($tecnico->nome, $inicio, $fim, $this->editandoId);
+            if ($razao) {
+                $this->addError('formInicio', $razao);
 
-            return;
+                return;
+            }
         }
 
         // O tipo de evento (texto livre) fica guardado para sugestões futuras (cresce com o uso).
@@ -451,7 +478,10 @@ class Calendario extends Component
             'titulo' => $titulo,
             'inicio' => $inicio,
             'fim' => $fim,
-            'tecnico_nome' => trim($this->formTecnicoNome) ?: null,
+            // Conta do técnico + nome desnormalizado: o id liga ausências/iCal/notificações;
+            // o nome alimenta as cores, o filtro e a legenda (partilhados com eventos legados).
+            'tecnico_id' => $tecnico?->id,
+            'tecnico_nome' => $tecnico?->nome,
             'equipamento_id' => $equipamentoId,
             'local_id' => $localId,
             'cliente_id' => $clienteId,
@@ -474,37 +504,48 @@ class Calendario extends Component
                 return;
             }
 
+            $tecnicoAnteriorId = $evento->tecnico_id;
+
             if ($evento->intervencao_id) {
                 // Convertido (relatório em rascunho): equipamento/contrato pertencem ao relatório
-                // e não mudam por aqui — só título, técnico, datas e cobertura. As datas/horas
-                // propagam-se à intervenção para os dois lados contarem a mesma história
+                // e não mudam por aqui — só título, técnico, datas e cobertura. Datas/horas e
+                // técnico propagam-se à intervenção para os dois lados contarem a mesma história
                 // (única fonte de verdade — CLAUDE.md §6).
                 $evento->update([
                     'titulo' => $titulo,
                     'inicio' => $inicio,
                     'fim' => $fim,
-                    'tecnico_nome' => trim($this->formTecnicoNome) ?: null,
+                    'tecnico_id' => $tecnico?->id,
+                    'tecnico_nome' => $tecnico?->nome,
                     'cobertura' => $evento->contrato_id ? $this->formCobertura : null,
                 ]);
 
-                $evento->intervencao->update([
+                $evento->intervencao->update(array_filter([
                     'data_inicio' => $inicio->toDateString(),
                     'hora_inicio' => $inicio->format('H:i'),
                     'hora_fim' => $fim->format('H:i'),
-                ]);
+                    // Só propaga o técnico quando foi escolhido (não apaga o principal do relatório).
+                    'tecnico_id' => $tecnico?->id,
+                ]));
             } else {
                 $evento->update($atributos);
+            }
+
+            // Notifica só quem foi AGORA atribuído (mudança de técnico na edição).
+            if ($evento->tecnico_id && $evento->tecnico_id !== $tecnicoAnteriorId) {
+                $evento->tecnico->notify(new EventoAtribuido($evento));
             }
         } else {
             $evento = EventoAgenda::create($atributos + [
                 'tipo' => TipoEvento::Outro,
                 'estado' => EstadoEvento::Planeado,
             ]);
-        }
 
-        // Notifica o técnico atribuído (CLAUDE.md §6).
-        if ($evento->tecnico_id) {
-            $evento->tecnico->notify(new EventoAtribuido($evento));
+            // Notifica o técnico atribuído (CLAUDE.md §6). Com a conta ligada, isto passa a
+            // disparar de facto (antes o texto livre nunca tinha tecnico_id).
+            if ($evento->tecnico_id) {
+                $evento->tecnico->notify(new EventoAtribuido($evento));
+            }
         }
 
         // Camada 2: evento com equipamento OU contrato + data futura → gera rascunho de
@@ -636,15 +677,6 @@ class Calendario extends Component
             ->orderBy('numero')
             ->get();
 
-        // Histórico de nomes de técnico já usados (texto livre) — para sugerir ao criar.
-        $tecnicosSugeridos = EventoAgenda::query()
-            ->whereNotNull('tecnico_nome')
-            ->where('tecnico_nome', '!=', '')
-            ->distinct()
-            ->orderBy('tecnico_nome')
-            ->pluck('tecnico_nome')
-            ->all();
-
         return view('livewire.agenda.calendario', [
             'tecnicos' => $tecnicos,
             'nomesTecnicos' => $nomesTecnicos,
@@ -654,7 +686,6 @@ class Calendario extends Component
             'assuntos' => AssuntoEvento::orderBy('nome')->get(),
             'equipamentosFiltrados' => $equipamentosFiltrados,
             'contratos' => $contratos,
-            'tecnicosSugeridos' => $tecnicosSugeridos,
         ]);
     }
 }
