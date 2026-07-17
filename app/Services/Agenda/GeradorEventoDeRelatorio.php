@@ -6,7 +6,6 @@ use App\Enums\EstadoEvento;
 use App\Enums\TipoEvento;
 use App\Models\EventoAgenda;
 use App\Models\Intervencao;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 // Camada 3 da sincronização Relatórios → Agenda (sentido inverso da camada 2): quando

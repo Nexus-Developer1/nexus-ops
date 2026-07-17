@@ -5,7 +5,6 @@ namespace App\Livewire\Portal;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\Relatorio;
-use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 

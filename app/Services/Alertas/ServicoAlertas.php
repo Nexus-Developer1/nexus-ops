@@ -9,7 +9,6 @@ use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\Intervencao;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 // Recolhe os alertas proativos da operação (CLAUDE.md §6/§9): baterias a vencer,
