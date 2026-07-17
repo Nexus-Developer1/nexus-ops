@@ -50,7 +50,7 @@
             {{-- Painel de detalhe do evento (iniciar visita → intervenção) --}}
             @if ($evento)
                 <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4" wire:click.self="fecharModal">
-                    <div class="w-full max-w-md rounded-xl border border-borda bg-white shadow-xl">
+                    <div class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-borda bg-white shadow-xl">
                         <div class="flex items-start justify-between border-b border-borda px-6 py-5">
                             <div>
                                 <h2 class="text-lg font-semibold text-texto-forte">{{ $evento->titulo }}</h2>
@@ -114,7 +114,7 @@
             {{-- Painel de detalhe de uma ausência --}}
             @if ($ausencia)
                 <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4" wire:click.self="fecharAusencia">
-                    <div class="w-full max-w-md rounded-xl border border-borda bg-white shadow-xl">
+                    <div class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-borda bg-white shadow-xl">
                         <div class="flex items-start justify-between border-b border-borda px-6 py-5">
                             <h2 class="text-lg font-semibold text-texto-forte">Ausência</h2>
                             <button wire:click="fecharAusencia" class="text-texto-fraco hover:text-texto-forte">
@@ -138,7 +138,7 @@
             {{-- Modal de criação/edição de evento próprio (campo único "Tipo de evento") --}}
             @if ($modalCriar)
                 <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4" wire:click.self="fecharCriar">
-                    <form wire:submit="criarEvento" class="w-full max-w-md rounded-xl border border-borda bg-white shadow-xl">
+                    <form wire:submit="criarEvento" class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-borda bg-white shadow-xl">
                         <div class="flex items-start justify-between border-b border-borda px-6 py-5">
                             <h2 class="text-lg font-semibold text-texto-forte">{{ $editandoId ? 'Editar evento' : 'Novo evento' }}</h2>
                             <button type="button" wire:click="fecharCriar" class="text-texto-fraco hover:text-texto-forte">
@@ -343,7 +343,7 @@
             {{-- Modal dedicado de marcação de ausência (grava em tecnico_disponibilidade) --}}
             @if ($modalAusencia)
                 <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4" wire:click.self="fecharMarcarAusencia">
-                    <form wire:submit="marcarAusencia" class="w-full max-w-md rounded-xl border border-borda bg-white shadow-xl">
+                    <form wire:submit="marcarAusencia" class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-borda bg-white shadow-xl">
                         <div class="flex items-start justify-between border-b border-borda px-6 py-5">
                             <h2 class="text-lg font-semibold text-texto-forte">Marcar ausência</h2>
                             <button type="button" wire:click="fecharMarcarAusencia" class="text-texto-fraco hover:text-texto-forte">
