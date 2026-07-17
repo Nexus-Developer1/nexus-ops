@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-07-17
 
+- 🔒 **`rel="noopener noreferrer"` nos links `target="_blank"`** — 4.ª revisão de segurança (PWA/frontend/geral) sem falhas críticas/altas/médias; único item de código corrigido: os 4 links que abrem em nova aba (PDFs de relatório, convite) ganham `rel="noopener"` (higiene anti reverse-tabnabbing; eram same-origin, risco já mínimo).
 - 🧹 **Limpeza: 3 imports `Carbon` sem uso** (Portal/Dashboard, GeradorEventoDeRelatorio, ServicoAlertas) — restos de refactorings; varredura completa não encontrou mais nada morto (imports de `app/` todos usados, assets PWA todos referenciados). 272 testes verdes.
 - 🎨 **Ícone da app: logótipo NEXUS** — o ícone da PWA passa a ser o wordmark NEXUS a branco sobre o gradiente verde (substitui o raio genérico da primeira versão). Nota: gerado do `nexus-1.png` (150×28); com um logótipo em alta resolução/SVG pode regenerar-se mais nítido. `9fc165b`
 - 🧰 **App instalável no telemóvel (PWA)** — `manifest.json` + ícones próprios (192/512/maskable + apple-touch para iOS) e metadados PWA nos layouts. Passa a poder-se "Adicionar ao ecrã principal" e abrir como app (ecrã cheio, sem barra do browser). Servido same-origin, coberto pela CSP existente. `64a20f8`

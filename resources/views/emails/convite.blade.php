@@ -32,7 +32,7 @@
                             <table role="presentation" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td align="center" bgcolor="#16a34a" style="border-radius:10px;">
-                                        <a href="{{ $url }}" target="_blank" style="display:inline-block; padding:14px 30px; font-size:15px; font-weight:600; color:#ffffff; text-decoration:none; border-radius:10px;">Definir palavra-passe</a>
+                                        <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" style="display:inline-block; padding:14px 30px; font-size:15px; font-weight:600; color:#ffffff; text-decoration:none; border-radius:10px;">Definir palavra-passe</a>
                                     </td>
                                 </tr>
                             </table>

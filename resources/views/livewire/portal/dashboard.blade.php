@@ -50,7 +50,7 @@
                                     <div class="text-sm font-medium text-texto-forte">{{ $r->numero }}</div>
                                     <div class="text-xs text-texto-fraco">{{ $r->data->translatedFormat('d M Y') }}</div>
                                 </div>
-                                <a href="{{ route('portal.relatorios.pdf', $r) }}" target="_blank" class="text-sm font-medium text-verde-600 hover:underline">PDF</a>
+                                <a href="{{ route('portal.relatorios.pdf', $r) }}" target="_blank" rel="noopener noreferrer" class="text-sm font-medium text-verde-600 hover:underline">PDF</a>
                             </li>
                         @empty
                             <li class="px-6 py-8 text-center text-sm text-texto-medio">Sem relatórios.</li>
