@@ -8,7 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-07-17
 
-- 🎨 **Ícone da app: logótipo NEXUS** — o ícone da PWA passa a ser o wordmark NEXUS a branco sobre o gradiente verde (substitui o raio genérico da primeira versão). Nota: gerado do `nexus-1.png` (150×28); com um logótipo em alta resolução/SVG pode regenerar-se mais nítido.
+- 🧹 **Limpeza: 3 imports `Carbon` sem uso** (Portal/Dashboard, GeradorEventoDeRelatorio, ServicoAlertas) — restos de refactorings; varredura completa não encontrou mais nada morto (imports de `app/` todos usados, assets PWA todos referenciados). 272 testes verdes.
+- 🎨 **Ícone da app: logótipo NEXUS** — o ícone da PWA passa a ser o wordmark NEXUS a branco sobre o gradiente verde (substitui o raio genérico da primeira versão). Nota: gerado do `nexus-1.png` (150×28); com um logótipo em alta resolução/SVG pode regenerar-se mais nítido. `9fc165b`
 - 🧰 **App instalável no telemóvel (PWA)** — `manifest.json` + ícones próprios (192/512/maskable + apple-touch para iOS) e metadados PWA nos layouts. Passa a poder-se "Adicionar ao ecrã principal" e abrir como app (ecrã cheio, sem barra do browser). Servido same-origin, coberto pela CSP existente. `64a20f8`
 - 🎨 **Alvos de toque maiores nos modais da agenda** — os botões "✕" de fechar passam de ~20px para ~36px (mais fáceis de acertar no telemóvel).
 - 🎨 **Apagar fotos no telemóvel (relatórios)** — o botão de remover uma foto já carregada só aparecia com `hover`, que não existe em ecrã de toque; os técnicos não conseguiam apagar uma foto no campo. Passa a estar sempre visível, com alvo de toque maior e confirmação. +1 teste (272 no total). `4586865`
