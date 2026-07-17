@@ -8,7 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-07-17
 
-- 🧰 **App instalável no telemóvel (PWA)** — `manifest.json` + ícones próprios (raio branco sobre o verde da marca, gerados a 192/512/maskable + apple-touch para iOS) e metadados PWA nos layouts. Passa a poder-se "Adicionar ao ecrã principal" e abrir como app (ecrã cheio, sem barra do browser). Servido same-origin, coberto pela CSP existente.
+- 🎨 **Ícone da app: logótipo NEXUS** — o ícone da PWA passa a ser o wordmark NEXUS a branco sobre o gradiente verde (substitui o raio genérico da primeira versão). Nota: gerado do `nexus-1.png` (150×28); com um logótipo em alta resolução/SVG pode regenerar-se mais nítido.
+- 🧰 **App instalável no telemóvel (PWA)** — `manifest.json` + ícones próprios (192/512/maskable + apple-touch para iOS) e metadados PWA nos layouts. Passa a poder-se "Adicionar ao ecrã principal" e abrir como app (ecrã cheio, sem barra do browser). Servido same-origin, coberto pela CSP existente. `64a20f8`
 - 🎨 **Alvos de toque maiores nos modais da agenda** — os botões "✕" de fechar passam de ~20px para ~36px (mais fáceis de acertar no telemóvel).
 - 🎨 **Apagar fotos no telemóvel (relatórios)** — o botão de remover uma foto já carregada só aparecia com `hover`, que não existe em ecrã de toque; os técnicos não conseguiam apagar uma foto no campo. Passa a estar sempre visível, com alvo de toque maior e confirmação. +1 teste (272 no total). `4586865`
 - 🎨 **Arrastar eventos por toque (mudar a hora) no telemóvel** — o arrasto vertical de um evento competia com o scroll e ficava aos saltos. Corrigido com `touch-action: none` nos eventos + toque longo mais curto (250 ms para arrastar, 500 ms para criar por seleção). Mudar o dia já funcionava; mudar a hora passa a ser fluido. Alternativa precisa: abrir o evento → Editar → hora exacta. `fc0f1ad`
