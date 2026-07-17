@@ -253,8 +253,9 @@
                                 <label class="campo-label">Técnicos (opcional)</label>
                                 <div class="space-y-1 rounded-lg border border-borda px-4 py-3">
                                     @forelse ($tecnicos as $t)
-                                        <label class="flex items-center gap-2.5 py-1 text-sm text-texto-forte">
-                                            <input type="checkbox" wire:model="formTecnicoIds" value="{{ $t['id'] }}" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-500">
+                                        {{-- py-2 + h-5: alvo de toque confortável no telemóvel (linha inteira clicável). --}}
+                                        <label class="flex cursor-pointer items-center gap-3 py-2 text-sm text-texto-forte">
+                                            <input type="checkbox" wire:model="formTecnicoIds" value="{{ $t['id'] }}" class="h-5 w-5 rounded border-borda text-verde-600 focus:ring-verde-500">
                                             {{ $t['nome'] }}
                                         </label>
                                     @empty
