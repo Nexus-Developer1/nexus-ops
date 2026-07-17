@@ -12,9 +12,12 @@ class GeradorIcal
 {
     public function paraTecnico(User $tecnico): string
     {
+        // Eventos onde é o técnico PRINCIPAL ou um dos ADICIONAIS (evento com vários técnicos).
         $eventos = EventoAgenda::query()
             ->with('cliente')
-            ->where('tecnico_id', $tecnico->id)
+            ->where(fn ($q) => $q
+                ->where('tecnico_id', $tecnico->id)
+                ->orWhereHas('tecnicosAdicionais', fn ($q2) => $q2->whereKey($tecnico->id)))
             ->where('estado', '!=', 'cancelado')
             ->orderBy('inicio')
             ->get();

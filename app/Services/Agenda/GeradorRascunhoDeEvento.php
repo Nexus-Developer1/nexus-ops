@@ -69,6 +69,16 @@ class GeradorRascunhoDeEvento
                 $intervencao->equipamentosCobertos()->sync($cobertos);
             }
 
+            // Técnicos adicionais do evento → colaboradores do relatório (mesmos factos dos
+            // dois lados; exclui o principal, que já está em tecnico_id).
+            $colaboradores = array_values(array_diff(
+                $evento->tecnicosAdicionais()->pluck('utilizadores.id')->all(),
+                [$intervencao->tecnico_id],
+            ));
+            if ($colaboradores !== []) {
+                $intervencao->tecnicos()->sync($colaboradores);
+            }
+
             // Liga o outro lado da relação.
             $evento->update(['intervencao_id' => $intervencao->id]);
 

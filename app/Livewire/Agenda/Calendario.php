@@ -55,9 +55,12 @@ class Calendario extends Component
     public ?int $editandoId = null;
     public bool $editandoConvertido = false;
     public string $formTitulo = '';
-    // Técnico do evento: CONTA de utilizador (mesma lista do relatório). Guardar a conta (e não
-    // texto livre) é o que liga o evento às ausências, ao feed iCal e às notificações do técnico.
-    public ?int $formTecnicoId = null;
+    // Técnicos do evento: CONTAS de utilizador (mesma lista do relatório) — um evento pode ter
+    // 1 ou mais. O 1.º (por ordem alfabética) fica como principal em tecnico_id (cor do evento);
+    // os restantes vão para a pivot evento_tecnicos. Todos contam para ausências/conflitos,
+    // feed iCal e notificações.
+    /** @var list<int|string> */
+    public array $formTecnicoIds = [];
     public string $formInicio = '';
     public string $formFim = '';
 
@@ -187,12 +190,15 @@ class Calendario extends Component
             return ['ok' => false, 'mensagem' => $razao];
         }
 
-        if ($tecnicoId && $razao = $detetor->conflito($tecnicoId, $novoInicio, $novoFim, $evento->id)) {
-            return ['ok' => false, 'mensagem' => $razao];
+        // Verifica TODOS os técnicos do evento (principal + adicionais) no novo horário.
+        foreach ($evento->tecnicoIdsTodos() as $idTecnico) {
+            if ($razao = $detetor->conflito($idTecnico, $novoInicio, $novoFim, $evento->id)) {
+                return ['ok' => false, 'mensagem' => $razao];
+            }
         }
 
         // Eventos legados (só nome, sem conta): deteta pelo menos a sobreposição por nome.
-        if (! $tecnicoId && $evento->tecnico_nome
+        if ($evento->tecnicoIdsTodos() === [] && $evento->tecnico_nome
             && $razao = $detetor->conflitoPorNome($evento->tecnico_nome, $novoInicio, $novoFim, $evento->id)) {
             return ['ok' => false, 'mensagem' => $razao];
         }
@@ -270,7 +276,8 @@ class Calendario extends Component
     {
         return [
             'formTitulo' => 'tipo de evento',
-            'formTecnicoId' => 'técnico',
+            'formTecnicoIds' => 'técnicos',
+            'formTecnicoIds.*' => 'técnico',
             'formEquipamentoId' => 'equipamento',
             'formInicio' => 'início',
             'formFim' => 'fim',
@@ -286,7 +293,7 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoId', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura']);
+        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoIds', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura']);
         $this->formInicio = Carbon::parse($inicio)->format('Y-m-d\TH:i');
         $this->formFim = Carbon::parse($fim)->format('Y-m-d\TH:i');
         $this->modalCriar = true;
@@ -321,14 +328,18 @@ class Calendario extends Component
         $this->editandoConvertido = (bool) $evento->intervencao_id;
         $this->editandoId = $evento->id;
         $this->formTitulo = $evento->titulo;
-        // Conta do técnico; eventos LEGADOS só têm o nome em texto — tenta casá-lo com uma conta
-        // (é o caso normal: os nomes escritos eram os dos técnicos com conta).
-        $this->formTecnicoId = $evento->tecnico_id
+        // Contas dos técnicos (principal + adicionais). Eventos LEGADOS só têm o nome em texto —
+        // tenta casá-lo com uma conta (é o caso normal: os nomes escritos eram os dos técnicos).
+        $principal = $evento->tecnico_id
             ?? ($evento->tecnico_nome
                 ? User::where('papel', PapelUtilizador::Tecnico)->where('ativo', true)
                     ->whereRaw('lower(nome) = ?', [mb_strtolower(trim($evento->tecnico_nome))])
                     ->value('id')
                 : null);
+        $this->formTecnicoIds = array_values(array_unique(array_filter(array_merge(
+            [$principal],
+            $evento->tecnicosAdicionais()->pluck('utilizadores.id')->all(),
+        ))));
         $this->formEquipamentoId = $evento->equipamento_id;
         $this->formEquipamentoBusca = $evento->equipamento
             ? trim(($evento->equipamento->numero_serie ?? '—')
@@ -416,8 +427,9 @@ class Calendario extends Component
 
         $this->validate([
             'formTitulo' => ['required', 'string', 'max:255'],
-            // Técnico = conta ativa com papel técnico (mesma regra dos colaboradores no relatório).
-            'formTecnicoId' => ['nullable', 'integer',
+            // Técnicos = contas ativas com papel técnico (mesma regra dos colaboradores no relatório).
+            'formTecnicoIds' => ['array'],
+            'formTecnicoIds.*' => ['integer',
                 Rule::exists('utilizadores', 'id')
                     ->where('papel', PapelUtilizador::Tecnico->value)
                     ->where('ativo', true)],
@@ -430,20 +442,26 @@ class Calendario extends Component
 
         $inicio = Carbon::parse($this->formInicio);
         $fim = Carbon::parse($this->formFim);
-        $tecnico = $this->formTecnicoId ? User::find($this->formTecnicoId) : null;
 
-        // Verifica horário e conflito de técnico. Na edição, o próprio evento é excluído da
+        // Contas escolhidas, por ordem alfabética (determinística): 1.º = principal, resto = adicionais.
+        $tecnicosEscolhidos = $this->formTecnicoIds === []
+            ? collect()
+            : User::whereIn('id', array_map('intval', $this->formTecnicoIds))->orderBy('nome')->get();
+        $tecnico = $tecnicosEscolhidos->first();
+        $adicionaisIds = $tecnicosEscolhidos->skip(1)->pluck('id')->values()->all();
+
+        // Verifica horário e conflito de CADA técnico. Na edição, o próprio evento é excluído da
         // deteção (senão entraria em conflito consigo mesmo e nunca deixaria gravar).
         if ($razao = $detetor->foraDeHorario($inicio, $fim)) {
             $this->addError('formInicio', $razao);
 
             return;
         }
-        if ($tecnico) {
+        foreach ($tecnicosEscolhidos as $t) {
             // Por CONTA: sobreposição com eventos ligados à conta + AUSÊNCIAS/férias do técnico.
             // Por NOME: apanha também eventos legados (só texto, sem conta) do mesmo técnico.
-            $razao = $detetor->conflito($tecnico->id, $inicio, $fim, $this->editandoId)
-                ?? $detetor->conflitoPorNome($tecnico->nome, $inicio, $fim, $this->editandoId);
+            $razao = $detetor->conflito($t->id, $inicio, $fim, $this->editandoId)
+                ?? $detetor->conflitoPorNome($t->nome, $inicio, $fim, $this->editandoId);
             if ($razao) {
                 $this->addError('formInicio', $razao);
 
@@ -504,13 +522,14 @@ class Calendario extends Component
                 return;
             }
 
-            $tecnicoAnteriorId = $evento->tecnico_id;
+            // Conjunto de técnicos ANTES da edição (para notificar só os agora adicionados).
+            $idsAnteriores = $evento->tecnicoIdsTodos();
 
             if ($evento->intervencao_id) {
                 // Convertido (relatório em rascunho): equipamento/contrato pertencem ao relatório
-                // e não mudam por aqui — só título, técnico, datas e cobertura. Datas/horas e
-                // técnico propagam-se à intervenção para os dois lados contarem a mesma história
-                // (única fonte de verdade — CLAUDE.md §6).
+                // e não mudam por aqui — só título, técnicos, datas e cobertura. Datas/horas e
+                // técnico principal propagam-se à intervenção para os dois lados contarem a mesma
+                // história (única fonte de verdade — CLAUDE.md §6).
                 $evento->update([
                     'titulo' => $titulo,
                     'inicio' => $inicio,
@@ -531,20 +550,24 @@ class Calendario extends Component
                 $evento->update($atributos);
             }
 
-            // Notifica só quem foi AGORA atribuído (mudança de técnico na edição).
-            if ($evento->tecnico_id && $evento->tecnico_id !== $tecnicoAnteriorId) {
-                $evento->tecnico->notify(new EventoAtribuido($evento));
+            // Técnicos adicionais (além do principal) — em ambos os tipos de edição.
+            $evento->tecnicosAdicionais()->sync($adicionaisIds);
+            $evento->unsetRelation('tecnicosAdicionais');
+
+            // Notifica só quem foi AGORA adicionado ao evento.
+            foreach ($tecnicosEscolhidos->whereNotIn('id', $idsAnteriores) as $novo) {
+                $novo->notify(new EventoAtribuido($evento));
             }
         } else {
             $evento = EventoAgenda::create($atributos + [
                 'tipo' => TipoEvento::Outro,
                 'estado' => EstadoEvento::Planeado,
             ]);
+            $evento->tecnicosAdicionais()->sync($adicionaisIds);
 
-            // Notifica o técnico atribuído (CLAUDE.md §6). Com a conta ligada, isto passa a
-            // disparar de facto (antes o texto livre nunca tinha tecnico_id).
-            if ($evento->tecnico_id) {
-                $evento->tecnico->notify(new EventoAtribuido($evento));
+            // Notifica TODOS os técnicos atribuídos (CLAUDE.md §6).
+            foreach ($tecnicosEscolhidos as $t) {
+                $t->notify(new EventoAtribuido($evento));
             }
         }
 

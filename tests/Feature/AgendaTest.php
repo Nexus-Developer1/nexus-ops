@@ -183,7 +183,7 @@ class AgendaTest extends TestCase
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Reunião de equipa')
-            ->set('formTecnicoId', $tec->id)
+            ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-07-06T10:00')
             ->set('formFim', '2026-07-06T11:00')
             ->call('criarEvento')
@@ -196,6 +196,60 @@ class AgendaTest extends TestCase
         Notification::assertSentTo($tec, EventoAtribuido::class); // com conta → notificado
     }
 
+    public function test_evento_com_varios_tecnicos_guarda_pivot_e_notifica_todos(): void
+    {
+        Notification::fake();
+        $tec = $this->tecnico(); // 'Téc'
+        $maria = User::create(['nome' => 'Maria Costa', 'email' => 'm@nexus.pt', 'password' => 'x',
+            'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->set('formTitulo', 'Instalação a dois')
+            ->set('formTecnicoIds', [$tec->id, $maria->id])
+            ->set('formInicio', '2026-07-06T10:00')
+            ->set('formFim', '2026-07-06T11:00')
+            ->call('criarEvento')
+            ->assertHasNoErrors();
+
+        // Principal = 1.º por ordem alfabética (Maria Costa < Téc); o outro fica na pivot.
+        $e = EventoAgenda::where('titulo', 'Instalação a dois')->firstOrFail();
+        $this->assertSame($maria->id, $e->tecnico_id);
+        $this->assertSame('Maria Costa', $e->tecnico_nome);
+        $this->assertSame([$tec->id], $e->tecnicosAdicionais()->pluck('utilizadores.id')->all());
+        $this->assertEqualsCanonicalizing([$maria->id, $tec->id], $e->tecnicoIdsTodos());
+
+        // Ambos notificados; o label mostra os dois.
+        Notification::assertSentTo($maria, EventoAtribuido::class);
+        Notification::assertSentTo($tec, EventoAtribuido::class);
+        $this->assertStringContainsString('Maria Costa', $e->fresh()->tecnico_label);
+        $this->assertStringContainsString('Téc', $e->fresh()->tecnico_label);
+
+        // O feed iCal do técnico ADICIONAL também inclui o evento.
+        $ics = app(\App\Services\Agenda\GeradorIcal::class)->paraTecnico($tec);
+        $this->assertStringContainsString('Instala', $ics);
+    }
+
+    public function test_conflito_detetado_para_o_segundo_tecnico(): void
+    {
+        Notification::fake();
+        $tec = $this->tecnico();
+        $maria = User::create(['nome' => 'Maria Costa', 'email' => 'm@nexus.pt', 'password' => 'x',
+            'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+        // O Téc (que alfabeticamente seria o SEGUNDO) está de férias no dia.
+        TecnicoDisponibilidade::create(['tecnico_id' => $tec->id, 'tipo' => 'ausencia',
+            'inicio' => Carbon::parse('2026-07-06 00:00'), 'fim' => Carbon::parse('2026-07-07 00:00'), 'motivo' => 'Férias']);
+
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->set('formTitulo', 'Visita a dois')
+            ->set('formTecnicoIds', [$maria->id, $tec->id])
+            ->set('formInicio', '2026-07-06T10:00')
+            ->set('formFim', '2026-07-06T11:00')
+            ->call('criarEvento')
+            ->assertHasErrors('formInicio'); // a ausência do 2.º técnico também bloqueia
+
+        $this->assertDatabaseMissing('eventos_agenda', ['titulo' => 'Visita a dois']);
+    }
+
     public function test_criar_evento_deteta_ausencia_do_tecnico(): void
     {
         Notification::fake();
@@ -206,7 +260,7 @@ class AgendaTest extends TestCase
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Visita')
-            ->set('formTecnicoId', $tec->id)
+            ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-07-06T10:00')
             ->set('formFim', '2026-07-06T11:00')
             ->call('criarEvento')
@@ -227,7 +281,7 @@ class AgendaTest extends TestCase
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Nova')
-            ->set('formTecnicoId', $tec->id)
+            ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-07-06T10:30')
             ->set('formFim', '2026-07-06T11:30')
             ->call('criarEvento')
@@ -429,11 +483,11 @@ class AgendaTest extends TestCase
             ->assertSet('editandoId', $e->id)
             ->assertSet('modalCriar', true)
             ->assertSet('formTitulo', 'Reunião')
-            ->assertSet('formTecnicoId', $tec->id)
+            ->assertSet('formTecnicoIds', [$tec->id])
             ->assertSet('formInicio', '2026-07-06T10:00')
             // Altera e grava (troca o técnico para a Maria).
             ->set('formTitulo', 'Reunião com cliente')
-            ->set('formTecnicoId', $maria->id)
+            ->set('formTecnicoIds', [$maria->id])
             ->set('formInicio', '2026-07-07T14:00')
             ->set('formFim', '2026-07-07T15:00')
             ->call('criarEvento')
@@ -465,7 +519,7 @@ class AgendaTest extends TestCase
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->call('selecionar', $e->id)
             ->call('abrirEdicao')
-            ->assertSet('formTecnicoId', $tec->id)
+            ->assertSet('formTecnicoIds', [$tec->id])
             ->call('criarEvento')
             ->assertHasNoErrors();
 

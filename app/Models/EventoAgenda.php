@@ -58,10 +58,31 @@ class EventoAgenda extends Model
         return $this->belongsTo(User::class, 'tecnico_id');
     }
 
-    // Nome do técnico a mostrar: a conta ligada (se houver) ou o nome em texto livre.
+    // Técnicos ADICIONAIS (além do principal em tecnico_id) — um evento pode ter vários.
+    public function tecnicosAdicionais(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'evento_tecnicos', 'evento_agenda_id', 'user_id');
+    }
+
+    // Ids de TODOS os técnicos do evento (principal + adicionais) — conflitos, iCal, notificações.
+    /** @return list<int> */
+    public function tecnicoIdsTodos(): array
+    {
+        return array_values(array_unique(array_filter(array_merge(
+            [$this->tecnico_id],
+            $this->tecnicosAdicionais->pluck('id')->all(),
+        ))));
+    }
+
+    // Nomes a mostrar: principal (conta ligada ou nome em texto livre) + adicionais.
     public function getTecnicoLabelAttribute(): ?string
     {
-        return $this->tecnico?->nome ?? $this->tecnico_nome;
+        $nomes = array_values(array_unique(array_filter(array_merge(
+            [$this->tecnico?->nome ?? $this->tecnico_nome],
+            $this->tecnicosAdicionais->pluck('nome')->all(),
+        ))));
+
+        return $nomes === [] ? null : implode(', ', $nomes);
     }
 
     public function cliente(): BelongsTo

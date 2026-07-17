@@ -247,18 +247,23 @@
                                 @error('formEquipamentoId') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
 
-                            {{-- Técnico: CONTA de utilizador (mesma lista do relatório). Ligar a conta é o
-                                 que ativa a deteção de ausências, o feed iCal e a notificação ao técnico. --}}
+                            {{-- Técnicos: CONTAS de utilizador (mesma lista do relatório), 1 ou mais. Ligar
+                                 a conta ativa a deteção de ausências, o feed iCal e as notificações. --}}
                             <div>
-                                <label class="campo-label" for="tecnico-evento">Técnico (opcional)</label>
-                                <select id="tecnico-evento" wire:model="formTecnicoId" class="campo-select">
-                                    <option value="">Por atribuir</option>
-                                    @foreach ($tecnicos as $t)
-                                        <option value="{{ $t['id'] }}">{{ $t['nome'] }}</option>
-                                    @endforeach
-                                </select>
-                                <p class="mt-1.5 text-xs text-texto-fraco">O técnico é notificado e o evento entra no calendário (iCal) dele.</p>
-                                @error('formTecnicoId') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                <label class="campo-label">Técnicos (opcional)</label>
+                                <div class="space-y-1 rounded-lg border border-borda px-4 py-3">
+                                    @forelse ($tecnicos as $t)
+                                        <label class="flex items-center gap-2.5 py-1 text-sm text-texto-forte">
+                                            <input type="checkbox" wire:model="formTecnicoIds" value="{{ $t['id'] }}" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-500">
+                                            {{ $t['nome'] }}
+                                        </label>
+                                    @empty
+                                        <p class="py-1 text-sm text-texto-medio">Sem técnicos com conta ativa.</p>
+                                    @endforelse
+                                </div>
+                                <p class="mt-1.5 text-xs text-texto-fraco">Marca um ou mais; todos são notificados e o evento entra no calendário (iCal) de cada um.</p>
+                                @error('formTecnicoIds') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                @error('formTecnicoIds.*') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
