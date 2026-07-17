@@ -321,6 +321,33 @@ class FichaMedicaoRelatorioTest extends TestCase
         $this->assertNotNull($relatorio->fresh()->pdf_path); // PDF gerado (queue sync) sem 500
     }
 
+    public function test_remover_foto_ja_carregada_apaga_o_anexo_e_o_ficheiro(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake();
+        [$admin, , $e1] = $this->cenarioContrato();
+
+        // Carrega uma foto e guarda o rascunho → cria o anexo no storage.
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'individual')
+            ->set('equipamento_id', $e1->id)
+            ->set('data', now()->toDateString())
+            ->set('fotos', [\Illuminate\Http\UploadedFile::fake()->create('foto.jpg', 100, 'image/jpeg')])
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $interv = Intervencao::where('equipamento_id', $e1->id)->firstOrFail();
+        $anexo = $interv->anexos()->firstOrFail();
+        \Illuminate\Support\Facades\Storage::disk()->assertExists($anexo->storage_key);
+
+        // Reabre o relatório e remove a foto (o botão que no telemóvel estava invisível por ser só-hover).
+        Livewire::actingAs($admin)->test(Novo::class, ['relatorio' => $interv->relatorio])
+            ->call('removerAnexoExistente', $anexo->id)
+            ->assertHasNoErrors();
+
+        $this->assertSame(0, $interv->anexos()->count());
+        \Illuminate\Support\Facades\Storage::disk()->assertMissing($anexo->storage_key);
+    }
+
     public function test_modo_individual_cria_ficha_por_equipamento_e_sem_checklist(): void
     {
         [$admin, , $e1] = $this->cenarioContrato();
