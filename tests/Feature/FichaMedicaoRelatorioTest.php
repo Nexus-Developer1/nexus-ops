@@ -348,6 +348,32 @@ class FichaMedicaoRelatorioTest extends TestCase
         \Illuminate\Support\Facades\Storage::disk()->assertMissing($anexo->storage_key);
     }
 
+    public function test_adicionar_fotos_em_seleccoes_separadas_acumula_nao_substitui(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake();
+        [$admin, , $e1] = $this->cenarioContrato();
+
+        $comp = Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'individual')
+            ->set('equipamento_id', $e1->id)
+            ->set('data', now()->toDateString())
+            // 1.ª seleção
+            ->set('fotos', [\Illuminate\Http\UploadedFile::fake()->create('a.jpg', 100, 'image/jpeg')])
+            ->assertCount('fotosNovas', 1)
+            // 2.ª seleção: ACRESCENTA (antes substituía → a 1.ª desaparecia).
+            ->set('fotos', [\Illuminate\Http\UploadedFile::fake()->create('b.jpg', 100, 'image/jpeg')])
+            ->assertCount('fotosNovas', 2);
+
+        // Remover uma da pré-visualização (por gravar) deixa 1.
+        $comp->call('removerFotoNova', 0)->assertCount('fotosNovas', 1);
+
+        // Guardar grava exatamente a que sobrou.
+        $comp->call('guardarRascunho')->assertHasNoErrors();
+
+        $interv = Intervencao::where('equipamento_id', $e1->id)->firstOrFail();
+        $this->assertSame(1, $interv->anexos()->count());
+    }
+
     public function test_modo_individual_cria_ficha_por_equipamento_e_sem_checklist(): void
     {
         [$admin, , $e1] = $this->cenarioContrato();

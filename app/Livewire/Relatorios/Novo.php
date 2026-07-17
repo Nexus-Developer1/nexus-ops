@@ -90,7 +90,12 @@ class Novo extends Component
     public array $fichas = [];
 
     // ---- Fotos (novos uploads temporários até gravar) ----
+    // $fotos = binding do seletor de ficheiros; o Livewire SUBSTITUI-o a cada seleção. Por isso
+    // acumulamos em $fotosNovas (via updatedFotos): cada seleção ACRESCENTA às já escolhidas em
+    // vez de apagar as anteriores. É $fotosNovas que se pré-visualiza e que se grava.
     public array $fotos = [];
+    /** @var array<int, mixed> Fotos escolhidas e ainda por gravar (acumuladas entre seleções). */
+    public array $fotosNovas = [];
 
     public function mount(?Relatorio $relatorio = null): void
     {
@@ -492,7 +497,7 @@ class Novo extends Component
             'data' => ['required', 'date'],
             'hora_inicio' => ['nullable', 'date_format:H:i'],
             'hora_fim' => ['nullable', 'date_format:H:i', 'after_or_equal:hora_inicio'],
-            'fotos.*' => ['image', 'max:8192'], // 8 MB
+            'fotosNovas.*' => ['image', 'max:8192'], // 8 MB
         ] + $this->regrasContrato() + $this->regrasColaboradores();
     }
 
@@ -525,6 +530,24 @@ class Novo extends Component
                     ->where('ativo', true),
             ],
         ];
+    }
+
+    // ---- Fotos novas (por gravar) ----
+    // Cada seleção ACRESCENTA às já escolhidas: o wire:model substitui $fotos a cada seleção, por
+    // isso validamos as novas e movemo-las para $fotosNovas, limpando $fotos para a próxima ronda.
+    public function updatedFotos(): void
+    {
+        $this->validate(['fotos.*' => ['image', 'max:8192']]);
+
+        $this->fotosNovas = array_merge($this->fotosNovas, $this->fotos);
+        $this->fotos = [];
+    }
+
+    // Remove uma foto ainda NÃO gravada (da pré-visualização), pelo índice.
+    public function removerFotoNova(int $indice): void
+    {
+        unset($this->fotosNovas[$indice]);
+        $this->fotosNovas = array_values($this->fotosNovas);
     }
 
     // ---- Fotos já guardadas (em edição) ----
@@ -564,7 +587,7 @@ class Novo extends Component
             // Rascunho: o único obrigatório é o equipamento (e o contrato, se for modo contrato).
             $this->validate([
                 'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
-                'fotos.*' => ['image', 'max:8192'],
+                'fotosNovas.*' => ['image', 'max:8192'],
             ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasColaboradores());
         }
 
@@ -610,8 +633,8 @@ class Novo extends Component
             // BD (histórico de manutenção). No PDF, o fallback mostra-a só quando não há fichas.
             $this->persistirFichas($intervencao);
 
-            // Fotos novas (anexa às existentes).
-            foreach ($this->fotos as $foto) {
+            // Fotos novas (anexa às existentes). Grava as acumuladas em $fotosNovas.
+            foreach ($this->fotosNovas as $foto) {
                 $key = $foto->store('anexos/intervencoes/' . $intervencao->id);
                 $intervencao->anexos()->create([
                     'nome_ficheiro' => $foto->getClientOriginalName(),
@@ -622,6 +645,7 @@ class Novo extends Component
                 ]);
             }
             $this->fotos = [];
+            $this->fotosNovas = [];
 
             // Relatório: garante o rascunho-base (ponto único, à prova de corrida) e ajusta.
             $relatorio = $intervencao->garantirRascunho();
