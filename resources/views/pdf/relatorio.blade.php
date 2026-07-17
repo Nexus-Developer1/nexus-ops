@@ -178,12 +178,8 @@
         @endif
     @endif
 
-    @if (count($fotos ?? []))
-        <h2>Registo Fotográfico</h2>
-        @foreach ($fotos as $foto)
-            <img src="{{ $foto }}" class="foto">
-        @endforeach
-    @endif
+    {{-- As fotos passaram para JUNTO das medições de cada equipamento (na ficha, abaixo); as de
+         relatórios antigos (sem equipamento) e as de equipamentos sem ficha saem no fim. --}}
 
     {{-- ===== FICHAS DE MEDIÇÃO — uma por página (contrato e individual) =====
          Nota: usar sempre a forma INLINE do PHP (como o resto desta view); um bloco raw
@@ -347,7 +343,33 @@
                         </tr>
                     </table>
                 @endif
+
+                {{-- Fotografias DESTE equipamento (junto das medições). --}}
+                @php($fotosEq = ($fotosPorEquipamento[$ficha->equipamento_id]['fotos'] ?? []))
+                @if (count($fotosEq))
+                    <div class="ficha-seccao">Fotografias</div>
+                    @foreach ($fotosEq as $foto)
+                        <img src="{{ $foto }}" class="foto">
+                    @endforeach
+                @endif
             </div>
+        @endforeach
+    @endif
+
+    {{-- Fotos de equipamentos SEM ficha (não mostradas acima) + fotos gerais (relatórios antigos). --}}
+    @php($idsComFicha = $i->fichasMedicao->pluck('equipamento_id')->map(fn ($id) => (int) $id)->all())
+    @foreach (($fotosPorEquipamento ?? []) as $equipId => $grupo)
+        @if (! in_array((int) $equipId, $idsComFicha, true) && count($grupo['fotos']))
+            <h2>Fotografias — {{ $grupo['nome'] }}</h2>
+            @foreach ($grupo['fotos'] as $foto)
+                <img src="{{ $foto }}" class="foto">
+            @endforeach
+        @endif
+    @endforeach
+    @if (count($fotosGerais ?? []))
+        <h2>Registo Fotográfico</h2>
+        @foreach ($fotosGerais as $foto)
+            <img src="{{ $foto }}" class="foto">
         @endforeach
     @endif
 

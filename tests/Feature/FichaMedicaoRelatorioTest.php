@@ -269,11 +269,12 @@ class FichaMedicaoRelatorioTest extends TestCase
         [$admin] = $this->cenarioContrato();
 
         // GET real → compila o novo.blade.php inteiro e renderiza o modo individual (default).
+        // As fotos passaram para dentro de cada ficha de equipamento (não há secção global).
         $this->actingAs($admin)
             ->get(route('relatorios.novo'))
             ->assertOk()
             ->assertSee('Dados Gerais')
-            ->assertSee('Registo Fotográfico')
+            ->assertSee('Constatações Técnicas')
             ->assertDontSee('Checklist'); // checklist genérica foi removida (fichas em ambos os modos)
     }
 
@@ -326,17 +327,18 @@ class FichaMedicaoRelatorioTest extends TestCase
         \Illuminate\Support\Facades\Storage::fake();
         [$admin, , $e1] = $this->cenarioContrato();
 
-        // Carrega uma foto e guarda o rascunho → cria o anexo no storage.
+        // Carrega uma foto NO EQUIPAMENTO e guarda o rascunho → cria o anexo ligado ao equipamento.
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'individual')
             ->set('equipamento_id', $e1->id)
             ->set('data', now()->toDateString())
-            ->set('fotos', [\Illuminate\Http\UploadedFile::fake()->create('foto.jpg', 100, 'image/jpeg')])
+            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->create('foto.jpg', 100, 'image/jpeg')])
             ->call('guardarRascunho')
             ->assertHasNoErrors();
 
         $interv = Intervencao::where('equipamento_id', $e1->id)->firstOrFail();
         $anexo = $interv->anexos()->firstOrFail();
+        $this->assertSame($e1->id, $anexo->equipamento_id); // foto ligada ao equipamento
         \Illuminate\Support\Facades\Storage::disk()->assertExists($anexo->storage_key);
 
         // Reabre o relatório e remove a foto (o botão que no telemóvel estava invisível por ser só-hover).
@@ -357,21 +359,51 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->call('definirModo', 'individual')
             ->set('equipamento_id', $e1->id)
             ->set('data', now()->toDateString())
-            // 1.ª seleção
-            ->set('fotos', [\Illuminate\Http\UploadedFile::fake()->create('a.jpg', 100, 'image/jpeg')])
-            ->assertCount('fotosNovas', 1)
+            // 1.ª seleção no equipamento
+            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->create('a.jpg', 100, 'image/jpeg')])
+            ->assertCount('fotosNovas.' . $e1->id, 1)
             // 2.ª seleção: ACRESCENTA (antes substituía → a 1.ª desaparecia).
-            ->set('fotos', [\Illuminate\Http\UploadedFile::fake()->create('b.jpg', 100, 'image/jpeg')])
-            ->assertCount('fotosNovas', 2);
+            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->create('b.jpg', 100, 'image/jpeg')])
+            ->assertCount('fotosNovas.' . $e1->id, 2);
 
         // Remover uma da pré-visualização (por gravar) deixa 1.
-        $comp->call('removerFotoNova', 0)->assertCount('fotosNovas', 1);
+        $comp->call('removerFotoNova', $e1->id, 0)->assertCount('fotosNovas.' . $e1->id, 1);
 
         // Guardar grava exatamente a que sobrou.
         $comp->call('guardarRascunho')->assertHasNoErrors();
 
         $interv = Intervencao::where('equipamento_id', $e1->id)->firstOrFail();
         $this->assertSame(1, $interv->anexos()->count());
+    }
+
+    public function test_foto_por_equipamento_aparece_na_ficha_do_pdf(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake();
+        [$admin, $contrato, $e1] = $this->cenarioContrato();
+
+        // Relatório de contrato: medição + foto no e1 → ficha do e1 com a foto.
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)
+            ->set('data', now()->toDateString())
+            ->set("fichas.{$e1->id}.ve_ln_l1", '230.00')
+            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->create('up.jpg', 100, 'image/jpeg')])
+            ->call('finalizar')
+            ->assertHasNoErrors();
+
+        $interv = Intervencao::firstOrFail();
+        $anexo = $interv->anexos()->firstOrFail();
+        $this->assertSame($e1->id, $anexo->equipamento_id);
+
+        // O PDF mostra a foto DENTRO da ficha do equipamento (agrupada por equipamento_id).
+        $html = view('pdf.relatorio', [
+            'relatorio' => $interv->relatorio,
+            'fotosPorEquipamento' => [$e1->id => ['nome' => 'SN-1', 'fotos' => ['data:image/jpeg;base64,QUJD']]],
+            'fotosGerais' => [],
+        ])->render();
+
+        $this->assertStringContainsString('Fotografias', $html);
+        $this->assertStringContainsString('data:image/jpeg;base64,QUJD', $html);
     }
 
     public function test_modo_individual_cria_ficha_por_equipamento_e_sem_checklist(): void

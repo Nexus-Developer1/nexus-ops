@@ -267,58 +267,7 @@
                     </div>
                 </section>
 
-                {{-- Recomendações e próximos passos passaram para CADA ficha de equipamento (abaixo). --}}
-
-                {{-- Registo Fotográfico --}}
-                <section class="cartao" x-data="{ aberto: true }">
-                    <button @click="aberto=!aberto" class="cartao-cabecalho">
-                        <span class="flex items-center gap-3">
-                            <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
-                            <span class="text-lg font-semibold text-texto-forte">Registo Fotográfico</span>
-                        </span>
-                        <svg :class="aberto && 'rotate-180'" class="h-5 w-5 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                    </button>
-                    <div x-show="aberto" x-transition class="px-6 pb-7">
-                        <label class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-borda py-8 text-texto-fraco transition hover:border-verde-400 hover:text-verde-500">
-                            <input type="file" wire:model="fotos" multiple accept="image/*" class="hidden">
-                            <svg wire:loading.remove wire:target="fotos" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                            <svg wire:loading wire:target="fotos" class="h-7 w-7 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 018-8"/></svg>
-                            <span class="text-xs font-medium" wire:loading.remove wire:target="fotos">Carregar fotos (pode selecionar várias)</span>
-                            <span class="text-xs font-medium" wire:loading wire:target="fotos">A enviar…</span>
-                        </label>
-
-                        @if ($anexosExistentes->count())
-                            <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                @foreach ($anexosExistentes as $ax)
-                                    <div class="group relative aspect-square overflow-hidden rounded-xl bg-zinc-800" wire:key="ax-{{ $ax->id }}">
-                                        <img src="{{ route('anexos.ver', $ax) }}" class="h-full w-full object-cover">
-                                        {{-- Sempre visível: no telemóvel não há hover, e é o ecrã que os técnicos usam
-                                             em campo. Alvo de toque maior (h-9 w-9) e fundo com contraste sobre a foto. --}}
-                                        <button type="button" wire:click="removerAnexoExistente({{ $ax->id }})" wire:confirm="Remover esta foto?" class="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-black/60 text-white transition hover:bg-perigo-500">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                                        </button>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
-
-                        {{-- Fotos escolhidas mas ainda por gravar (acumuladas entre seleções). --}}
-                        @if ($fotosNovas)
-                            <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                @foreach ($fotosNovas as $indice => $foto)
-                                    <div class="relative aspect-square overflow-hidden rounded-xl bg-zinc-800" wire:key="foto-nova-{{ $indice }}">
-                                        <img src="{{ $foto->temporaryUrl() }}" class="h-full w-full object-cover">
-                                        <button type="button" wire:click="removerFotoNova({{ $indice }})" class="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-black/60 text-white transition hover:bg-perigo-500" title="Remover">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                                        </button>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
-                        @error('fotos.*') <p class="mt-2 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                        @error('fotosNovas.*') <p class="mt-2 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-                </section>
+                {{-- Recomendações + fotos passaram para CADA ficha de equipamento (abaixo). --}}
             </div>
 
             {{-- ===== FICHAS DE MEDIÇÃO (uma "página" por equipamento) — ambos os modos ===== --}}
@@ -352,6 +301,68 @@
                             </div>
                             <div class="border-t border-borda px-6 py-6">
                                 <x-relatorios.ficha-ups :prefixo="'fichas.' . $e->id" />
+                            </div>
+
+                            {{-- Fotografias DESTE equipamento (aparecem junto das medições no PDF). --}}
+                            <div class="border-t border-borda px-6 py-6">
+                                <p class="mb-3 text-sm font-semibold text-texto-forte">Fotografias</p>
+                                <label class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-borda py-6 text-texto-fraco transition hover:border-verde-400 hover:text-verde-500">
+                                    <input type="file" wire:model="fotos.{{ $e->id }}" multiple accept="image/*" class="hidden">
+                                    <svg wire:loading.remove wire:target="fotos.{{ $e->id }}" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                    <svg wire:loading wire:target="fotos.{{ $e->id }}" class="h-7 w-7 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 018-8"/></svg>
+                                    <span class="text-xs font-medium" wire:loading.remove wire:target="fotos.{{ $e->id }}">Carregar fotos deste equipamento</span>
+                                    <span class="text-xs font-medium" wire:loading wire:target="fotos.{{ $e->id }}">A enviar…</span>
+                                </label>
+
+                                {{-- Já gravadas deste equipamento --}}
+                                @php($anexosDoEquip = $anexosExistentes->where('equipamento_id', $e->id))
+                                @if ($anexosDoEquip->count())
+                                    <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                        @foreach ($anexosDoEquip as $ax)
+                                            <div class="relative aspect-square overflow-hidden rounded-xl bg-zinc-800" wire:key="ax-{{ $ax->id }}">
+                                                <img src="{{ route('anexos.ver', $ax) }}" class="h-full w-full object-cover">
+                                                <button type="button" wire:click="removerAnexoExistente({{ $ax->id }})" wire:confirm="Remover esta foto?" class="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-black/60 text-white transition hover:bg-perigo-500">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                </button>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+
+                                {{-- Novas (por gravar) deste equipamento --}}
+                                @php($novasDoEquip = $fotosNovas[$e->id] ?? [])
+                                @if (count($novasDoEquip))
+                                    <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                        @foreach ($novasDoEquip as $indice => $foto)
+                                            <div class="relative aspect-square overflow-hidden rounded-xl bg-zinc-800" wire:key="foto-nova-{{ $e->id }}-{{ $indice }}">
+                                                <img src="{{ $foto->temporaryUrl() }}" class="h-full w-full object-cover">
+                                                <button type="button" wire:click="removerFotoNova({{ $e->id }}, {{ $indice }})" class="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-black/60 text-white transition hover:bg-perigo-500" title="Remover">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                </button>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+                                @error('fotos.' . $e->id . '.*') <p class="mt-2 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                @error('fotosNovas.' . $e->id . '.*') <p class="mt-2 text-xs text-perigo-500">{{ $message }}</p> @enderror
+
+                                {{-- Relatórios antigos: fotos sem equipamento aparecem no separador principal. --}}
+                                @if ($item['principal'])
+                                    @php($anexosGerais = $anexosExistentes->whereNull('equipamento_id'))
+                                    @if ($anexosGerais->count())
+                                        <p class="mb-3 mt-6 text-sm font-semibold text-texto-forte">Fotos gerais <span class="font-normal text-texto-fraco">(relatório antigo, sem equipamento)</span></p>
+                                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                            @foreach ($anexosGerais as $ax)
+                                                <div class="relative aspect-square overflow-hidden rounded-xl bg-zinc-800" wire:key="ax-{{ $ax->id }}">
+                                                    <img src="{{ route('anexos.ver', $ax) }}" class="h-full w-full object-cover">
+                                                    <button type="button" wire:click="removerAnexoExistente({{ $ax->id }})" wire:confirm="Remover esta foto?" class="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-black/60 text-white transition hover:bg-perigo-500">
+                                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                    </button>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                @endif
                             </div>
                         </section>
                     </div>

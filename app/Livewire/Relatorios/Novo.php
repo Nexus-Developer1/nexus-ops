@@ -89,12 +89,13 @@ class Novo extends Component
     // Inclui as "Recomendações e próximos passos" + prioridade — POR equipamento (não há campo único).
     public array $fichas = [];
 
-    // ---- Fotos (novos uploads temporários até gravar) ----
-    // $fotos = binding do seletor de ficheiros; o Livewire SUBSTITUI-o a cada seleção. Por isso
-    // acumulamos em $fotosNovas (via updatedFotos): cada seleção ACRESCENTA às já escolhidas em
-    // vez de apagar as anteriores. É $fotosNovas que se pré-visualiza e que se grava.
+    // ---- Fotos POR EQUIPAMENTO (novos uploads temporários até gravar) ----
+    // As fotos pertencem a um equipamento (aparecem na ficha dele e junto das medições no PDF).
+    // Ambos os arrays são keyed pelo id do equipamento: [equipId => [ficheiros]].
+    // $fotos = binding do seletor de cada ficha; o Livewire SUBSTITUI-o a cada seleção, por isso
+    // acumulamos em $fotosNovas (via updatedFotos): cada seleção ACRESCENTA às já escolhidas.
     public array $fotos = [];
-    /** @var array<int, mixed> Fotos escolhidas e ainda por gravar (acumuladas entre seleções). */
+    /** @var array<int, array<int, mixed>> [equipId => fotos por gravar] — acumuladas entre seleções. */
     public array $fotosNovas = [];
 
     public function mount(?Relatorio $relatorio = null): void
@@ -497,7 +498,7 @@ class Novo extends Component
             'data' => ['required', 'date'],
             'hora_inicio' => ['nullable', 'date_format:H:i'],
             'hora_fim' => ['nullable', 'date_format:H:i', 'after_or_equal:hora_inicio'],
-            'fotosNovas.*' => ['image', 'max:8192'], // 8 MB
+            'fotosNovas.*.*' => ['image', 'max:8192'], // 8 MB
         ] + $this->regrasContrato() + $this->regrasColaboradores();
     }
 
@@ -532,22 +533,24 @@ class Novo extends Component
         ];
     }
 
-    // ---- Fotos novas (por gravar) ----
-    // Cada seleção ACRESCENTA às já escolhidas: o wire:model substitui $fotos a cada seleção, por
-    // isso validamos as novas e movemo-las para $fotosNovas, limpando $fotos para a próxima ronda.
-    public function updatedFotos(): void
+    // ---- Fotos novas (por gravar), por equipamento ----
+    // O seletor de cada ficha é wire:model="fotos.{equipId}"; ao mudar, o Livewire chama este hook
+    // com $key = equipId. Validamos as novas e acumulamos em $fotosNovas[equipId], limpando o input
+    // desse equipamento para a próxima ronda (cada seleção ACRESCENTA, não substitui).
+    public function updatedFotos($value, $key): void
     {
-        $this->validate(['fotos.*' => ['image', 'max:8192']]);
+        $equipId = (int) $key;
+        $this->validate(["fotos.$key.*" => ['image', 'max:8192']]);
 
-        $this->fotosNovas = array_merge($this->fotosNovas, $this->fotos);
-        $this->fotos = [];
+        $this->fotosNovas[$equipId] = array_merge($this->fotosNovas[$equipId] ?? [], $this->fotos[$key] ?? []);
+        $this->fotos[$key] = [];
     }
 
-    // Remove uma foto ainda NÃO gravada (da pré-visualização), pelo índice.
-    public function removerFotoNova(int $indice): void
+    // Remove uma foto ainda NÃO gravada (da pré-visualização) de um equipamento, pelo índice.
+    public function removerFotoNova(int $equipId, int $indice): void
     {
-        unset($this->fotosNovas[$indice]);
-        $this->fotosNovas = array_values($this->fotosNovas);
+        unset($this->fotosNovas[$equipId][$indice]);
+        $this->fotosNovas[$equipId] = array_values($this->fotosNovas[$equipId] ?? []);
     }
 
     // ---- Fotos já guardadas (em edição) ----
@@ -587,7 +590,7 @@ class Novo extends Component
             // Rascunho: o único obrigatório é o equipamento (e o contrato, se for modo contrato).
             $this->validate([
                 'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
-                'fotosNovas.*' => ['image', 'max:8192'],
+                'fotosNovas.*.*' => ['image', 'max:8192'],
             ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasColaboradores());
         }
 
@@ -633,16 +636,24 @@ class Novo extends Component
             // BD (histórico de manutenção). No PDF, o fallback mostra-a só quando não há fichas.
             $this->persistirFichas($intervencao);
 
-            // Fotos novas (anexa às existentes). Grava as acumuladas em $fotosNovas.
-            foreach ($this->fotosNovas as $foto) {
-                $key = $foto->store('anexos/intervencoes/' . $intervencao->id);
-                $intervencao->anexos()->create([
-                    'nome_ficheiro' => $foto->getClientOriginalName(),
-                    'storage_key' => $key,
-                    'mime' => $foto->getMimeType(),
-                    'tamanho' => $foto->getSize(),
-                    'criado_por' => auth()->id(),
-                ]);
+            // Fotos novas por equipamento (anexa às existentes). $fotosNovas é [equipId => fotos];
+            // cada anexo guarda o equipamento_id → aparece na ficha desse equipamento e no PDF.
+            $idsValidos = array_filter(array_merge([$this->equipamento_id], $this->equipamentosCobertos));
+            foreach ($this->fotosNovas as $equipId => $fotosDoEquipamento) {
+                // Só grava fotos de equipamentos que fazem parte do relatório (ignora resíduos).
+                $equipId = in_array((int) $equipId, array_map('intval', $idsValidos), true) ? (int) $equipId : null;
+
+                foreach ($fotosDoEquipamento as $foto) {
+                    $storageKey = $foto->store('anexos/intervencoes/' . $intervencao->id);
+                    $intervencao->anexos()->create([
+                        'equipamento_id' => $equipId,
+                        'nome_ficheiro' => $foto->getClientOriginalName(),
+                        'storage_key' => $storageKey,
+                        'mime' => $foto->getMimeType(),
+                        'tamanho' => $foto->getSize(),
+                        'criado_por' => auth()->id(),
+                    ]);
+                }
             }
             $this->fotos = [];
             $this->fotosNovas = [];

@@ -97,21 +97,34 @@ class GeradorRelatorio
                     'tecnicos',
                     'checklistItens',
                     'checklistEtapas.itens',
-                    'anexos',
+                    // Anexos com o equipamento (para agrupar as fotos por equipamento no PDF).
+                    'anexos.equipamento' => fn ($q) => $q->withoutGlobalScopes(),
                 ]),
             ])
             ->findOrFail($relatorio->getKey());
 
-        // Fotos embebidas no PDF como data URI (lidas do object storage).
-        $fotos = $relatorio->intervencao->anexos
-            ->filter(fn ($a) => str_starts_with((string) $a->mime, 'image/'))
-            ->map(fn ($a) => 'data:' . $a->mime . ';base64,' . base64_encode($a->conteudo()))
-            ->values()
+        // Fotos embebidas no PDF como data URI (lidas do object storage), AGRUPADAS por equipamento
+        // (aparecem na ficha de cada um) + gerais (anexo sem equipamento — relatórios antigos).
+        $imagens = $relatorio->intervencao->anexos
+            ->filter(fn ($a) => str_starts_with((string) $a->mime, 'image/'));
+
+        $dataUri = fn ($a) => 'data:' . $a->mime . ';base64,' . base64_encode($a->conteudo());
+
+        $fotosPorEquipamento = $imagens->whereNotNull('equipamento_id')
+            ->groupBy('equipamento_id')
+            ->map(fn ($grupo) => [
+                'nome' => trim(($grupo->first()->equipamento?->numero_serie ?? '')
+                    . ' · ' . trim(($grupo->first()->equipamento?->fabricante ?? '') . ' ' . ($grupo->first()->equipamento?->modelo ?? ''))) ?: 'Equipamento',
+                'fotos' => $grupo->map($dataUri)->values()->all(),
+            ])
             ->all();
+
+        $fotosGerais = $imagens->whereNull('equipamento_id')->map($dataUri)->values()->all();
 
         $pdf = Pdf::loadView('pdf.relatorio', [
             'relatorio' => $relatorio,
-            'fotos' => $fotos,
+            'fotosPorEquipamento' => $fotosPorEquipamento,
+            'fotosGerais' => $fotosGerais,
         ])->setPaper('a4');
 
         $caminho = 'relatorios/' . str_replace('/', '-', $relatorio->numero) . '.pdf';
