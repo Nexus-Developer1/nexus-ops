@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Utilizadores;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\PapelUtilizador;
 use App\Models\User;
 use App\Notifications\ConviteDefinirPassword;
@@ -15,6 +16,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app', ['ativo' => 'utilizadores', 'titulo' => 'Utilizadores'])]
 class Adicionar extends Component
 {
+    use ApenasEquipa;
+
     public string $nome = '';
     public string $email = '';
 

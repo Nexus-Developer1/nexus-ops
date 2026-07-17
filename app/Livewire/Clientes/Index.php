@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Clientes;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Cliente;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -13,6 +14,8 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.app', ['ativo' => 'clientes', 'titulo' => 'Clientes'])]
 class Index extends Component
 {
+    use ApenasEquipa;
+
     use WithPagination;
 
     // Expressão pura (sem extensão) para ordenar por nome ignorando acentos, maiúsculas e espaços.

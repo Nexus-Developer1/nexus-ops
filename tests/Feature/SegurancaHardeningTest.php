@@ -5,13 +5,14 @@ namespace Tests\Feature;
 use App\Enums\PapelUtilizador;
 use App\Livewire\Agenda\Calendario;
 use App\Livewire\Auth\EsqueciPassword;
-use App\Livewire\Contratos\Editor;
-use App\Livewire\Equipamentos\Associar;
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Livewire\Equipamentos\Novo as EquipamentoNovo;
 use App\Models\Cliente;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
+use Symfony\Component\Finder\Finder;
 use Tests\TestCase;
 
 // Endurecimentos de segurança (revisão 2026-07-16): o trait ApenasEquipa barra o papel cliente
@@ -35,14 +36,54 @@ class SegurancaHardeningTest extends TestCase
             'papel' => PapelUtilizador::Cliente, 'cliente_id' => $c->id, 'ativo' => true]);
     }
 
+    // Descobre TODOS os componentes de equipa (tudo em app/Livewire exceto Auth/*, Portal/* e os
+    // traits em Concerns/*). É a lista que TEM de estar coberta pelo trait ApenasEquipa.
+    /** @return list<class-string> */
+    private function componentesDeEquipa(): array
+    {
+        $dir = app_path('Livewire');
+        $classes = [];
+
+        foreach (Finder::create()->files()->in($dir)->name('*.php') as $ficheiro) {
+            $rel = str_replace(['/', '\\'], '\\', Str::of($ficheiro->getRealPath())
+                ->after($dir . DIRECTORY_SEPARATOR)->beforeLast('.php')->toString());
+
+            if (Str::startsWith($rel, ['Auth\\', 'Portal\\', 'Concerns\\'])) {
+                continue;
+            }
+
+            $fqcn = 'App\\Livewire\\' . $rel;
+            if (class_exists($fqcn) && is_subclass_of($fqcn, \Livewire\Component::class)) {
+                $classes[] = $fqcn;
+            }
+        }
+
+        sort($classes);
+
+        return $classes;
+    }
+
+    // Garante que NENHUM componente de equipa fica sem o trait (uma adição futura sem o trait
+    // falha aqui). class_uses_recursive apanha o trait mesmo que venha de um trait-de-trait.
+    public function test_todos_os_componentes_de_equipa_usam_o_trait(): void
+    {
+        $semTrait = array_filter(
+            $this->componentesDeEquipa(),
+            fn (string $c) => ! in_array(ApenasEquipa::class, class_uses_recursive($c), true),
+        );
+
+        $this->assertSame([], array_values($semTrait),
+            'Componentes de equipa sem ApenasEquipa: ' . implode(', ', $semTrait));
+    }
+
     // Invoca cada componente DIRETAMENTE (Livewire::test contorna o middleware da rota), por isso o
-    // 403 prova que o guard vem do trait ApenasEquipa, não do middleware papel:admin,tecnico. O
-    // Livewire captura o abort do mount como RESPOSTA (daí assertForbidden, não uma exceção lançada).
+    // 403 prova que o guard vem do trait, não do middleware papel:admin,tecnico. O guard corre no
+    // boot (antes do mount), por isso aborta mesmo os componentes que exigem parâmetros de rota.
     public function test_trait_apenas_equipa_bloqueia_cliente_em_todos_os_componentes(): void
     {
         $cliente = $this->cliente();
 
-        foreach ([Calendario::class, EquipamentoNovo::class, Associar::class, Editor::class] as $componente) {
+        foreach ($this->componentesDeEquipa() as $componente) {
             Livewire::actingAs($cliente);
             Livewire::test($componente)->assertForbidden();
         }

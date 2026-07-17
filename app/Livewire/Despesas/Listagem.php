@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Despesas;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\CategoriaDespesa;
 use App\Models\Despesa;
 use Livewire\Attributes\Layout;
@@ -12,6 +13,8 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.app', ['ativo' => 'despesas', 'titulo' => 'Despesas'])]
 class Listagem extends Component
 {
+    use ApenasEquipa;
+
     use WithPagination;
 
     #[Url]

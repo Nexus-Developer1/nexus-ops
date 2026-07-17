@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Clientes;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
@@ -16,6 +17,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app', ['ativo' => 'clientes', 'titulo' => 'Cliente'])]
 class Detalhe extends Component
 {
+    use ApenasEquipa;
+
     private const LIMITE = 10;
 
     public Cliente $cliente;

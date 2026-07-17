@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Alertas;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Services\Alertas\ServicoAlertas;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -10,6 +11,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app', ['ativo' => 'alertas', 'titulo' => 'Alertas'])]
 class Painel extends Component
 {
+    use ApenasEquipa;
+
     #[Url]
     public string $tipo = '';
 

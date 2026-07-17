@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Relatorios;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\EstadoContrato;
 use App\Enums\EstadoIntervencao;
 use App\Enums\EstadoRelatorio;
@@ -33,6 +34,8 @@ use Livewire\WithFileUploads;
 #[Layout('components.layouts.app', ['ativo' => 'relatorios', 'titulo' => 'Relatório'])]
 class Novo extends Component
 {
+    use ApenasEquipa;
+
     use WithFileUploads;
 
     // Edição/retomar (null = novo).

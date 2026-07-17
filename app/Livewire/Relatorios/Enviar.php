@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Relatorios;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\EstadoRelatorio;
 use App\Jobs\EnviarRelatorioPorEmail;
 use App\Models\Relatorio;
@@ -13,6 +14,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app', ['ativo' => 'relatorios', 'titulo' => 'Enviar relatório'])]
 class Enviar extends Component
 {
+    use ApenasEquipa;
+
     public Relatorio $relatorio;
 
     public string $para = '';

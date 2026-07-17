@@ -154,6 +154,24 @@ class MfaTest extends TestCase
             ->assertRedirect(route('login'));
     }
 
+    public function test_conta_desativada_durante_a_janela_mfa_nao_completa_o_login(): void
+    {
+        Notification::fake();
+        $user = $this->utilizador();
+        $codigo = $this->emitirEObter($user); // código válido, estado MFA pendente na sessão
+
+        // A conta é DESATIVADA depois de o código ter sido enviado (janela do MFA).
+        $user->update(['ativo' => false]);
+
+        // Mesmo com o código correto, o login não se completa — volta ao login.
+        Livewire::test(VerificarCodigo::class)
+            ->set('codigo', $codigo)
+            ->call('verificar')
+            ->assertRedirect(route('login'));
+
+        $this->assertGuest();
+    }
+
     public function test_reenviar_dentro_do_cooldown_avisa(): void
     {
         Notification::fake();

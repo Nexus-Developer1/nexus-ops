@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Relatorios;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\EstadoRelatorio;
 use App\Models\Relatorio;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,8 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.app', ['ativo' => 'relatorios', 'titulo' => 'Relatórios'])]
 class Listagem extends Component
 {
+    use ApenasEquipa;
+
     use WithPagination;
 
     #[Url]

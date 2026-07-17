@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Despesas;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\CategoriaDespesa;
 use App\Models\Cliente;
 use App\Models\Despesa;
@@ -13,6 +14,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app', ['ativo' => 'despesas', 'titulo' => 'Despesa'])]
 class Editor extends Component
 {
+    use ApenasEquipa;
+
     // Dobra de acentos em SQL, para a pesquisa de cliente (igual ao editor de contratos).
     private const NOME_SEM_ACENTOS = "translate(lower(nome), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
 

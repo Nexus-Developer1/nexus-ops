@@ -99,7 +99,10 @@ class VerificarCodigo extends Component
     {
         $id = session('mfa.user_id');
 
-        return $id ? User::find($id) : null;
+        // Exige `ativo` também nesta etapa: se a conta for desativada durante a janela do MFA
+        // (entre o envio do código e a sua introdução), o login não se completa — coerente com
+        // a 1.ª etapa (Login), que já filtra por ativo.
+        return $id ? User::where('ativo', true)->find($id) : null;
     }
 
     public function render()

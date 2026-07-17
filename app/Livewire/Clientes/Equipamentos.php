@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Clientes;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Cliente;
 use App\Models\Equipamento;
 use Livewire\Attributes\Layout;
@@ -13,6 +14,8 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.app', ['ativo' => 'clientes', 'titulo' => 'Equipamentos do cliente'])]
 class Equipamentos extends Component
 {
+    use ApenasEquipa;
+
     use WithPagination;
 
     public Cliente $cliente;

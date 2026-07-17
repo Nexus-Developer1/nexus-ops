@@ -6,9 +6,13 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-07-17
+
+- 🔒 **Endurecimento de segurança (3.ª revisão)** — revisão sem falhas críticas/altas; fechados 3 pontos de defesa em profundidade: (1) o trait `ApenasEquipa` passa a cobrir **todos** os 23 componentes de equipa (antes só 5) — um teste descobre-os automaticamente e falha se algum novo ficar sem o guard; (2) `reagendar()` na agenda ganha o seu próprio `abort_if(ehCliente)` (deixa de depender só do trait); (3) o 2.º passo do MFA volta a verificar `ativo` — uma conta desativada durante a janela do código já não completa o login. +2 testes (271 no total).
+
 ## 2026-07-16
 
-- 🎨 **Cores distintas por técnico na agenda** — a cor passa a ser atribuída pela posição na lista ordenada de técnicos (1.º nome → 1.ª cor), garantindo cores diferentes até 6 técnicos. O esquema anterior (hash do nome) colidia — "Davide Fonseca" e "Rui Moreira" ficavam ambos a azul. +1 teste (269 no total).
+- 🎨 **Cores distintas por técnico na agenda** — a cor passa a ser atribuída pela posição na lista ordenada de técnicos (1.º nome → 1.ª cor), garantindo cores diferentes até 6 técnicos. O esquema anterior (hash do nome) colidia — "Davide Fonseca" e "Rui Moreira" ficavam ambos a azul. +1 teste (269 no total). `ba77462`
 - 🧰 **Editar eventos convertidos (relatório em rascunho)** — o "Editar" passa a aparecer também nos eventos que já têm intervenção, desde que o relatório ainda seja **rascunho** (o caso normal: eventos criados com equipamento convertem logo). Datas/horas propagam-se à intervenção (fonte única de verdade); equipamento e contrato ficam trancados no formulário (gerem-se no relatório). Relatórios finalizados/enviados continuam a trancar o evento. +1 teste (268 no total). `d7a4c39`
 - 🧰 **Editar eventos da agenda** — novo botão "Editar" no detalhe do evento: reutiliza o formulário de criação (tipo, técnico, equipamento, contrato/cobertura, início/fim) pré-preenchido. A deteção de conflitos exclui o próprio evento. Editáveis: eventos ainda não convertidos em intervenção e não-preventivos (esses editam-se no relatório / são geridos pelo contrato). +4 testes (267 no total). `10063c5`
 - 🔒 **Endurecimento de segurança (revisão)** — sem falhas críticas encontradas; corrigidos 5 pontos de defesa em profundidade: (1) o "esqueci password" deixa de revelar se um email existe (mensagem sempre neutra, mesmo em throttle); (2) o login corre sempre um `Hash::check` (contra hash dummy) para não vazar a existência de contas por timing; (3) novo trait `ApenasEquipa` que barra o papel cliente em **todas** as requisições aos componentes de equipa (Agenda, Equipamentos, Contratos), não só via middleware da rota; (4) `anexos.ver` passa a enviar `X-Content-Type-Options: nosniff` + `Content-Disposition` com nome sanitizado; (5) `SESSION_SECURE_COOKIE=true` documentado no `.env.example` e posto em produção. +3 testes (263 no total). `7fa96a4`

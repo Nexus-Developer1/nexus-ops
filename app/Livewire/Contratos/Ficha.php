@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Contratos;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\EstadoContrato;
 use App\Enums\EstadoEvento;
 use App\Models\Contrato;
@@ -11,6 +12,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app', ['ativo' => 'contratos', 'titulo' => 'Contratos'])]
 class Ficha extends Component
 {
+    use ApenasEquipa;
+
     public Contrato $contrato;
 
     public function mount(Contrato $contrato): void

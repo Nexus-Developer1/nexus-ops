@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\EstadoEquipamento;
 use App\Enums\TipoEquipamento;
 use App\Services\Alertas\ServicoAlertas;
@@ -15,6 +16,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app', ['ativo' => 'dashboard', 'titulo' => 'Dashboard'])]
 class DashboardGestao extends Component
 {
+    use ApenasEquipa;
+
     private const CORES_TIPO = ['ups' => '#2563eb', 'gerador' => '#ea580c', 'pdu' => '#9333ea'];
 
     private const CORES_ESTADO = ['operacional' => '#16a34a', 'degradado' => '#f59e0b', 'critico' => '#dc2626', 'inativo' => '#94a3b8'];

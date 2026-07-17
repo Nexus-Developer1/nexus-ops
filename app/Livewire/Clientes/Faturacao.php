@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Clientes;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Cliente;
 use App\Models\LinhaFatura;
 use Livewire\Attributes\Layout;
@@ -14,6 +15,8 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.app', ['ativo' => 'clientes', 'titulo' => 'Faturação do cliente'])]
 class Faturacao extends Component
 {
+    use ApenasEquipa;
+
     use WithPagination;
 
     public Cliente $cliente;

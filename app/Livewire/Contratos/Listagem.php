@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Contratos;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\EstadoContrato;
 use App\Models\Contrato;
 use Livewire\Attributes\Layout;
@@ -12,6 +13,8 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.app', ['ativo' => 'contratos', 'titulo' => 'Contratos'])]
 class Listagem extends Component
 {
+    use ApenasEquipa;
+
     use WithPagination;
 
     #[Url]

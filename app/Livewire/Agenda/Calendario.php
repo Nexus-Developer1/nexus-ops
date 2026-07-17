@@ -173,6 +173,8 @@ class Calendario extends Component
     /** @return array<string, mixed> */
     public function reagendar(int $id, string $inicio, string $fim, ?int $tecnicoId, DetetorConflitos $detetor): array
     {
+        abort_if(auth()->user()->ehCliente(), 403);
+
         $evento = EventoAgenda::findOrFail($id);
 
         $novoInicio = Carbon::parse($inicio);

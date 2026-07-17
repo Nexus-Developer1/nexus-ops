@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Clientes;
 
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Cliente;
 use App\Models\LinhaFatura;
 use Livewire\Attributes\Layout;
@@ -12,6 +13,8 @@ use Livewire\Component;
 #[Layout('components.layouts.app', ['ativo' => 'clientes', 'titulo' => 'Fatura'])]
 class Fatura extends Component
 {
+    use ApenasEquipa;
+
     public Cliente $cliente;
 
     public LinhaFatura $linha;
