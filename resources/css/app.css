@@ -41,6 +41,10 @@
 }
 .fc-event {
     @apply cursor-pointer border-l-2 text-xs;
+    /* No telemóvel, um toque que começa em cima de um evento é para o ARRASTAR (não para fazer
+       scroll da página). Sem isto, o arrasto vertical para mudar a hora competia com o scroll e
+       ficava aos saltos. O scroll continua a fazer-se a partir de qualquer zona sem evento. */
+    touch-action: none;
 }
 /* Telemóvel: a barra do calendário faz wrap (título + botões não cabem numa linha a 375px). */
 @media (max-width: 639px) {

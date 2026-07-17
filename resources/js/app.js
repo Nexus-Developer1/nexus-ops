@@ -56,6 +56,12 @@ document.addEventListener('alpine:init', () => {
                 editable: true,
                 selectable: true,
                 selectMirror: true,
+                // Toque (telemóvel): agarra um evento para arrastar com um toque curto (250 ms) em vez
+                // do 1 s por defeito — torna o arrasto vertical (mudar a hora) fluido. A seleção de um
+                // intervalo livre para criar evento exige um toque um pouco mais longo (500 ms), para
+                // não criar eventos sem querer ao tentar fazer scroll numa zona vazia.
+                eventLongPressDelay: 250,
+                selectLongPressDelay: 500,
                 eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
                 events: (info, success, failure) => {
                     this.$wire.eventos(info.startStr, info.endStr).then(success).catch(failure);

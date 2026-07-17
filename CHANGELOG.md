@@ -8,7 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-07-17
 
-- 🎨 **Modais da agenda com scroll em ecrã pequeno** — os modais (novo/editar evento, marcar ausência, detalhes) ganham altura máxima (90% do ecrã) com scroll interno. Antes, em telemóvel/ecrã baixo, o formulário passava para fora do ecrã e o botão "Guardar" ficava inalcançável.
+- 🎨 **Arrastar eventos por toque (mudar a hora) no telemóvel** — o arrasto vertical de um evento competia com o scroll e ficava aos saltos. Corrigido com `touch-action: none` nos eventos + toque longo mais curto (250 ms para arrastar, 500 ms para criar por seleção). Mudar o dia já funcionava; mudar a hora passa a ser fluido. Alternativa precisa: abrir o evento → Editar → hora exacta.
+- 🎨 **Modais da agenda com scroll em ecrã pequeno** — os modais (novo/editar evento, marcar ausência, detalhes) ganham altura máxima (90% do ecrã) com scroll interno. Antes, em telemóvel/ecrã baixo, o formulário passava para fora do ecrã e o botão "Guardar" ficava inalcançável. `168c58d`
 - 🔒 **Endurecimento de segurança (3.ª revisão)** — revisão sem falhas críticas/altas; fechados 3 pontos de defesa em profundidade: (1) o trait `ApenasEquipa` passa a cobrir **todos** os 23 componentes de equipa (antes só 5) — um teste descobre-os automaticamente e falha se algum novo ficar sem o guard; (2) `reagendar()` na agenda ganha o seu próprio `abort_if(ehCliente)` (deixa de depender só do trait); (3) o 2.º passo do MFA volta a verificar `ativo` — uma conta desativada durante a janela do código já não completa o login. +2 testes (271 no total). `32c0134`
 
 ## 2026-07-16
