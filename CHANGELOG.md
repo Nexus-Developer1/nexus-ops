@@ -74,3 +74,4 @@ _(itens de infra vivem no servidor e não têm commit)._
 ## Pendente (ação do utilizador)
 - 🔒 SSH: rotar a password do servidor + desativar login por password/root + fail2ban.
 - 🛠️ Renovação do certificado Let's Encrypt (~outubro, manual — DNS-01).
+(teste de acesso - apagar)
