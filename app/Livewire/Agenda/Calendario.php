@@ -444,9 +444,15 @@ class Calendario extends Component
         $fim = Carbon::parse($this->formFim);
 
         // Contas escolhidas, por ordem alfabética (determinística): 1.º = principal, resto = adicionais.
+        // Re-filtra por papel/ativo (defesa em profundidade): mesmo que a validação acima fosse
+        // contornada num refactor, nunca se atribui/notifica uma conta não-técnica ou inativa.
         $tecnicosEscolhidos = $this->formTecnicoIds === []
             ? collect()
-            : User::whereIn('id', array_map('intval', $this->formTecnicoIds))->orderBy('nome')->get();
+            : User::whereIn('id', array_map('intval', $this->formTecnicoIds))
+                ->where('papel', PapelUtilizador::Tecnico)
+                ->where('ativo', true)
+                ->orderBy('nome')
+                ->get();
         $tecnico = $tecnicosEscolhidos->first();
         $adicionaisIds = $tecnicosEscolhidos->skip(1)->pluck('id')->values()->all();
 
