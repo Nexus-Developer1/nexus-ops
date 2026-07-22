@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-07-20
+
+- 🔒 **Atualiza `guzzlehttp/guzzle` 7.14.1 → 7.15.1** — corrige 4 advisories médios publicados a 20/07 (fragmentos de URI em Referer de redirects, scope de cookies host-only, cookies de resposta sem limite → DoS, headers Proxy-Authorization enviados à origem). `composer audit` limpo. 278 testes verdes.
+
 ## 2026-07-17
 
 - 🔒 **Revisão de segurança (5.ª) + endurecimento** — revisão às mudanças recentes (fotos por equipamento, técnico por conta, multi-técnico, middleware de headers) e varredura geral: **sem falhas críticas/altas/médias**. Único item de código: a resolução das contas de técnico ao gravar um evento passa a re-filtrar `papel=técnico + ativo` (defesa em profundidade, para além da validação que já bloqueava).
