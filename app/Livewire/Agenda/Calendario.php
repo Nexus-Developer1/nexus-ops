@@ -3,7 +3,6 @@
 namespace App\Livewire\Agenda;
 
 use App\Enums\EstadoContrato;
-use App\Enums\EstadoEvento;
 use App\Enums\EstadoRelatorio;
 use App\Enums\PapelUtilizador;
 use App\Enums\TipoEvento;
@@ -15,9 +14,10 @@ use App\Models\EventoAgenda;
 use App\Models\TecnicoDisponibilidade;
 use App\Models\User;
 use App\Notifications\EventoAtribuido;
+use App\Services\Agenda\AgendadorEvento;
 use App\Services\Agenda\ConversorVisita;
-use App\Services\Agenda\DetetorConflitos;
-use App\Services\Agenda\GeradorRascunhoDeEvento;
+use App\Services\Agenda\FonteCalendario;
+use App\Services\Agenda\SincronizadorAgenda;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -79,9 +79,6 @@ class Calendario extends Component
     public string $ausFim = '';
     public string $ausMotivo = '';
 
-    // Paleta de cores por técnico (legenda + eventos).
-    private const PALETA = ['#16a34a', '#2563eb', '#9333ea', '#ea580c', '#0891b2', '#db2777'];
-
     // Ao mudar o filtro de técnico, manda o FullCalendar re-buscar os eventos (sem F5).
     public function updatedTecnicoNome(): void
     {
@@ -93,143 +90,20 @@ class Calendario extends Component
         $this->js("window.dispatchEvent(new Event('agenda:refetch'))");
     }
 
-    // Mapa nome→cor calculado por pedido (lazy) — propriedade privada, não vai no snapshot.
-    private ?array $coresTecnicos = null;
-
-    private function corTecnico(?string $nome): string
-    {
-        $nome = trim((string) $nome);
-        if ($nome === '') {
-            return '#94a3b8'; // por atribuir
-        }
-
-        // Cor pela posição numa lista ESTÁVEL: contas de técnico por id (ids nunca mudam;
-        // contas novas entram no FIM, sem mexer nas cores de quem já existe — a ordenação
-        // alfabética anterior baralhava toda a gente quando entrava um nome "menor"),
-        // seguidas dos nomes legados (só texto) por ordem alfabética. Distintas até 6.
-        $this->coresTecnicos ??= (function (): array {
-            $contas = User::where('papel', PapelUtilizador::Tecnico)
-                ->orderBy('id')
-                ->pluck('nome')
-                ->map(fn (string $n) => trim($n));
-
-            $legados = EventoAgenda::query()
-                ->whereNotNull('tecnico_nome')
-                ->where('tecnico_nome', '!=', '')
-                ->distinct()
-                ->orderBy('tecnico_nome')
-                ->pluck('tecnico_nome')
-                ->map(fn (string $n) => trim($n))
-                ->reject(fn (string $n) => $contas->contains($n));
-
-            return $contas->concat($legados)
-                ->unique()
-                ->values()
-                ->mapWithKeys(fn (string $n, int $i) => [$n => self::PALETA[$i % count(self::PALETA)]])
-                ->all();
-        })();
-
-        // Nome fora da lista (não devia acontecer): fallback determinístico por hash.
-        return $this->coresTecnicos[$nome] ?? self::PALETA[abs(crc32($nome)) % count(self::PALETA)];
-    }
-
     // ---- Fonte de eventos do FullCalendar (intervalo visível) ----
     /** @return array<int, array<string, mixed>> */
-    public function eventos(string $inicio, string $fim): array
+    public function eventos(string $inicio, string $fim, FonteCalendario $fonte): array
     {
-        $de = Carbon::parse($inicio);
-        $ate = Carbon::parse($fim);
-
-        $eventos = EventoAgenda::query()
-            ->with(['cliente', 'equipamento'])
-            ->where('estado', '!=', EstadoEvento::Cancelado->value)
-            // Sobreposição com a janela visível (não só "começa dentro dela") — um evento
-            // que começa antes e acaba lá dentro também aparece. Igual às ausências abaixo.
-            ->where('inicio', '<', $ate)
-            ->where('fim', '>', $de)
-            ->when($this->tecnicoNome !== '', fn ($q) => $q->where('tecnico_nome', $this->tecnicoNome))
-            ->get()
-            ->map(function (EventoAgenda $e) {
-                $cor = $this->corTecnico($e->tecnico_nome);
-
-                return [
-                    'id' => (string) $e->id,
-                    'title' => $e->titulo,
-                    'start' => $e->inicio->format('Y-m-d\TH:i:s'),
-                    'end' => $e->fim->format('Y-m-d\TH:i:s'),
-                    'backgroundColor' => $cor,
-                    'borderColor' => $cor,
-                    'extendedProps' => [
-                        'kind' => 'evento',
-                        'tecnico_id' => $e->tecnico_id,
-                        'tipo' => $e->tipo->value,
-                        'estado' => $e->estado->value,
-                    ],
-                ];
-            })
-            ->all();
-
-        // Ausências (tecnico_disponibilidade) — eventos cinza, não arrastáveis.
-        $ausencias = TecnicoDisponibilidade::query()
-            ->where('inicio', '<', $ate)
-            ->where('fim', '>', $de)
-            ->when($this->tecnicoNome !== '', fn ($q) => $q->whereHas('tecnico', fn ($t) => $t->where('nome', $this->tecnicoNome)))
-            ->get()
-            ->map(fn (TecnicoDisponibilidade $a) => [
-                'id' => 'aus-' . $a->id,
-                'title' => '🚫 ' . ($a->motivo ?: 'Ausência'),
-                'start' => $a->inicio->format('Y-m-d\TH:i:s'),
-                'end' => $a->fim->format('Y-m-d\TH:i:s'),
-                'backgroundColor' => '#e2e8f0',
-                'borderColor' => '#cbd5e1',
-                'textColor' => '#475569',
-                'editable' => false,
-                'extendedProps' => ['kind' => 'ausencia', 'ausencia_id' => $a->id],
-            ])
-            ->all();
-
-        return array_merge($eventos, $ausencias);
+        return $fonte->eventos(Carbon::parse($inicio), Carbon::parse($fim), $this->tecnicoNome);
     }
 
     // ---- Reagendamento (drag/resize) ----
     /** @return array<string, mixed> */
-    public function reagendar(int $id, string $inicio, string $fim, ?int $tecnicoId, DetetorConflitos $detetor): array
+    public function reagendar(int $id, string $inicio, string $fim, ?int $tecnicoId, AgendadorEvento $agendador): array
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $evento = EventoAgenda::findOrFail($id);
-
-        $novoInicio = Carbon::parse($inicio);
-        $novoFim = Carbon::parse($fim);
-
-        if ($razao = $detetor->foraDeHorario($novoInicio, $novoFim)) {
-            return ['ok' => false, 'mensagem' => $razao];
-        }
-
-        // Verificação + gravação na MESMA transação, serializada por técnico (advisory lock):
-        // dois reagendamentos simultâneos do mesmo técnico deixam de poder passar ambos.
-        return DB::transaction(function () use ($detetor, $evento, $novoInicio, $novoFim) {
-            $detetor->travarAgendaDe($evento->tecnicoIdsTodos() !== []
-                ? $evento->tecnicoIdsTodos()
-                : array_filter([$evento->tecnico_nome]));
-
-            // Verifica TODOS os técnicos do evento (principal + adicionais) no novo horário.
-            foreach ($evento->tecnicoIdsTodos() as $idTecnico) {
-                if ($razao = $detetor->conflito($idTecnico, $novoInicio, $novoFim, $evento->id)) {
-                    return ['ok' => false, 'mensagem' => $razao];
-                }
-            }
-
-            // Eventos legados (só nome, sem conta): deteta pelo menos a sobreposição por nome.
-            if ($evento->tecnicoIdsTodos() === [] && $evento->tecnico_nome
-                && $razao = $detetor->conflitoPorNome($evento->tecnico_nome, $novoInicio, $novoFim, $evento->id)) {
-                return ['ok' => false, 'mensagem' => $razao];
-            }
-
-            $evento->update(['inicio' => $novoInicio, 'fim' => $novoFim]);
-
-            return ['ok' => true];
-        });
+        return $agendador->reagendar(EventoAgenda::findOrFail($id), Carbon::parse($inicio), Carbon::parse($fim));
     }
 
     // ---- Detalhe + conversão evento→intervenção ----
@@ -323,20 +197,6 @@ class Calendario extends Component
         $this->modalCriar = true;
     }
 
-    // Um evento é editável pela agenda? Preventivas nunca (geridas pelo contrato). Convertidos
-    // só enquanto o relatório for RASCUNHO — depois de finalizado/enviado é documento oficial e
-    // o evento fica trancado (edita-se abrindo a intervenção). Mesmas regras do removerEvento.
-    private function podeEditar(EventoAgenda $evento): bool
-    {
-        if ($evento->tipo === TipoEvento::VisitaPreventiva) {
-            return false;
-        }
-
-        $relatorio = $evento->intervencao?->relatorio;
-
-        return ! $relatorio || $relatorio->estado === EstadoRelatorio::Rascunho;
-    }
-
     // ---- Edição de evento (reutiliza o modal/formulário da criação) ----
     public function abrirEdicao(): void
     {
@@ -344,7 +204,7 @@ class Calendario extends Component
 
         $evento = EventoAgenda::with('equipamento', 'intervencao.relatorio')->findOrFail($this->eventoSelecionadoId);
 
-        if (! $this->podeEditar($evento)) {
+        if (! $evento->editavelPelaAgenda()) {
             return; // o botão não aparece nestes casos — guard defensivo
         }
 
@@ -444,8 +304,9 @@ class Calendario extends Component
     }
 
     // Submit do modal de evento: cria um novo OU grava a edição (editandoId preenchido).
-    // Mantém o nome histórico "criarEvento" — é o submit único do formulário.
-    public function criarEvento(DetetorConflitos $detetor, GeradorRascunhoDeEvento $geradorRascunho)
+    // Mantém o nome histórico "criarEvento" — é o submit único do formulário. As regras
+    // (conflitos, transação, locks) vivem no AgendadorEvento; a camada 2 no Sincronizador.
+    public function criarEvento(AgendadorEvento $agendador, SincronizadorAgenda $sincronizador)
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
@@ -479,13 +340,6 @@ class Calendario extends Component
                 ->get();
         $tecnico = $tecnicosEscolhidos->first();
         $adicionaisIds = $tecnicosEscolhidos->skip(1)->pluck('id')->values()->all();
-
-        // Horário de cobertura (independente de técnico) — fora da transação, é só leitura de config.
-        if ($razao = $detetor->foraDeHorario($inicio, $fim)) {
-            $this->addError('formInicio', $razao);
-
-            return;
-        }
 
         // O tipo de evento (texto livre) fica guardado para sugestões futuras (cresce com o uso).
         $titulo = trim(preg_replace('/\s+/', ' ', $this->formTitulo));
@@ -526,83 +380,7 @@ class Calendario extends Component
             'cobertura' => $this->formContratoId ? $this->formCobertura : null,
         ];
 
-        // Verificação de conflitos + gravação na MESMA transação, serializada por técnico
-        // (advisory lock): sem isto, dois utilizadores a agendar o mesmo técnico em simultâneo
-        // passavam ambos no "verifica → grava" e ficava double-booking. Devolve o evento gravado
-        // + quem notificar, ou a razão do erro; as notificações saem DEPOIS de gravado.
-        $resultado = DB::transaction(function () use ($detetor, $tecnicosEscolhidos, $tecnico, $adicionaisIds, $inicio, $fim, $titulo, $atributos) {
-            // Trava por id de conta E por nome: o reagendamento de eventos legados trava
-            // pelo nome, e assim os dois caminhos serializam entre si.
-            $detetor->travarAgendaDe([
-                ...$tecnicosEscolhidos->pluck('id')->all(),
-                ...$tecnicosEscolhidos->pluck('nome')->all(),
-            ]);
-
-            foreach ($tecnicosEscolhidos as $t) {
-                // Por CONTA: sobreposição com eventos ligados à conta + AUSÊNCIAS/férias do técnico.
-                // Por NOME: apanha também eventos legados (só texto, sem conta) do mesmo técnico.
-                // Na edição, o próprio evento é excluído (senão conflituava consigo mesmo).
-                $razao = $detetor->conflito($t->id, $inicio, $fim, $this->editandoId)
-                    ?? $detetor->conflitoPorNome($t->nome, $inicio, $fim, $this->editandoId);
-                if ($razao) {
-                    return ['erro' => $razao];
-                }
-            }
-
-            if ($this->editandoId) {
-                // EDIÇÃO: atualiza o evento existente (tipo e estado ficam como estão). Re-verifica
-                // as regras de elegibilidade — o estado pode ter mudado desde que o modal abriu
-                // (ex.: outro utilizador finalizou o relatório entretanto).
-                $evento = EventoAgenda::with('intervencao.relatorio')->findOrFail($this->editandoId);
-                if (! $this->podeEditar($evento)) {
-                    return ['bloqueado' => true];
-                }
-
-                // Conjunto de técnicos ANTES da edição (para notificar só os agora adicionados).
-                $idsAnteriores = $evento->tecnicoIdsTodos();
-
-                if ($evento->intervencao_id) {
-                    // Convertido (relatório em rascunho): equipamento/contrato pertencem ao relatório
-                    // e não mudam por aqui — só título, técnicos, datas e cobertura. Datas/horas e
-                    // técnico principal propagam-se à intervenção para os dois lados contarem a mesma
-                    // história (única fonte de verdade — CLAUDE.md §6).
-                    $evento->update([
-                        'titulo' => $titulo,
-                        'inicio' => $inicio,
-                        'fim' => $fim,
-                        'tecnico_id' => $tecnico?->id,
-                        'tecnico_nome' => $tecnico?->nome,
-                        'cobertura' => $evento->contrato_id ? $this->formCobertura : null,
-                    ]);
-
-                    $evento->intervencao->update(array_filter([
-                        'data_inicio' => $inicio->toDateString(),
-                        'hora_inicio' => $inicio->format('H:i'),
-                        'hora_fim' => $fim->format('H:i'),
-                        // Só propaga o técnico quando foi escolhido (não apaga o principal do relatório).
-                        'tecnico_id' => $tecnico?->id,
-                    ]));
-                } else {
-                    $evento->update($atributos);
-                }
-
-                // Técnicos adicionais (além do principal) — em ambos os tipos de edição.
-                $evento->tecnicosAdicionais()->sync($adicionaisIds);
-                $evento->unsetRelation('tecnicosAdicionais');
-
-                // Notificar só quem foi AGORA adicionado ao evento.
-                return ['evento' => $evento, 'notificar' => $tecnicosEscolhidos->whereNotIn('id', $idsAnteriores)];
-            }
-
-            $evento = EventoAgenda::create($atributos + [
-                'tipo' => TipoEvento::Outro,
-                'estado' => EstadoEvento::Planeado,
-            ]);
-            $evento->tecnicosAdicionais()->sync($adicionaisIds);
-
-            // Notificar TODOS os técnicos atribuídos (CLAUDE.md §6).
-            return ['evento' => $evento, 'notificar' => $tecnicosEscolhidos];
-        });
+        $resultado = $agendador->gravar($atributos, $tecnicosEscolhidos, $adicionaisIds, $this->editandoId);
 
         if (isset($resultado['erro'])) {
             $this->addError('formInicio', $resultado['erro']);
@@ -627,11 +405,9 @@ class Calendario extends Component
             $t->notify(new EventoAtribuido($evento));
         }
 
-        // Camada 2: evento com equipamento OU contrato + data futura → gera rascunho de
-        // relatório ligado (o equipamento do contrato serve de âmbito quando não se escolhe um).
-        // Também na edição: se o equipamento/contrato foi acrescentado agora, o rascunho nasce cá
-        // (gerar() é idempotente — eventos já convertidos nem chegam aqui).
-        if (($equipamentoId || $this->formContratoId) && $inicio->isFuture() && $geradorRascunho->gerar($evento)) {
+        // Camada 2 (agenda → relatórios) via ponto único: evento com equipamento OU contrato
+        // e início futuro → rascunho de relatório ligado. As guardas anti-loop vivem no serviço.
+        if ($sincronizador->eventoGravado($evento)) {
             session()->flash('sucesso', 'Rascunho de relatório criado para esta intervenção.');
         }
 
@@ -699,7 +475,7 @@ class Calendario extends Component
         $this->recarregar();
     }
 
-    public function render()
+    public function render(FonteCalendario $fonte)
     {
         // Contas de técnico — usadas no modal de AUSÊNCIA (ausências são por conta).
         $tecnicos = User::where('papel', PapelUtilizador::Tecnico)
@@ -708,16 +484,8 @@ class Calendario extends Component
             ->get()
             ->map(fn (User $t) => ['id' => $t->id, 'nome' => $t->nome]);
 
-        // Nomes de técnico usados nos EVENTOS (texto livre) — alimentam o filtro e a legenda,
-        // com a cor por nome (coerente com a cor dos eventos no calendário).
-        $nomesTecnicos = EventoAgenda::query()
-            ->whereNotNull('tecnico_nome')
-            ->where('tecnico_nome', '!=', '')
-            ->distinct()
-            ->orderBy('tecnico_nome')
-            ->pluck('tecnico_nome')
-            ->map(fn (string $nome) => ['nome' => $nome, 'cor' => $this->corTecnico($nome)])
-            ->all();
+        // Filtro + legenda com a cor por técnico (coerente com a cor dos eventos).
+        $nomesTecnicos = $fonte->legenda();
 
         $evento = $this->eventoSelecionadoId
             ? EventoAgenda::with(['cliente', 'equipamento', 'tecnico', 'intervencao.relatorio'])->find($this->eventoSelecionadoId)
@@ -760,7 +528,7 @@ class Calendario extends Component
             'tecnicos' => $tecnicos,
             'nomesTecnicos' => $nomesTecnicos,
             'evento' => $evento,
-            'eventoEditavel' => $evento && $this->podeEditar($evento),
+            'eventoEditavel' => $evento && $evento->editavelPelaAgenda(),
             'ausencia' => $ausencia,
             'assuntos' => AssuntoEvento::orderBy('nome')->get(),
             'equipamentosFiltrados' => $equipamentosFiltrados,

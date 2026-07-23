@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\EstadoEvento;
+use App\Enums\EstadoRelatorio;
 use App\Enums\TipoEvento;
 use App\Models\Concerns\RestritoAoCliente;
 use Illuminate\Database\Eloquent\Builder;
@@ -108,5 +109,20 @@ class EventoAgenda extends Model
     public function intervencao(): BelongsTo
     {
         return $this->belongsTo(Intervencao::class);
+    }
+
+    // Editável/removível pela agenda? Preventivas nunca (são geridas pelo contrato — a geração
+    // apaga/recria planeadas e dessincronizava). Convertidos só enquanto o relatório for
+    // RASCUNHO — depois de finalizado/enviado é documento oficial e o evento fica trancado
+    // (edita-se abrindo a intervenção). Regra partilhada por editar e remover.
+    public function editavelPelaAgenda(): bool
+    {
+        if ($this->tipo === TipoEvento::VisitaPreventiva) {
+            return false;
+        }
+
+        $relatorio = $this->intervencao?->relatorio;
+
+        return ! $relatorio || $relatorio->estado === EstadoRelatorio::Rascunho;
     }
 }

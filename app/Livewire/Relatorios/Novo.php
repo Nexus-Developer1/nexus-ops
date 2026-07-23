@@ -19,7 +19,7 @@ use App\Models\FichaMedicao;
 use App\Models\Intervencao;
 use App\Models\Relatorio;
 use App\Models\User;
-use App\Services\Agenda\GeradorEventoDeRelatorio;
+use App\Services\Agenda\SincronizadorAgenda;
 use App\Services\GeradorRelatorio;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -573,17 +573,17 @@ class Novo extends Component
     }
 
     // ---- Gravação ----
-    public function guardarRascunho(GeradorRelatorio $gerador, GeradorEventoDeRelatorio $geradorEvento)
+    public function guardarRascunho(GeradorRelatorio $gerador, SincronizadorAgenda $sincronizador)
     {
-        return $this->persistir($gerador, $geradorEvento, false);
+        return $this->persistir($gerador, $sincronizador, false);
     }
 
-    public function finalizar(GeradorRelatorio $gerador, GeradorEventoDeRelatorio $geradorEvento)
+    public function finalizar(GeradorRelatorio $gerador, SincronizadorAgenda $sincronizador)
     {
-        return $this->persistir($gerador, $geradorEvento, true);
+        return $this->persistir($gerador, $sincronizador, true);
     }
 
-    private function persistir(GeradorRelatorio $gerador, GeradorEventoDeRelatorio $geradorEvento, bool $finalizar)
+    private function persistir(GeradorRelatorio $gerador, SincronizadorAgenda $sincronizador, bool $finalizar)
     {
         if ($finalizar) {
             // Validação completa.
@@ -596,7 +596,7 @@ class Novo extends Component
             ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasColaboradores());
         }
 
-        $relatorio = DB::transaction(function () use ($gerador, $geradorEvento, $finalizar) {
+        $relatorio = DB::transaction(function () use ($gerador, $sincronizador, $finalizar) {
             $dados = [
                 'equipamento_id' => $this->equipamento_id,
                 'contrato_id' => $this->modo === 'contrato' ? $this->contrato_id : null,
@@ -671,9 +671,9 @@ class Novo extends Component
             }
             $this->relatorioId = $relatorio->id;
 
-            // Camada 3: data de intervenção futura → garante o evento de agenda ligado
-            // (cria ou move). Direto no model, por isso NÃO dispara a camada 2 (anti-loop).
-            $geradorEvento->gerar($intervencao);
+            // Camada 3 (relatórios → agenda) via ponto único: data futura → garante o evento
+            // ligado (cria ou move). As guardas anti-loop vivem no SincronizadorAgenda.
+            $sincronizador->intervencaoGravada($intervencao);
 
             // Visita executada (intervenção concluída) → fecha o evento de agenda ligado.
             // Antes só o ENVIO por email fechava o evento; um relatório entregue em mão ou
