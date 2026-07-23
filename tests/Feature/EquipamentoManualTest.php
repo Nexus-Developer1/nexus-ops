@@ -42,7 +42,7 @@ class EquipamentoManualTest extends TestCase
             ->set('modelo', 'Smart-UPS SRT 5000')
             ->set('numero_serie', 'SN-MANUAL-1')
             ->set('potencia_kva', '5')
-            ->set('num_baterias', '16')
+            ->set('bancos', [['numero_serie' => '', 'modelo' => '', 'capacidade' => '', 'num_baterias' => '16', 'data_instalacao' => '', 'proxima_troca' => '']])
             ->call('guardar')
             ->assertHasNoErrors();
 
@@ -190,21 +190,40 @@ class EquipamentoManualTest extends TestCase
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('selecionarCliente', $cliente->id)
             ->set('modelo', 'UPS B')
-            ->set('banco_numero_serie', 'BANK-001')
-            ->set('banco_modelo', 'Riello 12V')
-            ->set('banco_capacidade', '7 Ah / 384 V')
-            ->set('num_baterias', '16')
+            ->set('bancos', [['numero_serie' => 'BANK-001', 'modelo' => 'Riello 12V', 'capacidade' => '7 Ah / 384 V', 'num_baterias' => '16', 'data_instalacao' => '', 'proxima_troca' => '']])
             ->call('guardar')
             ->assertHasNoErrors();
 
         $eq = Equipamento::where('modelo', 'UPS B')->firstOrFail();
-        $this->assertSame('BANK-001', $eq->atributos['banco_numero_serie']);
-        $this->assertSame('Riello 12V', $eq->atributos['banco_modelo']);
-        $this->assertSame('7 Ah / 384 V', $eq->atributos['banco_capacidade']);
-        $this->assertEquals(16, $eq->atributos['num_baterias']);
+        $this->assertSame('BANK-001', $eq->atributos['bancos'][0]['numero_serie']);
+        $this->assertSame('Riello 12V', $eq->atributos['bancos'][0]['modelo']);
+        $this->assertSame('7 Ah / 384 V', $eq->atributos['bancos'][0]['capacidade']);
+        $this->assertEquals(16, $eq->atributos['num_baterias']); // total dos bancos
     }
 
-    public function test_ficha_edita_banco_de_baterias_e_preserva_outros_atributos(): void
+    public function test_novo_equipamento_guarda_VARIOS_bancos_com_total_e_proxima_troca_mais_proxima(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->set('modelo', 'UPS 2 bancos')
+            ->set('bancos', [
+                ['numero_serie' => 'BANK-A', 'modelo' => 'Riello', 'capacidade' => '', 'num_baterias' => '16', 'data_instalacao' => '', 'proxima_troca' => '2028-06-01'],
+                ['numero_serie' => 'BANK-B', 'modelo' => 'Eaton', 'capacidade' => '', 'num_baterias' => '20', 'data_instalacao' => '', 'proxima_troca' => '2027-03-15'],
+            ])
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $eq = Equipamento::where('modelo', 'UPS 2 bancos')->firstOrFail();
+        $this->assertCount(2, $eq->atributos['bancos']);                        // os dois bancos gravados
+        $this->assertEquals(36, $eq->atributos['num_baterias']);               // 16 + 20 = total
+        $this->assertSame('2027-03-15', $eq->proxima_troca_baterias->format('Y-m-d')); // a mais próxima (alertas)
+    }
+
+    public function test_ficha_edita_varios_bancos_e_preserva_outros_atributos(): void
     {
         $admin = $this->admin();
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
@@ -213,20 +232,36 @@ class EquipamentoManualTest extends TestCase
             'atributos' => ['potencia_kva' => 5]]);
 
         Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $eq])
-            ->set('bancoNumeroSerie', 'BANK-9')
-            ->set('bancoModelo', 'Eaton')
-            ->set('bancoCapacidade', '9 Ah')
-            ->set('numBaterias', '20')
-            ->set('proximaTrocaBaterias', '2027-01-15')
+            ->set('bancos', [
+                ['numero_serie' => 'BANK-9', 'modelo' => 'Eaton', 'capacidade' => '9 Ah', 'num_baterias' => '20', 'data_instalacao' => '', 'proxima_troca' => '2027-01-15'],
+                ['numero_serie' => 'BANK-10', 'modelo' => 'Riello', 'capacidade' => '', 'num_baterias' => '10', 'data_instalacao' => '', 'proxima_troca' => ''],
+            ])
             ->call('guardarBanco')
             ->assertHasNoErrors();
 
         $eq->refresh();
-        $this->assertSame('BANK-9', $eq->atributos['banco_numero_serie']);
-        $this->assertSame('Eaton', $eq->atributos['banco_modelo']);
-        $this->assertEquals(20, $eq->atributos['num_baterias']);
+        $this->assertCount(2, $eq->atributos['bancos']);
+        $this->assertSame('BANK-9', $eq->atributos['bancos'][0]['numero_serie']);
+        $this->assertEquals(30, $eq->atributos['num_baterias']);              // 20 + 10 = total
         $this->assertEquals(5, $eq->atributos['potencia_kva']);              // atributo existente preservado
-        $this->assertSame('2027-01-15', $eq->proxima_troca_baterias->format('Y-m-d'));
+        $this->assertSame('2027-01-15', $eq->proxima_troca_baterias->format('Y-m-d')); // a mais próxima
+    }
+
+    public function test_ficha_carrega_banco_no_formato_antigo_como_uma_linha(): void
+    {
+        // Retrocompatibilidade: equipamento gravado no formato antigo (um banco solto em atributos).
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $eq = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional',
+            'proxima_troca_baterias' => '2027-05-05',
+            'atributos' => ['banco_numero_serie' => 'ANTIGO-1', 'banco_modelo' => 'Riello', 'num_baterias' => 8, 'data_baterias' => '2024-01-01']]);
+
+        Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $eq])
+            ->assertSet('bancos', [[
+                'numero_serie' => 'ANTIGO-1', 'modelo' => 'Riello', 'capacidade' => '',
+                'num_baterias' => '8', 'data_instalacao' => '2024-01-01', 'proxima_troca' => '2027-05-05',
+            ]]);
     }
 
     // ---- Sistema composto (ex.: deteção de incêndio): tipo novo + lista de componentes ----

@@ -8,6 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-07-23
 
+- 🧰 **Vários bancos de baterias por equipamento** — a secção "Banco de baterias" (no criar equipamento e na ficha) passa de um banco para uma **lista** (adiciona/remove quantos quiseres), cada um com nº de série, modelo, capacidade, nº de baterias, datas. Guardado em `atributos.bancos`. Integrações preservadas: `atributos.num_baterias` fica com o **total** (a ficha de medição pré-preenche por aí) e `proxima_troca_baterias` com a data **mais próxima** (alertas de baterias a vencer). Retrocompatível com o formato antigo de um banco. +3 testes (287 no total).
+
 - 🧰 **Bancos de baterias associados aos UPS** — os bancos/kits de baterias que existem como equipamentos próprios (importados do PHC) podem agora ser **associados ao UPS a que pertencem** (`equipamento_pai_id`, auto-referência em `equipamentos`). Na ficha do UPS, a secção "Banco de baterias" mostra os bancos associados (com link) e permite associar por pesquisa server-side **por nº de série ou por local** — sem texto, sugere bancos livres no mesmo local; na ficha do banco aparece o link para o UPS pai. Guardas: um banco não pode pertencer a dois UPS (é preciso desassociá-lo primeiro) nem criar cadeias/auto-associações. Na listagem: **filtro** (com banco / sem banco / só bancos associados), etiqueta "Banco ×N" e a pesquisa passa a encontrar o UPS pelo nº de série do banco associado. Requer migração. +7 testes (285 no total). `d7dc2bf`
 
 - 🧹 **`.gitignore`: ignora `.claude/settings.local.json`** — ficheiro de permissões locais do Claude Code (pessoal, por posto de trabalho; não deve ser versionado).

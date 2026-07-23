@@ -7,7 +7,6 @@ use App\Enums\TipoIntervencao;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -28,13 +27,10 @@ class Ficha extends Component
     // Pesquisa server-side de equipamentos para associar (banco de baterias → UPS).
     public string $bancoBusca = '';
 
-    // Banco de baterias (parte do equipamento). Identidade em atributos; datas na coluna própria.
-    public string $bancoNumeroSerie = '';
-    public string $bancoModelo = '';
-    public string $bancoCapacidade = '';
-    public string $numBaterias = '';
-    public string $dataBaterias = '';
-    public string $proximaTrocaBaterias = '';
+    // Bancos de baterias (parte do equipamento) — um UPS pode ter VÁRIOS. Lista de linhas
+    // { numero_serie, modelo, capacidade, num_baterias, data_instalacao, proxima_troca }.
+    /** @var list<array<string, string>> */
+    public array $bancos = [];
 
     // Componentes do sistema (equipamentos compostos) — { designacao, quantidade }.
     /** @var list<array{designacao: string, quantidade: string|int}> */
@@ -48,12 +44,8 @@ class Ficha extends Component
         $this->localizacaoInstalacao = $equipamento->localizacao_instalacao ?? '';
 
         $attrs = $equipamento->atributos ?? [];
-        $this->bancoNumeroSerie = (string) ($attrs['banco_numero_serie'] ?? '');
-        $this->bancoModelo = (string) ($attrs['banco_modelo'] ?? '');
-        $this->bancoCapacidade = (string) ($attrs['banco_capacidade'] ?? '');
-        $this->numBaterias = isset($attrs['num_baterias']) ? (string) $attrs['num_baterias'] : '';
-        $this->dataBaterias = ! empty($attrs['data_baterias']) ? Carbon::parse($attrs['data_baterias'])->format('Y-m-d') : '';
-        $this->proximaTrocaBaterias = $equipamento->proxima_troca_baterias?->format('Y-m-d') ?? '';
+        // Bancos no formato do formulário (converte o formato antigo de um banco só, se existir).
+        $this->bancos = $equipamento->bancosParaFormulario();
         $this->componentes = array_values($attrs['componentes'] ?? []);
     }
 
@@ -66,6 +58,17 @@ class Ficha extends Component
     {
         unset($this->componentes[$indice]);
         $this->componentes = array_values($this->componentes);
+    }
+
+    public function adicionarBanco(): void
+    {
+        $this->bancos[] = ['numero_serie' => '', 'modelo' => '', 'capacidade' => '', 'num_baterias' => '', 'data_instalacao' => '', 'proxima_troca' => ''];
+    }
+
+    public function removerBanco(int $indice): void
+    {
+        unset($this->bancos[$indice]);
+        $this->bancos = array_values($this->bancos);
     }
 
     // Guarda a lista de componentes (só linhas preenchidas). Preserva os restantes atributos.
@@ -128,28 +131,38 @@ class Ficha extends Component
         abort_if(auth()->user()->ehCliente(), 403);
 
         $this->validate([
-            'bancoNumeroSerie' => ['nullable', 'string', 'max:255'],
-            'bancoModelo' => ['nullable', 'string', 'max:255'],
-            'bancoCapacidade' => ['nullable', 'string', 'max:100'],
-            'numBaterias' => ['nullable', 'integer', 'min:0'],
-            'dataBaterias' => ['nullable', 'date'],
-            'proximaTrocaBaterias' => ['nullable', 'date'],
+            'bancos' => ['array'],
+            'bancos.*.numero_serie' => ['nullable', 'string', 'max:255'],
+            'bancos.*.modelo' => ['nullable', 'string', 'max:255'],
+            'bancos.*.capacidade' => ['nullable', 'string', 'max:100'],
+            'bancos.*.num_baterias' => ['nullable', 'integer', 'min:0'],
+            'bancos.*.data_instalacao' => ['nullable', 'date'],
+            'bancos.*.proxima_troca' => ['nullable', 'date'],
         ]);
 
+        [$bancos, $totalBaterias, $proximaTroca] = Equipamento::normalizarBancos($this->bancos);
+
+        // Preserva os restantes atributos; substitui os campos dos bancos (e limpa o formato antigo).
         $attrs = $this->equipamento->atributos ?? [];
-        $attrs['banco_numero_serie'] = trim($this->bancoNumeroSerie) ?: null;
-        $attrs['banco_modelo'] = trim($this->bancoModelo) ?: null;
-        $attrs['banco_capacidade'] = trim($this->bancoCapacidade) ?: null;
-        $attrs['num_baterias'] = $this->numBaterias !== '' ? (int) $this->numBaterias : null;
-        $attrs['data_baterias'] = $this->dataBaterias ?: null;
-        $attrs = array_filter($attrs, fn ($v) => $v !== null); // mantém o JSON limpo
+        unset($attrs['banco_numero_serie'], $attrs['banco_modelo'], $attrs['banco_capacidade'], $attrs['data_baterias']);
+        if ($bancos !== []) {
+            $attrs['bancos'] = $bancos;
+        } else {
+            unset($attrs['bancos']);
+        }
+        if ($totalBaterias !== null) {
+            $attrs['num_baterias'] = $totalBaterias;
+        } else {
+            unset($attrs['num_baterias']);
+        }
 
         $this->equipamento->update([
             'atributos' => $attrs ?: null,
-            'proxima_troca_baterias' => $this->proximaTrocaBaterias ?: null,
+            'proxima_troca_baterias' => $proximaTroca,
         ]);
+        $this->bancos = $this->equipamento->fresh()->bancosParaFormulario();
 
-        session()->flash('sucesso', 'Banco de baterias guardado.');
+        session()->flash('sucesso', 'Bancos de baterias guardados.');
     }
 
     // Associa um equipamento existente (banco de baterias/kit) a este como equipamento pai.

@@ -48,19 +48,26 @@ class Novo extends Component
     public string $autonomia_min = '';
     public string $firmware = '';
 
-    // Banco de baterias (parte do mesmo equipamento). Identidade nova em atributos; nº de baterias
-    // e datas reutilizam os campos de bateria existentes.
-    public string $banco_numero_serie = '';
-    public string $banco_modelo = '';
-    public string $banco_capacidade = '';
-    public string $num_baterias = '';
-    public string $data_baterias = '';
-    public string $proxima_troca_baterias = '';
+    // Bancos de baterias (parte do mesmo equipamento) — um UPS pode ter VÁRIOS. Lista de linhas
+    // { numero_serie, modelo, capacidade, num_baterias, data_instalacao, proxima_troca }.
+    /** @var list<array<string, string>> */
+    public array $bancos = [];
 
     // Componentes do sistema (ex.: sistema de deteção de incêndio) — { designacao, quantidade }.
     // Guardados em atributos.componentes. Útil para equipamentos compostos, sem nº de série.
     /** @var list<array{designacao: string, quantidade: string|int}> */
     public array $componentes = [];
+
+    public function adicionarBanco(): void
+    {
+        $this->bancos[] = ['numero_serie' => '', 'modelo' => '', 'capacidade' => '', 'num_baterias' => '', 'data_instalacao' => '', 'proxima_troca' => ''];
+    }
+
+    public function removerBanco(int $indice): void
+    {
+        unset($this->bancos[$indice]);
+        $this->bancos = array_values($this->bancos);
+    }
 
     public function adicionarComponente(): void
     {
@@ -125,12 +132,13 @@ class Novo extends Component
             'topologia' => ['nullable', 'string', 'max:100'],
             'autonomia_min' => ['nullable', 'integer', 'min:0'],
             'firmware' => ['nullable', 'string', 'max:100'],
-            'banco_numero_serie' => ['nullable', 'string', 'max:255'],
-            'banco_modelo' => ['nullable', 'string', 'max:255'],
-            'banco_capacidade' => ['nullable', 'string', 'max:100'],
-            'num_baterias' => ['nullable', 'integer', 'min:0'],
-            'data_baterias' => ['nullable', 'date'],
-            'proxima_troca_baterias' => ['nullable', 'date'],
+            'bancos' => ['array'],
+            'bancos.*.numero_serie' => ['nullable', 'string', 'max:255'],
+            'bancos.*.modelo' => ['nullable', 'string', 'max:255'],
+            'bancos.*.capacidade' => ['nullable', 'string', 'max:100'],
+            'bancos.*.num_baterias' => ['nullable', 'integer', 'min:0'],
+            'bancos.*.data_instalacao' => ['nullable', 'date'],
+            'bancos.*.proxima_troca' => ['nullable', 'date'],
         ]);
 
         // Local: o escolhido ou a "Instalação principal" do cliente (criada se não existir — mesma
@@ -144,12 +152,17 @@ class Novo extends Component
             'topologia' => trim($this->topologia) ?: null,
             'autonomia_min' => $this->autonomia_min !== '' ? (int) $this->autonomia_min : null,
             'firmware' => trim($this->firmware) ?: null,
-            'banco_numero_serie' => trim($this->banco_numero_serie) ?: null,
-            'banco_modelo' => trim($this->banco_modelo) ?: null,
-            'banco_capacidade' => trim($this->banco_capacidade) ?: null,
-            'num_baterias' => $this->num_baterias !== '' ? (int) $this->num_baterias : null,
-            'data_baterias' => $this->data_baterias ?: null,
         ], fn ($v) => $v !== null);
+
+        // Bancos de baterias (lista). num_baterias = TOTAL (p/ ficha de medição); a coluna
+        // proxima_troca_baterias = a mais próxima (p/ alertas). Ver Equipamento::normalizarBancos().
+        [$bancos, $totalBaterias, $proximaTroca] = Equipamento::normalizarBancos($this->bancos);
+        if ($bancos !== []) {
+            $atributos['bancos'] = $bancos;
+        }
+        if ($totalBaterias !== null) {
+            $atributos['num_baterias'] = $totalBaterias;
+        }
 
         // Componentes do sistema (lista { designacao, quantidade }), só linhas preenchidas.
         $componentes = $this->componentesNormalizados();
@@ -170,7 +183,7 @@ class Novo extends Component
             'data_instalacao' => $this->data_instalacao ?: null,
             'fim_garantia' => $this->fim_garantia ?: null,
             'notas' => trim($this->notas) ?: null,
-            'proxima_troca_baterias' => $this->proxima_troca_baterias ?: null,
+            'proxima_troca_baterias' => $proximaTroca,
             'atributos' => $atributos ?: null,
         ]);
 
