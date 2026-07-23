@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-07-23
+
+- 🔒 **Atualiza `dompdf/dompdf` 3.1.5 → 3.1.6** — corrige 6 advisories publicados a 22/07 (4 médios: leitura de ficheiros locais e oráculo de existência via SVG, DoS por bitmaps sobredimensionados; 2 baixos: oráculo via `font-face`, bypass do chroot). Relevante porque o upload de fotos aceita BMP e as imagens entram no PDF como data URI. `composer audit` limpo. 278 testes verdes.
+
 ## 2026-07-20
 
 - 🔒 **Atualiza `guzzlehttp/guzzle` 7.14.1 → 7.15.1** — corrige 4 advisories médios publicados a 20/07 (fragmentos de URI em Referer de redirects, scope de cookies host-only, cookies de resposta sem limite → DoS, headers Proxy-Authorization enviados à origem). `composer audit` limpo. 278 testes verdes.
