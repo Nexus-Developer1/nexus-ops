@@ -79,6 +79,73 @@
                             <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
                             <h2 class="text-lg font-semibold text-texto-forte">Banco de baterias</h2>
                         </div>
+
+                        {{-- Este equipamento É um banco/kit associado a um UPS → link para o pai. --}}
+                        @if ($equipamentoPai)
+                            <div class="border-t border-borda px-6 py-5">
+                                <div class="flex items-center justify-between gap-3 rounded-lg border border-info-100 bg-info-100/40 px-4 py-3">
+                                    <div class="text-sm text-texto-medio">
+                                        Associado ao equipamento
+                                        <a href="{{ route('equipamentos.ficha', $equipamentoPai) }}" wire:navigate class="font-medium text-info-600 hover:underline">{{ $equipamentoPai->numero_serie ?? '—' }}</a>
+                                        <span class="text-xs text-texto-fraco"> · {{ trim(($equipamentoPai->fabricante ?? '') . ' ' . ($equipamentoPai->modelo ?? '')) ?: '—' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        @else
+                            {{-- Bancos/kits (equipamentos próprios) associados a este UPS. --}}
+                            <div class="border-t border-borda px-6 py-5">
+                                @if ($bancosAssociados->isNotEmpty())
+                                    <ul class="space-y-2">
+                                        @foreach ($bancosAssociados as $banco)
+                                            <li wire:key="banco-{{ $banco->id }}" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-borda bg-fundo px-4 py-3">
+                                                <div class="min-w-0">
+                                                    <a href="{{ route('equipamentos.ficha', $banco) }}" wire:navigate class="text-sm font-medium text-texto-forte hover:underline">{{ $banco->numero_serie ?? '—' }}</a>
+                                                    <div class="mt-0.5 truncate text-xs text-texto-fraco">{{ trim(($banco->fabricante ?? '') . ' ' . ($banco->modelo ?? '')) ?: '—' }} · {{ $banco->local?->cliente?->nome ?? '—' }} · {{ $banco->local?->designacao ?? '—' }}</div>
+                                                </div>
+                                                @unless (auth()->user()->ehCliente())
+                                                    <button wire:click="desassociarBanco({{ $banco->id }})" wire:confirm="Desassociar este banco de baterias?" class="text-xs font-medium text-perigo-500 hover:text-perigo-600">Desassociar</button>
+                                                @endunless
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @else
+                                    <p class="text-sm text-texto-medio">Nenhum banco de baterias associado a este equipamento.</p>
+                                @endif
+
+                                @unless (auth()->user()->ehCliente())
+                                    {{-- Combobox server-side: pesquisa por nº de série, modelo ou local; sem texto sugere bancos livres no mesmo local. --}}
+                                    <div class="mt-4">
+                                        <label class="campo-label" for="banco-combo">Associar equipamento (banco/kit de baterias)</label>
+                                        <div wire:key="combo-banco" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
+                                            <input id="banco-combo" type="text"
+                                                wire:model.live.debounce.300ms="bancoBusca"
+                                                @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
+                                                @keydown.arrow-down.prevent="aberto = true; if ($refs['b' + (destaque + 1)]) destaque++"
+                                                @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
+                                                @keydown.enter.prevent="$refs['b' + destaque]?.click()"
+                                                class="campo-input pr-10" placeholder="Pesquisar por nº de série ou local..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
+                                            <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                            <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
+                                                @forelse ($bancosFiltrados as $idx => $b)
+                                                    <li x-ref="b{{ $idx }}" wire:key="bf-{{ $b->id }}"
+                                                        wire:click="associarBanco({{ $b->id }})" @click="aberto = false"
+                                                        @mouseenter="destaque = {{ $idx }}"
+                                                        :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
+                                                        class="cursor-pointer px-4 py-2 text-sm" role="option">
+                                                        <span class="font-medium text-texto-forte">{{ $b->numero_serie ?? '—' }}</span>
+                                                        <span class="text-xs text-texto-fraco"> · {{ $b->modelo ?? '—' }} · {{ $b->local?->cliente?->nome ?? 'sem cliente' }} · {{ $b->local?->designacao ?? '—' }}</span>
+                                                    </li>
+                                                @empty
+                                                    <li class="px-4 py-2 text-sm text-texto-medio">{{ trim($bancoBusca) === '' ? 'Sem bancos livres neste local — pesquise por nº de série ou local.' : 'Nenhum equipamento encontrado.' }}</li>
+                                                @endforelse
+                                            </ul>
+                                        </div>
+                                        @error('bancoBusca') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                    </div>
+                                @endunless
+                            </div>
+                        @endif
+
                         <div class="grid grid-cols-1 gap-x-8 gap-y-6 border-t border-borda px-6 py-6 sm:grid-cols-2">
                             <div>
                                 <label class="campo-label">Nº de série do banco</label>

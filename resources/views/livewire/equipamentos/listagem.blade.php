@@ -42,6 +42,14 @@
                             @endforeach
                         </select>
                     @endif
+
+                    {{-- Filtro por banco de baterias associado (equipamento→equipamento). --}}
+                    <select wire:model.live="banco" class="campo-select w-full sm:w-auto sm:min-w-[13rem]">
+                        <option value="">Banco de baterias: todos</option>
+                        <option value="com">Com banco associado</option>
+                        <option value="sem">Sem banco associado</option>
+                        <option value="banco">Só bancos associados a UPS</option>
+                    </select>
                 </div>
             </div>
 
@@ -62,7 +70,12 @@
                         @forelse ($equipamentos as $e)
                             <tr class="border-b border-borda transition last:border-0 hover:bg-fundo">
                                 <td class="px-6 py-4">
-                                    <div class="font-medium text-texto-forte">{{ $e->numero_serie ?? '—' }}</div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-medium text-texto-forte">{{ $e->numero_serie ?? '—' }}</span>
+                                        @if ($e->equipamentos_associados_count > 0)
+                                            <span class="etiqueta bg-verde-50 text-verde-700" title="{{ $e->equipamentos_associados_count }} banco(s) de baterias associado(s)">Banco ×{{ $e->equipamentos_associados_count }}</span>
+                                        @endif
+                                    </div>
                                     <div class="text-xs text-texto-fraco">{{ $e->fabricante }} {{ $e->modelo }}</div>
                                 </td>
                                 <td class="px-6 py-4"><span class="etiqueta {{ $e->tipo->classesEtiqueta() }}">{{ $e->tipo->rotulo() }}</span></td>

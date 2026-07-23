@@ -30,6 +30,7 @@ class Equipamento extends Model
     protected $fillable = [
         'id_erp',
         'local_id',
+        'equipamento_pai_id',
         'tipo',
         'fabricante',
         'modelo',
@@ -63,6 +64,18 @@ class Equipamento extends Model
     public function local(): BelongsTo
     {
         return $this->belongsTo(Local::class);
+    }
+
+    // Equipamento "pai" — ex.: o UPS a que este banco de baterias está associado.
+    public function equipamentoPai(): BelongsTo
+    {
+        return $this->belongsTo(Equipamento::class, 'equipamento_pai_id');
+    }
+
+    // Equipamentos associados a este — ex.: bancos de baterias/kits ligados a um UPS.
+    public function equipamentosAssociados(): HasMany
+    {
+        return $this->hasMany(Equipamento::class, 'equipamento_pai_id');
     }
 
     public function intervencoes(): HasMany

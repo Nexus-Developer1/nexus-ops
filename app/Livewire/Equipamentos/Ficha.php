@@ -8,6 +8,7 @@ use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -23,6 +24,9 @@ class Ficha extends Component
     // Identificação editável: cliente final (texto livre) e localização física da instalação.
     public string $clienteFinal = '';
     public string $localizacaoInstalacao = '';
+
+    // Pesquisa server-side de equipamentos para associar (banco de baterias → UPS).
+    public string $bancoBusca = '';
 
     // Banco de baterias (parte do equipamento). Identidade em atributos; datas na coluna própria.
     public string $bancoNumeroSerie = '';
@@ -148,6 +152,75 @@ class Ficha extends Component
         session()->flash('sucesso', 'Banco de baterias guardado.');
     }
 
+    // Associa um equipamento existente (banco de baterias/kit) a este como equipamento pai.
+    public function associarBanco(int $id): void
+    {
+        abort_if(auth()->user()->ehCliente(), 403);
+
+        // Um equipamento que já pertence a um pai não pode ter associados (evita cadeias).
+        if ($this->equipamento->equipamento_pai_id !== null) {
+            return;
+        }
+
+        $banco = Equipamento::find($id);
+        if (! $banco || $banco->id === $this->equipamento->id) {
+            return;
+        }
+
+        if ($banco->equipamento_pai_id !== null && $banco->equipamento_pai_id !== $this->equipamento->id) {
+            $this->addError('bancoBusca', 'Este equipamento já está associado a outro UPS. Desassocie-o primeiro na ficha desse UPS.');
+
+            return;
+        }
+
+        $banco->update(['equipamento_pai_id' => $this->equipamento->id]);
+        $this->bancoBusca = '';
+
+        session()->flash('sucesso', 'Banco de baterias associado.');
+    }
+
+    public function desassociarBanco(int $id): void
+    {
+        abort_if(auth()->user()->ehCliente(), 403);
+
+        $this->equipamento->equipamentosAssociados()->whereKey($id)->update(['equipamento_pai_id' => null]);
+
+        session()->flash('sucesso', 'Banco de baterias desassociado.');
+    }
+
+    // Candidatos a associar, por pesquisa server-side (nº de série ou local). Sem texto,
+    // sugere bancos/kits de baterias AINDA LIVRES no MESMO LOCAL deste equipamento.
+    private function bancosFiltrados(): Collection
+    {
+        $base = Equipamento::query()
+            ->with('local.cliente')
+            ->whereKeyNot($this->equipamento->id)
+            ->whereNull('equipamento_pai_id')
+            ->whereDoesntHave('equipamentosAssociados'); // um pai não pode virar filho (evita ciclos)
+
+        if (trim($this->bancoBusca) === '') {
+            return $base
+                ->where('local_id', $this->equipamento->local_id)
+                ->where(fn ($q) => $q->where('modelo', 'ilike', '%bater%')->orWhere('faminome', 'ilike', '%bater%'))
+                ->orderBy('numero_serie')
+                ->limit(10)
+                ->get();
+        }
+
+        $termo = '%' . trim($this->bancoBusca) . '%';
+
+        return $base
+            ->where(function ($q) use ($termo) {
+                $q->where('numero_serie', 'ilike', $termo)
+                    ->orWhere('modelo', 'ilike', $termo)
+                    ->orWhereHas('local', fn ($l) => $l->where('designacao', 'ilike', $termo)
+                        ->orWhereHas('cliente', fn ($c) => $c->where('nome', 'ilike', $termo)));
+            })
+            ->orderBy('numero_serie')
+            ->limit(30)
+            ->get();
+    }
+
     // Inicia uma nova intervenção corretiva e abre o formulário de execução.
     public function novaIntervencao()
     {
@@ -211,6 +284,10 @@ class Ficha extends Component
             'especificacoes' => $this->especificacoes(),
             'intervencoes' => $intervencoes,
             'contratos' => $contratos,
+            // Bancos/kits associados a este equipamento e (se for um banco) o UPS pai.
+            'bancosAssociados' => $this->equipamento->equipamentosAssociados()->with('local.cliente')->orderBy('numero_serie')->get(),
+            'equipamentoPai' => $this->equipamento->equipamentoPai()->with('local.cliente')->first(),
+            'bancosFiltrados' => $this->bancosFiltrados(),
         ]);
     }
 }
