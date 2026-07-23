@@ -50,10 +50,10 @@ class EnviarRelatorioPorEmail implements ShouldQueue
             'enviado_para' => $this->para,
         ]);
 
-        // Fecha o evento de agenda associado (regra de ouro §6): o evento fecha quando o relatório
-        // é ENVIADO, não ao finalizar — um relatório finalizado ainda é editável, só o envio o
-        // torna definitivo. Sem evento associado → nada a fazer. withoutGlobalScopes: transição de
-        // sistema, não navegação.
+        // Fecha o evento de agenda associado (regra de ouro §6). A finalização já o fecha
+        // (visita executada — ver Relatorios\Novo::persistir); aqui é reforço idempotente
+        // para relatórios legados finalizados antes dessa regra. withoutGlobalScopes:
+        // transição de sistema, não navegação.
         $eventoId = $this->relatorio->intervencao?->evento_agenda_id;
         if ($eventoId) {
             EventoAgenda::withoutGlobalScopes()

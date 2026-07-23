@@ -4,11 +4,13 @@ namespace App\Notifications;
 
 use App\Models\EventoAgenda;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 // Notifica o técnico de que lhe foi atribuído um novo evento na agenda (CLAUDE.md §6).
-class EventoAtribuido extends Notification
+// Em fila (§12): o envio de email não pode atrasar o guardar do evento.
+class EventoAtribuido extends Notification implements ShouldQueue
 {
     use Queueable;
 

@@ -6,11 +6,28 @@ use App\Enums\EstadoEvento;
 use App\Models\EventoAgenda;
 use App\Models\TecnicoDisponibilidade;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 // Deteta conflitos ao agendar/reagendar um evento (CLAUDE.md §6): fora de horário
 // de cobertura, sobreposição com outro evento do técnico, ou técnico em ausência.
 class DetetorConflitos
 {
+    // Serializa o agendamento por técnico (advisory lock do Postgres, âmbito da transação):
+    // sem isto, dois utilizadores a gravar em simultâneo passavam ambos na verificação de
+    // conflito ("verifica → grava") e o técnico ficava com double-booking. Chamar DENTRO de
+    // uma DB::transaction, ANTES de verificar conflitos. Chaves ordenadas (evita deadlock
+    // quando dois eventos partilham técnicos por ordens diferentes).
+    /** @param list<int|string> $chaves ids de conta e/ou nomes legados */
+    public function travarAgendaDe(array $chaves): void
+    {
+        $chaves = array_values(array_unique(array_map(strval(...), $chaves)));
+        sort($chaves);
+
+        foreach ($chaves as $chave) {
+            DB::select('SELECT pg_advisory_xact_lock(hashtext(?))', ['agenda:tecnico:' . $chave]);
+        }
+    }
+
     // Evento fora do horário comercial / fim-de-semana? (independente de técnico).
     public function foraDeHorario(Carbon $inicio, Carbon $fim): ?string
     {

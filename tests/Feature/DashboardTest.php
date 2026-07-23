@@ -163,9 +163,12 @@ class DashboardTest extends TestCase
         $this->assertSame('enviado', $relatorio->fresh()->estado->value); // envia na mesma, sem erro
     }
 
-    public function test_finalizar_nao_fecha_o_evento(): void
+    public function test_finalizar_fecha_o_evento(): void
     {
-        // Teste-CHAVE do desenho: finalizar (ainda editável) NÃO fecha o evento — só o envio o faz.
+        // Regra revista (2026-07-23): FINALIZAR fecha o evento — Concluido significa "visita
+        // executada", não "relatório entregue". Antes só o envio por email fechava; relatórios
+        // entregues em mão/portal deixavam a visita "em curso" para sempre e as métricas
+        // planeadas vs. realizadas contavam mal. O envio continua a fechar (idempotente).
         $equip = $this->equip();
         $evento = EventoAgenda::create(['tipo' => 'visita_preventiva', 'titulo' => 'V', 'estado' => 'em_curso',
             'inicio' => now(), 'fim' => now()->addHour(), 'cliente_id' => $equip->local->cliente_id, 'equipamento_id' => $equip->id]);
@@ -181,7 +184,6 @@ class DashboardTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame('finalizado', $relatorio->fresh()->estado->value);
-        // O evento continua ABERTO (não concluído) — o relatório finalizado ainda é editável.
-        $this->assertNotSame('concluido', $evento->fresh()->estado->value);
+        $this->assertSame('concluido', $evento->fresh()->estado->value); // visita executada → fechado
     }
 }

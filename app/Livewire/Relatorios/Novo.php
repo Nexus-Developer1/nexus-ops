@@ -4,6 +4,7 @@ namespace App\Livewire\Relatorios;
 
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\EstadoContrato;
+use App\Enums\EstadoEvento;
 use App\Enums\EstadoIntervencao;
 use App\Enums\EstadoRelatorio;
 use App\Enums\PapelUtilizador;
@@ -13,6 +14,7 @@ use App\Models\Anexo;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
+use App\Models\EventoAgenda;
 use App\Models\FichaMedicao;
 use App\Models\Intervencao;
 use App\Models\Relatorio;
@@ -672,6 +674,17 @@ class Novo extends Component
             // Camada 3: data de intervenção futura → garante o evento de agenda ligado
             // (cria ou move). Direto no model, por isso NÃO dispara a camada 2 (anti-loop).
             $geradorEvento->gerar($intervencao);
+
+            // Visita executada (intervenção concluída) → fecha o evento de agenda ligado.
+            // Antes só o ENVIO por email fechava o evento; um relatório entregue em mão ou
+            // via portal deixava a visita "planeada" para sempre (e as métricas de gestão
+            // planeadas vs. realizadas contavam mal). O envio continua a fechar (idempotente).
+            // Depois do gerar() acima, que em edições repõe estado Planeado.
+            if ($finalizar && $intervencao->refresh()->evento_agenda_id) {
+                EventoAgenda::withoutGlobalScopes()
+                    ->whereKey($intervencao->evento_agenda_id)
+                    ->update(['estado' => EstadoEvento::Concluido->value]);
+            }
 
             return $relatorio;
         });
