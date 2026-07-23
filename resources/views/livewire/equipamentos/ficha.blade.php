@@ -1,5 +1,5 @@
 <div>
-    <x-topbar :breadcrumb="['Ativos', $equipamento->numero_serie ?? 'Equipamento']">
+    <x-topbar :breadcrumb="['Equipamentos', $equipamento->numero_serie ?? 'Equipamento']">
         <a href="{{ route('equipamentos.associar', $equipamento) }}" wire:navigate class="botao-secundario">Alterar local</a>
         <button wire:click="novaIntervencao" class="botao-primario">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>

@@ -1,5 +1,5 @@
 <div>
-    <x-topbar :breadcrumb="['Ativos', 'Novo equipamento']" />
+    <x-topbar :breadcrumb="['Equipamentos', 'Novo equipamento']" />
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <form wire:submit="guardar" class="mx-auto max-w-3xl">

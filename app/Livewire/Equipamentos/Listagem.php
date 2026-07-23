@@ -10,7 +10,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-#[Layout('components.layouts.app', ['ativo' => 'ativos', 'titulo' => 'Ativos'])]
+#[Layout('components.layouts.app', ['ativo' => 'ativos', 'titulo' => 'Equipamentos'])]
 class Listagem extends Component
 {
     use ApenasEquipa;

@@ -19,7 +19,7 @@
     // Navegação: o técnico é um ESPELHO do admin (mesma lista), a ÚNICA exceção é "Utilizadores".
     $itens = [
         ['id' => 'dashboard',  'label' => 'Dashboard',  'url' => route('dashboard')],
-        ['id' => 'ativos',     'label' => 'Ativos',     'url' => route('ativos')],
+        ['id' => 'ativos',     'label' => 'Equipamentos', 'url' => route('ativos')],
         ['id' => 'clientes',   'label' => 'Clientes',   'url' => route('clientes')],
         ['id' => 'relatorios', 'label' => 'Relatórios', 'url' => route('relatorios')],
         ['id' => 'contratos',  'label' => 'Contratos',  'url' => route('contratos')],

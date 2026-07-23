@@ -4,7 +4,7 @@
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-5xl">
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Os meus equipamentos</h1>
-            <p class="mt-2 text-sm text-texto-medio">Ativos cobertos sob a sua gestão.</p>
+            <p class="mt-2 text-sm text-texto-medio">Equipamentos cobertos sob a sua gestão.</p>
 
             <div class="mt-8 relative w-full max-w-sm">
                 <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>

@@ -1,5 +1,5 @@
 <div>
-    <x-topbar :breadcrumb="['Início', 'Ativos']">
+    <x-topbar :breadcrumb="['Início', 'Equipamentos']">
         <a href="{{ route('equipamentos.associar') }}" wire:navigate class="botao-secundario">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
             Associar a local
@@ -13,7 +13,7 @@
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-6xl">
 
-            <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Ativos</h1>
+            <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Equipamentos</h1>
             <p class="mt-2 text-sm text-texto-medio">{{ $equipamentos->total() }} {{ \Illuminate\Support\Str::plural('equipamento', $equipamentos->total()) }} registado{{ $equipamentos->total() === 1 ? '' : 's' }}.</p>
 
             {{-- Filtros: tipos em cima (linha própria), pesquisa + família por baixo. --}}

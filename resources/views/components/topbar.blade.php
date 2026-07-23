@@ -9,7 +9,7 @@
         'Dashboard' => 'dashboard',
         'Agenda' => 'agenda',
         'Alertas' => 'alertas',
-        'Ativos' => 'ativos',
+        'Equipamentos' => 'ativos',
         'Clientes' => 'clientes',
         'Contratos' => 'contratos',
         'Despesas' => 'despesas',
