@@ -605,6 +605,9 @@ class Novo extends Component
 
     private function persistir(GeradorRelatorio $gerador, SincronizadorAgenda $sincronizador, bool $finalizar)
     {
+        // Antes de gravar: relatório acabado de começar (URL ainda /relatorios/novo)?
+        $eraNovo = $this->relatorioId === null;
+
         if ($finalizar) {
             // Validação completa.
             $this->validate();
@@ -720,11 +723,24 @@ class Novo extends Component
         if ($finalizar) {
             GerarRelatorioPdf::dispatch($relatorio);
             session()->flash('sucesso', "Relatório {$relatorio->numero} finalizado. O PDF está a ser gerado.");
-        } else {
-            session()->flash('sucesso', 'Rascunho guardado.');
+
+            return redirect()->route('relatorios');
         }
 
-        return redirect()->route('relatorios');
+        // Guardar rascunho é um save de PREVENÇÃO: fica-se na página, a meio do trabalho.
+        // 1.º rascunho (veio de /relatorios/novo): muda a URL para a edição do próprio
+        // rascunho — um F5 retoma-o em vez de abrir um formulário vazio. Tudo o que estava
+        // no formulário acabou de ser gravado, por isso o remount não perde nada.
+        if ($eraNovo) {
+            session()->flash('sucesso', 'Rascunho guardado.');
+
+            return $this->redirectRoute('relatorios.editar', $relatorio, navigate: true);
+        }
+
+        // Já em edição: não navega — confirma com um toast e deixa continuar onde estava.
+        $this->dispatch('rascunho-guardado');
+
+        return null;
     }
 
     // Grava (upsert) uma ficha de medições por equipamento coberto e remove as órfãs.
