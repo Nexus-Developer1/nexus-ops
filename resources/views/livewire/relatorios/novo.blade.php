@@ -1,4 +1,6 @@
-<div x-data="{ tab: 'gerais' }">
+{{-- validacao-falhou: os campos validados vivem no separador "Dados Gerais" — salta para lá
+     e sobe ao topo, senão o erro ficava escondido e o botão parecia não fazer nada. --}}
+<div x-data="{ tab: 'gerais' }" x-on:validacao-falhou.window="tab = 'gerais'; window.scrollTo({ top: 0, behavior: 'smooth' })">
     <x-topbar :breadcrumb="['Relatórios', $relatorioId ? 'Rascunho' : 'Novo']">
         <a href="{{ route('relatorios') }}" class="botao-secundario">Cancelar</a>
         <button wire:click="guardarRascunho" wire:loading.attr="disabled" wire:target="guardarRascunho" class="botao-secundario">
@@ -27,6 +29,22 @@
                 <div class="mb-6 flex items-center gap-2 rounded-lg border border-verde-200 bg-verde-50 px-4 py-3 text-sm font-medium text-verde-700">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                     {{ session('sucesso') }}
+                </div>
+            @endif
+
+            {{-- Resumo de erros de validação — SEMPRE visível (acima dos separadores), para a
+                 falha nunca passar despercebida esteja-se no separador que se estiver. --}}
+            @if ($errors->any())
+                <div class="mb-6 rounded-lg border border-perigo-200 bg-perigo-100 px-4 py-3 text-sm text-perigo-600">
+                    <div class="flex items-center gap-2 font-medium">
+                        <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86l-8.02 13.89A2 2 0 004 21h16a2 2 0 001.73-3.25L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                        O relatório não foi gravado — corrija os campos assinalados:
+                    </div>
+                    <ul class="mt-1.5 list-inside list-disc space-y-0.5">
+                        @foreach ($errors->all() as $erro)
+                            <li>{{ $erro }}</li>
+                        @endforeach
+                    </ul>
                 </div>
             @endif
 

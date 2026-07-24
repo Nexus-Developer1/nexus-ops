@@ -45,6 +45,25 @@ class RascunhoPrevencaoTest extends TestCase
             ->assertRedirect(route('relatorios.editar', Relatorio::firstOrFail()));
     }
 
+    public function test_finalizar_sem_tecnicos_mostra_erro_e_salta_para_dados_gerais(): void
+    {
+        // Desde "técnicos sem pré-seleção", finalizar sem técnicos falha a validação. O erro
+        // vive no separador "Dados Gerais" — o evento 'validacao-falhou' garante que a página
+        // salta para lá (senão o botão parecia não fazer nada, visto de outro separador).
+        $equip = $this->equipamento();
+
+        Livewire::actingAs($this->admin())->test(Novo::class)
+            ->set('equipamento_id', $equip->id)
+            ->set('tipo', 'corretiva')
+            ->set('data', now()->toDateString())
+            ->call('finalizar')
+            ->assertHasErrors('tecnicoIds')
+            ->assertDispatched('validacao-falhou')
+            ->assertNoRedirect();
+
+        $this->assertSame(0, Relatorio::count()); // nada gravado
+    }
+
     public function test_guardar_rascunho_em_edicao_fica_na_pagina(): void
     {
         $equip = $this->equipamento();

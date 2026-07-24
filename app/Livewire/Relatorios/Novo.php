@@ -592,6 +592,22 @@ class Novo extends Component
         }
     }
 
+    // Validação da gravação: completa ao finalizar; no rascunho só o essencial
+    // (equipamento; contrato se for modo contrato).
+    private function validarPara(bool $finalizar): void
+    {
+        if ($finalizar) {
+            $this->validate();
+
+            return;
+        }
+
+        $this->validate([
+            'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
+            'fotosNovas.*.*' => ['image', 'max:8192'],
+        ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos());
+    }
+
     // ---- Gravação ----
     public function guardarRascunho(GeradorRelatorio $gerador, SincronizadorAgenda $sincronizador)
     {
@@ -608,15 +624,15 @@ class Novo extends Component
         // Antes de gravar: relatório acabado de começar (URL ainda /relatorios/novo)?
         $eraNovo = $this->relatorioId === null;
 
-        if ($finalizar) {
-            // Validação completa.
-            $this->validate();
-        } else {
-            // Rascunho: o único obrigatório é o equipamento (e o contrato, se for modo contrato).
-            $this->validate([
-                'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
-                'fotosNovas.*.*' => ['image', 'max:8192'],
-            ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos());
+        try {
+            $this->validarPara($finalizar);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Os campos validados vivem todos no separador "Dados Gerais"; se o utilizador
+            // estiver noutro separador (ficha de um equipamento), o erro ficava invisível e
+            // o botão parecia morto. Avisa o frontend para saltar para o separador certo.
+            $this->dispatch('validacao-falhou');
+
+            throw $e;
         }
 
         $relatorio = DB::transaction(function () use ($gerador, $sincronizador, $finalizar) {
