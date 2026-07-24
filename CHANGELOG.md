@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-07-24
 
-- 🎨 **Email de agendamento no tema do site** — a notificação de evento atribuído (`EventoAtribuido`) deixa o template markdown genérico do Laravel e passa a usar uma view HTML própria no tema Nexus (faixa e botão verdes, marca, rodapé — igual ao convite e ao envio de relatórios), com os detalhes do evento em caixa: quando, cliente, local, equipamento e técnicos. +1 teste (298 no total).
+- 🎨 **Email de agendamento no tema do site** — a notificação de evento atribuído (`EventoAtribuido`) deixa o template markdown genérico do Laravel e passa a usar uma view HTML própria no tema Nexus (faixa e botão verdes, marca, rodapé — igual ao convite e ao envio de relatórios), com os detalhes do evento em caixa: quando, cliente, local, equipamento e técnicos. +1 teste (298 no total). `75b139f`
 
 ## 2026-07-23
 
