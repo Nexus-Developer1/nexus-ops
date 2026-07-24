@@ -23,7 +23,10 @@
         .etapa-titulo { margin-top: 8px; font-weight: bold; color: #374151; font-size: 11px; }
         .etapa-contador { color: #9ca3af; font-weight: normal; font-size: 9px; }
         .item-obs { color: #6b7280; }
-        .foto { width: 150px; height: 110px; object-fit: cover; border: 1px solid #e5e7eb; margin: 0 6px 6px 0; }
+        /* Fotos em grelha de tabela (4/linha) — ver pdf/_fotos.blade.php. */
+        .fotos-tab { width: 100%; border-collapse: collapse; margin-bottom: 2px; }
+        .foto-cel { width: 25%; padding: 0 6px 6px 0; }
+        .foto { width: 100%; height: 110px; object-fit: cover; border: 1px solid #e5e7eb; }
         .rodape { margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 8px; text-align: center; color: #9ca3af; font-size: 8px; letter-spacing: 1px; }
         .etiqueta { background: #ECFDF3; color: #166534; font-size: 9px; padding: 2px 6px; border-radius: 3px; }
         /* Ficha de medições (folha Nexus) — uma por página. */
@@ -348,9 +351,7 @@
                 @php($fotosEq = ($fotosPorEquipamento[$ficha->equipamento_id]['fotos'] ?? []))
                 @if (count($fotosEq))
                     <div class="ficha-seccao">Fotografias</div>
-                    @foreach ($fotosEq as $foto)
-                        <img src="{{ $foto }}" class="foto">
-                    @endforeach
+                    @include('pdf._fotos', ['fotos' => $fotosEq])
                 @endif
             </div>
         @endforeach
@@ -361,16 +362,12 @@
     @foreach (($fotosPorEquipamento ?? []) as $equipId => $grupo)
         @if (! in_array((int) $equipId, $idsComFicha, true) && count($grupo['fotos']))
             <h2>Fotografias — {{ $grupo['nome'] }}</h2>
-            @foreach ($grupo['fotos'] as $foto)
-                <img src="{{ $foto }}" class="foto">
-            @endforeach
+            @include('pdf._fotos', ['fotos' => $grupo['fotos']])
         @endif
     @endforeach
     @if (count($fotosGerais ?? []))
         <h2>Registo Fotográfico</h2>
-        @foreach ($fotosGerais as $foto)
-            <img src="{{ $foto }}" class="foto">
-        @endforeach
+        @include('pdf._fotos', ['fotos' => $fotosGerais])
     @endif
 
     <div class="rodape">
