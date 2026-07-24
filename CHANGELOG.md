@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-07-24
+
+- 🎨 **Email de agendamento no tema do site** — a notificação de evento atribuído (`EventoAtribuido`) deixa o template markdown genérico do Laravel e passa a usar uma view HTML própria no tema Nexus (faixa e botão verdes, marca, rodapé — igual ao convite e ao envio de relatórios), com os detalhes do evento em caixa: quando, cliente, local, equipamento e técnicos. +1 teste (298 no total).
+
 ## 2026-07-23
 
 - 🔒 **Revisão de segurança (6.ª) + endurecimento** — auditoria ao refactor da agenda e aos bancos de baterias: **sem falhas críticas/altas/médias** (advisory locks à prova de injeção e transaction-scoped, anti-loop idempotente, autorização preservada). Fechados 3 pontos de defesa em profundidade: (1) `associarBanco` deixa de permitir **cadeias de bancos** (>1 nível) por chamada forjada — um equipamento que já tem bancos não pode virar banco de outro; (2) limite de tamanho nos arrays `bancos` (máx. 50) e `componentes` (máx. 200); (3) `componentes` passa a ser validado (tipos/comprimento). +1 teste (297 no total).

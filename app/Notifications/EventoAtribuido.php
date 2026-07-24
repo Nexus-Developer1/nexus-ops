@@ -24,12 +24,14 @@ class EventoAtribuido extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
+        // View HTML própria (verde/branco, no tema do site — igual ao convite e ao envio de
+        // relatórios) em vez do template markdown genérico do Laravel.
         return (new MailMessage)
             ->subject('Novo agendamento: ' . $this->evento->titulo)
-            ->greeting('Olá ' . $notifiable->nome . ',')
-            ->line('Foi-lhe atribuído um novo evento na agenda da Nexus Infra.')
-            ->line('**' . $this->evento->titulo . '**')
-            ->line('Quando: ' . $this->evento->inicio->translatedFormat('d/m/Y H:i') . ' – ' . $this->evento->fim->format('H:i'))
-            ->action('Ver agenda', route('agenda'));
+            ->view('emails.evento-atribuido', [
+                'evento' => $this->evento->loadMissing(['cliente', 'local', 'equipamento', 'tecnicosAdicionais']),
+                'nome' => $notifiable->nome,
+                'url' => route('agenda'),
+            ]);
     }
 }

@@ -120,6 +120,25 @@ class AgendaCorrecoesTest extends TestCase
         $this->assertInstanceOf(ShouldQueue::class, new EventoAtribuido($evento));
     }
 
+    public function test_email_de_evento_atribuido_usa_o_tema_do_projeto(): void
+    {
+        $tec = $this->tecnico('Téc', 't@nexus.pt');
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $evento = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Manutenção UPS', 'estado' => 'planeado',
+            'inicio' => Carbon::parse('2026-07-01 09:00'), 'fim' => Carbon::parse('2026-07-01 10:00'),
+            'tecnico_id' => $tec->id, 'tecnico_nome' => $tec->nome, 'cliente_id' => $cliente->id]);
+
+        // View HTML própria no tema do site (como o convite), não o markdown genérico do Laravel.
+        $html = (new EventoAtribuido($evento))->toMail($tec)->render();
+
+        $this->assertStringContainsString('Nexus Infra', $html);       // marca
+        $this->assertStringContainsString('#16a34a', $html);           // verde do tema
+        $this->assertStringContainsString('Manutenção UPS', $html);    // título do evento
+        $this->assertStringContainsString('ACME', $html);              // cliente
+        $this->assertStringContainsString('Olá Téc', $html);           // saudação personalizada
+        $this->assertStringContainsString('09:00–10:00', $html);       // horário
+    }
+
     public function test_finalizar_relatorio_conclui_o_evento_ligado(): void
     {
         Queue::fake(); // não gera o PDF a sério neste teste
