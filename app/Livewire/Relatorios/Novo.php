@@ -520,7 +520,17 @@ class Novo extends Component
             'fotosNovas.*.*' => ['image', 'max:8192'], // 8 MB
             // Finalizar exige saber quem fez a intervenção (o PDF identifica os técnicos).
             'tecnicoIds' => ['required', 'array', 'min:1'],
-        ] + $this->regrasContrato() + $this->regrasTecnicos();
+        ] + $this->regrasContrato() + $this->regrasTecnicos() + $this->regrasCobertos();
+    }
+
+    // Equipamentos cobertos: prop pública (manipulável pelo browser) — cada id tem de existir.
+    // Sem isto, ids inexistentes rebentavam na FK (500) e ids arbitrários entravam no sync.
+    protected function regrasCobertos(): array
+    {
+        return [
+            'equipamentosCobertos' => ['array', 'max:500'],
+            'equipamentosCobertos.*' => ['integer', 'exists:equipamentos,id'],
+        ];
     }
 
     // Regras das horas reutilizadas no rascunho (sempre opcionais, mas coerentes).
@@ -605,7 +615,7 @@ class Novo extends Component
         $this->validate([
             'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
             'fotosNovas.*.*' => ['image', 'max:8192'],
-        ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos());
+        ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos() + $this->regrasCobertos());
     }
 
     // ---- Gravação ----
@@ -621,6 +631,15 @@ class Novo extends Component
 
     private function persistir(GeradorRelatorio $gerador, SincronizadorAgenda $sincronizador, bool $finalizar)
     {
+        // A guarda do mount ("relatório ENVIADO não se edita") repetida aqui: intervencaoId é
+        // prop pública, manipulável pelo browser — sem esta re-verificação, uma chamada forjada
+        // reescrevia (e ao finalizar, regenerava o PDF de) um documento oficial já entregue.
+        if ($this->intervencaoId) {
+            abort_if(Relatorio::where('intervencao_id', $this->intervencaoId)
+                ->where('estado', EstadoRelatorio::Enviado)
+                ->exists(), 403);
+        }
+
         // Antes de gravar: relatório acabado de começar (URL ainda /relatorios/novo)?
         $eraNovo = $this->relatorioId === null;
 
