@@ -13,9 +13,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-// Um relatório pode ter vários técnicos, e quem o REDIGE não é necessariamente quem fez a
-// intervenção — nada vem pré-selecionado. Dos selecionados, o 1.º por ordem alfabética fica
-// como principal (tecnico_id) e os restantes no pivot intervencao_tecnicos (regra da agenda).
+// Um relatório pode ter vários técnicos, SEM hierarquia (não existe "técnico principal"), e
+// quem o REDIGE não é necessariamente quem fez a intervenção — nada vem pré-selecionado.
+// Armazenamento (detalhe interno): o 1.º por ordem alfabética fica em tecnico_id e os
+// restantes no pivot intervencao_tecnicos; a UI e o PDF mostram a lista completa sem distinção.
 class RelatorioTecnicosTest extends TestCase
 {
     use RefreshDatabase;
@@ -56,12 +57,12 @@ class RelatorioTecnicosTest extends TestCase
             ->assertHasNoErrors();
 
         $interv = Intervencao::firstOrFail();
-        $this->assertSame($t2->id, $interv->tecnico_id); // 1.º por ordem alfabética = principal
+        $this->assertSame($t2->id, $interv->tecnico_id); // 1.º por ordem alfabética (armazenamento)
         $this->assertSame([$t3->id], $interv->tecnicos()->pluck('utilizadores.id')->all());
         $this->assertNotContains($t1->id, [$interv->tecnico_id, ...$interv->tecnicos()->pluck('utilizadores.id')]);
     }
 
-    public function test_principal_nao_se_duplica_nos_colaboradores(): void
+    public function test_tecnico_nao_se_duplica_entre_coluna_e_pivot(): void
     {
         [$t1, $t2, , $equip] = $this->cenario();
 
@@ -72,7 +73,7 @@ class RelatorioTecnicosTest extends TestCase
             ->call('guardarRascunho')
             ->assertHasNoErrors();
 
-        // O principal (t1, 1.º alfabético) fica só em tecnico_id; o pivot tem apenas o outro.
+        // O 1.º alfabético (t1) fica só em tecnico_id; o pivot tem apenas o outro.
         $interv = Intervencao::firstOrFail();
         $this->assertSame($t1->id, $interv->tecnico_id);
         $this->assertSame([$t2->id], $interv->tecnicos()->pluck('utilizadores.id')->all());
@@ -90,7 +91,7 @@ class RelatorioTecnicosTest extends TestCase
 
         $relatorio = Intervencao::firstOrFail()->relatorio;
 
-        // Reabrir carrega a seleção gravada; mudar a seleção muda o principal.
+        // Reabrir carrega a seleção gravada; mudar a seleção substitui os técnicos gravados.
         Livewire::actingAs($t1)->test(Novo::class, ['relatorio' => $relatorio])
             ->assertSet('tecnicoIds', [$t2->id])
             ->set('tecnicoIds', [$t3->id])

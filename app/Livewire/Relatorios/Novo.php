@@ -78,9 +78,10 @@ class Novo extends Component
     // ---- Técnicos ----
     // Quem REDIGE o relatório não é necessariamente quem fez a intervenção (pode passar a limpo
     // o trabalho de outros) — por isso NADA é pré-selecionado. Escolhem-se os técnicos que
-    // estiveram na intervenção; o 1.º por ordem alfabética fica como principal em
-    // intervencoes.tecnico_id (mesma regra da agenda) e os restantes no pivot
-    // intervencao_tecnicos. A lista disponível é lida da BD a cada render.
+    // estiveram na intervenção, SEM hierarquia: não existe "técnico principal". (Por razões de
+    // esquema, intervencoes.tecnico_id guarda o 1.º por ordem alfabética e os restantes vão
+    // para o pivot intervencao_tecnicos — detalhe de armazenamento invisível: a UI e o PDF
+    // mostram sempre a lista completa, sem distinção.) Lida da BD a cada render.
     /** @var list<int> Ids dos técnicos que fizeram a intervenção. */
     public array $tecnicoIds = [];
 
@@ -632,8 +633,8 @@ class Novo extends Component
             ];
 
             // Técnicos selecionados, re-filtrados a papel=técnico + ativo (defesa em profundidade,
-            // para além da validação) e por ordem alfabética (determinística, igual à agenda):
-            // o 1.º fica como principal em tecnico_id, os restantes no pivot.
+            // para além da validação). Sem hierarquia entre eles — a ordem alfabética serve só
+            // para arrumar de forma determinística: 1.º em tecnico_id, restantes no pivot.
             $tecnicosEscolhidos = $this->tecnicoIds === []
                 ? []
                 : User::whereIn('id', array_map('intval', $this->tecnicoIds))
@@ -651,7 +652,7 @@ class Novo extends Component
                 $this->intervencaoId = $intervencao->id;
             }
 
-            // Técnicos colaboradores (exclui o principal, que já está em tecnico_id).
+            // Restantes técnicos no pivot (o 1.º já está em tecnico_id).
             $intervencao->tecnicos()->sync(array_slice($tecnicosEscolhidos, 1));
 
             // Equipamentos adicionais cobertos (exclui o principal, para não duplicar).
@@ -817,16 +818,12 @@ class Novo extends Component
         // Ids anexados (principal + cobertos) — para marcar os checkboxes da faixa 'lista'.
         $anexadosIds = array_values(array_filter(array_merge([$this->equipamento_id], $this->equipamentosCobertos)));
 
-        // Técnicos disponíveis (lidos a cada render → refletem quem for entrando). O badge
-        // "principal" cai no 1.º selecionado por ordem alfabética ($tecnicos já vem ordenado)
-        // — a mesma regra que persistir() aplica ao gravar.
+        // Técnicos disponíveis (lidos a cada render → refletem quem for entrando).
         $tecnicos = User::query()
             ->where('papel', PapelUtilizador::Tecnico)
             ->where('ativo', true)
             ->orderBy('nome')
             ->get(['id', 'nome']);
-        $selecionados = array_map('intval', $this->tecnicoIds);
-        $tecnicoPrincipalBadgeId = $tecnicos->first(fn ($t) => in_array($t->id, $selecionados, true))?->id;
 
         return view('livewire.relatorios.novo', [
             'clientesFiltrados' => $this->clientesFiltrados($this->clienteBusca),
@@ -840,7 +837,6 @@ class Novo extends Component
             'equipamentoPrincipal' => $equipamentoPrincipal,
             'contratos' => $contratos,
             'tecnicos' => $tecnicos,
-            'tecnicoPrincipalBadgeId' => $tecnicoPrincipalBadgeId,
         ]);
     }
 }
