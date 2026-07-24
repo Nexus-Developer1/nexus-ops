@@ -407,7 +407,9 @@ class Novo extends Component
         return true;
     }
 
-    public function removerEquipamentoCoberto(int $id): void
+    // Só uso interno (removerEquipamentoDoRelatorio) — sem chamador nas views, não precisa
+    // de ser invocável pelo browser.
+    private function removerEquipamentoCoberto(int $id): void
     {
         $this->equipamentosCobertos = array_values(array_filter($this->equipamentosCobertos, fn ($e) => $e !== $id));
     }
