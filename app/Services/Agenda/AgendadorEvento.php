@@ -47,7 +47,7 @@ class AgendadorEvento
             ]);
 
             foreach ($tecnicos as $t) {
-                // Por CONTA: sobreposição com eventos ligados à conta + AUSÊNCIAS/férias do técnico.
+                // Por CONTA: sobreposição com eventos ligados à conta do técnico.
                 // Por NOME: apanha também eventos legados (só texto, sem conta) do mesmo técnico.
                 // Na edição, o próprio evento é excluído (senão conflituava consigo mesmo).
                 $razao = $this->detetor->conflito($t->id, $inicio, $fim, $editandoId)
