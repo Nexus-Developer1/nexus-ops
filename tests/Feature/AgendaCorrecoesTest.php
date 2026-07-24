@@ -156,8 +156,10 @@ class AgendaCorrecoesTest extends TestCase
         $evento->update(['intervencao_id' => $interv->id]);
         $relatorio = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => null, 'data' => now(), 'estado' => 'rascunho']);
 
+        $tec = $this->tecnico('Téc', 'tec@nexus.pt');
         Livewire::actingAs($this->admin())->test(Novo::class, ['relatorio' => $relatorio])
             ->set('data', now()->addWeek()->toDateString())
+            ->set('tecnicoIds', [$tec->id]) // finalizar exige quem fez a intervenção
             ->call('finalizar')
             ->assertHasNoErrors();
 

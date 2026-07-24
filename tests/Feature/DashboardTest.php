@@ -177,9 +177,11 @@ class DashboardTest extends TestCase
         $relatorio = $interv->relatorio()->create(['numero' => null, 'data' => now(), 'estado' => 'rascunho']);
 
         // Finalizar pelo editor VIVO (Novo).
-        Livewire::actingAs(User::create(['nome' => 'T', 'email' => 't@x.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]))
+        $tec = User::create(['nome' => 'T', 'email' => 't@x.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+        Livewire::actingAs($tec)
             ->test(Novo::class, ['relatorio' => $relatorio])
             ->set('data', now()->toDateString())
+            ->set('tecnicoIds', [$tec->id]) // finalizar exige quem fez a intervenção
             ->call('finalizar')
             ->assertHasNoErrors();
 

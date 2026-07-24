@@ -13,8 +13,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-// Um relatório pode ter vários técnicos: o principal (quem cria, em tecnico_id) + colaboradores
-// (pivot intervencao_tecnicos). A lista de técnicos disponíveis vem da BD a cada render.
+// Um relatório pode ter vários técnicos, e quem o REDIGE não é necessariamente quem fez a
+// intervenção — nada vem pré-selecionado. Dos selecionados, o 1.º por ordem alfabética fica
+// como principal (tecnico_id) e os restantes no pivot intervencao_tecnicos (regra da agenda).
 class RelatorioTecnicosTest extends TestCase
 {
     use RefreshDatabase;
@@ -34,23 +35,30 @@ class RelatorioTecnicosTest extends TestCase
         return [$t1, $t2, $t3, $equip];
     }
 
-    public function test_principal_e_quem_cria_e_colaboradores_vao_para_o_pivot(): void
+    public function test_novo_relatorio_nao_pre_seleciona_quem_cria(): void
+    {
+        [$t1] = $this->cenario();
+
+        Livewire::actingAs($t1)->test(Novo::class)
+            ->assertSet('tecnicoIds', []);
+    }
+
+    public function test_quem_redige_pode_nao_estar_entre_os_tecnicos(): void
     {
         [$t1, $t2, $t3, $equip] = $this->cenario();
 
+        // t1 redige, mas a intervenção foi feita por t2 e t3.
         Livewire::actingAs($t1)->test(Novo::class)
             ->set('equipamento_id', $equip->id)
             ->set('data', now()->toDateString())
-            ->set('colaboradorIds', [$t2->id, $t3->id])
+            ->set('tecnicoIds', [$t3->id, $t2->id])
             ->call('guardarRascunho')
             ->assertHasNoErrors();
 
         $interv = Intervencao::firstOrFail();
-        $this->assertSame($t1->id, $interv->tecnico_id); // principal = quem cria
-        $this->assertEqualsCanonicalizing(
-            [$t2->id, $t3->id],
-            $interv->tecnicos()->pluck('utilizadores.id')->all(), // colaboradores
-        );
+        $this->assertSame($t2->id, $interv->tecnico_id); // 1.º por ordem alfabética = principal
+        $this->assertSame([$t3->id], $interv->tecnicos()->pluck('utilizadores.id')->all());
+        $this->assertNotContains($t1->id, [$interv->tecnico_id, ...$interv->tecnicos()->pluck('utilizadores.id')]);
     }
 
     public function test_principal_nao_se_duplica_nos_colaboradores(): void
@@ -60,35 +68,60 @@ class RelatorioTecnicosTest extends TestCase
         Livewire::actingAs($t1)->test(Novo::class)
             ->set('equipamento_id', $equip->id)
             ->set('data', now()->toDateString())
-            ->set('colaboradorIds', [$t1->id, $t2->id]) // inclui o próprio principal
+            ->set('tecnicoIds', [$t1->id, $t2->id])
             ->call('guardarRascunho')
             ->assertHasNoErrors();
 
-        // O principal fica só em tecnico_id; o pivot tem apenas o colaborador.
-        $this->assertSame([$t2->id], Intervencao::firstOrFail()->tecnicos()->pluck('utilizadores.id')->all());
+        // O principal (t1, 1.º alfabético) fica só em tecnico_id; o pivot tem apenas o outro.
+        $interv = Intervencao::firstOrFail();
+        $this->assertSame($t1->id, $interv->tecnico_id);
+        $this->assertSame([$t2->id], $interv->tecnicos()->pluck('utilizadores.id')->all());
     }
 
-    public function test_reabrir_relatorio_carrega_os_colaboradores(): void
+    public function test_editar_relatorio_atualiza_os_tecnicos_pela_selecao(): void
     {
         [$t1, $t2, $t3, $equip] = $this->cenario();
 
         Livewire::actingAs($t1)->test(Novo::class)
             ->set('equipamento_id', $equip->id)
             ->set('data', now()->toDateString())
-            ->set('colaboradorIds', [$t2->id, $t3->id])
+            ->set('tecnicoIds', [$t2->id])
             ->call('guardarRascunho');
 
         $relatorio = Intervencao::firstOrFail()->relatorio;
 
+        // Reabrir carrega a seleção gravada; mudar a seleção muda o principal.
         Livewire::actingAs($t1)->test(Novo::class, ['relatorio' => $relatorio])
-            ->assertSet('tecnicoPrincipalId', $t1->id)
-            ->assertViewHas('tecnicoPrincipal', fn ($u) => $u?->id === $t1->id)
-            ->tap(function ($c) use ($t2, $t3) {
-                $this->assertEqualsCanonicalizing([$t2->id, $t3->id], $c->get('colaboradorIds'));
-            });
+            ->assertSet('tecnicoIds', [$t2->id])
+            ->set('tecnicoIds', [$t3->id])
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $interv = Intervencao::firstOrFail();
+        $this->assertSame($t3->id, $interv->tecnico_id);
+        $this->assertSame([], $interv->tecnicos()->pluck('utilizadores.id')->all());
     }
 
-    public function test_colaborador_tem_de_ser_tecnico_ativo(): void
+    public function test_finalizar_exige_pelo_menos_um_tecnico(): void
+    {
+        [$t1, , , $equip] = $this->cenario();
+
+        Livewire::actingAs($t1)->test(Novo::class)
+            ->set('equipamento_id', $equip->id)
+            ->set('data', now()->toDateString())
+            ->call('finalizar')
+            ->assertHasErrors('tecnicoIds');
+
+        // Em rascunho não é obrigatório.
+        Livewire::actingAs($t1)->test(Novo::class)
+            ->set('equipamento_id', $equip->id)
+            ->set('data', now()->toDateString())
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+        $this->assertNull(Intervencao::firstOrFail()->tecnico_id);
+    }
+
+    public function test_tecnico_selecionado_tem_de_ser_tecnico_ativo(): void
     {
         [$t1, , , $equip] = $this->cenario();
         $admin = User::create(['nome' => 'Admin', 'email' => 'admin@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
@@ -98,17 +131,17 @@ class RelatorioTecnicosTest extends TestCase
         Livewire::actingAs($t1)->test(Novo::class)
             ->set('equipamento_id', $equip->id)
             ->set('data', now()->toDateString())
-            ->set('colaboradorIds', [$admin->id])
+            ->set('tecnicoIds', [$admin->id])
             ->call('guardarRascunho')
-            ->assertHasErrors('colaboradorIds.0');
+            ->assertHasErrors('tecnicoIds.0');
 
         // Técnico inativo → também rejeitado.
         Livewire::actingAs($t1)->test(Novo::class)
             ->set('equipamento_id', $equip->id)
             ->set('data', now()->toDateString())
-            ->set('colaboradorIds', [$inativo->id])
+            ->set('tecnicoIds', [$inativo->id])
             ->call('guardarRascunho')
-            ->assertHasErrors('colaboradorIds.0');
+            ->assertHasErrors('tecnicoIds.0');
     }
 
     public function test_lista_de_tecnicos_disponiveis_e_dinamica(): void

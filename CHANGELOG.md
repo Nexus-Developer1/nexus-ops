@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-07-24
 
+- 🧰 **Relatórios: técnicos sem pré-seleção (quem redige ≠ quem fez)** — ao criar um relatório, o técnico logado deixa de vir pré-selecionado como "principal": quem redige pode estar a passar a limpo uma intervenção feita por outros. O campo Técnicos passa a lista de checkboxes toda selecionável (nada marcado à partida); dos selecionados, o 1.º por ordem alfabética fica como principal (`tecnico_id`) e os restantes no pivot — a mesma regra da agenda. Em edição, a seleção passa a mandar (mudar os técnicos muda o principal). **Finalizar passa a exigir ≥1 técnico** (o PDF identifica quem fez o trabalho); rascunhos podem ficar sem. +2 testes líquidos (300 no total).
 - 🎨 **Email de agendamento no tema do site** — a notificação de evento atribuído (`EventoAtribuido`) deixa o template markdown genérico do Laravel e passa a usar uma view HTML própria no tema Nexus (faixa e botão verdes, marca, rodapé — igual ao convite e ao envio de relatórios), com os detalhes do evento em caixa: quando, cliente, local, equipamento e técnicos. +1 teste (298 no total). `75b139f`
 
 ## 2026-07-23

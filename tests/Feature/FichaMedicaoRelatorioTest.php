@@ -306,6 +306,7 @@ class FichaMedicaoRelatorioTest extends TestCase
         \Illuminate\Support\Facades\Storage::fake();
         [$admin, $contrato, $e1] = $this->cenarioContrato();
 
+        $tec = User::create(['nome' => 'Téc', 'email' => 'tec@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
             ->call('selecionarContrato', $contrato->id)
@@ -313,6 +314,7 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->set('hora_inicio', '10:00')
             ->set('hora_fim', '11:00')
             ->set("fichas.{$e1->id}.ve_ln_l1", '230.00')
+            ->set('tecnicoIds', [$tec->id]) // finalizar exige quem fez a intervenção
             ->call('finalizar')
             ->assertHasNoErrors();
 
@@ -382,12 +384,14 @@ class FichaMedicaoRelatorioTest extends TestCase
         [$admin, $contrato, $e1] = $this->cenarioContrato();
 
         // Relatório de contrato: medição + foto no e1 → ficha do e1 com a foto.
+        $tec = User::create(['nome' => 'Téc', 'email' => 'tec@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
             ->call('selecionarContrato', $contrato->id)
             ->set('data', now()->toDateString())
             ->set("fichas.{$e1->id}.ve_ln_l1", '230.00')
             ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->create('up.jpg', 100, 'image/jpeg')])
+            ->set('tecnicoIds', [$tec->id]) // finalizar exige quem fez a intervenção
             ->call('finalizar')
             ->assertHasNoErrors();
 
