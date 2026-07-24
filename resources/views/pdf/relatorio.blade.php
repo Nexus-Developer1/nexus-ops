@@ -319,12 +319,12 @@
                 <table class="ficha-tab">
                     <tr><th>Item</th><th class="cel-ok">OK</th><th class="cel-nok">NOK</th></tr>
                     <tr>
-                        <td>Carga a funcionar</td>
+                        <td>Equipamento a suportar a carga e sem anomalias</td>
                         <td class="cel-ok">{{ $ficha->carga_a_funcionar === 'ok' ? 'X' : '' }}</td>
                         <td class="cel-nok">{{ $ficha->carga_a_funcionar === 'nok' ? 'X' : '' }}</td>
                     </tr>
                     <tr>
-                        <td>UPS em modo normal</td>
+                        <td>Equipamento com status carga no inversor</td>
                         <td class="cel-ok">{{ $ficha->ups_modo_normal === 'ok' ? 'X' : '' }}</td>
                         <td class="cel-nok">{{ $ficha->ups_modo_normal === 'nok' ? 'X' : '' }}</td>
                     </tr>
