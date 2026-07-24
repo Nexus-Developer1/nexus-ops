@@ -76,6 +76,12 @@ class Ficha extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
+        $this->validate([
+            'componentes' => ['array', 'max:200'],
+            'componentes.*.designacao' => ['nullable', 'string', 'max:255'],
+            'componentes.*.quantidade' => ['nullable', 'integer', 'min:0'],
+        ]);
+
         $componentes = collect($this->componentes)
             ->map(fn ($c) => ['designacao' => trim((string) ($c['designacao'] ?? '')), 'quantidade' => (int) ($c['quantidade'] ?? 0)])
             ->filter(fn ($c) => $c['designacao'] !== '')
@@ -131,7 +137,7 @@ class Ficha extends Component
         abort_if(auth()->user()->ehCliente(), 403);
 
         $this->validate([
-            'bancos' => ['array'],
+            'bancos' => ['array', 'max:50'],
             'bancos.*.numero_serie' => ['nullable', 'string', 'max:255'],
             'bancos.*.modelo' => ['nullable', 'string', 'max:255'],
             'bancos.*.capacidade' => ['nullable', 'string', 'max:100'],
@@ -182,6 +188,14 @@ class Ficha extends Component
 
         if ($banco->equipamento_pai_id !== null && $banco->equipamento_pai_id !== $this->equipamento->id) {
             $this->addError('bancoBusca', 'Este equipamento já está associado a outro UPS. Desassocie-o primeiro na ficha desse UPS.');
+
+            return;
+        }
+
+        // A hierarquia é de UM nível (UPS → bancos). Um equipamento que já TEM associados não pode
+        // passar a ser filho — evita cadeias de 3+ níveis (X → P → B), mesmo por chamada forjada.
+        if ($banco->equipamentosAssociados()->exists()) {
+            $this->addError('bancoBusca', 'Este equipamento já tem bancos associados a ele — não pode ser associado como banco de outro.');
 
             return;
         }

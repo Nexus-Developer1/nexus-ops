@@ -132,13 +132,16 @@ class Novo extends Component
             'topologia' => ['nullable', 'string', 'max:100'],
             'autonomia_min' => ['nullable', 'integer', 'min:0'],
             'firmware' => ['nullable', 'string', 'max:100'],
-            'bancos' => ['array'],
+            'bancos' => ['array', 'max:50'],
             'bancos.*.numero_serie' => ['nullable', 'string', 'max:255'],
             'bancos.*.modelo' => ['nullable', 'string', 'max:255'],
             'bancos.*.capacidade' => ['nullable', 'string', 'max:100'],
             'bancos.*.num_baterias' => ['nullable', 'integer', 'min:0'],
             'bancos.*.data_instalacao' => ['nullable', 'date'],
             'bancos.*.proxima_troca' => ['nullable', 'date'],
+            'componentes' => ['array', 'max:200'],
+            'componentes.*.designacao' => ['nullable', 'string', 'max:255'],
+            'componentes.*.quantidade' => ['nullable', 'integer', 'min:0'],
         ]);
 
         // Local: o escolhido ou a "Instalação principal" do cliente (criada se não existir — mesma

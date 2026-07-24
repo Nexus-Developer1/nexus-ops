@@ -142,4 +142,20 @@ class BancoBateriasAssociacaoTest extends TestCase
             ->set('pesquisa', 'BB-777')
             ->assertSee('UPS-COM');
     }
+
+    public function test_nao_permite_cadeia_de_bancos(): void
+    {
+        // Hierarquia de UM nível: um equipamento que JÁ TEM um banco não pode virar banco de outro.
+        $ups = $this->equipamento(['numero_serie' => 'UPS-PAI']);
+        $banco = $this->equipamento(['numero_serie' => 'BB-FILHO', 'equipamento_pai_id' => $ups->id]);
+        $outroUps = $this->equipamento(['numero_serie' => 'UPS-X']);
+
+        // Tentar associar o UPS-PAI (que já tem o BB-FILHO) como banco do UPS-X → recusado.
+        Livewire::actingAs($this->admin)->test(Ficha::class, ['equipamento' => $outroUps])
+            ->call('associarBanco', $ups->id)
+            ->assertHasErrors('bancoBusca');
+
+        $this->assertNull($ups->fresh()->equipamento_pai_id);      // não ficou filho de ninguém
+        $this->assertSame($ups->id, $banco->fresh()->equipamento_pai_id); // a associação original intacta
+    }
 }
