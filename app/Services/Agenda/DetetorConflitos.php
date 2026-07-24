@@ -4,12 +4,11 @@ namespace App\Services\Agenda;
 
 use App\Enums\EstadoEvento;
 use App\Models\EventoAgenda;
-use App\Models\TecnicoDisponibilidade;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 // Deteta conflitos ao agendar/reagendar um evento (CLAUDE.md §6): fora de horário
-// de cobertura, sobreposição com outro evento do técnico, ou técnico em ausência.
+// de cobertura ou sobreposição com outro evento do técnico.
 class DetetorConflitos
 {
     // Serializa o agendamento por técnico (advisory lock do Postgres, âmbito da transação):
@@ -63,22 +62,11 @@ class DetetorConflitos
             return 'O técnico já tem "' . $sobreposto->titulo . '" neste horário.';
         }
 
-        // Técnico em ausência/férias no período.
-        $ausencia = TecnicoDisponibilidade::query()
-            ->where('tecnico_id', $tecnicoId)
-            ->where('inicio', '<', $fim)
-            ->where('fim', '>', $inicio)
-            ->first();
-
-        if ($ausencia) {
-            return 'O técnico está ausente neste período' . ($ausencia->motivo ? ' (' . $ausencia->motivo . ')' : '') . '.';
-        }
-
         return null;
     }
 
     // Sobreposição para um técnico em TEXTO LIVRE (sem conta): deteta o double-booking com
-    // outro evento do mesmo nome. Não há ausências ligadas a um nome livre.
+    // outro evento do mesmo nome.
     public function conflitoPorNome(string $nome, Carbon $inicio, Carbon $fim, ?int $excetoEventoId = null): ?string
     {
         $sobreposto = EventoAgenda::query()

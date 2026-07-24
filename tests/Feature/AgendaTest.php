@@ -16,7 +16,6 @@ use App\Models\EventoAgenda;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Models\Local;
-use App\Models\TecnicoDisponibilidade;
 use App\Models\User;
 use App\Notifications\EventoAtribuido;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -85,22 +84,6 @@ class AgendaTest extends TestCase
             ->assertReturned(fn ($r) => $r['ok'] === false);
 
         $this->assertEquals('2026-07-01 14:00:00', $b->fresh()->inicio->format('Y-m-d H:i:s'));
-    }
-
-    public function test_reagendar_bloqueado_por_ausencia(): void
-    {
-        $tec = $this->tecnico();
-        $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
-        TecnicoDisponibilidade::create(['tecnico_id' => $tec->id, 'tipo' => 'ferias',
-            'inicio' => Carbon::parse('2026-08-01 00:00'), 'fim' => Carbon::parse('2026-08-15 23:59'), 'motivo' => 'Férias']);
-
-        $e = EventoAgenda::create(['tipo' => 'intervencao', 'titulo' => 'X', 'estado' => 'planeado',
-            'inicio' => Carbon::parse('2026-07-20 09:00'), 'fim' => Carbon::parse('2026-07-20 10:00'), 'tecnico_id' => $tec->id, 'cliente_id' => $cliente->id]);
-
-        Livewire::actingAs($this->admin())
-            ->test(Calendario::class)
-            ->call('reagendar', $e->id, '2026-08-05T09:00:00', '2026-08-05T10:00:00', $tec->id)
-            ->assertReturned(fn ($r) => $r['ok'] === false);
     }
 
     private function eventoVisita(): EventoAgenda
@@ -189,7 +172,7 @@ class AgendaTest extends TestCase
             ->call('criarEvento')
             ->assertHasNoErrors();
 
-        // Guarda a CONTA (liga ausências/iCal/notificações) + o nome desnormalizado (cores/filtro).
+        // Guarda a CONTA (liga conflitos/iCal/notificações) + o nome desnormalizado (cores/filtro).
         $this->assertDatabaseHas('eventos_agenda', ['titulo' => 'Reunião de equipa', 'tipo' => 'outro',
             'tecnico_id' => $tec->id, 'tecnico_nome' => $tec->nome]);
         $this->assertDatabaseHas('assuntos_evento', ['nome' => 'Reunião de equipa']);
@@ -235,9 +218,11 @@ class AgendaTest extends TestCase
         $tec = $this->tecnico();
         $maria = User::create(['nome' => 'Maria Costa', 'email' => 'm@nexus.pt', 'password' => 'x',
             'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
-        // O Téc (que alfabeticamente seria o SEGUNDO) está de férias no dia.
-        TecnicoDisponibilidade::create(['tecnico_id' => $tec->id, 'tipo' => 'ausencia',
-            'inicio' => Carbon::parse('2026-07-06 00:00'), 'fim' => Carbon::parse('2026-07-07 00:00'), 'motivo' => 'Férias']);
+        $cliente = Cliente::create(['nome' => 'C2', 'email' => 'c2@x.pt', 'ativo' => true]);
+        // O Téc (que alfabeticamente seria o SEGUNDO) já tem um evento no horário.
+        EventoAgenda::create(['tipo' => 'intervencao', 'titulo' => 'Ocupado', 'estado' => 'planeado',
+            'inicio' => Carbon::parse('2026-07-06 10:00'), 'fim' => Carbon::parse('2026-07-06 11:00'),
+            'tecnico_id' => $tec->id, 'cliente_id' => $cliente->id]);
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Visita a dois')
@@ -245,28 +230,9 @@ class AgendaTest extends TestCase
             ->set('formInicio', '2026-07-06T10:00')
             ->set('formFim', '2026-07-06T11:00')
             ->call('criarEvento')
-            ->assertHasErrors('formInicio'); // a ausência do 2.º técnico também bloqueia
+            ->assertHasErrors('formInicio'); // o conflito do 2.º técnico também bloqueia
 
         $this->assertDatabaseMissing('eventos_agenda', ['titulo' => 'Visita a dois']);
-    }
-
-    public function test_criar_evento_deteta_ausencia_do_tecnico(): void
-    {
-        Notification::fake();
-        $tec = $this->tecnico();
-        // Técnico de férias no dia 2026-07-06 (segunda, horário útil).
-        TecnicoDisponibilidade::create(['tecnico_id' => $tec->id, 'tipo' => 'ausencia',
-            'inicio' => Carbon::parse('2026-07-06 00:00'), 'fim' => Carbon::parse('2026-07-07 00:00'), 'motivo' => 'Férias']);
-
-        Livewire::actingAs($this->admin())->test(Calendario::class)
-            ->set('formTitulo', 'Visita')
-            ->set('formTecnicoIds', [$tec->id])
-            ->set('formInicio', '2026-07-06T10:00')
-            ->set('formFim', '2026-07-06T11:00')
-            ->call('criarEvento')
-            ->assertHasErrors('formInicio'); // com a conta ligada, a ausência É detetada
-
-        $this->assertDatabaseMissing('eventos_agenda', ['titulo' => 'Visita']);
     }
 
     public function test_criar_evento_deteta_conflito_com_evento_legado_por_nome(): void
@@ -397,34 +363,6 @@ class AgendaTest extends TestCase
         $this->assertDatabaseCount('relatorios', 0);
     }
 
-    public function test_criar_ausencia_gera_disponibilidade(): void
-    {
-        $tec = $this->tecnico();
-
-        Livewire::actingAs($this->admin())->test(Calendario::class)
-            ->set('ausTecnicoId', $tec->id)
-            ->set('ausMotivo', 'Férias')
-            ->set('ausInicio', '2026-08-03T00:00')
-            ->set('ausFim', '2026-08-10T23:59')
-            ->call('marcarAusencia')
-            ->assertHasNoErrors();
-
-        $this->assertDatabaseHas('tecnico_disponibilidade', ['tecnico_id' => $tec->id, 'motivo' => 'Férias']);
-    }
-
-    public function test_remover_ausencia(): void
-    {
-        $tec = $this->tecnico();
-        $aus = TecnicoDisponibilidade::create(['tecnico_id' => $tec->id, 'tipo' => 'ferias',
-            'inicio' => Carbon::parse('2026-08-01'), 'fim' => Carbon::parse('2026-08-05'), 'motivo' => 'X']);
-
-        Livewire::actingAs($this->admin())->test(Calendario::class)
-            ->call('selecionarAusencia', $aus->id)
-            ->call('removerAusencia');
-
-        $this->assertDatabaseMissing('tecnico_disponibilidade', ['id' => $aus->id]);
-    }
-
     public function test_feed_ical_do_tecnico(): void
     {
         $tec = $this->tecnico();
@@ -523,7 +461,7 @@ class AgendaTest extends TestCase
             ->call('criarEvento')
             ->assertHasNoErrors();
 
-        // Depois de gravar, o evento legado fica LIGADO à conta (iCal/ausências passam a contar).
+        // Depois de gravar, o evento legado fica LIGADO à conta (iCal/notificações passam a contar).
         $e->refresh();
         $this->assertSame($tec->id, $e->tecnico_id);
         $this->assertSame($tec->nome, $e->tecnico_nome);

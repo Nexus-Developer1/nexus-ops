@@ -7,15 +7,9 @@
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Agenda</h1>
-                    <p class="mt-2 text-sm text-texto-medio">Arraste para reagendar · selecione um intervalo livre para criar evento ou ausência.</p>
+                    <p class="mt-2 text-sm text-texto-medio">Arraste para reagendar · selecione um intervalo livre para criar evento.</p>
                 </div>
                 <div class="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-                    @unless (auth()->user()->ehCliente())
-                        <button type="button" wire:click="abrirAusencia" class="botao-secundario" title="Marcar ausência de um técnico">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
-                            Marcar ausência
-                        </button>
-                    @endunless
                     {{-- Filtro por técnico (pelo nome usado nos eventos). Disponível para todos
                          (técnico = admin). Vazio = todos os técnicos. --}}
                     <select wire:model.live="tecnicoNome" class="campo-select w-full sm:w-56">
@@ -106,30 +100,6 @@
                             @else
                                 <button wire:click="fecharModal" class="botao-secundario">Fechar</button>
                             @endif
-                        </div>
-                    </div>
-                </div>
-            @endif
-
-            {{-- Painel de detalhe de uma ausência --}}
-            @if ($ausencia)
-                <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4" wire:click.self="fecharAusencia">
-                    <div class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-borda bg-white shadow-xl">
-                        <div class="flex items-start justify-between border-b border-borda px-6 py-5">
-                            <h2 class="text-lg font-semibold text-texto-forte">Ausência</h2>
-                            <button wire:click="fecharAusencia" class="-m-2 flex items-center justify-center rounded-lg p-2 text-texto-fraco transition hover:bg-fundo hover:text-texto-forte">
-                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                            </button>
-                        </div>
-                        <dl class="space-y-3 px-6 py-5 text-sm">
-                            <div class="flex justify-between gap-4"><dt class="text-texto-fraco">Técnico</dt><dd class="text-right font-medium text-texto-forte">{{ $ausencia->tecnico?->nome }}</dd></div>
-                            <div class="flex justify-between gap-4"><dt class="text-texto-fraco">Motivo</dt><dd class="text-right font-medium text-texto-forte">{{ $ausencia->motivo ?: '—' }}</dd></div>
-                            <div class="flex justify-between gap-4"><dt class="text-texto-fraco">De</dt><dd class="text-right font-medium text-texto-forte">{{ $ausencia->inicio->translatedFormat('d M Y · H:i') }}</dd></div>
-                            <div class="flex justify-between gap-4"><dt class="text-texto-fraco">Até</dt><dd class="text-right font-medium text-texto-forte">{{ $ausencia->fim->translatedFormat('d M Y · H:i') }}</dd></div>
-                        </dl>
-                        <div class="flex flex-wrap items-center justify-end gap-3 border-t border-borda px-6 py-4">
-                            <button wire:click="fecharAusencia" class="botao-secundario">Fechar</button>
-                            <button wire:click="removerAusencia" wire:confirm="Remover esta ausência?" class="botao inline-flex items-center gap-2 bg-perigo-600 px-5 py-2.5 text-white hover:bg-perigo-500">Remover</button>
                         </div>
                     </div>
                 </div>
@@ -248,7 +218,7 @@
                             </div>
 
                             {{-- Técnicos: CONTAS de utilizador (mesma lista do relatório), 1 ou mais. Ligar
-                                 a conta ativa a deteção de ausências, o feed iCal e as notificações. --}}
+                                 a conta ativa o feed iCal e as notificações. --}}
                             <div>
                                 <label class="campo-label">Técnicos (opcional)</label>
                                 <div class="space-y-1 rounded-lg border border-borda px-4 py-3">
@@ -317,57 +287,6 @@
                         <div class="flex flex-wrap items-center justify-end gap-3 border-t border-borda px-6 py-4">
                             <button type="button" wire:click="fecharCriar" class="botao-secundario">Cancelar</button>
                             <button type="submit" class="botao-primario">{{ $editandoId ? 'Guardar' : 'Criar' }}</button>
-                        </div>
-                    </form>
-                </div>
-            @endif
-
-            {{-- Modal dedicado de marcação de ausência (grava em tecnico_disponibilidade) --}}
-            @if ($modalAusencia)
-                <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4" wire:click.self="fecharMarcarAusencia">
-                    <form wire:submit="marcarAusencia" class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-borda bg-white shadow-xl">
-                        <div class="flex items-start justify-between border-b border-borda px-6 py-5">
-                            <h2 class="text-lg font-semibold text-texto-forte">Marcar ausência</h2>
-                            <button type="button" wire:click="fecharMarcarAusencia" class="-m-2 flex items-center justify-center rounded-lg p-2 text-texto-fraco transition hover:bg-fundo hover:text-texto-forte">
-                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                            </button>
-                        </div>
-
-                        <div class="space-y-5 px-6 py-5">
-                            <div>
-                                <label class="campo-label">Técnico</label>
-                                <select wire:model="ausTecnicoId" class="campo-select">
-                                    <option value="">Selecione...</option>
-                                    @foreach ($tecnicos as $t)
-                                        <option value="{{ $t['id'] }}">{{ $t['nome'] }}</option>
-                                    @endforeach
-                                </select>
-                                @error('ausTecnicoId') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            </div>
-
-                            <div>
-                                <label class="campo-label">Motivo</label>
-                                <input wire:model="ausMotivo" type="text" class="campo-input" placeholder="Ex: Férias">
-                                @error('ausMotivo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            </div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="campo-label">Início</label>
-                                    <input wire:model="ausInicio" type="datetime-local" class="campo-input">
-                                    @error('ausInicio') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                                </div>
-                                <div>
-                                    <label class="campo-label">Fim</label>
-                                    <input wire:model="ausFim" type="datetime-local" class="campo-input">
-                                    @error('ausFim') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="flex flex-wrap items-center justify-end gap-3 border-t border-borda px-6 py-4">
-                            <button type="button" wire:click="fecharMarcarAusencia" class="botao-secundario">Cancelar</button>
-                            <button type="submit" class="botao-primario">Marcar ausência</button>
                         </div>
                     </form>
                 </div>

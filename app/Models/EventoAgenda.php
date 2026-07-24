@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-// Evento da agenda — visita preventiva, intervenção, ausência ou evento próprio.
+// Evento da agenda — visita preventiva, intervenção ou evento próprio.
 // Projeção temporal central da operação (CLAUDE.md §6).
 class EventoAgenda extends Model
 {

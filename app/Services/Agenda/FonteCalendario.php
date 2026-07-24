@@ -5,11 +5,10 @@ namespace App\Services\Agenda;
 use App\Enums\EstadoEvento;
 use App\Enums\PapelUtilizador;
 use App\Models\EventoAgenda;
-use App\Models\TecnicoDisponibilidade;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
-// Fonte de dados do FullCalendar: eventos + ausências no formato do calendário, e as cores
+// Fonte de dados do FullCalendar: eventos no formato do calendário, e as cores
 // por técnico (partilhadas entre eventos e legenda). Extraído do componente Calendario —
 // é leitura pura, sem estado de UI.
 class FonteCalendario
@@ -20,7 +19,7 @@ class FonteCalendario
     // Mapa nome→cor calculado uma vez por pedido (lazy).
     private ?array $coresTecnicos = null;
 
-    // Eventos + ausências que se SOBREPÕEM à janela visível (não só os que começam dentro
+    // Eventos que se SOBREPÕEM à janela visível (não só os que começam dentro
     // dela — um evento iniciado antes e a acabar lá dentro também aparece).
     /** @return array<int, array<string, mixed>> */
     public function eventos(Carbon $de, Carbon $ate, string $tecnicoNome = ''): array
@@ -52,26 +51,7 @@ class FonteCalendario
             })
             ->all();
 
-        // Ausências (tecnico_disponibilidade) — eventos cinza, não arrastáveis.
-        $ausencias = TecnicoDisponibilidade::query()
-            ->where('inicio', '<', $ate)
-            ->where('fim', '>', $de)
-            ->when($tecnicoNome !== '', fn ($q) => $q->whereHas('tecnico', fn ($t) => $t->where('nome', $tecnicoNome)))
-            ->get()
-            ->map(fn (TecnicoDisponibilidade $a) => [
-                'id' => 'aus-' . $a->id,
-                'title' => '🚫 ' . ($a->motivo ?: 'Ausência'),
-                'start' => $a->inicio->format('Y-m-d\TH:i:s'),
-                'end' => $a->fim->format('Y-m-d\TH:i:s'),
-                'backgroundColor' => '#e2e8f0',
-                'borderColor' => '#cbd5e1',
-                'textColor' => '#475569',
-                'editable' => false,
-                'extendedProps' => ['kind' => 'ausencia', 'ausencia_id' => $a->id],
-            ])
-            ->all();
-
-        return array_merge($eventos, $ausencias);
+        return $eventos;
     }
 
     public function corTecnico(?string $nome): string

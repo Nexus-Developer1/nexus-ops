@@ -11,7 +11,6 @@ use App\Models\AssuntoEvento;
 use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
-use App\Models\TecnicoDisponibilidade;
 use App\Models\User;
 use App\Notifications\EventoAtribuido;
 use App\Services\Agenda\AgendadorEvento;
@@ -44,9 +43,6 @@ class Calendario extends Component
     // Detalhe de um evento (clique num evento).
     public ?int $eventoSelecionadoId = null;
 
-    // Detalhe de uma ausência (clique numa ausência).
-    public ?int $ausenciaSelecionadaId = null;
-
     // Modal de criação/edição de evento próprio (o texto livre vai para o título).
     // editandoId preenchido = modo edição (o mesmo modal e validação servem os dois).
     // editandoConvertido = o evento já tem intervenção (rascunho): equipamento e contrato
@@ -57,7 +53,7 @@ class Calendario extends Component
     public string $formTitulo = '';
     // Técnicos do evento: CONTAS de utilizador (mesma lista do relatório) — um evento pode ter
     // 1 ou mais. O 1.º (por ordem alfabética) fica como principal em tecnico_id (cor do evento);
-    // os restantes vão para a pivot evento_tecnicos. Todos contam para ausências/conflitos,
+    // os restantes vão para a pivot evento_tecnicos. Todos contam para conflitos,
     // feed iCal e notificações.
     /** @var list<int|string> */
     public array $formTecnicoIds = [];
@@ -71,13 +67,6 @@ class Calendario extends Component
     // Contrato opcional a que a visita pertence; cobertura só conta se houver contrato.
     public ?int $formContratoId = null;
     public ?string $formCobertura = null; // 'incluida' | 'extra'
-
-    // Modal dedicado de marcação de ausência (grava em tecnico_disponibilidade).
-    public bool $modalAusencia = false;
-    public ?int $ausTecnicoId = null;
-    public string $ausInicio = '';
-    public string $ausFim = '';
-    public string $ausMotivo = '';
 
     // Ao mudar o filtro de técnico, manda o FullCalendar re-buscar os eventos (sem F5).
     public function updatedTecnicoNome(): void
@@ -179,10 +168,6 @@ class Calendario extends Component
             'formEquipamentoId' => 'equipamento',
             'formInicio' => 'início',
             'formFim' => 'fim',
-            'ausTecnicoId' => 'técnico',
-            'ausInicio' => 'início',
-            'ausFim' => 'fim',
-            'ausMotivo' => 'motivo',
         ];
     }
 
@@ -368,7 +353,7 @@ class Calendario extends Component
             'titulo' => $titulo,
             'inicio' => $inicio,
             'fim' => $fim,
-            // Conta do técnico + nome desnormalizado: o id liga ausências/iCal/notificações;
+            // Conta do técnico + nome desnormalizado: o id liga conflitos/iCal/notificações;
             // o nome alimenta as cores, o filtro e a legenda (partilhados com eventos legados).
             'tecnico_id' => $tecnico?->id,
             'tecnico_nome' => $tecnico?->nome,
@@ -417,67 +402,9 @@ class Calendario extends Component
         $this->recarregar();
     }
 
-    // ---- Marcação de ausência (modal dedicado → tecnico_disponibilidade) ----
-    public function abrirAusencia(): void
-    {
-        abort_if(auth()->user()->ehCliente(), 403);
-
-        $this->reset(['ausInicio', 'ausFim', 'ausMotivo', 'ausTecnicoId']);
-        $this->modalAusencia = true;
-    }
-
-    public function fecharMarcarAusencia(): void
-    {
-        $this->modalAusencia = false;
-    }
-
-    public function marcarAusencia(): void
-    {
-        abort_if(auth()->user()->ehCliente(), 403);
-
-        $this->validate([
-            'ausTecnicoId' => ['required', 'exists:utilizadores,id'],
-            'ausInicio' => ['required', 'date'],
-            'ausFim' => ['required', 'date', 'after:ausInicio'],
-            'ausMotivo' => ['nullable', 'string', 'max:255'],
-        ]);
-
-        // Indisponibiliza o técnico no período (lido por DetetorConflitos).
-        TecnicoDisponibilidade::create([
-            'tecnico_id' => $this->ausTecnicoId,
-            'tipo' => 'ausencia',
-            'inicio' => Carbon::parse($this->ausInicio),
-            'fim' => Carbon::parse($this->ausFim),
-            'motivo' => $this->ausMotivo ?: 'Ausência',
-        ]);
-
-        $this->modalAusencia = false;
-        $this->recarregar();
-    }
-
-    // ---- Ausências ----
-    public function selecionarAusencia(int $id): void
-    {
-        $this->ausenciaSelecionadaId = $id;
-    }
-
-    public function fecharAusencia(): void
-    {
-        $this->ausenciaSelecionadaId = null;
-    }
-
-    public function removerAusencia(): void
-    {
-        abort_if(auth()->user()->ehCliente(), 403);
-
-        TecnicoDisponibilidade::whereKey($this->ausenciaSelecionadaId)->delete();
-        $this->ausenciaSelecionadaId = null;
-        $this->recarregar();
-    }
-
     public function render(FonteCalendario $fonte)
     {
-        // Contas de técnico — usadas no modal de AUSÊNCIA (ausências são por conta).
+        // Contas de técnico — checkboxes do formulário de evento (1 ou mais técnicos).
         $tecnicos = User::where('papel', PapelUtilizador::Tecnico)
             ->where('ativo', true)
             ->orderBy('nome')
@@ -489,10 +416,6 @@ class Calendario extends Component
 
         $evento = $this->eventoSelecionadoId
             ? EventoAgenda::with(['cliente', 'equipamento', 'tecnico', 'intervencao.relatorio'])->find($this->eventoSelecionadoId)
-            : null;
-
-        $ausencia = $this->ausenciaSelecionadaId
-            ? TecnicoDisponibilidade::with('tecnico')->find($this->ausenciaSelecionadaId)
             : null;
 
         // Pesquisa de equipamentos server-side (nº série/fabricante/modelo, sem acentos), limitada.
@@ -529,7 +452,6 @@ class Calendario extends Component
             'nomesTecnicos' => $nomesTecnicos,
             'evento' => $evento,
             'eventoEditavel' => $evento && $evento->editavelPelaAgenda(),
-            'ausencia' => $ausencia,
             'assuntos' => AssuntoEvento::orderBy('nome')->get(),
             'equipamentosFiltrados' => $equipamentosFiltrados,
             'contratos' => $contratos,

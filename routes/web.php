@@ -124,7 +124,7 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
         return redirect()->route('relatorios.editar', $relatorio);
     })->name('intervencoes.formulario');
 
-    // Agenda (calendário de visitas, intervenções e ausências).
+    // Agenda (calendário de visitas e intervenções).
     Route::get('/agenda', \App\Livewire\Agenda\Calendario::class)->name('agenda');
 
     Route::get('/relatorios', \App\Livewire\Relatorios\Listagem::class)->name('relatorios');

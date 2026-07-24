@@ -81,8 +81,8 @@ class Adicionar extends Component
     }
 
     // Elimina PERMANENTEMENTE um técnico (só admin). O histórico mantém-se — as FKs fazem
-    // nullOnDelete (intervenções/relatórios/eventos/despesas ficam sem técnico associado);
-    // só as ausências do técnico são apagadas (cascade). Não recuperável (User sem soft-delete).
+    // nullOnDelete (intervenções/relatórios/eventos/despesas ficam sem técnico associado).
+    // Não recuperável (User sem soft-delete).
     public function eliminar(int $id): void
     {
         abort_unless(Gate::allows('gerir-utilizadores'), 403);

@@ -69,16 +69,12 @@ document.addEventListener('alpine:init', () => {
                 eventDrop: (info) => this.aoMover(info),
                 eventResize: (info) => this.aoMover(info),
                 select: (info) => {
-                    // Selecionar um intervalo livre → criar evento próprio / ausência.
+                    // Selecionar um intervalo livre → criar evento próprio.
                     this.$wire.abrirCriacao(info.startStr, info.endStr);
                     this.calendar.unselect();
                 },
                 eventClick: (info) => {
-                    if (info.event.extendedProps.kind === 'ausencia') {
-                        this.$wire.selecionarAusencia(Number(info.event.extendedProps.ausencia_id));
-                    } else {
-                        this.$wire.selecionar(Number(info.event.id));
-                    }
+                    this.$wire.selecionar(Number(info.event.id));
                 },
             });
 
