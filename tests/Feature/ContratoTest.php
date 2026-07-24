@@ -6,7 +6,6 @@ use App\Enums\EstadoContrato;
 use App\Enums\PapelUtilizador;
 use App\Livewire\Contratos\Editor;
 use App\Livewire\Contratos\Ficha;
-use App\Livewire\Contratos\Listagem;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;

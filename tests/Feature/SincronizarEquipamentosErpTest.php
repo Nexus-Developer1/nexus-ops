@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\EstadoEquipamento;
 use App\Enums\TipoEquipamento;
-use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\Local;
 use App\Services\Erp\ErpSyncDriver;

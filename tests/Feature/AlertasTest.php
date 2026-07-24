@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
-use App\Livewire\Alertas\Painel;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
@@ -14,9 +13,7 @@ use App\Models\User;
 use App\Notifications\ResumoAlertas;
 use App\Services\Alertas\ServicoAlertas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
-use Livewire\Livewire;
 use Tests\TestCase;
 
 class AlertasTest extends TestCase

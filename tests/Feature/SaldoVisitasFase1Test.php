@@ -9,7 +9,6 @@ use App\Livewire\Contratos\Ficha as ContratoFicha;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\EventoAgenda;
-use App\Models\Local;
 use App\Models\ModeloFaturacao;
 use App\Models\User;
 use App\Services\Gestao\ServicoMetricas;

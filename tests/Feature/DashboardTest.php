@@ -17,7 +17,6 @@ use App\Models\User;
 use App\Services\Gestao\ServicoMetricas;
 use App\Services\GeradorRelatorio;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 use Tests\TestCase;
