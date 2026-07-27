@@ -35,12 +35,20 @@
                 </div>
             </div>
 
-            {{-- Filtro por tipo de relatório (combina com o filtro de estado acima). --}}
-            <div class="mt-3 flex items-center gap-2">
+            {{-- Filtro por tipo (combina com o de estado) + ordenação (padrão da lista de clientes). --}}
+            <div class="mt-3 flex flex-wrap items-center gap-2">
                 <span class="mr-1 text-xs font-semibold uppercase tracking-wide text-texto-fraco">Tipo</span>
                 <button wire:click="filtrarTipo('')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $tipo === '' ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">Todos</button>
                 <button wire:click="filtrarTipo('contrato')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $tipo === 'contrato' ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">De contrato</button>
                 <button wire:click="filtrarTipo('individual')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $tipo === 'individual' ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">Individual</button>
+                <div class="ml-auto flex items-center gap-2">
+                    <label for="ordenar" class="shrink-0 text-sm text-texto-medio">Ordenar:</label>
+                    <select id="ordenar" wire:model.live="ordenar" class="campo-select w-full sm:w-56">
+                        @foreach ($ordenacoes as $valor => $rotulo)
+                            <option value="{{ $valor }}">{{ $rotulo }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
 
             {{-- Tabela --}}

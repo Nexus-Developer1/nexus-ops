@@ -18,6 +18,10 @@ class Listagem extends Component
 
     use WithPagination;
 
+    // Expressão pura para ordenar pelo nome do cliente ignorando acentos/maiúsculas/espaços
+    // (mesma da lista de clientes, qualificada porque entra numa subquery com joins).
+    private const NOME_SEM_ACENTOS = "translate(lower(btrim(clientes.nome)), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
+
     #[Url]
     public string $pesquisa = '';
 
@@ -29,7 +33,16 @@ class Listagem extends Component
     #[Url]
     public string $tipo = '';
 
+    // Ordenação ativa (valor de uma whitelist — nunca interpolado em cru).
+    #[Url]
+    public string $ordenar = 'recentes';
+
     public function updatingPesquisa(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingOrdenar(): void
     {
         $this->resetPage();
     }
@@ -80,9 +93,35 @@ class Listagem extends Component
         session()->flash('sucesso', "Relatório {$rotulo} eliminado.");
     }
 
+    /** Opções de ordenação (valor => rótulo), no padrão da lista de clientes. */
+    private function ordenacoes(): array
+    {
+        return [
+            'recentes' => 'Mais recentes',
+            'antigos' => 'Mais antigos',
+            'cliente_asc' => 'Cliente (A → Z)',
+            'cliente_desc' => 'Cliente (Z → A)',
+            'numero_desc' => 'Nº relatório (decrescente)',
+            'numero_asc' => 'Nº relatório (crescente)',
+        ];
+    }
+
+    // Subquery com o nome do cliente do relatório (relatório → intervenção → equipamento →
+    // local → cliente), para ordenar sem carregar as relações linha a linha.
+    private function subNomeCliente(): \Illuminate\Database\Query\Builder
+    {
+        return DB::table('intervencoes')
+            ->join('equipamentos', 'equipamentos.id', '=', 'intervencoes.equipamento_id')
+            ->join('locais', 'locais.id', '=', 'equipamentos.local_id')
+            ->join('clientes', 'clientes.id', '=', 'locais.cliente_id')
+            ->whereColumn('intervencoes.id', 'relatorios.intervencao_id')
+            ->selectRaw(self::NOME_SEM_ACENTOS)
+            ->limit(1);
+    }
+
     public function render()
     {
-        $relatorios = Relatorio::query()
+        $query = Relatorio::query()
             ->with('intervencao.equipamento.local.cliente', 'intervencao.tecnico')
             ->when($this->estado, fn ($q) => $q->where('estado', $this->estado))
             ->when($this->tipo === 'contrato', fn ($q) => $q->whereHas('intervencao', fn ($q) => $q->whereNotNull('contrato_id')))
@@ -94,13 +133,23 @@ class Listagem extends Component
                         ->orWhereHas('intervencao.equipamento.local.cliente', fn ($q) => $q->where('nome', 'ilike', $termo))
                         ->orWhereHas('intervencao.tecnico', fn ($q) => $q->where('nome', 'ilike', $termo));
                 });
-            })
-            ->orderByDesc('data')
-            ->paginate(10);
+            });
+
+        // Whitelist (default = recentes). Desempate por id → paginação estável.
+        match ($this->ordenar) {
+            'antigos' => $query->orderBy('data')->orderBy('id'),
+            'cliente_asc' => $query->orderBy($this->subNomeCliente())->orderByDesc('data')->orderBy('id'),
+            'cliente_desc' => $query->orderByDesc($this->subNomeCliente())->orderByDesc('data')->orderBy('id'),
+            // Rascunhos ainda sem número ficam no fim ('2026/0042' ordena bem como texto).
+            'numero_asc' => $query->orderByRaw('numero asc nulls last')->orderBy('id'),
+            'numero_desc' => $query->orderByRaw('numero desc nulls last')->orderBy('id'),
+            default => $query->orderByDesc('data')->orderByDesc('id'),
+        };
 
         return view('livewire.relatorios.listagem', [
-            'relatorios' => $relatorios,
+            'relatorios' => $query->paginate(10),
             'estados' => EstadoRelatorio::cases(),
+            'ordenacoes' => $this->ordenacoes(),
         ]);
     }
 }
