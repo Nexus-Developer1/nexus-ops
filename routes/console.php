@@ -17,13 +17,17 @@ Artisan::command('inspire', function () {
 // impede as seguintes. `agendado: true` → envia SEMPRE o email de resultado ao suporte
 // (erp.email_sync), sucesso ou falha; o botão dispara sem email (só apressa o sync).
 // Corre na fila (worker), não no processo do scheduler. Só com driver ERP configurado.
+// timezone Europe/Lisbon: o servidor/app estão em UTC — sem isto, as "8h/13h/19h" eram
+// UTC e, com a hora de verão, os syncs corriam às 9h/14h/20h portuguesas.
 Schedule::job(new App\Jobs\SincronizarErp(agendado: true))
+    ->timezone('Europe/Lisbon')
     ->cron('0 8,13,19 * * *')
     ->onOneServer()
     ->when(fn () => filled(config('erp.driver')));
 
-// Resumo diário de alertas proativos aos administradores (CLAUDE.md §9).
+// Resumo diário de alertas proativos aos administradores (CLAUDE.md §9), às 08h de Lisboa.
 Schedule::command('alertas:verificar')
+    ->timezone('Europe/Lisbon')
     ->dailyAt('08:00')
     ->withoutOverlapping()
     ->onOneServer();
