@@ -25,7 +25,7 @@
                     <tr>
                         <td style="padding:14px 36px 4px;">
                             <h1 style="margin:0 0 14px; font-size:20px; font-weight:600; color:#111827;">A sincronização com o PHC falhou</h1>
-                            <p style="margin:0 0 18px; font-size:15px; line-height:1.6; color:#374151;">A sincronização manual disparada no dashboard <strong style="color:#111827;">não terminou com sucesso</strong>. Etapas com falha:</p>
+                            <p style="margin:0 0 18px; font-size:15px; line-height:1.6; color:#374151;">A sincronização com o PHC (agendada ou disparada no dashboard) <strong style="color:#111827;">não terminou com sucesso</strong>. Etapas com falha:</p>
 
                             {{-- Caixa com as falhas por etapa --}}
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fef2f2; border:1px solid #fecaca; border-radius:10px;">
@@ -39,7 +39,7 @@
                                 @endforeach
                             </table>
 
-                            <p style="margin:20px 0 6px; font-size:13px; line-height:1.6; color:#6b7280;">As etapas que não constam da lista terminaram normalmente. O sync agendado (08h, 13h e 19h) volta a tentar automaticamente; o detalhe técnico fica no log da aplicação.</p>
+                            <p style="margin:20px 0 6px; font-size:13px; line-height:1.6; color:#6b7280;">As etapas que não constam da lista terminaram normalmente. A próxima corrida agendada (08h, 13h e 19h) volta a tentar automaticamente; o detalhe técnico fica no log da aplicação.</p>
                         </td>
                     </tr>
 

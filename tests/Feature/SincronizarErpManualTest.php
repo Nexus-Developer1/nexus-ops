@@ -56,10 +56,10 @@ class SincronizarErpManualTest extends TestCase
         Mail::fake();
 
         // Clientes falha (código 1); as outras etapas passam — o email lista SÓ a falhada.
-        Artisan::shouldReceive('call')->once()->with('erp:sincronizar-clientes')->andReturn(1);
+        Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-clientes')->andReturn(1);
         Artisan::shouldReceive('output')->once()->andReturn('Sync de clientes FALHOU: ligação recusada');
-        Artisan::shouldReceive('call')->once()->with('erp:sincronizar-faturacao')->andReturn(0);
-        Artisan::shouldReceive('call')->once()->with('erp:sincronizar-equipamentos')->andReturn(0);
+        Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-equipamentos')->andReturn(0);
+        Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-faturacao')->andReturn(0);
 
         (new SincronizarErp)->handle();
 
@@ -88,5 +88,20 @@ class SincronizarErpManualTest extends TestCase
         (new SincronizarErp)->failed(new \RuntimeException('worker morto'));
 
         Mail::assertSent(SincronizacaoErpFalhou::class, fn ($m) => $m->hasTo(config('erp.email_falhas')));
+    }
+
+    public function test_agendado_usa_o_mesmo_job_encadeado(): void
+    {
+        // O cron das 08h/13h/19h dispara UMA corrida encadeada via o mesmo job do botão
+        // (e não os 3 comandos desfasados de antes).
+        $eventos = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events());
+
+        $doJob = $eventos->filter(fn ($e) => str_contains((string) $e->description, SincronizarErp::class));
+        $this->assertCount(1, $doJob);
+        $this->assertSame('0 8,13,19 * * *', $doJob->first()->expression);
+
+        // Os comandos individuais deixaram de estar agendados.
+        $comandos = $eventos->filter(fn ($e) => str_contains((string) $e->command, 'erp:sincronizar'));
+        $this->assertCount(0, $comandos);
     }
 }

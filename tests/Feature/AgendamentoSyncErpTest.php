@@ -5,14 +5,13 @@ namespace Tests\Feature;
 use App\Models\Cliente;
 use App\Services\Erp\ErpSyncDriver;
 use App\Services\Erp\FakeErpDriver;
-use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Tests\TestCase;
 
-// Robustez e agendamento dos syncs do ERP (routes/console.php): correm 3x/dia (08h/13h/19h),
-// uma falha de LIGAÇÃO é logada e devolve FAILURE sem rebentar, e o upsert continua idempotente.
+// Robustez dos comandos de sync do ERP: uma falha de LIGAÇÃO é logada e devolve FAILURE
+// sem rebentar, e o upsert continua idempotente.
 class AgendamentoSyncErpTest extends TestCase
 {
     use RefreshDatabase;
@@ -70,26 +69,8 @@ class AgendamentoSyncErpTest extends TestCase
         Log::shouldHaveReceived('error')->withArgs(fn ($msg) => str_contains($msg, 'Sync de equipamentos do ERP falhou'))->once();
     }
 
-    public function test_agendamento_regista_os_tres_syncs_nas_horas_certas(): void
-    {
-        $eventos = app(Schedule::class)->events();
-
-        $expressao = function (string $comando) use ($eventos): ?string {
-            foreach ($eventos as $evento) {
-                if (str_contains($evento->command ?? '', $comando)) {
-                    return $evento->expression;
-                }
-            }
-
-            return null;
-        };
-
-        // 08h/13h/19h — escalonados para não haver ligações simultâneas ao PHC:
-        // clientes :00, faturação :10, equipamentos :20 (equipamentos depois de clientes).
-        $this->assertSame('0 8,13,19 * * *', $expressao('erp:sincronizar-clientes'));
-        $this->assertSame('10 8,13,19 * * *', $expressao('erp:sincronizar-faturacao'));
-        $this->assertSame('20 8,13,19 * * *', $expressao('erp:sincronizar-equipamentos'));
-    }
+    // Nota: o AGENDAMENTO (job encadeado às 08h/13h/19h) é testado em
+    // SincronizarErpManualTest::test_agendado_usa_o_mesmo_job_encadeado.
 
     public function test_sync_continua_idempotente_em_corrida_repetida(): void
     {

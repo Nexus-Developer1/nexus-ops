@@ -13,9 +13,11 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
-// Sincronização MANUAL de todos os dados do PHC (botão no dashboard). Corre os 3 syncs
-// pela mesma ordem do agendamento (equipamentos dependem de clientes.id_erp); uma falha
-// num sync não impede os seguintes. Se algum falhar, avisa por email (config erp.email_falhas).
+// Sincronização de todos os dados do PHC — usada pelo AGENDADO (08h/13h/19h, ver
+// routes/console.php) e pelo botão "Sincronizar PHC" do dashboard. Corre os 3 syncs
+// ENCADEADOS (cada um arranca quando o anterior acaba): clientes primeiro (equipamentos
+// dependem de clientes.id_erp), faturação no fim (a pesada, ~20 min). Uma falha numa
+// etapa não impede as seguintes. Se algo falhar, avisa por email (config erp.email_falhas).
 class SincronizarErp implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
@@ -31,16 +33,18 @@ class SincronizarErp implements ShouldQueue
     // Nome legível de cada etapa → comando (a ordem importa).
     private const ETAPAS = [
         'Clientes' => 'erp:sincronizar-clientes',
-        'Faturação' => 'erp:sincronizar-faturacao',
         'Equipamentos' => 'erp:sincronizar-equipamentos',
+        'Faturação' => 'erp:sincronizar-faturacao',
     ];
 
     public function handle(): void
     {
-        // Nunca dois syncs manuais em simultâneo (o TTL cobre o pior caso do timeout).
-        $lock = Cache::lock('erp-sync-manual', 1800);
+        // Nunca dois syncs em simultâneo — o lock é partilhado entre o agendado e o botão,
+        // por isso um clique em cima da hora do cron não duplica a carga no PHC (o segundo
+        // é simplesmente ignorado). O TTL cobre o pior caso do timeout.
+        $lock = Cache::lock('erp-sync', 1800);
         if (! $lock->get()) {
-            Log::info('Sync manual do ERP ignorado: já há um em curso.');
+            Log::info('Sync do ERP ignorado: já há um em curso.');
 
             return;
         }
@@ -67,7 +71,7 @@ class SincronizarErp implements ShouldQueue
                 Mail::to(config('erp.email_falhas'))->send(new SincronizacaoErpFalhou($falhas));
             }
 
-            Log::info('Sync manual do ERP terminado.', ['falhas' => array_keys($falhas)]);
+            Log::info('Sync do ERP (encadeado) terminado.', ['falhas' => array_keys($falhas)]);
         } finally {
             $lock->release();
         }
