@@ -32,10 +32,17 @@ class SqlServerErpDriver implements ErpSyncDriver
         // (vw_clientes) e ler dessa view, nunca da tabela bruta. (Igual à faturação — ver abaixo.)
         //
         // SQL Server: o limite usa TOP (não LIMIT). É um inteiro, interpolado em segurança.
+        //
+        // estab = 0: no PHC o mesmo nº de cliente (no) pode ter VÁRIOS estabelecimentos
+        // (ex.: 9971 = Universidade do Porto com 11 faculdades). A app correlaciona por `no`,
+        // por isso sem este filtro os estabelecimentos escreviam por cima uns dos outros a
+        // cada sync (o cliente ficava com o nome/morada do que calhasse por último — e o sync
+        // incremental via 179 "alterados" eternos). A SEDE (estab 0) é o registo canónico.
         $top = $limite !== null ? 'TOP ' . (int) $limite . ' ' : '';
 
         $sql = "SELECT {$top}no, nome, ncont, morada, codpost, email, telefone, tlmvl, vendedor, vendnm
-                FROM cl";
+                FROM cl
+                WHERE estab = 0";
 
         foreach (DB::connection('erp')->select($sql) as $r) {
             yield new ClienteErp(

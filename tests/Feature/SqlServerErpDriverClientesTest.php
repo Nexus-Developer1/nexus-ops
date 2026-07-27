@@ -23,6 +23,7 @@ class SqlServerErpDriverClientesTest extends TestCase
 
         Schema::connection('erp')->create('cl', function ($t) {
             $t->string('no');
+            $t->integer('estab')->default(0); // estabelecimento (0 = sede — só essa entra no sync)
             $t->string('nome');
             $t->string('ncont')->nullable();
             $t->string('morada')->nullable();
@@ -46,17 +47,22 @@ class SqlServerErpDriverClientesTest extends TestCase
     public function test_le_clientes_da_tabela_cl_e_mapeia_para_dto(): void
     {
         DB::connection('erp')->table('cl')->insert([
-            ['no' => '1001', 'nome' => 'ACME Lda', 'ncont' => '500123456', 'morada' => 'Rua A, 1',
+            ['no' => '1001', 'estab' => 0, 'nome' => 'ACME Lda', 'ncont' => '500123456', 'morada' => 'Rua A, 1',
                 'codpost' => '1000-001', 'email' => 'geral@acme.pt', 'telefone' => '210000000',
                 'tlmvl' => '910000000', 'vendedor' => 7, 'vendnm' => 'João'],
-            ['no' => '1002', 'nome' => 'Beta SA', 'ncont' => null, 'morada' => null,
+            ['no' => '1002', 'estab' => 0, 'nome' => 'Beta SA', 'ncont' => null, 'morada' => null,
                 'codpost' => null, 'email' => null, 'telefone' => null,
                 'tlmvl' => null, 'vendedor' => null, 'vendnm' => null],
+            // Estabelecimento (estab ≠ 0) do MESMO nº de cliente: NÃO entra no sync — sem o
+            // filtro, escrevia por cima da sede a cada corrida (nome/morada do último a passar).
+            ['no' => '1001', 'estab' => 1, 'nome' => 'ACME Lda - Armazém Norte', 'ncont' => '500123456',
+                'morada' => 'Zona Industrial, Lote 9', 'codpost' => '4700-000', 'email' => null,
+                'telefone' => null, 'tlmvl' => null, 'vendedor' => 7, 'vendnm' => 'João'],
         ]);
 
         $clientes = iterator_to_array((new SqlServerErpDriver())->obterClientes());
 
-        $this->assertCount(2, $clientes);
+        $this->assertCount(2, $clientes); // só as sedes — o estabelecimento ficou de fora
         $this->assertContainsOnlyInstancesOf(ClienteErp::class, $clientes);
 
         // Mapeamento PHC → DTO: cl.no → idErp (string), cl.ncont → nif, cl.vendedor → int.
