@@ -296,7 +296,11 @@
                     </button>
                     <div x-show="aberto" x-transition class="px-6 pb-7">
                         <label class="campo-label">Resumo da intervenção</label>
-                        <textarea wire:model="resumo" rows="3" class="campo-input resize-none" placeholder="Descreva as constatações técnicas observadas durante a intervenção…"></textarea>
+                        {{-- Cresce com o texto (auto-resize): altura acompanha o conteúdo, sem scroll interno. --}}
+                        <textarea wire:model="resumo" rows="3"
+                            x-data="{ ajustar() { if (! this.$el.scrollHeight) return; this.$el.style.height = 'auto'; this.$el.style.height = this.$el.scrollHeight + 'px'; } }"
+                            x-init="ajustar()" @input="ajustar()"
+                            class="campo-input resize-none overflow-hidden" placeholder="Descreva as constatações técnicas observadas durante a intervenção…"></textarea>
                     </div>
                 </section>
 

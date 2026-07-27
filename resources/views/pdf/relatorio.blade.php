@@ -41,6 +41,7 @@
         .ficha-rot { color: #9ca3af; font-size: 8px; text-transform: uppercase; }
         .cel-num { text-align: center; }
         .cel-ok { text-align: center; color: #16A34A; font-weight: bold; width: 8%; }
+        .temp-alerta { color: #dc2626; font-weight: bold; } /* temperatura acima de 25 °C */
         .cel-nok { text-align: center; color: #dc2626; font-weight: bold; width: 8%; }
     </style>
 </head>
@@ -125,14 +126,14 @@
     {{-- ===== PÁGINA TÉCNICA — tudo o que é técnico começa aqui (a 1ª página é só o resumo:
          cliente, local, intervenção e textos). As fichas de medição seguem-se, uma por página. --}}
     <div class="pagina-tecnica">
+        {{-- Identificação do equipamento (S/N, fabricante, tipo) saiu do relatório a pedido da
+             equipa — a ficha de medições já identifica cada equipamento. Ficam só os extras. --}}
+        @php($eLocaliz = trim((string) ($e->localizacao_instalacao ?? '')))
+        @php($eComponentes = collect($e->atributos['componentes'] ?? [])->filter(fn ($comp) => trim((string) ($comp['designacao'] ?? '')) !== ''))
+        @if ($eCliFinal !== '' || $eLocaliz !== '' || $eComponentes->isNotEmpty() || $i->equipamentosCobertos->isNotEmpty())
         <h2>Equipamento</h2>
         <table class="grelha">
-            <tr>
-                <td><div class="campo-rotulo">Equipamento</div><div class="campo-valor">{{ $e->numero_serie }} · {{ $e->fabricante }} {{ $e->modelo }}</div></td>
-                <td><div class="campo-rotulo">Tipo</div><div class="campo-valor">{{ $e->tipo->rotulo() }}</div></td>
-            </tr>
             {{-- Cliente final / localização do equipamento (campos explícitos) — só quando preenchidos. --}}
-            @php($eLocaliz = trim((string) ($e->localizacao_instalacao ?? '')))
             @if ($eCliFinal !== '' || $eLocaliz !== '')
                 <tr>
                     <td><div class="campo-rotulo">Cliente final</div><div class="campo-valor">{{ $eCliFinal !== '' ? $eCliFinal : '—' }}</div></td>
@@ -140,7 +141,6 @@
                 </tr>
             @endif
             {{-- Componentes do sistema (equipamentos compostos, ex.: deteção de incêndio). --}}
-            @php($eComponentes = collect($e->atributos['componentes'] ?? [])->filter(fn ($comp) => trim((string) ($comp['designacao'] ?? '')) !== ''))
             @if ($eComponentes->isNotEmpty())
                 <tr>
                     <td colspan="2">
@@ -162,6 +162,7 @@
                 </tr>
             @endif
         </table>
+        @endif
 
     {{-- Checklist antiga: só quando NÃO há fichas de medição (relatórios legados). Os relatórios
          novos (contrato ou individual) usam as fichas por equipamento (abaixo). --}}
@@ -283,7 +284,9 @@
                         <tr>
                             <td style="width:34%;">{{ $titulo }}</td>
                             @foreach ($campos as $lab => $campo)
-                                <td class="cel-num" style="width:22%;"><span class="ficha-rot">{{ $lab }}</span> {{ $ficha->{$campo} }}</td>
+                                {{-- Temperatura acima de 25 °C sai a vermelho (alerta visual no relatório). --}}
+                                @php($tempAlta = $campo === 'temperatura' && is_numeric($ficha->temperatura) && (float) $ficha->temperatura > 25)
+                                <td class="cel-num{{ $tempAlta ? ' temp-alerta' : '' }}" style="width:22%;"><span class="ficha-rot">{{ $lab }}</span> {{ $ficha->{$campo} }}</td>
                             @endforeach
                             @for ($k = count($campos); $k < 3; $k++)<td></td>@endfor
                         </tr>

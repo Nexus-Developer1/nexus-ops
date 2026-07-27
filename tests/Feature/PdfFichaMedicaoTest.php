@@ -141,6 +141,30 @@ class PdfFichaMedicaoTest extends TestCase
         $this->assertStringNotContainsString('null', $html);                      // contrato nulo não vira "null"
     }
 
+    // Temperatura acima de 25 °C sai marcada a vermelho (classe temp-alerta); até 25, não.
+    public function test_pdf_marca_temperatura_acima_de_25_a_vermelho(): void
+    {
+        [$contrato, , $e1, $e2] = $this->contexto();
+        $relatorio = $this->relatorioContrato($contrato, $e1);
+        $interv = $relatorio->intervencao;
+        $interv->equipamentosCobertos()->attach($e2->id);
+
+        FichaMedicao::create([
+            'intervencao_id' => $interv->id, 'equipamento_id' => $e1->id, 'tipo_equipamento' => 'ups',
+            'temperatura' => '30.50', // acima do limiar → alerta
+        ]);
+        FichaMedicao::create([
+            'intervencao_id' => $interv->id, 'equipamento_id' => $e2->id, 'tipo_equipamento' => 'ups',
+            'temperatura' => '25.00', // no limiar → sem alerta (só ACIMA de 25)
+        ]);
+
+        $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
+
+        $this->assertSame(1, substr_count($html, 'temp-alerta"')); // só a ficha dos 30.5 °C
+        $this->assertStringContainsString('30.50', $html);
+        $this->assertStringContainsString('25.00', $html);
+    }
+
     // A recomendação (e prioridade) é por equipamento: sai na página da ficha respetiva.
     public function test_pdf_mostra_recomendacao_por_equipamento(): void
     {

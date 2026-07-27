@@ -124,10 +124,11 @@ class PdfRelatorioTest extends TestCase
 
         $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
 
-        // O equipamento (S/N e tipo) sai da 1ª página para a página técnica (quebra de página).
+        // A parte técnica começa em página nova; a identificação do equipamento (S/N,
+        // fabricante, tipo) saiu do relatório — quem identifica é a ficha de medições.
         $this->assertStringContainsString('pagina-tecnica', $html);
         $this->assertStringContainsString('page-break-before: always', $html);
-        $this->assertStringContainsString('SN-77', $html);
+        $this->assertStringNotContainsString('SN-77', $html);
 
         // As quebras de linha escritas pelo técnico chegam ao HTML e o CSS preserva-as.
         $this->assertStringContainsString("Substituição de baterias.\nTeste de autonomia OK.", $html);

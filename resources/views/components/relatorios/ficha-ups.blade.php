@@ -77,7 +77,15 @@
                             @foreach ($campos as $campo => $curto)
                                 <div>
                                     <label class="mb-0.5 block text-[11px] text-texto-fraco">{{ $curto }}</label>
-                                    <input type="number" step="0.01" inputmode="decimal" wire:model="{{ $prefixo }}.{{ $campo }}" class="campo-input px-2 py-1.5 text-sm">
+                                    @if ($campo === 'temperatura')
+                                        {{-- Acima de 25 °C fica a vermelho, em tempo real e ao carregar a ficha. --}}
+                                        <input type="number" step="0.01" inputmode="decimal" wire:model="{{ $prefixo }}.{{ $campo }}"
+                                            x-data="{ marcar() { const v = parseFloat(this.$el.value); const alta = !isNaN(v) && v > 25; ['text-perigo-600', 'border-perigo-500', 'font-semibold'].forEach(c => this.$el.classList.toggle(c, alta)); } }"
+                                            x-init="marcar()" @input="marcar()"
+                                            class="campo-input px-2 py-1.5 text-sm">
+                                    @else
+                                        <input type="number" step="0.01" inputmode="decimal" wire:model="{{ $prefixo }}.{{ $campo }}" class="campo-input px-2 py-1.5 text-sm">
+                                    @endif
                                 </div>
                             @endforeach
                         </div>
