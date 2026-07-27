@@ -139,8 +139,13 @@
             <td><div class="campo-rotulo">{{ $i->tecnicos->isEmpty() ? 'Técnico' : 'Técnicos' }}</div><div class="campo-valor">{{ $nomesTecnicos ?: '—' }}</div></td>
         </tr>
         <tr>
-            <td><div class="campo-rotulo">Data de início</div><div class="campo-valor">{{ $i->data_inicio?->format('d/m/Y H:i') ?? '—' }}</div></td>
-            <td><div class="campo-rotulo">Data de fim</div><div class="campo-valor">{{ $i->data_fim?->format('d/m/Y H:i') ?? '—' }}</div></td>
+            {{-- Data + horas ESCRITAS pelo técnico (hora_inicio/hora_fim, "HH:MM"). Antes
+                 mostrava data_inicio com H:i (sempre 00:00 — a data não tem hora) e data_fim
+                 (o instante em que se FINALIZOU o relatório, não o fim real da intervenção). --}}
+            @php($hIni = $i->hora_inicio ? substr($i->hora_inicio, 0, 5) : null)
+            @php($hFim = $i->hora_fim ? substr($i->hora_fim, 0, 5) : null)
+            <td><div class="campo-rotulo">Data da intervenção</div><div class="campo-valor">{{ $i->data_inicio?->format('d/m/Y') ?? '—' }}</div></td>
+            <td><div class="campo-rotulo">Horário</div><div class="campo-valor">{{ $hIni && $hFim ? "$hIni – $hFim" : ($hIni ?: '—') }}</div></td>
         </tr>
     </table>
 
@@ -213,7 +218,7 @@
                         <tr><td colspan="2"><span class="ficha-rot">Cliente final</span><br>{{ $clienteFinalValor }}</td></tr>
                     @endif
                     <tr>
-                        <td><span class="ficha-rot">Data</span><br>{{ $i->data_inicio?->format('d/m/Y') ?? $relatorio->data->format('d/m/Y') }}</td>
+                        <td><span class="ficha-rot">Data</span><br>{{ $i->data_inicio?->format('d/m/Y') ?? $relatorio->data->format('d/m/Y') }}{{ $hIni && $hFim ? " · {$hIni}–{$hFim}" : '' }}</td>
                         <td><span class="ficha-rot">Local de instalação</span><br>{{ $locTexto !== '' ? $locTexto : $locDerivado }}</td>
                     </tr>
                 </table>
