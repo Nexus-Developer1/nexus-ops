@@ -121,25 +121,50 @@ class PdfRelatorioTest extends TestCase
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sala']);
         $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
 
-        // Horas ESCRITAS no formulário (hora_inicio/hora_fim); data_fim é o instante em que
-        // se finalizou o relatório e não pode aparecer como fim da intervenção.
+        // Datas e horas ESCRITAS no formulário — intervenção de VÁRIOS dias com horário.
         $interv = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'preventiva', 'estado' => 'concluida',
-            'data_inicio' => '2026-07-27', 'hora_inicio' => '09:30', 'hora_fim' => '12:15', 'data_fim' => now()]);
+            'data_inicio' => '2026-07-27', 'data_fim' => '2026-07-28 12:15:00',
+            'hora_inicio' => '09:30', 'hora_fim' => '12:15']);
         $relatorio = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/9300', 'data' => now(), 'estado' => EstadoRelatorio::Finalizado]);
 
         $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
 
-        $this->assertStringContainsString('27/07/2026', $html);       // data da intervenção
-        $this->assertStringContainsString('09:30 – 12:15', $html);    // horário escrito pelo técnico
-        $this->assertStringNotContainsString('00:00', $html);         // fim do "data com hora fantasma"
+        $this->assertStringContainsString('27/07/2026 · 09:30', $html); // início: data + hora do formulário
+        $this->assertStringContainsString('28/07/2026 · 12:15', $html); // término: data + hora do formulário
+        $this->assertStringNotContainsString('00:00', $html);           // fim do "data com hora fantasma"
 
-        // Sem horas preenchidas: mostra travessão, nunca "00:00" nem a hora de finalização.
+        // Sem horas nem término: mostra as datas (término = mesmo dia), nunca "00:00".
         $semHoras = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'corretiva', 'estado' => 'concluida',
-            'data_inicio' => '2026-07-27', 'data_fim' => now()]);
+            'data_inicio' => '2026-07-27']);
         $rSemHoras = Relatorio::create(['intervencao_id' => $semHoras->id, 'numero' => '2026/9301', 'data' => now(), 'estado' => EstadoRelatorio::Finalizado]);
         $htmlSem = view('pdf.relatorio', ['relatorio' => $rSemHoras, 'fotos' => []])->render();
 
-        $this->assertStringContainsString('Horário', $htmlSem);
+        $this->assertStringContainsString('Término', $htmlSem);
         $this->assertStringNotContainsString('00:00', $htmlSem);
+    }
+
+    public function test_finalizar_grava_termino_real_e_nao_o_instante_da_redacao(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        $admin = User::create(['nome' => 'Admin', 'email' => 'a2@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
+        $tec = User::create(['nome' => 'Téc', 'email' => 't2@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+        $cliente = Cliente::create(['nome' => 'ACME2', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sala']);
+        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
+
+        \Livewire\Livewire::actingAs($admin)->test(\App\Livewire\Relatorios\Novo::class)
+            ->set('equipamento_id', $equip->id)
+            ->set('tipo', 'corretiva')
+            ->set('data', '2026-07-20')
+            ->set('data_fim', '2026-07-22')
+            ->set('hora_inicio', '22:00')
+            ->set('hora_fim', '06:00') // fim "menor" que o início é válido porque termina noutro dia
+            ->set('tecnicoIds', [$tec->id])
+            ->call('finalizar')
+            ->assertHasNoErrors();
+
+        $interv = Intervencao::latest('id')->firstOrFail();
+        $this->assertSame('2026-07-20', $interv->data_inicio->toDateString());
+        $this->assertSame('2026-07-22 06:00', $interv->data_fim->format('Y-m-d H:i')); // término REAL, não now()
     }
 }

@@ -139,13 +139,13 @@
             <td><div class="campo-rotulo">{{ $i->tecnicos->isEmpty() ? 'Técnico' : 'Técnicos' }}</div><div class="campo-valor">{{ $nomesTecnicos ?: '—' }}</div></td>
         </tr>
         <tr>
-            {{-- Data + horas ESCRITAS pelo técnico (hora_inicio/hora_fim, "HH:MM"). Antes
-                 mostrava data_inicio com H:i (sempre 00:00 — a data não tem hora) e data_fim
-                 (o instante em que se FINALIZOU o relatório, não o fim real da intervenção). --}}
+            {{-- Datas + horas ESCRITAS pelo técnico. Antes mostrava data_inicio com H:i
+                 (sempre 00:00 — a data não tem hora) e data_fim era o instante em que se
+                 FINALIZOU o relatório; agora data_fim é o término real vindo do formulário. --}}
             @php($hIni = $i->hora_inicio ? substr($i->hora_inicio, 0, 5) : null)
             @php($hFim = $i->hora_fim ? substr($i->hora_fim, 0, 5) : null)
-            <td><div class="campo-rotulo">Data da intervenção</div><div class="campo-valor">{{ $i->data_inicio?->format('d/m/Y') ?? '—' }}</div></td>
-            <td><div class="campo-rotulo">Horário</div><div class="campo-valor">{{ $hIni && $hFim ? "$hIni – $hFim" : ($hIni ?: '—') }}</div></td>
+            <td><div class="campo-rotulo">Início</div><div class="campo-valor">{{ $i->data_inicio?->format('d/m/Y') ?? '—' }}{{ $hIni ? " · $hIni" : '' }}</div></td>
+            <td><div class="campo-rotulo">Término</div><div class="campo-valor">{{ $i->data_fim?->format('d/m/Y') ?? ($i->data_inicio?->format('d/m/Y') ?? '—') }}{{ $hFim ? " · $hFim" : '' }}</div></td>
         </tr>
     </table>
 

@@ -36,9 +36,14 @@ class GeradorEventoDeRelatorio
         return DB::transaction(function () use ($intervencao, $equipamento) {
             $inicio = $intervencao->data_inicio->copy()
                 ->setTimeFromTimeString($intervencao->hora_inicio ?: self::HORA_INICIO_PADRAO);
-            $fim = $intervencao->hora_fim
-                ? $intervencao->data_inicio->copy()->setTimeFromTimeString($intervencao->hora_fim)
-                : $inicio->copy()->addMinutes(self::DURACAO_PADRAO_MIN);
+            // Fim: o término real (data_fim, que já embute a hora de fim) quando é posterior ao
+            // início — cobre intervenções de vários dias; senão, hora de fim no próprio dia, ou
+            // a duração padrão.
+            $fim = $intervencao->data_fim?->gt($inicio)
+                ? $intervencao->data_fim->copy()
+                : ($intervencao->hora_fim
+                    ? $intervencao->data_inicio->copy()->setTimeFromTimeString($intervencao->hora_fim)
+                    : $inicio->copy()->addMinutes(self::DURACAO_PADRAO_MIN));
 
             $existente = $intervencao->evento_agenda_id
                 ? EventoAgenda::find($intervencao->evento_agenda_id)

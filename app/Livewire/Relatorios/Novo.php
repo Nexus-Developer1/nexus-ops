@@ -22,6 +22,7 @@ use App\Models\User;
 use App\Services\Agenda\SincronizadorAgenda;
 use App\Services\GeradorRelatorio;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -72,6 +73,7 @@ class Novo extends Component
     public array $equipamentosCobertos = [];
     public string $tipo = 'preventiva';
     public string $data = '';
+    public string $data_fim = '';   // término; vazio = mesmo dia do início
     public string $hora_inicio = '';
     public string $hora_fim = '';
 
@@ -147,6 +149,9 @@ class Novo extends Component
             }
             $this->tipo = $intervencao->tipo->value;
             $this->data = $intervencao->data_inicio?->format('Y-m-d') ?? '';
+            // Término: só pré-preenche quando difere do início (mesmo dia = campo vazio).
+            $dataFim = $intervencao->data_fim?->format('Y-m-d');
+            $this->data_fim = ($dataFim && $dataFim !== $this->data) ? $dataFim : '';
             $this->hora_inicio = $intervencao->hora_inicio ? substr($intervencao->hora_inicio, 0, 5) : '';
             $this->hora_fim = $intervencao->hora_fim ? substr($intervencao->hora_fim, 0, 5) : '';
             $this->resumo = $intervencao->trabalho_realizado ?? '';
@@ -517,12 +522,10 @@ class Novo extends Component
             'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
             'tipo' => ['required', 'in:preventiva,corretiva,instalacao'],
             'data' => ['required', 'date'],
-            'hora_inicio' => ['nullable', 'date_format:H:i'],
-            'hora_fim' => ['nullable', 'date_format:H:i', 'after_or_equal:hora_inicio'],
             'fotosNovas.*.*' => ['image', 'max:8192'], // 8 MB
             // Finalizar exige saber quem fez a intervenção (o PDF identifica os técnicos).
             'tecnicoIds' => ['required', 'array', 'min:1'],
-        ] + $this->regrasContrato() + $this->regrasTecnicos() + $this->regrasCobertos();
+        ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos() + $this->regrasCobertos();
     }
 
     // Equipamentos cobertos: prop pública (manipulável pelo browser) — cada id tem de existir.
@@ -539,8 +542,13 @@ class Novo extends Component
     protected function regrasHoras(): array
     {
         return [
+            'data_fim' => ['nullable', 'date', 'after_or_equal:data'],
             'hora_inicio' => ['nullable', 'date_format:H:i'],
-            'hora_fim' => ['nullable', 'date_format:H:i', 'after_or_equal:hora_inicio'],
+            // Num término noutro dia, a hora de fim pode ser "menor" que a de início
+            // (ex.: 22:00 → 06:00 do dia seguinte) — a regra só se aplica no mesmo dia.
+            'hora_fim' => $this->data_fim !== '' && $this->data_fim !== $this->data
+                ? ['nullable', 'date_format:H:i']
+                : ['nullable', 'date_format:H:i', 'after_or_equal:hora_inicio'],
         ];
     }
 
@@ -604,6 +612,19 @@ class Novo extends Component
         }
     }
 
+    // Data/hora de término da intervenção a gravar: a data de término do formulário + hora de
+    // fim quando preenchida. Término vazio: no rascunho fica null; ao FINALIZAR assume o mesmo
+    // dia do início — intervenção concluída tem sempre término (a métrica de SLA conta por ele).
+    private function dataFimReal(bool $finalizar): ?Carbon
+    {
+        $dia = $this->data_fim ?: ($finalizar ? $this->data : null);
+        if (! $dia) {
+            return null;
+        }
+
+        return Carbon::parse($dia)->setTimeFromTimeString($this->hora_fim ?: '00:00');
+    }
+
     // Validação da gravação: completa ao finalizar; no rascunho só o essencial
     // (equipamento; contrato se for modo contrato).
     private function validarPara(bool $finalizar): void
@@ -663,7 +684,11 @@ class Novo extends Component
                 'tipo' => $this->tipo,
                 'estado' => $finalizar ? EstadoIntervencao::Concluida : EstadoIntervencao::EmCurso,
                 'data_inicio' => $this->data ?: null,
-                'data_fim' => $finalizar ? now() : null,
+                // Término REAL da intervenção (escrito no formulário; vazio = mesmo dia do
+                // início), com a hora de fim quando existe — alimenta o PDF e a métrica de
+                // SLA. Antes gravava now() ao finalizar: o instante em que se REDIGIU o
+                // relatório, não o fim do trabalho (podia ser dias depois).
+                'data_fim' => $this->dataFimReal($finalizar),
                 'hora_inicio' => $this->hora_inicio ?: null,
                 'hora_fim' => $this->hora_fim ?: null,
                 'trabalho_realizado' => $this->resumo ?: null,

@@ -81,6 +81,7 @@ class AgendadorEvento
 
                     $evento->intervencao->update(array_filter([
                         'data_inicio' => $inicio->toDateString(),
+                        'data_fim' => $fim, // término real (data + hora do fim do evento)
                         'hora_inicio' => $inicio->format('H:i'),
                         'hora_fim' => $fim->format('H:i'),
                         // Só propaga o técnico quando foi escolhido (não apaga o principal do relatório).

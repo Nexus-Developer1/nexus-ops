@@ -225,9 +225,14 @@
                             @error('tipo') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <label class="campo-label">Data de intervenção</label>
-                            <input wire:model="data" type="date" class="campo-input">
+                            <label class="campo-label">Datas da intervenção</label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <input wire:model="data" type="date" class="campo-input" aria-label="Data de início">
+                                <input wire:model="data_fim" type="date" class="campo-input" aria-label="Data de término">
+                            </div>
+                            <p class="mt-1 text-xs text-texto-fraco">Início e término — deixe o término vazio se for no mesmo dia.</p>
                             @error('data') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            @error('data_fim') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                         </div>
                         <div
                             x-data="{
