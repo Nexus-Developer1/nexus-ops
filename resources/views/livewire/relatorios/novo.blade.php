@@ -64,9 +64,8 @@
                 @if ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty())
                     <span class="mx-1 h-4 w-px bg-borda" aria-hidden="true"></span>
                     @if ($equipamentoPrincipal)
-                        <button wire:key="tab-btn-{{ $equipamentoPrincipal->id }}" @click="tab='equip-{{ $equipamentoPrincipal->id }}'" :class="tab==='equip-{{ $equipamentoPrincipal->id }}' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm transition">
+                        <button wire:key="tab-btn-{{ $equipamentoPrincipal->id }}" @click="tab='equip-{{ $equipamentoPrincipal->id }}'" :class="tab==='equip-{{ $equipamentoPrincipal->id }}' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">
                             {{ $equipamentoPrincipal->numero_serie ?? '—' }}
-                            <span class="rounded-full bg-verde-50 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-verde-700">principal</span>
                         </button>
                     @endif
                     @foreach ($cobertosSelecionados as $e)
@@ -320,9 +319,6 @@
                                     <div class="min-w-0">
                                         <h2 class="flex items-center gap-2 text-lg font-semibold text-texto-forte">
                                             <span class="truncate">{{ $e->numero_serie ?? '—' }}</span>
-                                            @if ($item['principal'])
-                                                <span class="shrink-0 rounded-full bg-verde-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-verde-700">principal</span>
-                                            @endif
                                         </h2>
                                         <p class="truncate text-sm text-texto-medio">{{ trim($e->fabricante . ' ' . $e->modelo) ?: 'UPS' }}</p>
                                     </div>

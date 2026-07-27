@@ -27,7 +27,7 @@
                 </label>
             @endforeach
         </div>
-        <p class="mt-1.5 text-xs text-texto-fraco">Marca os equipamentos a intervencionar — cada um vira uma aba com ficha em cima. O primeiro marcado é o principal.</p>
+        <p class="mt-1.5 text-xs text-texto-fraco">Marca os equipamentos a intervencionar — cada um vira uma aba com ficha em cima.</p>
         @error('equipamento_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
     </div>
 
@@ -74,7 +74,6 @@
                 @if ($equipamentoPrincipal)
                     <button type="button" wire:key="chip-{{ $equipamentoPrincipal->id }}" @click="tab='equip-{{ $equipamentoPrincipal->id }}'" class="inline-flex items-center gap-1.5 rounded-full border border-verde-200 bg-verde-50 px-3 py-1 text-xs font-medium text-verde-700 hover:bg-verde-100 transition">
                         {{ $equipamentoPrincipal->numero_serie ?? '—' }}
-                        <span class="text-[10px] uppercase tracking-wide text-verde-600/70">principal</span>
                     </button>
                 @endif
                 @foreach ($cobertosSelecionados as $e)
