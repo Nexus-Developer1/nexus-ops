@@ -25,14 +25,25 @@ class FonteCalendario
     public function eventos(Carbon $de, Carbon $ate, string $tecnicoNome = ''): array
     {
         $eventos = EventoAgenda::query()
-            ->with(['cliente', 'equipamento'])
+            ->with(['cliente', 'equipamento', 'tecnicosAdicionais'])
             ->where('estado', '!=', EstadoEvento::Cancelado->value)
             ->where('inicio', '<', $ate)
             ->where('fim', '>', $de)
             ->when($tecnicoNome !== '', fn ($q) => $q->where('tecnico_nome', $tecnicoNome))
             ->get()
             ->map(function (EventoAgenda $e) {
-                $cor = $this->corTecnico($e->tecnico_nome);
+                // Cores de TODOS os técnicos do evento (principal + adicionais, sem repetidos):
+                // com mais do que um, o frontend divide o bloco em faixas verticais, uma cor
+                // por técnico (eventDidMount no app.js). Com um só, comporta-se como sempre.
+                $cores = collect([$e->tecnico_nome])
+                    ->concat($e->tecnicosAdicionais->sortBy('nome')->pluck('nome'))
+                    ->map(fn ($n) => trim((string) $n))
+                    ->filter()
+                    ->unique()
+                    ->map(fn (string $n) => $this->corTecnico($n))
+                    ->unique()
+                    ->values();
+                $cor = $cores->first() ?? $this->corTecnico(null);
 
                 return [
                     'id' => (string) $e->id,
@@ -46,6 +57,7 @@ class FonteCalendario
                         'tecnico_id' => $e->tecnico_id,
                         'tipo' => $e->tipo->value,
                         'estado' => $e->estado->value,
+                        'cores' => $cores->all(),
                     ],
                 ];
             })

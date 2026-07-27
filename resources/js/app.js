@@ -66,6 +66,17 @@ document.addEventListener('alpine:init', () => {
                 events: (info, success, failure) => {
                     this.$wire.eventos(info.startStr, info.endStr).then(success).catch(failure);
                 },
+                // Evento com VÁRIOS técnicos: fundo dividido em faixas verticais, uma cor por
+                // técnico (as cores vêm do backend em extendedProps.cores, principal primeiro).
+                eventDidMount: (info) => {
+                    const cores = info.event.extendedProps.cores || [];
+                    if (cores.length > 1) {
+                        const largura = 100 / cores.length;
+                        const faixas = cores.map((c, i) => `${c} ${largura * i}% ${largura * (i + 1)}%`).join(', ');
+                        info.el.style.background = `linear-gradient(to right, ${faixas})`;
+                        info.el.style.borderColor = cores[0];
+                    }
+                },
                 eventDrop: (info) => this.aoMover(info),
                 eventResize: (info) => this.aoMover(info),
                 select: (info) => {

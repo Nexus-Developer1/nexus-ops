@@ -80,6 +80,31 @@ class AgendaCorrecoesTest extends TestCase
             ->assertReturned(fn (array $r) => (collect($r)->firstWhere('title', 'Visita')['backgroundColor'] ?? null) === $corAntes);
     }
 
+    public function test_evento_multi_tecnico_leva_as_cores_de_todos(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
+        $bruno = $this->tecnico('Bruno', 'b@nexus.pt');
+        $carla = $this->tecnico('Carla', 'c@nexus.pt');
+
+        $evento = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Serviço', 'estado' => 'planeado',
+            'inicio' => Carbon::parse('2026-07-01 11:30'), 'fim' => Carbon::parse('2026-07-01 17:00'),
+            'tecnico_id' => $bruno->id, 'tecnico_nome' => 'Bruno', 'cliente_id' => $cliente->id]);
+        $evento->tecnicosAdicionais()->sync([$carla->id]);
+
+        // O payload leva as cores de TODOS os técnicos (o frontend divide o bloco em faixas);
+        // a 1.ª é a do principal e coincide com o backgroundColor de fallback.
+        Livewire::actingAs($admin)->test(Calendario::class)
+            ->call('eventos', '2026-07-01', '2026-07-08')
+            ->assertReturned(function (array $r) {
+                $e = collect($r)->firstWhere('title', 'Serviço');
+
+                return count($e['extendedProps']['cores']) === 2
+                    && count(array_unique($e['extendedProps']['cores'])) === 2
+                    && $e['extendedProps']['cores'][0] === $e['backgroundColor'];
+            });
+    }
+
     public function test_criar_evento_com_conflito_de_tecnico_e_recusado_na_transacao(): void
     {
         $tec = $this->tecnico('Téc', 't@nexus.pt');
