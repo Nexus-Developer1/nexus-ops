@@ -125,12 +125,17 @@
 
     {{-- ===== PÁGINA TÉCNICA — tudo o que é técnico começa aqui (a 1ª página é só o resumo:
          cliente, local, intervenção e textos). As fichas de medição seguem-se, uma por página. --}}
+    {{-- Identificação do equipamento (S/N, fabricante, tipo) saiu do relatório a pedido da
+         equipa — a ficha de medições já identifica cada equipamento. Ficam só os extras.
+         A página só existe quando tem conteúdo — vazia deixava uma página em branco entre
+         o resumo e as fichas (a quebra dela somava-se à da 1ª ficha). --}}
+    @php($eLocaliz = trim((string) ($e->localizacao_instalacao ?? '')))
+    @php($eComponentes = collect($e->atributos['componentes'] ?? [])->filter(fn ($comp) => trim((string) ($comp['designacao'] ?? '')) !== ''))
+    @php($temExtrasEquipamento = $eCliFinal !== '' || $eLocaliz !== '' || $eComponentes->isNotEmpty() || $i->equipamentosCobertos->isNotEmpty())
+    @php($temChecklist = $i->fichasMedicao->isEmpty() && ($i->checklistEtapas->count() || $i->checklistItens->count()))
+    @if ($temExtrasEquipamento || $temChecklist)
     <div class="pagina-tecnica">
-        {{-- Identificação do equipamento (S/N, fabricante, tipo) saiu do relatório a pedido da
-             equipa — a ficha de medições já identifica cada equipamento. Ficam só os extras. --}}
-        @php($eLocaliz = trim((string) ($e->localizacao_instalacao ?? '')))
-        @php($eComponentes = collect($e->atributos['componentes'] ?? [])->filter(fn ($comp) => trim((string) ($comp['designacao'] ?? '')) !== ''))
-        @if ($eCliFinal !== '' || $eLocaliz !== '' || $eComponentes->isNotEmpty() || $i->equipamentosCobertos->isNotEmpty())
+        @if ($temExtrasEquipamento)
         <h2>Equipamento</h2>
         <table class="grelha">
             {{-- Cliente final / localização do equipamento (campos explícitos) — só quando preenchidos. --}}
@@ -166,7 +171,7 @@
 
     {{-- Checklist antiga: só quando NÃO há fichas de medição (relatórios legados). Os relatórios
          novos (contrato ou individual) usam as fichas por equipamento (abaixo). --}}
-    @if ($i->fichasMedicao->isEmpty())
+    @if ($temChecklist)
         @if ($i->checklistEtapas->count())
             <h2>Checklist</h2>
             @foreach ($i->checklistEtapas as $etapa)
@@ -191,6 +196,7 @@
         @endif
     @endif
     </div>{{-- /pagina-tecnica --}}
+    @endif
 
     {{-- As fotos passaram para JUNTO das medições de cada equipamento (na ficha, abaixo); as de
          relatórios antigos (sem equipamento) e as de equipamentos sem ficha saem no fim. --}}

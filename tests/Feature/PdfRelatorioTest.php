@@ -124,15 +124,24 @@ class PdfRelatorioTest extends TestCase
 
         $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
 
-        // A parte técnica começa em página nova; a identificação do equipamento (S/N,
-        // fabricante, tipo) saiu do relatório — quem identifica é a ficha de medições.
-        $this->assertStringContainsString('pagina-tecnica', $html);
-        $this->assertStringContainsString('page-break-before: always', $html);
+        // Sem conteúdo técnico (nem checklist, nem extras, nem fichas), a página técnica
+        // NÃO existe — uma div vazia com page-break deixava uma página em branco.
+        // (procura-se a class= no body; o seletor CSS no <head> existe sempre)
+        $this->assertStringNotContainsString('class="pagina-tecnica"', $html);
+        // A identificação do equipamento (S/N, fabricante, tipo) saiu do relatório.
         $this->assertStringNotContainsString('SN-77', $html);
 
         // As quebras de linha escritas pelo técnico chegam ao HTML e o CSS preserva-as.
         $this->assertStringContainsString("Substituição de baterias.\nTeste de autonomia OK.", $html);
         $this->assertStringContainsString('white-space: pre-line', $html);
+
+        // Com checklist (relatório legado), a página técnica volta a existir, em página nova.
+        $etapa = $intervencao->checklistEtapas()->create(['titulo' => 'Inspeção', 'ordem' => 0]);
+        $etapa->itens()->create(['intervencao_id' => $intervencao->id, 'descricao' => 'Verificar ventoinhas', 'concluido' => true, 'ordem' => 0]);
+        $htmlComChecklist = view('pdf.relatorio', ['relatorio' => $relatorio->fresh(), 'fotos' => []])->render();
+
+        $this->assertStringContainsString('class="pagina-tecnica"', $htmlComChecklist);
+        $this->assertStringContainsString('page-break-before: always', $htmlComChecklist);
     }
 
     public function test_pdf_mostra_contrato_quando_existe_e_omite_quando_individual(): void
