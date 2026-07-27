@@ -55,12 +55,12 @@ class PdfRelatorioTest extends TestCase
         Storage::disk()->delete($relatorio->pdf_path);
     }
 
-    public function test_pdf_mostra_ficha_completa_do_cliente_e_omite_campos_vazios(): void
+    public function test_pdf_mostra_so_o_nome_do_cliente_e_a_sede_como_local(): void
     {
         $cliente = Cliente::create([
             'nome' => 'ACME Lda', 'nif' => '500100200',
             'morada' => 'Rua do Teste 10', 'codpost' => '1000-001 LISBOA',
-            'telefone' => '210000000', 'tlmvl' => ' ', // só um espaço → deve ser omitido
+            'telefone' => '210000000', 'tlmvl' => '966000000',
             'email' => 'geral@acme.pt', 'ativo' => true,
         ]);
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sala']);
@@ -73,16 +73,65 @@ class PdfRelatorioTest extends TestCase
 
         $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
 
-        // Campos preenchidos aparecem.
-        $this->assertStringContainsString('NIF 500100200', $html);
-        $this->assertStringContainsString('Rua do Teste 10', $html);
-        $this->assertStringContainsString('1000-001 LISBOA', $html);
-        $this->assertStringContainsString('Tel. 210000000', $html);
-        $this->assertStringContainsString('geral@acme.pt', $html);
-
-        // Campo vazio (telemóvel = espaço) é omitido — sem linha "Tlm." nem "null".
+        // Do cliente aparece SÓ o nome — NIF, contactos e email saíram do relatório.
+        $this->assertStringContainsString('ACME Lda', $html);
+        $this->assertStringNotContainsString('NIF', $html);
+        $this->assertStringNotContainsString('Tel.', $html);
         $this->assertStringNotContainsString('Tlm.', $html);
+        $this->assertStringNotContainsString('geral@acme.pt', $html);
+
+        // Local = sede da empresa (morada do ERP), NUNCA o local da intervenção.
+        $this->assertStringContainsString('Rua do Teste 10 · 1000-001 LISBOA', $html);
+        $this->assertStringNotContainsString('>Sala<', $html);
         $this->assertStringNotContainsString('null', $html);
+    }
+
+    public function test_pdf_local_usa_o_cliente_final_quando_o_equipamento_o_tem(): void
+    {
+        $cliente = Cliente::create(['nome' => 'Parceiro Lda', 'morada' => 'Rua da Sede 1', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Instalação principal']);
+        $equipamento = Equipamento::create([
+            'local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional',
+            'cliente_final' => 'Hospital Central',
+        ]);
+        $intervencao = Intervencao::create(['equipamento_id' => $equipamento->id, 'tipo' => 'preventiva', 'estado' => 'concluida']);
+        $relatorio = Relatorio::create([
+            'intervencao_id' => $intervencao->id, 'numero' => '2026/9102',
+            'data' => now(), 'estado' => EstadoRelatorio::Finalizado,
+        ]);
+
+        $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
+
+        // Cliente final tem prioridade sobre a sede no campo Local.
+        $this->assertStringContainsString('Hospital Central', $html);
+        $this->assertStringNotContainsString('Rua da Sede 1', $html);
+        $this->assertStringNotContainsString('Instalação principal', $html);
+    }
+
+    public function test_pdf_separa_pagina_tecnica_e_respeita_quebras_no_trabalho_realizado(): void
+    {
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sala']);
+        $equipamento = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-77']);
+        $intervencao = Intervencao::create([
+            'equipamento_id' => $equipamento->id, 'tipo' => 'preventiva', 'estado' => 'concluida',
+            'trabalho_realizado' => "Substituição de baterias.\nTeste de autonomia OK.",
+        ]);
+        $relatorio = Relatorio::create([
+            'intervencao_id' => $intervencao->id, 'numero' => '2026/9103',
+            'data' => now(), 'estado' => EstadoRelatorio::Finalizado,
+        ]);
+
+        $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
+
+        // O equipamento (S/N e tipo) sai da 1ª página para a página técnica (quebra de página).
+        $this->assertStringContainsString('pagina-tecnica', $html);
+        $this->assertStringContainsString('page-break-before: always', $html);
+        $this->assertStringContainsString('SN-77', $html);
+
+        // As quebras de linha escritas pelo técnico chegam ao HTML e o CSS preserva-as.
+        $this->assertStringContainsString("Substituição de baterias.\nTeste de autonomia OK.", $html);
+        $this->assertStringContainsString('white-space: pre-line', $html);
     }
 
     public function test_pdf_mostra_contrato_quando_existe_e_omite_quando_individual(): void

@@ -15,7 +15,9 @@
         .cliente-linha { color: #374151; font-size: 10px; line-height: 1.4; }
         table { width: 100%; border-collapse: collapse; }
         .grelha td { padding: 4px 0; vertical-align: top; width: 50%; }
-        .texto { color: #374151; line-height: 1.5; }
+        .texto { color: #374151; line-height: 1.5; white-space: pre-line; } /* respeita as quebras de linha escritas pelo técnico */
+        /* A informação técnica começa sempre numa página nova — a 1ª página é só o resumo. */
+        .pagina-tecnica { page-break-before: always; }
         .item { padding: 3px 0 3px 10px; }
         .marca-check { color: #16A34A; font-weight: bold; }
         .marca-vazio { color: #9ca3af; }
@@ -66,66 +68,26 @@
 
     <div style="font-size:16px; font-weight:bold; color:#111827;">Relatório de Intervenção Técnica</div>
 
-    <h2>Cliente e Equipamento</h2>
+    <h2>Cliente</h2>
     <table class="grelha">
         <tr>
             <td>
                 <div class="campo-rotulo">Cliente</div>
                 <div class="campo-valor">{{ $c->nome }}</div>
-                @php($cNif = trim((string) $c->nif))
-                @php($cMorada = trim((string) $c->morada))
-                @php($cCodpost = trim((string) $c->codpost))
-                @php($cTel = trim((string) $c->telefone))
-                @php($cTlm = trim((string) $c->tlmvl))
-                @php($cEmail = trim((string) $c->email))
-                @if ($cNif !== '')<div class="cliente-linha">NIF {{ $cNif }}</div>@endif
-                @if ($cMorada !== '')<div class="cliente-linha">{{ $cMorada }}</div>@endif
-                @if ($cCodpost !== '')<div class="cliente-linha">{{ $cCodpost }}</div>@endif
-                @if ($cTel !== '')<div class="cliente-linha">Tel. {{ $cTel }}</div>@endif
-                @if ($cTlm !== '')<div class="cliente-linha">Tlm. {{ $cTlm }}</div>@endif
-                @if ($cEmail !== '')<div class="cliente-linha">{{ $cEmail }}</div>@endif
             </td>
-            <td><div class="campo-rotulo">Local</div><div class="campo-valor">{{ $e->local->designacao }}</div></td>
+            <td>
+                {{-- Local: o cliente final (equipamento instalado num cliente do cliente) ou a
+                     sede da empresa (morada do ERP) — nunca o local da intervenção. --}}
+                @php($eCliFinal = trim((string) ($e->cliente_final ?? '')))
+                @php($sede = collect([trim((string) $c->morada), trim((string) $c->codpost)])->filter(fn ($s) => $s !== '')->implode(' · '))
+                <div class="campo-rotulo">Local</div>
+                <div class="campo-valor">{{ $eCliFinal !== '' ? $eCliFinal : ($sede !== '' ? $sede : '—') }}</div>
+            </td>
         </tr>
-        <tr>
-            <td><div class="campo-rotulo">Equipamento</div><div class="campo-valor">{{ $e->numero_serie }} · {{ $e->fabricante }} {{ $e->modelo }}</div></td>
-            <td><div class="campo-rotulo">Tipo</div><div class="campo-valor">{{ $e->tipo->rotulo() }}</div></td>
-        </tr>
-        {{-- Cliente final / localização do equipamento (campos explícitos) — só quando preenchidos. --}}
-        @php($eCliFinal = trim((string) ($e->cliente_final ?? '')))
-        @php($eLocaliz = trim((string) ($e->localizacao_instalacao ?? '')))
-        @if ($eCliFinal !== '' || $eLocaliz !== '')
-            <tr>
-                <td><div class="campo-rotulo">Cliente final</div><div class="campo-valor">{{ $eCliFinal !== '' ? $eCliFinal : '—' }}</div></td>
-                <td><div class="campo-rotulo">Localização da instalação</div><div class="campo-valor">{{ $eLocaliz !== '' ? $eLocaliz : '—' }}</div></td>
-            </tr>
-        @endif
-        {{-- Componentes do sistema (equipamentos compostos, ex.: deteção de incêndio). --}}
-        @php($eComponentes = collect($e->atributos['componentes'] ?? [])->filter(fn ($c) => trim((string) ($c['designacao'] ?? '')) !== ''))
-        @if ($eComponentes->isNotEmpty())
-            <tr>
-                <td colspan="2">
-                    <div class="campo-rotulo">Componentes do sistema</div>
-                    @foreach ($eComponentes as $comp)
-                        <div class="cliente-linha">{{ $comp['designacao'] }}@if ((int) ($comp['quantidade'] ?? 0) > 0) · {{ (int) $comp['quantidade'] }} un.@endif</div>
-                    @endforeach
-                </td>
-            </tr>
-        @endif
         @if ($i->contrato)
             {{-- Relatório no âmbito de um contrato. Individual (sem contrato) → linha omitida. --}}
             <tr>
                 <td colspan="2"><div class="campo-rotulo">Contrato</div><div class="campo-valor">{{ $i->contrato->numero }} · {{ $i->contrato->tipo->rotulo() }}</div></td>
-            </tr>
-        @endif
-        @if ($i->equipamentosCobertos->isNotEmpty())
-            <tr>
-                <td colspan="2">
-                    <div class="campo-rotulo">Também cobertos</div>
-                    @foreach ($i->equipamentosCobertos as $ec)
-                        <div class="cliente-linha">{{ $ec->numero_serie ?? '—' }} · {{ trim($ec->fabricante . ' ' . $ec->modelo) ?: '—' }}</div>
-                    @endforeach
-                </td>
             </tr>
         @endif
     </table>
@@ -160,6 +122,47 @@
     @endif
 
 
+    {{-- ===== PÁGINA TÉCNICA — tudo o que é técnico começa aqui (a 1ª página é só o resumo:
+         cliente, local, intervenção e textos). As fichas de medição seguem-se, uma por página. --}}
+    <div class="pagina-tecnica">
+        <h2>Equipamento</h2>
+        <table class="grelha">
+            <tr>
+                <td><div class="campo-rotulo">Equipamento</div><div class="campo-valor">{{ $e->numero_serie }} · {{ $e->fabricante }} {{ $e->modelo }}</div></td>
+                <td><div class="campo-rotulo">Tipo</div><div class="campo-valor">{{ $e->tipo->rotulo() }}</div></td>
+            </tr>
+            {{-- Cliente final / localização do equipamento (campos explícitos) — só quando preenchidos. --}}
+            @php($eLocaliz = trim((string) ($e->localizacao_instalacao ?? '')))
+            @if ($eCliFinal !== '' || $eLocaliz !== '')
+                <tr>
+                    <td><div class="campo-rotulo">Cliente final</div><div class="campo-valor">{{ $eCliFinal !== '' ? $eCliFinal : '—' }}</div></td>
+                    <td><div class="campo-rotulo">Localização da instalação</div><div class="campo-valor">{{ $eLocaliz !== '' ? $eLocaliz : '—' }}</div></td>
+                </tr>
+            @endif
+            {{-- Componentes do sistema (equipamentos compostos, ex.: deteção de incêndio). --}}
+            @php($eComponentes = collect($e->atributos['componentes'] ?? [])->filter(fn ($comp) => trim((string) ($comp['designacao'] ?? '')) !== ''))
+            @if ($eComponentes->isNotEmpty())
+                <tr>
+                    <td colspan="2">
+                        <div class="campo-rotulo">Componentes do sistema</div>
+                        @foreach ($eComponentes as $comp)
+                            <div class="cliente-linha">{{ $comp['designacao'] }}@if ((int) ($comp['quantidade'] ?? 0) > 0) · {{ (int) $comp['quantidade'] }} un.@endif</div>
+                        @endforeach
+                    </td>
+                </tr>
+            @endif
+            @if ($i->equipamentosCobertos->isNotEmpty())
+                <tr>
+                    <td colspan="2">
+                        <div class="campo-rotulo">Também cobertos</div>
+                        @foreach ($i->equipamentosCobertos as $ec)
+                            <div class="cliente-linha">{{ $ec->numero_serie ?? '—' }} · {{ trim($ec->fabricante . ' ' . $ec->modelo) ?: '—' }}</div>
+                        @endforeach
+                    </td>
+                </tr>
+            @endif
+        </table>
+
     {{-- Checklist antiga: só quando NÃO há fichas de medição (relatórios legados). Os relatórios
          novos (contrato ou individual) usam as fichas por equipamento (abaixo). --}}
     @if ($i->fichasMedicao->isEmpty())
@@ -186,6 +189,7 @@
             @endforeach
         @endif
     @endif
+    </div>{{-- /pagina-tecnica --}}
 
     {{-- As fotos passaram para JUNTO das medições de cada equipamento (na ficha, abaixo); as de
          relatórios antigos (sem equipamento) e as de equipamentos sem ficha saem no fim. --}}
