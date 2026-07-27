@@ -6,8 +6,7 @@
         * { font-family: 'DejaVu Sans', sans-serif; }
         body { font-size: 11px; color: #1f2937; margin: 0; }
         .cabecalho { border-bottom: 3px solid #16A34A; padding-bottom: 10px; margin-bottom: 18px; }
-        .marca { color: #16A34A; font-size: 20px; font-weight: bold; }
-        .suite { color: #9ca3af; font-size: 8px; letter-spacing: 2px; }
+        .suite { color: #9ca3af; font-size: 8px; letter-spacing: 2px; margin-top: 3px; }
         .num { font-size: 15px; font-weight: bold; color: #111827; }
         .data { color: #6b7280; font-size: 10px; }
         h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #16A34A; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; margin: 18px 0 8px; }
@@ -52,7 +51,9 @@
         <table>
             <tr>
                 <td>
-                    <div class="marca">Nexus Infra</div>
+                    {{-- Logótipo oficial (wordmark verde) embebido como data URI — o dompdf tem
+                         enable_remote=false, por isso nunca por URL. Substitui a marca em texto. --}}
+                    <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('img/nexus-1.png'))) }}" alt="NEXUS" style="width: 132px;">
                     <div class="suite">TECHNICAL SUITE</div>
                 </td>
                 <td align="right">
