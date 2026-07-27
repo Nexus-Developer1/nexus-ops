@@ -81,7 +81,7 @@ class SincronizarClientesErp extends Command
                     'vendedor' => $clienteErp->vendedor,
                     'vendnm' => $clienteErp->vendnm,
                 ];
-                $hash = md5(json_encode($dados));
+                $hash = md5((string) json_encode($dados, JSON_INVALID_UTF8_SUBSTITUTE));
 
                 // Nada mudou no ERP desde a última corrida → salta (zero queries).
                 if (! $forcarTudo && ($hashes[$clienteErp->idErp] ?? null) === $hash) {

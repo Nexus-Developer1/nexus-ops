@@ -25,6 +25,16 @@ Schedule::job(new App\Jobs\SincronizarErp(agendado: true))
     ->onOneServer()
     ->when(fn () => filled(config('erp.driver')));
 
+// Rede de segurança semanal: corrida COMPLETA (ignora os hashes do incremental) ao domingo
+// de manhã cedo — realinha qualquer drift local em campos do ERP (10.ª revisão de segurança:
+// sem isto, um registo adulterado na BD da app ou com hash "envenenado" ficava stale para
+// sempre; o incremental só reescreve quando o PHC muda). Demora ~20 min, ninguém a usar.
+Schedule::job(new App\Jobs\SincronizarErp(agendado: true, completo: true))
+    ->timezone('Europe/Lisbon')
+    ->cron('0 6 * * 0')
+    ->onOneServer()
+    ->when(fn () => filled(config('erp.driver')));
+
 // Resumo diário de alertas proativos aos administradores (CLAUDE.md §9), às 08h de Lisboa.
 Schedule::command('alertas:verificar')
     ->timezone('Europe/Lisbon')

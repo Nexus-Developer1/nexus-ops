@@ -55,8 +55,13 @@
             <tr>
                 <td>
                     {{-- Logótipo oficial (wordmark verde) embebido como data URI — o dompdf tem
-                         enable_remote=false, por isso nunca por URL. Substitui a marca em texto. --}}
-                    <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('img/nexus-1.png'))) }}" alt="NEXUS" style="width: 132px;">
+                         enable_remote=false, por isso nunca por URL. Se o ficheiro faltar num
+                         deploy, cai na marca em texto em vez de rebentar a geração do PDF. --}}
+                    @if (is_file(public_path('img/nexus-1.png')))
+                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('img/nexus-1.png'))) }}" alt="NEXUS" style="width: 132px;">
+                    @else
+                        <div style="font-size: 22px; font-weight: 800; color: #16a34a;">NEXUS</div>
+                    @endif
                     <div class="suite">TECHNICAL SUITE</div>
                 </td>
                 <td align="right">

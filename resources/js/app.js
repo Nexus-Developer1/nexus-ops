@@ -68,8 +68,10 @@ document.addEventListener('alpine:init', () => {
                 },
                 // Evento com VÁRIOS técnicos: fundo dividido em faixas verticais, uma cor por
                 // técnico (as cores vêm do backend em extendedProps.cores, principal primeiro).
+                // Filtro a hex: as cores entram num style inline — só valores #rrggbb passam
+                // (defesa em profundidade; hoje o backend só envia a paleta fixa).
                 eventDidMount: (info) => {
-                    const cores = info.event.extendedProps.cores || [];
+                    const cores = (info.event.extendedProps.cores || []).filter((c) => /^#[0-9a-f]{6}$/i.test(c));
                     if (cores.length > 1) {
                         const largura = 100 / cores.length;
                         const faixas = cores.map((c, i) => `${c} ${largura * i}% ${largura * (i + 1)}%`).join(', ');

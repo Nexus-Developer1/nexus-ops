@@ -99,7 +99,7 @@ class SincronizarErpManualTest extends TestCase
             return $mail->hasTo(config('erp.email_sync'))
                 && $mail->falhou === true
                 && $mail->resultados['Clientes']['ok'] === false
-                && str_contains($mail->resultados['Clientes']['detalhe'], 'ligação recusada')
+                && str_contains($mail->resultados['Clientes']['detalhe'], 'log da aplicação') // genérico — detalhe fica no log
                 && $mail->resultados['Equipamentos']['ok'] === true; // uma falha não trava as seguintes
         });
     }
@@ -118,15 +118,60 @@ class SincronizarErpManualTest extends TestCase
     public function test_agendado_usa_o_mesmo_job_encadeado(): void
     {
         // O cron das 08h/13h/19h dispara UMA corrida encadeada via o mesmo job do botão
-        // (e não os 3 comandos desfasados de antes).
+        // (e não os 3 comandos desfasados de antes) + a corrida COMPLETA semanal (domingo 06h,
+        // rede de segurança contra drift/hash envenenado — 10.ª revisão de segurança).
         $eventos = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events());
 
         $doJob = $eventos->filter(fn ($e) => str_contains((string) $e->description, SincronizarErp::class));
-        $this->assertCount(1, $doJob);
-        $this->assertSame('0 8,13,19 * * *', $doJob->first()->expression);
+        $this->assertCount(2, $doJob);
+        $this->assertEqualsCanonicalizing(
+            ['0 8,13,19 * * *', '0 6 * * 0'],
+            $doJob->map(fn ($e) => $e->expression)->values()->all(),
+        );
 
         // Os comandos individuais deixaram de estar agendados.
         $comandos = $eventos->filter(fn ($e) => str_contains((string) $e->command, 'erp:sincronizar'));
         $this->assertCount(0, $comandos);
+    }
+
+    public function test_modo_completo_passa_a_flag_aos_comandos(): void
+    {
+        Mail::fake();
+
+        // Em modo completo, cada comando recebe --completo (ignora os hashes do incremental).
+        Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-clientes', ['--completo' => true])->andReturn(0);
+        Artisan::shouldReceive('output')->once()->ordered()->andReturn('Sincronização concluída: 0 criados, 0 atualizados, 0 erros.');
+        Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-equipamentos', ['--completo' => true])->andReturn(0);
+        Artisan::shouldReceive('output')->once()->ordered()->andReturn('Sincronização concluída: 0 criados.');
+        Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-faturacao', ['--completo' => true])->andReturn(0);
+        Artisan::shouldReceive('output')->once()->ordered()->andReturn('Sincronização concluída: 0 criadas.');
+
+        (new SincronizarErp(agendado: true, completo: true))->handle();
+
+        Mail::assertSent(ResultadoSincronizacaoErp::class, fn ($m) => $m->falhou === false);
+    }
+
+    public function test_email_de_falha_nao_expoe_detalhe_tecnico(): void
+    {
+        Mail::fake();
+
+        // A exceção traz host/query do ERP — nada disso pode chegar ao email (fica no log).
+        Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-clientes')
+            ->andThrow(new \RuntimeException('SQLSTATE[08001] host 192.168.1.50:1433 SELECT * FROM cl'));
+        Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-equipamentos')->andReturn(0);
+        Artisan::shouldReceive('output')->once()->andReturn('Sincronização concluída: ok.');
+        Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-faturacao')->andReturn(0);
+        Artisan::shouldReceive('output')->once()->andReturn('Sincronização concluída: ok.');
+
+        (new SincronizarErp(agendado: true))->handle();
+
+        Mail::assertSent(ResultadoSincronizacaoErp::class, function (ResultadoSincronizacaoErp $mail) {
+            $detalhe = $mail->resultados['Clientes']['detalhe'];
+
+            return $mail->falhou === true
+                && ! str_contains($detalhe, '192.168.1.50')
+                && ! str_contains($detalhe, 'SELECT')
+                && str_contains($detalhe, 'log da aplicação');
+        });
     }
 }

@@ -34,6 +34,10 @@ class SincronizarErp implements ShouldQueue
     // vivesse para lá disso, a fila re-entregava-o a outro worker a meio do sync.
     public int $timeout = 1700;
 
+    // O que o email diz quando uma etapa falha — o detalhe técnico (que pode expor query/host
+    // do ERP) fica só no log da aplicação.
+    private const DETALHE_FALHA = 'falhou — o detalhe técnico está no log da aplicação.';
+
     // Nome legível de cada etapa → comando (a ordem importa).
     private const ETAPAS = [
         'Clientes' => 'erp:sincronizar-clientes',
@@ -41,7 +45,7 @@ class SincronizarErp implements ShouldQueue
         'Faturação' => 'erp:sincronizar-faturacao',
     ];
 
-    public function __construct(public bool $agendado = false) {}
+    public function __construct(public bool $agendado = false, public bool $completo = false) {}
 
     public function handle(): void
     {
@@ -60,9 +64,13 @@ class SincronizarErp implements ShouldQueue
             $resultados = [];
             foreach (self::ETAPAS as $etapa => $comando) {
                 try {
-                    $codigo = Artisan::call($comando);
+                    // O modo completo (rede de segurança semanal) ignora os hashes do incremental.
+                    $codigo = $this->completo ? Artisan::call($comando, ['--completo' => true]) : Artisan::call($comando);
                 } catch (Throwable $e) {
-                    $resultados[$etapa] = ['ok' => false, 'detalhe' => $e->getMessage()];
+                    // Detalhe técnico (query/host do ERP numa QueryException) fica SÓ no log —
+                    // email é um canal sem confidencialidade e o destino é configurável.
+                    Log::error("Sync do ERP: etapa {$etapa} rebentou.", ['erro' => $e->getMessage()]);
+                    $resultados[$etapa] = ['ok' => false, 'detalhe' => self::DETALHE_FALHA];
 
                     continue;
                 }
@@ -73,8 +81,8 @@ class SincronizarErp implements ShouldQueue
                     preg_match('/Sincronização concluída: (.+)/u', $saida, $m);
                     $resultados[$etapa] = ['ok' => true, 'detalhe' => trim($m[1] ?? 'concluída.')];
                 } else {
-                    // O comando já loga o detalhe; para o email basta a última parte útil.
-                    $resultados[$etapa] = ['ok' => false, 'detalhe' => $saida !== '' ? mb_substr($saida, -500) : "terminou com código {$codigo}"];
+                    // O comando já logou o detalhe (Log::error) — o email fica genérico.
+                    $resultados[$etapa] = ['ok' => false, 'detalhe' => self::DETALHE_FALHA];
                 }
             }
 
@@ -101,8 +109,9 @@ class SincronizarErp implements ShouldQueue
             return;
         }
 
+        Log::error('Sync do ERP: job falhou/interrompido.', ['erro' => $e?->getMessage()]);
         Mail::to(config('erp.email_sync'))->send(new ResultadoSincronizacaoErp([
-            'Sincronização' => ['ok' => false, 'detalhe' => $e?->getMessage() ?? 'o processo foi interrompido (timeout ou crash do worker)'],
+            'Sincronização' => ['ok' => false, 'detalhe' => 'o processo foi interrompido (timeout ou crash do worker) — detalhe no log.'],
         ], true));
     }
 }

@@ -96,10 +96,10 @@ class SincronizarEquipamentosErp extends Command
 
         foreach ($erp->obterEquipamentos($limite) as $equipErp) {
             try {
-                $hash = md5(json_encode([
+                $hash = md5((string) json_encode([
                     $equipErp->numeroSerie, $equipErp->modelo, $equipErp->dataInstalacao,
                     $equipErp->clienteNo, $equipErp->marca, $equipErp->familia, $equipErp->faminome,
-                ]));
+                ], JSON_INVALID_UTF8_SUBSTITUTE));
 
                 // Nada mudou no ERP desde a última corrida → salta (zero queries).
                 if (! $forcarTudo && ($hashes[$equipErp->idErp] ?? null) === $hash) {

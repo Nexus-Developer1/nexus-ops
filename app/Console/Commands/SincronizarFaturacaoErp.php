@@ -84,7 +84,7 @@ class SincronizarFaturacaoErp extends Command
                     'series' => $linhaErp->series,
                     'qtt' => $linhaErp->qtt,
                 ];
-                $hash = md5(json_encode($dados));
+                $hash = md5((string) json_encode($dados, JSON_INVALID_UTF8_SUBSTITUTE));
 
                 // Nada mudou no ERP desde a última corrida → salta (zero queries).
                 if (! $forcarTudo && ($hashes[$linhaErp->idErp] ?? null) === $hash) {
