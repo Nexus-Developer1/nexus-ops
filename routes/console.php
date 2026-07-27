@@ -13,10 +13,11 @@ Artisan::command('inspire', function () {
 // do botão "Sincronizar PHC" do dashboard (Jobs\SincronizarErp). Antes eram 3 crons
 // desfasados (:00/:10/:20) e a faturação (~20 min) sobrepunha-se ao sync de equipamentos
 // das :20 — duas ligações simultâneas ao PHC. Agora: nunca há sobreposição (a ordem é
-// garantida pelo encadeamento + lock partilhado com o botão), uma falha numa etapa não
-// impede as seguintes, e QUALQUER falha avisa o suporte por email (erp.email_falhas).
+// garantida pelo encadeamento + lock partilhado com o botão) e uma falha numa etapa não
+// impede as seguintes. `agendado: true` → envia SEMPRE o email de resultado ao suporte
+// (erp.email_sync), sucesso ou falha; o botão dispara sem email (só apressa o sync).
 // Corre na fila (worker), não no processo do scheduler. Só com driver ERP configurado.
-Schedule::job(new App\Jobs\SincronizarErp)
+Schedule::job(new App\Jobs\SincronizarErp(agendado: true))
     ->cron('0 8,13,19 * * *')
     ->onOneServer()
     ->when(fn () => filled(config('erp.driver')));

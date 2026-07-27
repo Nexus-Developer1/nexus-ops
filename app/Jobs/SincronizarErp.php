@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Mail\SincronizacaoErpFalhou;
+use App\Mail\ResultadoSincronizacaoErp;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -13,17 +13,21 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
-// Sincronização de todos os dados do PHC — usada pelo AGENDADO (08h/13h/19h, ver
-// routes/console.php) e pelo botão "Sincronizar PHC" do dashboard. Corre os 3 syncs
-// ENCADEADOS (cada um arranca quando o anterior acaba): clientes primeiro (equipamentos
-// dependem de clientes.id_erp), faturação no fim (a pesada, ~20 min). Uma falha numa
-// etapa não impede as seguintes. Se algo falhar, avisa por email (config erp.email_falhas).
+// Sincronização de todos os dados do PHC. Corre os 3 syncs ENCADEADOS (cada um arranca
+// quando o anterior acaba): clientes primeiro (equipamentos dependem de clientes.id_erp),
+// faturação no fim (a pesada, ~20 min). Uma falha numa etapa não impede as seguintes.
+//
+// Dois modos:
+//   - AGENDADO (cron 08h/13h/19h, routes/console.php): envia SEMPRE o email de resultado
+//     ao suporte (config erp.email_sync) — sucesso ou falha.
+//   - MANUAL (botão "Sincronizar PHC" do dashboard): silencioso — serve só para apressar
+//     o sync sem esperar pela próxima hora; o resultado fica no log.
 class SincronizarErp implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
     // Sem retries: repetir um sync completo do PHC à conta de uma falha transitória só
-    // duplicaria carga — quem carregou no botão recebe o email de falha e volta a tentar.
+    // duplicaria carga — a corrida agendada seguinte volta a tentar de qualquer forma.
     public int $tries = 1;
 
     // Tem de ficar ABAIXO do retry_after da ligação redis (2100s em produção): se o job
@@ -36,6 +40,8 @@ class SincronizarErp implements ShouldQueue
         'Equipamentos' => 'erp:sincronizar-equipamentos',
         'Faturação' => 'erp:sincronizar-faturacao',
     ];
+
+    public function __construct(public bool $agendado = false) {}
 
     public function handle(): void
     {
@@ -50,38 +56,53 @@ class SincronizarErp implements ShouldQueue
         }
 
         try {
-            $falhas = [];
+            // etapa → ['ok' => bool, 'detalhe' => resumo do comando ou mensagem de erro]
+            $resultados = [];
             foreach (self::ETAPAS as $etapa => $comando) {
                 try {
                     $codigo = Artisan::call($comando);
                 } catch (Throwable $e) {
-                    $falhas[$etapa] = $e->getMessage();
+                    $resultados[$etapa] = ['ok' => false, 'detalhe' => $e->getMessage()];
 
                     continue;
                 }
 
-                if ($codigo !== 0) {
-                    // O comando já loga o detalhe; para o email basta a última linha útil.
-                    $saida = trim((string) Artisan::output());
-                    $falhas[$etapa] = $saida !== '' ? mb_substr($saida, -500) : "terminou com código {$codigo}";
+                $saida = trim((string) Artisan::output());
+                if ($codigo === 0) {
+                    // O comando termina com "Sincronização concluída: X criados, Y atualizados…".
+                    preg_match('/Sincronização concluída: (.+)/u', $saida, $m);
+                    $resultados[$etapa] = ['ok' => true, 'detalhe' => trim($m[1] ?? 'concluída.')];
+                } else {
+                    // O comando já loga o detalhe; para o email basta a última parte útil.
+                    $resultados[$etapa] = ['ok' => false, 'detalhe' => $saida !== '' ? mb_substr($saida, -500) : "terminou com código {$codigo}"];
                 }
             }
 
-            if ($falhas !== []) {
-                Mail::to(config('erp.email_falhas'))->send(new SincronizacaoErpFalhou($falhas));
+            $falhou = array_filter($resultados, fn ($r) => ! $r['ok']) !== [];
+
+            if ($this->agendado) {
+                Mail::to(config('erp.email_sync'))->send(new ResultadoSincronizacaoErp($resultados, $falhou));
             }
 
-            Log::info('Sync do ERP (encadeado) terminado.', ['falhas' => array_keys($falhas)]);
+            Log::info('Sync do ERP (encadeado) terminado.', [
+                'agendado' => $this->agendado,
+                'falhas' => array_keys(array_filter($resultados, fn ($r) => ! $r['ok'])),
+            ]);
         } finally {
             $lock->release();
         }
     }
 
-    // Crash/timeout do worker (o handle nem chegou ao fim) — avisa na mesma.
+    // Crash/timeout do worker (o handle nem chegou ao fim) — no agendado avisa na mesma;
+    // no manual mantém-se silencioso (fica no log de jobs falhados).
     public function failed(?Throwable $e): void
     {
-        Mail::to(config('erp.email_falhas'))->send(new SincronizacaoErpFalhou([
-            'Sincronização' => $e?->getMessage() ?? 'o processo foi interrompido (timeout ou crash do worker)',
-        ]));
+        if (! $this->agendado) {
+            return;
+        }
+
+        Mail::to(config('erp.email_sync'))->send(new ResultadoSincronizacaoErp([
+            'Sincronização' => ['ok' => false, 'detalhe' => $e?->getMessage() ?? 'o processo foi interrompido (timeout ou crash do worker)'],
+        ], true));
     }
 }

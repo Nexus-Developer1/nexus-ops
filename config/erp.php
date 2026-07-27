@@ -10,6 +10,7 @@ return [
     // do sync está em routes/console.php (3x/dia, hardcoded).
     'driver' => env('ERP_DRIVER'),
 
-    // Destinatário do aviso quando uma sincronização manual (botão no dashboard) falha.
-    'email_falhas' => env('ERP_EMAIL_FALHAS', 'suporte@nxs.pt'),
+    // Destinatário do email de RESULTADO do sync agendado (08h/13h/19h) — sucesso ou falha.
+    // O sync manual (botão no dashboard) é silencioso, não envia email.
+    'email_sync' => env('ERP_EMAIL_SYNC', 'suporte@nxs.pt'),
 ];

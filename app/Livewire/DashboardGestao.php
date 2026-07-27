@@ -27,8 +27,9 @@ class DashboardGestao extends Component
     private const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
     // Força a sincronização de TODOS os dados do PHC já (sem esperar pelo agendado das
-    // 08h/13h/19h). Corre em background na fila; se falhar, o suporte é avisado por email
-    // (ver Jobs\SincronizarErp). Throttle de 10 min para o botão não empilhar syncs.
+    // 08h/13h/19h). Corre em background na fila, em modo SILENCIOSO — sem email de
+    // resultado (isso é só no agendado); o desfecho fica no log. Throttle de 10 min
+    // para o botão não empilhar syncs. Ver Jobs\SincronizarErp.
     public function sincronizarErp(): void
     {
         abort_if(auth()->user()->ehCliente(), 403);
@@ -46,7 +47,7 @@ class DashboardGestao extends Component
         }
 
         SincronizarErp::dispatch();
-        session()->flash('sucesso-sync', 'Sincronização com o PHC iniciada em segundo plano (clientes, faturação e equipamentos). Se algo falhar, o suporte é avisado por email.');
+        session()->flash('sucesso-sync', 'Sincronização com o PHC iniciada em segundo plano (clientes, equipamentos e faturação). Os dados vão aparecendo à medida que cada etapa termina.');
     }
 
     public function render(ServicoMetricas $metricas, ServicoAlertas $alertas)
