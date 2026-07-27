@@ -5,8 +5,10 @@ namespace App\Livewire;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\EstadoEquipamento;
 use App\Enums\TipoEquipamento;
+use App\Jobs\SincronizarErp;
 use App\Services\Alertas\ServicoAlertas;
 use App\Services\Gestao\ServicoMetricas;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -23,6 +25,29 @@ class DashboardGestao extends Component
     private const CORES_ESTADO = ['operacional' => '#16a34a', 'degradado' => '#f59e0b', 'critico' => '#dc2626', 'inativo' => '#94a3b8'];
 
     private const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+    // Força a sincronização de TODOS os dados do PHC já (sem esperar pelo agendado das
+    // 08h/13h/19h). Corre em background na fila; se falhar, o suporte é avisado por email
+    // (ver Jobs\SincronizarErp). Throttle de 10 min para o botão não empilhar syncs.
+    public function sincronizarErp(): void
+    {
+        abort_if(auth()->user()->ehCliente(), 403);
+
+        if (blank(config('erp.driver'))) {
+            session()->flash('erro-sync', 'A ligação ao PHC não está configurada neste ambiente.');
+
+            return;
+        }
+
+        if (! Cache::add('erp-sync-manual-pedido', now()->toDateTimeString(), 600)) {
+            session()->flash('erro-sync', 'Já foi pedida uma sincronização há pouco — aguarde uns minutos.');
+
+            return;
+        }
+
+        SincronizarErp::dispatch();
+        session()->flash('sucesso-sync', 'Sincronização com o PHC iniciada em segundo plano (clientes, faturação e equipamentos). Se algo falhar, o suporte é avisado por email.');
+    }
 
     public function render(ServicoMetricas $metricas, ServicoAlertas $alertas)
     {

@@ -9,4 +9,7 @@ return [
     // A ligação 'erp' (SQL Server, dblib) vive em config/database.php; o agendamento
     // do sync está em routes/console.php (3x/dia, hardcoded).
     'driver' => env('ERP_DRIVER'),
+
+    // Destinatário do aviso quando uma sincronização manual (botão no dashboard) falha.
+    'email_falhas' => env('ERP_EMAIL_FALHAS', 'suporte@nxs.pt'),
 ];

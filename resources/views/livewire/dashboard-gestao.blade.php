@@ -3,8 +3,31 @@
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-6xl">
-            <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Bom dia, {{ auth()->user()->nome }}</h1>
-            <p class="mt-2 text-sm text-texto-medio">Resumo da operação · {{ \Illuminate\Support\Carbon::now()->locale('pt')->translatedFormat('l, d \d\e F \d\e Y') }}</p>
+            <div class="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Bom dia, {{ auth()->user()->nome }}</h1>
+                    <p class="mt-2 text-sm text-texto-medio">Resumo da operação · {{ \Illuminate\Support\Carbon::now()->locale('pt')->translatedFormat('l, d \d\e F \d\e Y') }}</p>
+                </div>
+                {{-- Força o sync do PHC já (o agendado corre às 08h/13h/19h). Corre em background. --}}
+                <button type="button" wire:click="sincronizarErp" wire:loading.attr="disabled" wire:target="sincronizarErp"
+                    class="botao-secundario inline-flex items-center gap-2" title="Sincronizar já clientes, faturação e equipamentos do PHC">
+                    <svg wire:loading.class="animate-spin" wire:target="sincronizarErp" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+                    Sincronizar PHC
+                </button>
+            </div>
+
+            @if (session('sucesso-sync'))
+                <div class="mt-5 flex items-center gap-2 rounded-lg border border-verde-200 bg-verde-50 px-4 py-3 text-sm font-medium text-verde-700">
+                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    {{ session('sucesso-sync') }}
+                </div>
+            @endif
+            @if (session('erro-sync'))
+                <div class="mt-5 flex items-center gap-2 rounded-lg border border-aviso-200 bg-aviso-100/60 px-4 py-3 text-sm font-medium text-aviso-500">
+                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008v.008H12v-.008zM21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    {{ session('erro-sync') }}
+                </div>
+            @endif
 
             {{-- KPIs (cada cartão navega para a respetiva área) --}}
             <div class="mt-8 grid grid-cols-2 gap-5 lg:grid-cols-4">
