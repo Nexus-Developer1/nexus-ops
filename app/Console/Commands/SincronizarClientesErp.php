@@ -14,7 +14,7 @@ use Throwable;
 // por estarem ausentes do ERP.
 class SincronizarClientesErp extends Command
 {
-    protected $signature = 'erp:sincronizar-clientes {--limit= : Nº máximo de clientes a processar}';
+    protected $signature = 'erp:sincronizar-clientes {--limit= : Nº máximo de clientes a processar} {--completo : Ignora os hashes e reprocessa tudo}';
 
     protected $description = 'Sincroniza os clientes a partir do ERP (read-only, upsert por id_erp).';
 
@@ -27,10 +27,11 @@ class SincronizarClientesErp extends Command
 
         $criados = 0;
         $atualizados = 0;
+        $iguais = 0;
         $erros = 0;
 
         try {
-            $this->sincronizar($erp, $limite, $criados, $atualizados, $erros);
+            $this->sincronizar($erp, $limite, $criados, $atualizados, $iguais, $erros);
         } catch (Throwable $e) {
             // Falha de LIGAÇÃO/timeout (PHC em baixo) → loga e devolve FAILURE, sem rebentar
             // com exceção não tratada (não parte o scheduler nem os outros syncs).
@@ -40,7 +41,7 @@ class SincronizarClientesErp extends Command
             return self::FAILURE;
         }
 
-        $resumo = "{$criados} criados, {$atualizados} atualizados, {$erros} erros.";
+        $resumo = "{$criados} criados, {$atualizados} atualizados, {$iguais} iguais (saltados), {$erros} erros.";
         $this->info("Sincronização concluída: {$resumo}");
 
         // Auditoria do sync (CLAUDE.md §11).
@@ -49,32 +50,50 @@ class SincronizarClientesErp extends Command
             'limite' => $limite,
             'criados' => $criados,
             'atualizados' => $atualizados,
+            'iguais' => $iguais,
             'erros' => $erros,
         ]);
 
         return $erros > 0 ? self::FAILURE : self::SUCCESS;
     }
 
-    // Percorre o ERP e faz upsert. Erros por linha são contados (não param o sync); uma falha
-    // de ligação propaga para o handle(), que a trata como FAILURE.
-    private function sincronizar(ErpSyncDriver $erp, ?int $limite, int &$criados, int &$atualizados, int &$erros): void
+    // Percorre o ERP e faz upsert INCREMENTAL: hash igual ao da última corrida → cliente
+    // saltado sem nenhuma query (o mapa id_erp→hash carrega numa só leitura). Erros por linha
+    // são contados (não param o sync); uma falha de ligação propaga para o handle() → FAILURE.
+    private function sincronizar(ErpSyncDriver $erp, ?int $limite, int &$criados, int &$atualizados, int &$iguais, int &$erros): void
     {
+        $forcarTudo = (bool) $this->option('completo');
+
+        $hashes = Cliente::whereNotNull('id_erp')->pluck('hash_sync', 'id_erp')
+            ->mapWithKeys(fn ($h, $k) => [(string) $k => $h])
+            ->all();
+
         foreach ($erp->obterClientes($limite) as $clienteErp) {
             try {
+                $dados = [
+                    'nome' => $clienteErp->nome,
+                    'nif' => $clienteErp->nif,
+                    'email' => $clienteErp->email,
+                    'telefone' => $clienteErp->telefone,
+                    'tlmvl' => $clienteErp->tlmvl,
+                    'morada' => $clienteErp->morada,
+                    'codpost' => $clienteErp->codpost,
+                    'vendedor' => $clienteErp->vendedor,
+                    'vendnm' => $clienteErp->vendnm,
+                ];
+                $hash = md5(json_encode($dados));
+
+                // Nada mudou no ERP desde a última corrida → salta (zero queries).
+                if (! $forcarTudo && ($hashes[$clienteErp->idErp] ?? null) === $hash) {
+                    $iguais++;
+
+                    continue;
+                }
+
                 // Upsert por id_erp: existe → atualiza; não existe → cria.
                 $cliente = Cliente::updateOrCreate(
                     ['id_erp' => $clienteErp->idErp],
-                    [
-                        'nome' => $clienteErp->nome,
-                        'nif' => $clienteErp->nif,
-                        'email' => $clienteErp->email,
-                        'telefone' => $clienteErp->telefone,
-                        'tlmvl' => $clienteErp->tlmvl,
-                        'morada' => $clienteErp->morada,
-                        'codpost' => $clienteErp->codpost,
-                        'vendedor' => $clienteErp->vendedor,
-                        'vendnm' => $clienteErp->vendnm,
-                    ],
+                    $dados + ['hash_sync' => $hash],
                 );
 
                 $cliente->wasRecentlyCreated ? $criados++ : $atualizados++;

@@ -118,17 +118,22 @@ class SincronizarEquipamentosErpTest extends TestCase
         $this->assertNotNull(Equipamento::where('faminome', 'UPS')->value('familia'));
     }
 
-    public function test_familia_e_do_erp_e_atualiza_no_resync(): void
+    public function test_familia_e_do_erp_e_realinha_com_completo(): void
     {
         $this->sincronizarClientes();
         $this->artisan('erp:sincronizar-equipamentos', ['--limit' => 8])->assertSuccessful();
 
-        // Alguém "sujou" a família de um equipamento; como é campo do ERP, o re-sync corrige-a.
+        // Alguém "sujou" a família na BD (não é editável na UI). Com o sync INCREMENTAL, os
+        // dados do ERP não mudaram → o equipamento é saltado pelo hash e o estrago local fica.
         $equip = Equipamento::where('faminome', 'UPS')->firstOrFail();
         $equip->update(['faminome' => 'ERRADO']);
 
         $this->artisan('erp:sincronizar-equipamentos', ['--limit' => 8])->assertSuccessful();
+        $this->assertSame('ERRADO', $equip->fresh()->faminome); // saltado (hash igual)
 
+        // O --completo ignora os hashes e realinha os campos do ERP (é a rede de segurança
+        // para drift local em campos que pertencem ao PHC).
+        $this->artisan('erp:sincronizar-equipamentos', ['--limit' => 8, '--completo' => true])->assertSuccessful();
         $this->assertSame('UPS', $equip->fresh()->faminome); // realinhada com o PHC
     }
 }

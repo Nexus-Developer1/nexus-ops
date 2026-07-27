@@ -22,6 +22,7 @@ class LinhaFatura extends Model
         'series',
         'qtt',
         'synced_at',
+        'hash_sync',
     ];
 
     /** @return array<string, string> */

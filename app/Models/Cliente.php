@@ -26,6 +26,7 @@ class Cliente extends Model
         'vendedor',
         'vendnm',
         'ativo',
+        'hash_sync',
     ];
 
     /** @return array<string, string> */

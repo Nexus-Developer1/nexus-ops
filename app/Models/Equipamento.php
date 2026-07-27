@@ -46,6 +46,7 @@ class Equipamento extends Model
         'proxima_troca_baterias',
         'atributos',
         'qr_code',
+        'hash_sync',
     ];
 
     /** @return array<string, string> */

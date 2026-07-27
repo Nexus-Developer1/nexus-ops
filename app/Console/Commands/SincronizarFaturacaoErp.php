@@ -15,7 +15,7 @@ use Throwable;
 // por estarem ausentes do ERP.
 class SincronizarFaturacaoErp extends Command
 {
-    protected $signature = 'erp:sincronizar-faturacao {--limit= : Nº máximo de linhas a processar}';
+    protected $signature = 'erp:sincronizar-faturacao {--limit= : Nº máximo de linhas a processar} {--completo : Ignora os hashes e reprocessa tudo}';
 
     protected $description = 'Sincroniza as linhas de faturação a partir do ERP (read-only, upsert por id_erp).';
 
@@ -28,10 +28,11 @@ class SincronizarFaturacaoErp extends Command
 
         $criados = 0;
         $atualizados = 0;
+        $iguais = 0;
         $erros = 0;
 
         try {
-            $this->sincronizar($erp, $limite, $criados, $atualizados, $erros);
+            $this->sincronizar($erp, $limite, $criados, $atualizados, $iguais, $erros);
         } catch (Throwable $e) {
             // Falha de LIGAÇÃO/timeout (PHC em baixo) → loga e devolve FAILURE, sem rebentar
             // com exceção não tratada (não parte o scheduler nem os outros syncs).
@@ -41,7 +42,7 @@ class SincronizarFaturacaoErp extends Command
             return self::FAILURE;
         }
 
-        $resumo = "{$criados} criadas, {$atualizados} atualizadas, {$erros} erros.";
+        $resumo = "{$criados} criadas, {$atualizados} atualizadas, {$iguais} iguais (saltadas), {$erros} erros.";
         $this->info("Sincronização concluída: {$resumo}");
 
         // Auditoria do sync (CLAUDE.md §11).
@@ -50,32 +51,52 @@ class SincronizarFaturacaoErp extends Command
             'limite' => $limite,
             'criados' => $criados,
             'atualizados' => $atualizados,
+            'iguais' => $iguais,
             'erros' => $erros,
         ]);
 
         return $erros > 0 ? self::FAILURE : self::SUCCESS;
     }
 
-    // Percorre o ERP e faz upsert. Erros por linha são contados (não param o sync); uma falha
-    // de ligação propaga para o handle(), que a trata como FAILURE.
-    private function sincronizar(ErpSyncDriver $erp, ?int $limite, int &$criados, int &$atualizados, int &$erros): void
+    // Percorre o ERP e faz upsert INCREMENTAL: o hash dos dados da última corrida vive em
+    // linhas_fatura.hash_sync; hash igual → linha saltada sem nenhuma query. (Antes, o
+    // `synced_at => now()` tornava as ~191 mil linhas "sujas" TODAS as corridas → 191 mil
+    // UPDATEs ≈ 20 min; agora só as novas/alteradas tocam na BD.) Erros por linha são
+    // contados (não param o sync); uma falha de ligação propaga para o handle() → FAILURE.
+    private function sincronizar(ErpSyncDriver $erp, ?int $limite, int &$criados, int &$atualizados, int &$iguais, int &$erros): void
     {
+        $forcarTudo = (bool) $this->option('completo');
+
+        // Mapa id_erp → hash da última corrida (UMA query para a tabela toda).
+        $hashes = LinhaFatura::whereNotNull('id_erp')->pluck('hash_sync', 'id_erp')
+            ->mapWithKeys(fn ($h, $k) => [(string) $k => $h])
+            ->all();
+
         foreach ($erp->obterLinhasFatura($limite) as $linhaErp) {
             try {
+                $dados = [
+                    'cliente_no' => $linhaErp->clienteNo,
+                    'nmdoc' => $linhaErp->nmdoc,
+                    'fno' => $linhaErp->fno,
+                    'data' => $linhaErp->data,
+                    'ref' => $linhaErp->ref,
+                    'design' => $linhaErp->design,
+                    'series' => $linhaErp->series,
+                    'qtt' => $linhaErp->qtt,
+                ];
+                $hash = md5(json_encode($dados));
+
+                // Nada mudou no ERP desde a última corrida → salta (zero queries).
+                if (! $forcarTudo && ($hashes[$linhaErp->idErp] ?? null) === $hash) {
+                    $iguais++;
+
+                    continue;
+                }
+
                 // Upsert por id_erp: existe → atualiza; não existe → cria.
                 $linha = LinhaFatura::updateOrCreate(
                     ['id_erp' => $linhaErp->idErp],
-                    [
-                        'cliente_no' => $linhaErp->clienteNo,
-                        'nmdoc' => $linhaErp->nmdoc,
-                        'fno' => $linhaErp->fno,
-                        'data' => $linhaErp->data,
-                        'ref' => $linhaErp->ref,
-                        'design' => $linhaErp->design,
-                        'series' => $linhaErp->series,
-                        'qtt' => $linhaErp->qtt,
-                        'synced_at' => now(),
-                    ],
+                    $dados + ['hash_sync' => $hash, 'synced_at' => now()],
                 );
 
                 $linha->wasRecentlyCreated ? $criados++ : $atualizados++;
