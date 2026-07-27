@@ -63,9 +63,12 @@ return [
     | will be used by the PHP date and date-time functions. The timezone
     | is set to "UTC" by default as it is suitable for most use cases.
     |
+    | Europe/Lisbon: a equipa e os clientes são portugueses — timestamps de
+    | criação/envio, logs e o "agora" da app na hora local (com hora de verão
+    | automática). Os agendamentos em routes/console.php já fixam o mesmo fuso.
     */
 
-    'timezone' => 'UTC',
+    'timezone' => 'Europe/Lisbon',
 
     /*
     |--------------------------------------------------------------------------
