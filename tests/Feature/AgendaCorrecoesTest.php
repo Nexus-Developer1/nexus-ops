@@ -13,8 +13,6 @@ use App\Models\Intervencao;
 use App\Models\Local;
 use App\Models\Relatorio;
 use App\Models\User;
-use App\Notifications\EventoAtribuido;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
@@ -23,7 +21,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 // Correções da dinâmica da agenda: janela de visibilidade por sobreposição, cores de
-// técnico estáveis, conflitos verificados dentro de transação, notificações em fila e
+// técnico estáveis (incl. multi-técnico), conflitos verificados dentro de transação e
 // fecho do evento quando o relatório é finalizado (não só quando é enviado).
 class AgendaCorrecoesTest extends TestCase
 {
@@ -124,8 +122,10 @@ class AgendaCorrecoesTest extends TestCase
         $this->assertDatabaseCount('eventos_agenda', 1); // nada gravado
     }
 
-    public function test_criar_evento_grava_e_notifica_em_fila(): void
+    public function test_criar_evento_grava_sem_enviar_email(): void
     {
+        // A notificação de atribuição por email foi REMOVIDA (pedido da equipa, 2026-07-27):
+        // criar um serviço/reunião não envia nada ao técnico.
         Notification::fake();
         $tec = $this->tecnico('Téc', 't@nexus.pt');
 
@@ -137,31 +137,8 @@ class AgendaCorrecoesTest extends TestCase
             ->call('criarEvento')
             ->assertHasNoErrors();
 
-        $evento = EventoAgenda::firstOrFail();
-        $this->assertSame($tec->id, $evento->tecnico_id);
-        Notification::assertSentTo($tec, EventoAtribuido::class);
-
-        // A notificação vai por FILA (CLAUDE.md §12) — o guardar não espera pelo SMTP.
-        $this->assertInstanceOf(ShouldQueue::class, new EventoAtribuido($evento));
-    }
-
-    public function test_email_de_evento_atribuido_usa_o_tema_do_projeto(): void
-    {
-        $tec = $this->tecnico('Téc', 't@nexus.pt');
-        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
-        $evento = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Manutenção UPS', 'estado' => 'planeado',
-            'inicio' => Carbon::parse('2026-07-01 09:00'), 'fim' => Carbon::parse('2026-07-01 10:00'),
-            'tecnico_id' => $tec->id, 'tecnico_nome' => $tec->nome, 'cliente_id' => $cliente->id]);
-
-        // View HTML própria no tema do site (como o convite), não o markdown genérico do Laravel.
-        $html = (new EventoAtribuido($evento))->toMail($tec)->render();
-
-        $this->assertStringContainsString('Nexus Infra', $html);       // marca
-        $this->assertStringContainsString('#16a34a', $html);           // verde do tema
-        $this->assertStringContainsString('Manutenção UPS', $html);    // título do evento
-        $this->assertStringContainsString('ACME', $html);              // cliente
-        $this->assertStringContainsString('Olá Téc', $html);           // saudação personalizada
-        $this->assertStringContainsString('09:00–10:00', $html);       // horário
+        $this->assertSame($tec->id, EventoAgenda::firstOrFail()->tecnico_id);
+        Notification::assertNothingSent();
     }
 
     public function test_finalizar_relatorio_conclui_o_evento_ligado(): void

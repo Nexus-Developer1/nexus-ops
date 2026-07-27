@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 // Gravação (criar/editar) e reagendamento de eventos da agenda: verificação de conflitos e
 // escrita na MESMA transação, serializada por técnico (advisory lock — sem double-booking).
 // Extraído do componente Calendario: aqui vivem as regras de agendamento; o componente fica
-// com o estado de UI (modais, formulário, notificações e mensagens).
+// com o estado de UI (modais, formulário e mensagens).
 class AgendadorEvento
 {
     public function __construct(private DetetorConflitos $detetor) {}
@@ -23,9 +23,8 @@ class AgendadorEvento
      * @param  array<string, mixed>  $atributos  atributos do evento (titulo, inicio, fim, técnico, âmbito, cobertura)
      * @param  Collection<int, \App\Models\User>  $tecnicos  contas escolhidas, ordenadas (1.ª = principal)
      * @param  list<int>  $adicionaisIds  ids dos técnicos além do principal (pivot evento_tecnicos)
-     * @return array{erro?: string, bloqueado?: bool, evento?: EventoAgenda, notificar?: Collection}
-     *         erro = razão legível (horário/conflito); bloqueado = evento já não editável;
-     *         sucesso = evento gravado + contas a notificar (fora da transação, pelo chamador)
+     * @return array{erro?: string, bloqueado?: bool, evento?: EventoAgenda}
+     *         erro = razão legível (horário/conflito); bloqueado = evento já não editável
      */
     public function gravar(array $atributos, Collection $tecnicos, array $adicionaisIds, ?int $editandoId): array
     {
@@ -66,9 +65,6 @@ class AgendadorEvento
                     return ['bloqueado' => true];
                 }
 
-                // Conjunto de técnicos ANTES da edição (para notificar só os agora adicionados).
-                $idsAnteriores = $evento->tecnicoIdsTodos();
-
                 if ($evento->intervencao_id) {
                     // Convertido (relatório em rascunho): equipamento/contrato pertencem ao relatório
                     // e não mudam por aqui — só título, técnicos, datas e cobertura. Datas/horas e
@@ -98,8 +94,7 @@ class AgendadorEvento
                 $evento->tecnicosAdicionais()->sync($adicionaisIds);
                 $evento->unsetRelation('tecnicosAdicionais');
 
-                // Notificar só quem foi AGORA adicionado ao evento.
-                return ['evento' => $evento, 'notificar' => $tecnicos->whereNotIn('id', $idsAnteriores)];
+                return ['evento' => $evento];
             }
 
             $evento = EventoAgenda::create($atributos + [
@@ -108,8 +103,7 @@ class AgendadorEvento
             ]);
             $evento->tecnicosAdicionais()->sync($adicionaisIds);
 
-            // Notificar TODOS os técnicos atribuídos (CLAUDE.md §6).
-            return ['evento' => $evento, 'notificar' => $tecnicos];
+            return ['evento' => $evento];
         });
     }
 

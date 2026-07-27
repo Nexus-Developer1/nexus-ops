@@ -12,7 +12,6 @@ use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\User;
-use App\Notifications\EventoAtribuido;
 use App\Services\Agenda\AgendadorEvento;
 use App\Services\Agenda\ConversorVisita;
 use App\Services\Agenda\FonteCalendario;
@@ -54,7 +53,7 @@ class Calendario extends Component
     // Técnicos do evento: CONTAS de utilizador (mesma lista do relatório) — um evento pode ter
     // 1 ou mais. O 1.º (por ordem alfabética) fica como principal em tecnico_id (cor do evento);
     // os restantes vão para a pivot evento_tecnicos. Todos contam para conflitos,
-    // feed iCal e notificações.
+    // feed iCal.
     /** @var list<int|string> */
     public array $formTecnicoIds = [];
     public string $formInicio = '';
@@ -315,7 +314,7 @@ class Calendario extends Component
 
         // Contas escolhidas, por ordem alfabética (determinística): 1.º = principal, resto = adicionais.
         // Re-filtra por papel/ativo (defesa em profundidade): mesmo que a validação acima fosse
-        // contornada num refactor, nunca se atribui/notifica uma conta não-técnica ou inativa.
+        // contornada num refactor, nunca se atribui uma conta não-técnica ou inativa.
         $tecnicosEscolhidos = $this->formTecnicoIds === []
             ? collect()
             : User::whereIn('id', array_map('intval', $this->formTecnicoIds))
@@ -353,7 +352,7 @@ class Calendario extends Component
             'titulo' => $titulo,
             'inicio' => $inicio,
             'fim' => $fim,
-            // Conta do técnico + nome desnormalizado: o id liga conflitos/iCal/notificações;
+            // Conta do técnico + nome desnormalizado: o id liga conflitos/iCal;
             // o nome alimenta as cores, o filtro e a legenda (partilhados com eventos legados).
             'tecnico_id' => $tecnico?->id,
             'tecnico_nome' => $tecnico?->nome,
@@ -383,12 +382,6 @@ class Calendario extends Component
         }
 
         $evento = $resultado['evento'];
-
-        // Notificações fora da transação (e em fila): não atrasam o guardar nem disparam
-        // se a gravação falhar.
-        foreach ($resultado['notificar'] as $t) {
-            $t->notify(new EventoAtribuido($evento));
-        }
 
         // Camada 2 (agenda → relatórios) via ponto único: evento com equipamento OU contrato
         // e início futuro → rascunho de relatório ligado. As guardas anti-loop vivem no serviço.

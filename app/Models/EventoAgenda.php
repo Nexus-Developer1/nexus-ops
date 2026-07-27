@@ -65,7 +65,7 @@ class EventoAgenda extends Model
         return $this->belongsToMany(User::class, 'evento_tecnicos', 'evento_agenda_id', 'user_id');
     }
 
-    // Ids de TODOS os técnicos do evento (principal + adicionais) — conflitos, iCal, notificações.
+    // Ids de TODOS os técnicos do evento (principal + adicionais) — conflitos e iCal.
     /** @return list<int> */
     public function tecnicoIdsTodos(): array
     {

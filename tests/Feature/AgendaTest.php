@@ -17,7 +17,6 @@ use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Models\Local;
 use App\Models\User;
-use App\Notifications\EventoAtribuido;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
@@ -159,7 +158,7 @@ class AgendaTest extends TestCase
             ->assertReturned(fn ($r) => $r['ok'] === false);
     }
 
-    public function test_criar_evento_guarda_conta_do_tecnico_e_notifica(): void
+    public function test_criar_evento_guarda_conta_do_tecnico_sem_email(): void
     {
         Notification::fake();
         $tec = $this->tecnico();
@@ -172,14 +171,14 @@ class AgendaTest extends TestCase
             ->call('criarEvento')
             ->assertHasNoErrors();
 
-        // Guarda a CONTA (liga conflitos/iCal/notificações) + o nome desnormalizado (cores/filtro).
+        // Guarda a CONTA (liga conflitos/iCal) + o nome desnormalizado (cores/filtro).
         $this->assertDatabaseHas('eventos_agenda', ['titulo' => 'Reunião de equipa', 'tipo' => 'outro',
             'tecnico_id' => $tec->id, 'tecnico_nome' => $tec->nome]);
         $this->assertDatabaseHas('assuntos_evento', ['nome' => 'Reunião de equipa']);
-        Notification::assertSentTo($tec, EventoAtribuido::class); // com conta → notificado
+        Notification::assertNothingSent(); // criar evento já NÃO envia email ao técnico
     }
 
-    public function test_evento_com_varios_tecnicos_guarda_pivot_e_notifica_todos(): void
+    public function test_evento_com_varios_tecnicos_guarda_pivot(): void
     {
         Notification::fake();
         $tec = $this->tecnico(); // 'Téc'
@@ -201,9 +200,8 @@ class AgendaTest extends TestCase
         $this->assertSame([$tec->id], $e->tecnicosAdicionais()->pluck('utilizadores.id')->all());
         $this->assertEqualsCanonicalizing([$maria->id, $tec->id], $e->tecnicoIdsTodos());
 
-        // Ambos notificados; o label mostra os dois.
-        Notification::assertSentTo($maria, EventoAtribuido::class);
-        Notification::assertSentTo($tec, EventoAtribuido::class);
+        // Sem emails (a notificação de atribuição foi removida); o label mostra os dois.
+        Notification::assertNothingSent();
         $this->assertStringContainsString('Maria Costa', $e->fresh()->tecnico_label);
         $this->assertStringContainsString('Téc', $e->fresh()->tecnico_label);
 
@@ -440,8 +438,7 @@ class AgendaTest extends TestCase
         $this->assertSame('2026-07-07 14:00', $e->inicio->format('Y-m-d H:i'));
         $this->assertSame(TipoEvento::Outro, $e->tipo); // o tipo não muda na edição
         $this->assertSame(1, EventoAgenda::count()); // editou — não criou um novo
-        Notification::assertSentTo($maria, EventoAtribuido::class); // o NOVO técnico é notificado
-        Notification::assertNotSentTo($tec, EventoAtribuido::class);
+        Notification::assertNothingSent(); // editar também não envia emails
     }
 
     public function test_editar_evento_legado_casa_o_nome_com_a_conta(): void
