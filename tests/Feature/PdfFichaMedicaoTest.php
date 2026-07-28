@@ -141,6 +141,30 @@ class PdfFichaMedicaoTest extends TestCase
         $this->assertStringNotContainsString('null', $html);                      // contrato nulo não vira "null"
     }
 
+    // "Local de instalação" da ficha mostra a MORADA onde o equipamento está — nunca o
+    // nome do local (ex.: "Instalação principal"); sem morada no local, cai na sede do cliente.
+    public function test_ficha_local_de_instalacao_mostra_a_morada_e_nao_o_nome_do_local(): void
+    {
+        [$contrato, $local, $e1] = $this->contexto();
+        $relatorio = $this->relatorioContrato($contrato, $e1);
+        FichaMedicao::create([
+            'intervencao_id' => $relatorio->intervencao->id, 'equipamento_id' => $e1->id, 'tipo_equipamento' => 'ups',
+        ]);
+
+        $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
+
+        $this->assertStringContainsString('Rua X', $html);      // morada do local
+        $this->assertStringNotContainsString('Sala DC', $html); // o nome do local não aparece
+
+        // Local sem morada → cai na morada da sede do cliente.
+        $local->update(['morada' => '']);
+        $local->cliente->update(['morada' => 'Av. Central 100', 'codpost' => '4000-000 PORTO']);
+        $html2 = view('pdf.relatorio', ['relatorio' => Relatorio::findOrFail($relatorio->id), 'fotos' => []])->render();
+
+        $this->assertStringContainsString('Av. Central 100 · 4000-000 PORTO', $html2);
+        $this->assertStringNotContainsString('Sala DC', $html2);
+    }
+
     // Temperatura acima de 25 °C sai marcada a vermelho (classe temp-alerta); até 25, não.
     public function test_pdf_marca_temperatura_acima_de_25_a_vermelho(): void
     {

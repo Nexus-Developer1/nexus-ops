@@ -217,7 +217,12 @@
             {{-- Campo explícito do equipamento tem prioridade; senão, cai na lógica derivada. --}}
             @php($cfTexto = trim((string) ($fe?->cliente_final ?? '')))
             @php($locTexto = trim((string) ($fe?->localizacao_instalacao ?? '')))
-            @php($locDerivado = ($floc?->designacao ?? '—') . (trim((string) $floc?->morada) !== '' ? ' · ' . $floc->morada : ''))
+            {{-- Local de instalação = MORADA onde o equipamento está (nunca o nome do local,
+                 ex.: "Instalação principal"): campo explícito do equipamento → morada do
+                 local → morada da sede do cliente. --}}
+            @php($locMorada = trim((string) ($floc?->morada ?? '')))
+            @php($locSede = collect([trim((string) ($fcli?->morada ?? '')), trim((string) ($fcli?->codpost ?? ''))])->filter(fn ($s) => $s !== '')->implode(' · '))
+            @php($locDerivado = $locMorada !== '' ? $locMorada : ($locSede !== '' ? $locSede : '—'))
             @php($mostrarClienteFinal = $cfTexto !== '' || ($fcli && $i->contrato && $fcli->id !== $i->contrato->cliente_id))
             @php($clienteFinalValor = $cfTexto !== '' ? $cfTexto : ($fcli?->nome ?? '—'))
             <div class="ficha-pagina">
