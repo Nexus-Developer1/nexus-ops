@@ -54,8 +54,17 @@
                     <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Relatório de Intervenção Técnica</h1>
                     <p class="mt-2 text-sm text-texto-medio">Preencha todos os campos obrigatórios para submeter a folha de obra.</p>
                 </div>
-                <span class="etiqueta {{ \App\Enums\EstadoRelatorio::Rascunho->classesEtiqueta() }} uppercase tracking-wide">Rascunho</span>
+                @php($estadoBadge = \App\Enums\EstadoRelatorio::tryFrom($estadoInicial ?? '') ?? \App\Enums\EstadoRelatorio::Rascunho)
+                <span class="etiqueta {{ $estadoBadge->classesEtiqueta() }} uppercase tracking-wide">{{ $estadoBadge->rotulo() }}</span>
             </div>
+
+            {{-- Editar um relatório JÁ ENVIADO: aviso claro — a versão do cliente só muda ao reenviar. --}}
+            @if ($estadoInicial === \App\Enums\EstadoRelatorio::Enviado->value)
+                <div class="mt-5 flex items-center gap-2 rounded-lg border border-aviso-200 bg-aviso-100/60 px-4 py-3 text-sm font-medium text-aviso-500">
+                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008v.008H12v-.008zM21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Este relatório já foi enviado ao cliente. As alterações só lhe chegam se o <strong class="mx-1">reenviar</strong> depois de finalizar — até lá, o cliente mantém a versão anterior.
+                </div>
+            @endif
 
             {{-- Tabs: Dados Gerais / Diagnóstico + um separador por equipamento (ambos os modos). --}}
             <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-1 border-b border-borda">

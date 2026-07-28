@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -44,6 +45,10 @@ class Novo extends Component
     // Edição/retomar (null = novo).
     public ?int $relatorioId = null;
     public ?int $intervencaoId = null;
+
+    // Estado do relatório quando o editor abriu ('rascunho'|'finalizado'|'enviado'|null=novo).
+    // Só informativo (etiqueta no topo + aviso ao editar um enviado) — a gravação relê da BD.
+    public ?string $estadoInicial = null;
 
     // ---- Dados gerais ----
     // Modo: 'individual' (escolhe o CLIENTE → anexa todos os equipamentos dele) ou
@@ -107,13 +112,11 @@ class Novo extends Component
     public function mount(?Relatorio $relatorio = null): void
     {
         if ($relatorio && $relatorio->exists) {
-            // Editáveis: rascunhos e finalizados. Um relatório JÁ ENVIADO não se edita aqui
-            // (documento oficial já entregue ao cliente) → volta para a lista.
-            if ($relatorio->estado === EstadoRelatorio::Enviado) {
-                $this->redirectRoute('relatorios', navigate: true);
-
-                return;
-            }
+            // Editáveis: rascunhos, finalizados E enviados (pedido da equipa). Editar um
+            // ENVIADO reabre o ciclo: ao gravar volta a Rascunho/Finalizado e é preciso
+            // REENVIAR para o cliente receber a versão nova (o que o cliente já recebeu
+            // não muda; enviado_em/enviado_para ficam como histórico). Fica registo no log.
+            $this->estadoInicial = $relatorio->estado->value;
 
             $intervencao = $relatorio->intervencao()->with('contrato.cliente', 'equipamento.local.cliente')->firstOrFail();
             $this->relatorioId = $relatorio->id;
@@ -654,13 +657,20 @@ class Novo extends Component
 
     private function persistir(GeradorRelatorio $gerador, SincronizadorAgenda $sincronizador, bool $finalizar)
     {
-        // A guarda do mount ("relatório ENVIADO não se edita") repetida aqui: intervencaoId é
-        // prop pública, manipulável pelo browser — sem esta re-verificação, uma chamada forjada
-        // reescrevia (e ao finalizar, regenerava o PDF de) um documento oficial já entregue.
+        // Editar um relatório JÁ ENVIADO é permitido (pedido da equipa), mas fica AUDITADO:
+        // o documento diverge do que o cliente recebeu até ser reenviado. (Relido da BD — não
+        // confia no estadoInicial, que é prop pública.)
         if ($this->intervencaoId) {
-            abort_if(Relatorio::where('intervencao_id', $this->intervencaoId)
+            $enviado = Relatorio::where('intervencao_id', $this->intervencaoId)
                 ->where('estado', EstadoRelatorio::Enviado)
-                ->exists(), 403);
+                ->first();
+            if ($enviado) {
+                Log::info('Relatório ENVIADO reaberto para edição.', [
+                    'relatorio' => $enviado->numero,
+                    'utilizador' => auth()->user()?->email,
+                    'finalizar' => $finalizar,
+                ]);
+            }
         }
 
         // Antes de gravar: relatório acabado de começar (URL ainda /relatorios/novo)?

@@ -449,12 +449,15 @@ class RelatorioEquipamentosTest extends TestCase
             ->assertSet('relatorioId', $finalizado->id)
             ->assertSet('equipamento_id', $e1->id);
 
-        // Enviado → REDIRECIONA para a listagem (documento já entregue, não se edita aqui).
+        // Enviado → também CARREGA (pedido da equipa: enviados são editáveis; o editor avisa
+        // que é preciso reenviar) e regista o estado inicial para a etiqueta/aviso.
         $iE = Intervencao::create(['equipamento_id' => $e1->id, 'tipo' => 'preventiva', 'estado' => 'concluida', 'data_inicio' => now()]);
         $enviado = $iE->relatorio()->create(['numero' => '2026/0101', 'data' => now(), 'estado' => 'enviado']);
 
         Livewire::actingAs($admin)->test(Novo::class, ['relatorio' => $enviado])
-            ->assertRedirect(route('relatorios'));
+            ->assertNoRedirect()
+            ->assertSet('relatorioId', $enviado->id)
+            ->assertSet('estadoInicial', 'enviado');
     }
 
     public function test_listagem_filtra_por_tipo_e_combina_com_estado(): void

@@ -32,31 +32,26 @@ class RelatorioGuardasTest extends TestCase
         $this->equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-1']);
     }
 
-    public function test_persistir_recusa_intervencao_com_relatorio_enviado(): void
+    public function test_editar_relatorio_enviado_reabre_o_ciclo_e_preserva_historico_de_envio(): void
     {
-        // Documento oficial já entregue ao cliente.
+        // Documento oficial já entregue ao cliente (pedido da equipa: enviados são editáveis;
+        // ao gravar, o ciclo reabre e é preciso REENVIAR para o cliente receber a versão nova).
         $interv = Intervencao::create(['equipamento_id' => $this->equip->id, 'tipo' => 'preventiva', 'estado' => 'concluida', 'data_inicio' => now()]);
-        Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/0100', 'data' => now(), 'estado' => 'enviado', 'pdf_path' => 'relatorios/x.pdf']);
+        $rel = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/0100', 'data' => now(), 'estado' => 'enviado',
+            'pdf_path' => 'relatorios/x.pdf', 'enviado_em' => now()->subDay(), 'enviado_para' => 'cliente@acme.pt']);
 
-        // O mount bloqueia editar um Enviado; forjar intervencaoId num componente "novo"
-        // contornava-o e reescrevia o documento. Tem de dar 403 — em rascunho E finalizar.
-        Livewire::actingAs($this->tecnico)->test(Novo::class)
-            ->set('equipamento_id', $this->equip->id)
-            ->set('data', now()->toDateString())
-            ->set('intervencaoId', $interv->id)
-            ->call('guardarRascunho')
-            ->assertForbidden();
-
-        Livewire::actingAs($this->tecnico)->test(Novo::class)
-            ->set('equipamento_id', $this->equip->id)
-            ->set('data', now()->toDateString())
+        // Finalizar sobre um enviado → volta a FINALIZADO (pronto a reenviar); o número e o
+        // histórico de envio (enviado_em/enviado_para) mantêm-se.
+        Livewire::actingAs($this->tecnico)->test(Novo::class, ['relatorio' => $rel])
             ->set('tecnicoIds', [$this->tecnico->id])
-            ->set('intervencaoId', $interv->id)
             ->call('finalizar')
-            ->assertForbidden();
+            ->assertHasNoErrors();
 
-        // Nada foi reescrito.
-        $this->assertSame('enviado', $interv->fresh()->relatorio->estado->value);
+        $rel->refresh();
+        $this->assertSame('finalizado', $rel->estado->value);
+        $this->assertSame('2026/0100', $rel->numero);
+        $this->assertNotNull($rel->enviado_em);
+        $this->assertSame('cliente@acme.pt', $rel->enviado_para);
     }
 
     public function test_equipamentos_cobertos_com_id_inexistente_sao_rejeitados(): void
