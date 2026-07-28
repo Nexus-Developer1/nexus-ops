@@ -42,12 +42,6 @@ class Novo extends Component
     public string $fim_garantia = '';
     public string $notas = '';
 
-    // Especificações UPS (guardadas em atributos JSONB) + próxima troca de baterias (coluna própria).
-    public string $potencia_kva = '';
-    public string $topologia = '';
-    public string $autonomia_min = '';
-    public string $firmware = '';
-
     // Bancos de baterias (parte do mesmo equipamento) — um UPS pode ter VÁRIOS. Lista de linhas
     // { numero_serie, modelo, capacidade, num_baterias, data_instalacao, proxima_troca }.
     /** @var list<array<string, string>> */
@@ -128,10 +122,6 @@ class Novo extends Component
             'data_instalacao' => ['nullable', 'date'],
             'fim_garantia' => ['nullable', 'date'],
             'notas' => ['nullable', 'string', 'max:5000'],
-            'potencia_kva' => ['nullable', 'numeric', 'min:0'],
-            'topologia' => ['nullable', 'string', 'max:100'],
-            'autonomia_min' => ['nullable', 'integer', 'min:0'],
-            'firmware' => ['nullable', 'string', 'max:100'],
             'bancos' => ['array', 'max:50'],
             'bancos.*.numero_serie' => ['nullable', 'string', 'max:255'],
             'bancos.*.modelo' => ['nullable', 'string', 'max:255'],
@@ -149,13 +139,9 @@ class Novo extends Component
         $localId = $this->local_id
             ?: Local::firstOrCreate(['cliente_id' => $this->cliente_id, 'designacao' => self::LOCAL_PADRAO])->id;
 
-        // Especificações UPS → JSONB (só as preenchidas).
-        $atributos = array_filter([
-            'potencia_kva' => $this->potencia_kva !== '' ? (float) $this->potencia_kva : null,
-            'topologia' => trim($this->topologia) ?: null,
-            'autonomia_min' => $this->autonomia_min !== '' ? (int) $this->autonomia_min : null,
-            'firmware' => trim($this->firmware) ?: null,
-        ], fn ($v) => $v !== null);
+        // Atributos JSONB do equipamento (bancos/componentes abaixo; a secção "Especificações
+        // UPS" saiu do formulário a pedido da equipa — equipamentos antigos mantêm o que têm).
+        $atributos = [];
 
         // Bancos de baterias (lista). num_baterias = TOTAL (p/ ficha de medição); a coluna
         // proxima_troca_baterias = a mais próxima (p/ alertas). Ver Equipamento::normalizarBancos().

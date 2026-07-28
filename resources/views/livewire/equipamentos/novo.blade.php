@@ -130,36 +130,6 @@
                 </div>
             </section>
 
-            {{-- Especificações UPS --}}
-            <section class="cartao mt-8">
-                <div class="px-6 py-5">
-                    <h2 class="text-lg font-semibold text-texto-forte">Especificações (UPS)</h2>
-                    <p class="mt-1 text-xs text-texto-fraco">Opcional — preenche o que se aplica ao equipamento.</p>
-                </div>
-                <div class="grid grid-cols-1 gap-x-8 gap-y-6 border-t border-borda px-6 py-6 sm:grid-cols-2">
-                    <div>
-                        <label class="campo-label">Potência (kVA)</label>
-                        <input wire:model="potencia_kva" type="number" step="0.01" min="0" class="campo-input" placeholder="Ex: 5">
-                        @error('potencia_kva') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="campo-label">Topologia</label>
-                        <input wire:model="topologia" type="text" class="campo-input" placeholder="Ex: Online dupla conversão">
-                        @error('topologia') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="campo-label">Autonomia (min)</label>
-                        <input wire:model="autonomia_min" type="number" min="0" class="campo-input" placeholder="Ex: 10">
-                        @error('autonomia_min') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="campo-label">Firmware</label>
-                        <input wire:model="firmware" type="text" class="campo-input" placeholder="Ex: v3.1">
-                        @error('firmware') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-                </div>
-            </section>
-
             {{-- Bancos de baterias (parte do mesmo equipamento) — um UPS pode ter vários --}}
             <section class="cartao mt-8">
                 <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-5">

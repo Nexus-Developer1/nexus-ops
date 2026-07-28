@@ -41,7 +41,6 @@ class EquipamentoManualTest extends TestCase
             ->set('fabricante', 'APC')
             ->set('modelo', 'Smart-UPS SRT 5000')
             ->set('numero_serie', 'SN-MANUAL-1')
-            ->set('potencia_kva', '5')
             ->set('bancos', [['numero_serie' => '', 'modelo' => '', 'capacidade' => '', 'num_baterias' => '16', 'data_instalacao' => '', 'proxima_troca' => '']])
             ->call('guardar')
             ->assertHasNoErrors();
@@ -50,7 +49,6 @@ class EquipamentoManualTest extends TestCase
         $this->assertNull($eq->id_erp);                       // não vendido por nós
         $this->assertSame($local->id, $eq->local_id);
         $this->assertSame('APC', $eq->fabricante);
-        $this->assertEquals(5, $eq->atributos['potencia_kva']);   // valor (o tipo muda no round-trip JSONB)
         $this->assertEquals(16, $eq->atributos['num_baterias']);
     }
 
