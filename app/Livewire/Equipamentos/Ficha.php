@@ -5,8 +5,10 @@ namespace App\Livewire\Equipamentos;
 use App\Enums\EstadoIntervencao;
 use App\Enums\TipoIntervencao;
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
+use App\Models\Local;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -26,6 +28,9 @@ class Ficha extends Component
 
     // Pesquisa server-side de equipamentos para associar (banco de baterias → UPS).
     public string $bancoBusca = '';
+
+    // Pesquisa server-side para MUDAR o cliente do equipamento (o clique pede confirmação).
+    public string $novoClienteBusca = '';
 
     // Bancos de baterias (parte do equipamento) — um UPS pode ter VÁRIOS. Lista de linhas
     // { numero_serie, modelo, capacidade, num_baterias, data_instalacao, proxima_troca }.
@@ -111,6 +116,55 @@ class Ficha extends Component
         $this->equipamento->update(['notas' => trim($this->notas) ?: null]);
 
         session()->flash('sucesso', 'Notas guardadas.');
+    }
+
+    // Muda o CLIENTE do equipamento (via local): aterra na "Instalação principal" do cliente
+    // novo — a mesma designação que o registo manual e o sync usam, para não criar locais
+    // paralelos. A UI pede confirmação (wire:confirm) antes de chamar. As ligações a contratos
+    // do cliente antigo NÃO são mexidas (a confirmação avisa quando existem).
+    public function mudarCliente(int $clienteId): void
+    {
+        abort_if(auth()->user()->ehCliente(), 403);
+
+        $cliente = Cliente::find($clienteId);
+        if (! $cliente) {
+            return;
+        }
+
+        if ($cliente->id === $this->equipamento->local->cliente_id) {
+            $this->novoClienteBusca = '';
+            session()->flash('sucesso', 'O equipamento já pertence a este cliente.');
+
+            return;
+        }
+
+        $local = Local::firstOrCreate(['cliente_id' => $cliente->id, 'designacao' => 'Instalação principal']);
+        $this->equipamento->update(['local_id' => $local->id]);
+        $this->equipamento = $this->equipamento->fresh()->load('local.cliente');
+        $this->novoClienteBusca = '';
+
+        session()->flash('sucesso', "Equipamento movido para {$cliente->nome}.");
+    }
+
+    // Sugestões para a mudança de cliente (nome sem acentos ou NIF, como no registo manual).
+    private function novosClientesFiltrados(): Collection
+    {
+        if (trim($this->novoClienteBusca) === '') {
+            return collect();
+        }
+
+        $semAcentos = "translate(lower(nome), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
+        $de = ['á', 'à', 'â', 'ã', 'ä', 'ç', 'é', 'è', 'ê', 'ë', 'í', 'ì', 'î', 'ï', 'ó', 'ò', 'ô', 'õ', 'ö', 'ú', 'ù', 'û', 'ü'];
+        $para = ['a', 'a', 'a', 'a', 'a', 'c', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u'];
+        $nomeNorm = '%' . str_replace($de, $para, mb_strtolower(trim($this->novoClienteBusca))) . '%';
+        $termo = '%' . trim($this->novoClienteBusca) . '%';
+
+        return Cliente::query()
+            ->where(fn ($q) => $q->whereRaw($semAcentos . ' like ?', [$nomeNorm])
+                ->orWhere('nif', 'ilike', $termo))
+            ->orderBy('nome')
+            ->limit(15)
+            ->get(['id', 'nome', 'nif']);
     }
 
     // Guarda o cliente final e a localização da instalação (texto livre).
@@ -315,6 +369,7 @@ class Ficha extends Component
             'bancosAssociados' => $this->equipamento->equipamentosAssociados()->with('local.cliente')->orderBy('numero_serie')->get(),
             'equipamentoPai' => $this->equipamento->equipamentoPai()->with('local.cliente')->first(),
             'bancosFiltrados' => $this->bancosFiltrados(),
+            'novosClientesFiltrados' => $this->novosClientesFiltrados(),
         ]);
     }
 }

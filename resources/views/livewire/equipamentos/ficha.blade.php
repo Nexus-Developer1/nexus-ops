@@ -50,11 +50,39 @@
                         @endif
                     </section>
 
-                    {{-- Identificação: cliente final + localização da instalação (texto livre). --}}
+                    {{-- Identificação: cliente do sistema + cliente final + localização. --}}
                     <section class="cartao">
                         <div class="flex items-center gap-3 px-6 py-5">
                             <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
                             <h2 class="text-lg font-semibold text-texto-forte">Cliente final e localização</h2>
+                        </div>
+                        {{-- Cliente associado (dono no sistema) + mudança com confirmação. --}}
+                        <div class="border-t border-borda px-6 py-6">
+                            <label class="campo-label">Cliente associado</label>
+                            <div class="mt-1 flex flex-wrap items-center gap-3">
+                                <span class="font-medium text-texto-forte">{{ $equipamento->local->cliente->nome }}</span>
+                                <span class="text-xs text-texto-fraco">· {{ $equipamento->local->designacao }}</span>
+                            </div>
+                            <div class="relative mt-3 max-w-md">
+                                <input wire:model.live.debounce.400ms="novoClienteBusca" type="text" class="campo-input"
+                                    placeholder="Mudar de cliente — pesquisar por nome ou NIF...">
+                                @if ($novosClientesFiltrados->isNotEmpty())
+                                    <ul class="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-borda bg-white shadow-lg">
+                                        @foreach ($novosClientesFiltrados as $nc)
+                                            <li>
+                                                <button type="button" wire:key="novo-cli-{{ $nc->id }}"
+                                                    wire:click="mudarCliente({{ $nc->id }})"
+                                                    wire:confirm="Atualizar a ficha do equipamento?&#10;&#10;O equipamento passa do cliente «{{ $equipamento->local->cliente->nome }}» para «{{ $nc->nome }}» (local: Instalação principal).{{ $contratos->isNotEmpty() ? ' Atenção: está ligado a ' . $contratos->count() . ' contrato(s) do cliente atual — reveja as coberturas depois da mudança.' : '' }}"
+                                                    class="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm transition hover:bg-verde-50">
+                                                    <span class="truncate font-medium text-texto-forte">{{ $nc->nome }}</span>
+                                                    <span class="shrink-0 text-xs text-texto-fraco">{{ $nc->nif ?? '—' }}</span>
+                                                </button>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @endif
+                            </div>
+                            <p class="mt-1.5 text-xs text-texto-fraco">Ao escolher, é pedida confirmação antes de atualizar a ficha.</p>
                         </div>
                         <div class="grid grid-cols-1 gap-x-8 gap-y-6 border-t border-borda px-6 py-6 sm:grid-cols-2">
                             <div>
