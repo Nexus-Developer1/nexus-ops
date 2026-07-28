@@ -16,14 +16,17 @@
                 </button>
             </div>
 
-            {{-- Sync pedido pelo botão: à espera (poll) → resumo do que foi criado/atualizado. --}}
+            {{-- Sync pedido pelo botão: à espera (poll) → resumo do que foi criado/atualizado.
+                 wire:key em TODOS os ramos: sem chaves estáveis, o morph podia confundir estes
+                 blocos condicionais com os vizinhos (os gráficos com wire:ignore) e enviar
+                 payloads corrompidos ao servidor (500 "property [$]", visto em produção). --}}
             @if ($syncPedidoEm)
-                <div wire:poll.3s="verificarSync" class="mt-5 flex items-center gap-2 rounded-lg border border-verde-200 bg-verde-50 px-4 py-3 text-sm font-medium text-verde-700">
+                <div wire:key="sync-espera" wire:poll.3s="verificarSync" class="mt-5 flex items-center gap-2 rounded-lg border border-verde-200 bg-verde-50 px-4 py-3 text-sm font-medium text-verde-700">
                     <svg class="h-4 w-4 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
                     A sincronizar com o PHC (clientes → equipamentos → faturação)… o resumo aparece aqui quando terminar.
                 </div>
             @elseif ($syncResultado)
-                <div class="mt-5 rounded-lg border px-4 py-3 text-sm {{ $syncResultado['falhou'] ? 'border-perigo-200 bg-perigo-100 text-perigo-600' : 'border-verde-200 bg-verde-50 text-verde-700' }}">
+                <div wire:key="sync-resultado" class="mt-5 rounded-lg border px-4 py-3 text-sm {{ $syncResultado['falhou'] ? 'border-perigo-200 bg-perigo-100 text-perigo-600' : 'border-verde-200 bg-verde-50 text-verde-700' }}">
                     <div class="flex items-center gap-2 font-medium">
                         @if ($syncResultado['falhou'])
                             <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008v.008H12v-.008zM21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -41,7 +44,7 @@
                 </div>
             @endif
             @if (session('erro-sync'))
-                <div class="mt-5 flex items-center gap-2 rounded-lg border border-aviso-200 bg-aviso-100/60 px-4 py-3 text-sm font-medium text-aviso-500">
+                <div wire:key="sync-erro" class="mt-5 flex items-center gap-2 rounded-lg border border-aviso-200 bg-aviso-100/60 px-4 py-3 text-sm font-medium text-aviso-500">
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008v.008H12v-.008zM21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     {{ session('erro-sync') }}
                 </div>
