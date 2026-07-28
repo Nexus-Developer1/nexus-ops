@@ -92,6 +92,14 @@ class SincronizarErp implements ShouldQueue
                 Mail::to(config('erp.email_sync'))->send(new ResultadoSincronizacaoErp($resultados, $falhou));
             }
 
+            // Último resultado em cache — o dashboard (botão "Sincronizar PHC") faz poll disto
+            // para mostrar o que foi criado/atualizado assim que a corrida termina.
+            Cache::put('erp-sync:ultimo', [
+                'terminado_em' => now()->toIso8601String(),
+                'falhou' => $falhou,
+                'resultados' => $resultados,
+            ], now()->addDay());
+
             Log::info('Sync do ERP (encadeado) terminado.', [
                 'agendado' => $this->agendado,
                 'falhas' => array_keys(array_filter($resultados, fn ($r) => ! $r['ok'])),
@@ -101,17 +109,20 @@ class SincronizarErp implements ShouldQueue
         }
     }
 
-    // Crash/timeout do worker (o handle nem chegou ao fim) — no agendado avisa na mesma;
-    // no manual mantém-se silencioso (fica no log de jobs falhados).
+    // Crash/timeout do worker (o handle nem chegou ao fim) — regista sempre o desfecho em
+    // cache (o dashboard mostra-o); o EMAIL só no agendado (o manual é silencioso por email).
     public function failed(?Throwable $e): void
     {
+        Log::error('Sync do ERP: job falhou/interrompido.', ['erro' => $e?->getMessage()]);
+        $resultados = ['Sincronização' => ['ok' => false, 'detalhe' => 'o processo foi interrompido (timeout ou crash do worker) — detalhe no log.']];
+        Cache::put('erp-sync:ultimo', [
+            'terminado_em' => now()->toIso8601String(),
+            'falhou' => true,
+            'resultados' => $resultados,
+        ], now()->addDay());
         if (! $this->agendado) {
             return;
         }
-
-        Log::error('Sync do ERP: job falhou/interrompido.', ['erro' => $e?->getMessage()]);
-        Mail::to(config('erp.email_sync'))->send(new ResultadoSincronizacaoErp([
-            'Sincronização' => ['ok' => false, 'detalhe' => 'o processo foi interrompido (timeout ou crash do worker) — detalhe no log.'],
-        ], true));
+        Mail::to(config('erp.email_sync'))->send(new ResultadoSincronizacaoErp($resultados, true));
     }
 }

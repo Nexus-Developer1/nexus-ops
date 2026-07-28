@@ -26,10 +26,17 @@ class DashboardGestao extends Component
 
     private const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
+    // Enquanto espera pelo fim do sync pedido pelo botão, a view faz poll e depois troca a
+    // mensagem pelo RESUMO por etapa (criados/atualizados) — o job deixa-o em cache.
+    public ?string $syncPedidoEm = null;
+
+    /** @var array{falhou: bool, resultados: array<string, array{ok: bool, detalhe: string}>}|null */
+    public ?array $syncResultado = null;
+
     // Força a sincronização de TODOS os dados do PHC já (sem esperar pelo agendado das
     // 08h/13h/19h). Corre em background na fila, em modo SILENCIOSO — sem email de
-    // resultado (isso é só no agendado); o desfecho fica no log. Throttle de 10 min
-    // para o botão não empilhar syncs. Ver Jobs\SincronizarErp.
+    // resultado (isso é só no agendado); o desfecho aparece no dashboard e fica no log.
+    // Throttle de 10 min para o botão não empilhar syncs. Ver Jobs\SincronizarErp.
     public function sincronizarErp(): void
     {
         abort_if(auth()->user()->ehCliente(), 403);
@@ -47,7 +54,32 @@ class DashboardGestao extends Component
         }
 
         SincronizarErp::dispatch();
-        session()->flash('sucesso-sync', 'Sincronização com o PHC iniciada em segundo plano (clientes, equipamentos e faturação). Os dados vão aparecendo à medida que cada etapa termina.');
+        $this->syncPedidoEm = now()->toIso8601String();
+        $this->syncResultado = null;
+    }
+
+    // Chamado pelo wire:poll enquanto há um sync pedido: quando o job termina (resultado em
+    // cache com timestamp posterior ao pedido), troca a espera pelo resumo por etapa.
+    public function verificarSync(): void
+    {
+        if (! $this->syncPedidoEm) {
+            return;
+        }
+
+        $ultimo = Cache::get('erp-sync:ultimo');
+        if ($ultimo && $ultimo['terminado_em'] >= $this->syncPedidoEm) {
+            $this->syncResultado = ['falhou' => (bool) $ultimo['falhou'], 'resultados' => $ultimo['resultados']];
+            $this->syncPedidoEm = null;
+
+            return;
+        }
+
+        // Corrida invulgarmente longa (ex.: completa, ~20 min) — larga o poll; o desfecho
+        // fica no log e o utilizador pode voltar a olhar mais tarde.
+        if (\Illuminate\Support\Carbon::parse($this->syncPedidoEm)->lt(now()->subSeconds(180))) {
+            $this->syncPedidoEm = null;
+            session()->flash('erro-sync', 'A sincronização continua em segundo plano (está a demorar mais do que o habitual). O resultado fica no log da aplicação.');
+        }
     }
 
     public function render(ServicoMetricas $metricas, ServicoAlertas $alertas)

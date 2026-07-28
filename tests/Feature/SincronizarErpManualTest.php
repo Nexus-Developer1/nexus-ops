@@ -21,6 +21,17 @@ class SincronizarErpManualTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Neste ambiente as env reais ($_SERVER) ganham ao force do phpunit → o cache dos
+        // testes pode ser o Redis de dev, partilhado entre corridas. Sem esta limpeza, o
+        // throttle de 10 min do botão sobrevive de uma corrida para a seguinte e o teste
+        // fica intermitente (passa, e 5 minutos depois falha).
+        \Illuminate\Support\Facades\Cache::forget('erp-sync-manual-pedido');
+        \Illuminate\Support\Facades\Cache::forget('erp-sync:ultimo');
+    }
+
     private function admin(): User
     {
         return User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
@@ -113,6 +124,59 @@ class SincronizarErpManualTest extends TestCase
 
         (new SincronizarErp(agendado: true))->failed(new \RuntimeException('worker morto'));
         Mail::assertSent(ResultadoSincronizacaoErp::class, fn ($m) => $m->hasTo(config('erp.email_sync')) && $m->falhou === true);
+    }
+
+    public function test_dashboard_mostra_o_resumo_quando_o_sync_termina(): void
+    {
+        Queue::fake();
+        config()->set('erp.driver', 'fake');
+
+        $c = Livewire::actingAs($this->admin())->test(DashboardGestao::class);
+        $c->call('sincronizarErp');
+        $this->assertNotNull($c->get('syncPedidoEm')); // entra em modo "à espera" (poll)
+
+        // O job termina e deixa o resultado em cache (timestamp posterior ao pedido).
+        \Illuminate\Support\Facades\Cache::put('erp-sync:ultimo', [
+            'terminado_em' => now()->addSecond()->toIso8601String(),
+            'falhou' => false,
+            'resultados' => [
+                'Clientes' => ['ok' => true, 'detalhe' => '2 criados, 1 atualizados, 3040 iguais (saltados), 0 erros.'],
+                'Faturação' => ['ok' => true, 'detalhe' => '12 criadas, 0 atualizadas, 191090 iguais (saltadas), 0 erros.'],
+            ],
+        ], 600);
+
+        $c->call('verificarSync')
+            ->assertSet('syncPedidoEm', null)
+            ->assertSee('Sincronização concluída')
+            ->assertSee('2 criados')
+            ->assertSee('12 criadas');
+    }
+
+    public function test_poll_desiste_de_corridas_longas_com_aviso(): void
+    {
+        Queue::fake();
+        config()->set('erp.driver', 'fake');
+
+        $c = Livewire::actingAs($this->admin())->test(DashboardGestao::class);
+        $c->call('sincronizarErp');
+        $c->set('syncPedidoEm', now()->subMinutes(5)->toIso8601String()); // simula 5 min de espera
+
+        // Desiste do poll (o desfecho fica no log); o aviso vai no flash 'erro-sync'.
+        $c->call('verificarSync')->assertSet('syncPedidoEm', null)->assertSet('syncResultado', null);
+    }
+
+    public function test_job_deixa_o_resultado_em_cache(): void
+    {
+        Mail::fake();
+        $this->simularEtapas();
+
+        (new SincronizarErp)->handle();
+
+        $ultimo = \Illuminate\Support\Facades\Cache::get('erp-sync:ultimo');
+        $this->assertNotNull($ultimo);
+        $this->assertFalse($ultimo['falhou']);
+        $this->assertArrayHasKey('Clientes', $ultimo['resultados']);
+        $this->assertStringContainsString('10 criados', $ultimo['resultados']['Clientes']['detalhe']);
     }
 
     public function test_agendado_usa_o_mesmo_job_encadeado(): void
