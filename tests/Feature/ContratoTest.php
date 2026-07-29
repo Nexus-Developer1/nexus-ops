@@ -75,6 +75,10 @@ class ContratoTest extends TestCase
             ->set('slas', [['prioridade' => 'critica', 'tempo_resposta_horas' => 4, 'tempo_resolucao_horas' => 24, 'horario_cobertura' => '24x7']])
             ->call('guardar')
             ->assertHasNoErrors()
+            // Contrato novo (rascunho): abre o popup ativar/suspender em vez de sair já.
+            ->assertSet('modalEstado', true)
+            ->assertNoRedirect()
+            ->call('decidirEstado', 'rascunho')
             ->assertRedirect();
 
         $contrato = Contrato::where('numero', '2026/0042')->firstOrFail();

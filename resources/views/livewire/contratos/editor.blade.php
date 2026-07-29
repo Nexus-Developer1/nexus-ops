@@ -257,5 +257,31 @@
             </section>
 
         </form>
+
+        {{-- Popup pós-gravação (contrato em rascunho): ativar / suspender / manter rascunho.
+             wire:key: bloco condicional com chave estável (lição do banner do dashboard). --}}
+        @if ($modalEstado)
+            <div wire:key="modal-estado-contrato" class="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4">
+                <div class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-borda bg-white shadow-xl">
+                    <div class="border-b border-borda px-6 py-5">
+                        <h2 class="text-lg font-semibold text-texto-forte">Contrato guardado ✓</h2>
+                        <p class="mt-1 text-sm text-texto-medio">O que quer fazer com o contrato {{ $numero }}?</p>
+                    </div>
+                    <div class="space-y-3 px-6 py-5">
+                        @if (count($equipamentoIds) > 0)
+                            <button type="button" wire:click="decidirEstado('ativar')" class="botao-primario w-full justify-center">Ativar já</button>
+                        @else
+                            <button type="button" disabled class="botao-primario w-full cursor-not-allowed justify-center opacity-50" title="Associe pelo menos um equipamento antes de ativar">Ativar já</button>
+                            <p class="text-center text-xs text-aviso-500">Para ativar, associe pelo menos um equipamento ao contrato.</p>
+                        @endif
+                        <button type="button" wire:click="decidirEstado('suspender')" class="botao-secundario w-full justify-center">Suspender</button>
+                        <button type="button" wire:click="decidirEstado('rascunho')" class="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-texto-medio transition hover:bg-fundo">Deixar em rascunho (decido depois)</button>
+                    </div>
+                    <div class="border-t border-borda px-6 py-4">
+                        <p class="text-xs text-texto-fraco">Ativar põe o contrato em vigor — as visitas agendam-se depois, à mão, na agenda (nada é gerado automaticamente).</p>
+                    </div>
+                </div>
+            </div>
+        @endif
     </main>
 </div>

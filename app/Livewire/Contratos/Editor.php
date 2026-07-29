@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Contratos;
 
+use App\Enums\EstadoContrato;
 use App\Enums\PrioridadeSla;
 use App\Enums\TipoContrato;
 use App\Livewire\Concerns\ApenasEquipa;
@@ -45,6 +46,34 @@ class Editor extends Component
 
     /** @var array<int, array<string, mixed>> */
     public array $slas = [];
+
+    // Popup pós-gravação (só contratos em RASCUNHO): ativar / suspender / manter rascunho.
+    public bool $modalEstado = false;
+
+    public function decidirEstado(string $decisao)
+    {
+        abort_if($this->contrato === null, 404);
+        abort_unless(in_array($decisao, ['ativar', 'suspender', 'rascunho'], true), 400);
+
+        if ($decisao === 'ativar') {
+            // Mesma regra da ficha: ativar exige ≥1 equipamento associado (CLAUDE.md §6).
+            if ($this->contrato->equipamentos()->count() === 0) {
+                $this->modalEstado = false;
+                session()->flash('erro', 'Contrato guardado em rascunho — associe pelo menos um equipamento antes de ativar.');
+
+                return redirect()->route('contratos.ficha', $this->contrato);
+            }
+            $this->contrato->update(['estado' => EstadoContrato::Ativo]);
+            session()->flash('sucesso', 'Contrato guardado e ativado.');
+        } elseif ($decisao === 'suspender') {
+            $this->contrato->update(['estado' => EstadoContrato::Suspenso]);
+            session()->flash('sucesso', 'Contrato guardado e suspenso.');
+        } else {
+            session()->flash('sucesso', 'Contrato guardado (fica em rascunho).');
+        }
+
+        return redirect()->route('contratos.ficha', $this->contrato);
+    }
 
     public function mount(?Contrato $contrato = null): void
     {
@@ -195,6 +224,14 @@ class Editor extends Component
                 $s['tempo_resposta_horas'] = null;
             }
             $this->contrato->slas()->create($s);
+        }
+
+        // Contrato ainda em RASCUNHO → popup "ativar / suspender / deixar em rascunho" antes
+        // de sair (pedido da equipa). Contratos já ativos/suspensos gravam e saem como sempre.
+        if ($this->contrato->fresh()->estado === EstadoContrato::Rascunho) {
+            $this->modalEstado = true;
+
+            return;
         }
 
         session()->flash('sucesso', 'Contrato guardado com sucesso.');
