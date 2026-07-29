@@ -69,6 +69,7 @@ class Editor extends Component
             $this->slas = $contrato->slas->map(fn ($s) => [
                 'prioridade' => $s->prioridade->value,
                 'tempo_resposta_horas' => $s->tempo_resposta_horas,
+                'resposta_nbd' => $s->resposta_nbd,
                 'tempo_resolucao_horas' => $s->tempo_resolucao_horas,
                 'horario_cobertura' => $s->horario_cobertura,
             ])->all();
@@ -90,7 +91,7 @@ class Editor extends Component
 
     public function adicionarSla(): void
     {
-        $this->slas[] = ['prioridade' => '', 'tempo_resposta_horas' => null, 'tempo_resolucao_horas' => null, 'horario_cobertura' => '8x5'];
+        $this->slas[] = ['prioridade' => '', 'tempo_resposta_horas' => null, 'resposta_nbd' => false, 'tempo_resolucao_horas' => null, 'horario_cobertura' => '8x5'];
     }
 
     public function removerSla(int $i): void
@@ -150,6 +151,7 @@ class Editor extends Component
             'slas' => ['array'],
             'slas.*.prioridade' => ['required', Rule::enum(PrioridadeSla::class)],
             'slas.*.tempo_resposta_horas' => ['nullable', 'integer', 'min:0'],
+            'slas.*.resposta_nbd' => ['boolean'],
             'slas.*.tempo_resolucao_horas' => ['nullable', 'integer', 'min:0'],
             'slas.*.horario_cobertura' => ['required', 'in:8x5,24x7'],
         ];
@@ -188,6 +190,10 @@ class Editor extends Component
         // (modelo antigo) já NÃO são editados aqui — não se tocam, preservando os existentes.
         $this->contrato->slas()->delete();
         foreach ($this->slas as $s) {
+            // NBD e horas de resposta são mutuamente exclusivos — NBD ganha.
+            if (! empty($s['resposta_nbd'])) {
+                $s['tempo_resposta_horas'] = null;
+            }
             $this->contrato->slas()->create($s);
         }
 

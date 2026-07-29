@@ -128,7 +128,7 @@
                         @forelse ($contrato->slas as $s)
                             <tr class="border-b border-borda last:border-0">
                                 <td class="px-6 py-3.5"><span class="etiqueta {{ $s->prioridade->classesEtiqueta() }}">{{ $s->prioridade->rotulo() }}</span></td>
-                                <td class="px-6 py-3.5 text-texto-medio">{{ $s->tempo_resposta_horas ? $s->tempo_resposta_horas . ' h' : '—' }}</td>
+                                <td class="px-6 py-3.5 text-texto-medio">{{ $s->rotuloResposta() }}</td>
                                 <td class="px-6 py-3.5 text-texto-medio">{{ $s->tempo_resolucao_horas ? $s->tempo_resolucao_horas . ' h' : '—' }}</td>
                                 <td class="px-6 py-3.5 text-texto-medio">{{ $s->horario_cobertura }}</td>
                             </tr>

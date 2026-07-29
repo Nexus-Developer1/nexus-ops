@@ -16,6 +16,7 @@ class ContratoSla extends Model
         'contrato_id',
         'prioridade',
         'tempo_resposta_horas',
+        'resposta_nbd',
         'tempo_resolucao_horas',
         'horario_cobertura',
     ];
@@ -25,7 +26,18 @@ class ContratoSla extends Model
     {
         return [
             'prioridade' => PrioridadeSla::class,
+            'resposta_nbd' => 'boolean',
         ];
+    }
+
+    // Rótulo do tempo de resposta: NBD (Next Business Day) ou as horas.
+    public function rotuloResposta(): string
+    {
+        if ($this->resposta_nbd) {
+            return 'NBD';
+        }
+
+        return $this->tempo_resposta_horas ? $this->tempo_resposta_horas . ' h' : '—';
     }
 
     public function contrato(): BelongsTo

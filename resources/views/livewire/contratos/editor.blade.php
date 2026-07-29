@@ -227,7 +227,12 @@
                                 @error('slas.'.$i.'.prioridade') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
                             <div class="sm:col-span-3">
-                                <input wire:model="slas.{{ $i }}.tempo_resposta_horas" type="number" class="campo-input" placeholder="Resposta (h)">
+                                {{-- Resposta: em horas OU NBD (Next Business Day) — o NBD desativa as horas. --}}
+                                <input wire:model="slas.{{ $i }}.tempo_resposta_horas" type="number" class="campo-input disabled:bg-fundo disabled:text-texto-fraco" placeholder="Resposta (h)" @if (! empty($slas[$i]['resposta_nbd'])) disabled @endif>
+                                <label class="mt-1.5 inline-flex cursor-pointer items-center gap-1.5 text-xs text-texto-medio">
+                                    <input type="checkbox" wire:model.live="slas.{{ $i }}.resposta_nbd" class="h-3.5 w-3.5 rounded border-borda text-verde-600 focus:ring-verde-600">
+                                    NBD (next business day)
+                                </label>
                             </div>
                             <div class="sm:col-span-3">
                                 <input wire:model="slas.{{ $i }}.tempo_resolucao_horas" type="number" class="campo-input" placeholder="Resolução (h)">
