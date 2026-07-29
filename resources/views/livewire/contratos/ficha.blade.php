@@ -139,6 +139,47 @@
                 </table></div>
             </section>
 
+            {{-- Relatórios realizados no âmbito do contrato (intervencoes.contrato_id). --}}
+            <section class="cartao mt-8">
+                <div class="flex items-center justify-between px-6 py-5">
+                    <h2 class="text-lg font-semibold text-texto-forte">Relatórios do contrato</h2>
+                    <span class="text-sm text-texto-fraco">{{ $relatorios->count() }} no total</span>
+                </div>
+                <div class="overflow-x-auto"><table class="w-full min-w-[640px] text-left text-sm">
+                    <thead>
+                        <tr class="border-y border-borda bg-fundo text-xs uppercase tracking-wide text-texto-medio">
+                            <th class="px-6 py-3 font-semibold">Nº</th>
+                            <th class="px-6 py-3 font-semibold">Data</th>
+                            <th class="px-6 py-3 font-semibold">Equipamento</th>
+                            <th class="px-6 py-3 font-semibold">Técnico</th>
+                            <th class="px-6 py-3 font-semibold">Estado</th>
+                            <th class="px-6 py-3 text-right font-semibold">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($relatorios as $r)
+                            <tr class="border-b border-borda last:border-0">
+                                <td class="px-6 py-3.5 font-medium text-texto-forte">{{ $r->numero ?? 'Rascunho' }}</td>
+                                <td class="px-6 py-3.5 text-texto-medio">{{ $r->data?->translatedFormat('d M Y') ?? '—' }}</td>
+                                <td class="px-6 py-3.5 text-texto-medio">{{ $r->intervencao?->equipamento?->numero_serie ?? '—' }}</td>
+                                <td class="px-6 py-3.5 text-texto-medio">{{ $r->intervencao?->tecnico?->nome ?? '—' }}</td>
+                                <td class="px-6 py-3.5"><span class="etiqueta {{ $r->estado->classesEtiqueta() }}">{{ $r->estado->rotulo() }}</span></td>
+                                <td class="px-6 py-3.5">
+                                    <div class="flex items-center justify-end gap-1">
+                                        @if ($r->estado !== \App\Enums\EstadoRelatorio::Rascunho)
+                                            <a href="{{ route('relatorios.pdf', $r) }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-verde-600 transition hover:bg-verde-50">PDF</a>
+                                        @endif
+                                        <a href="{{ route('relatorios.editar', $r) }}" wire:navigate class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-texto-medio transition hover:bg-fundo">{{ $r->estado === \App\Enums\EstadoRelatorio::Rascunho ? 'Retomar' : 'Editar' }}</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="6" class="px-6 py-8 text-center text-sm text-texto-medio">Ainda não há relatórios no âmbito deste contrato.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table></div>
+            </section>
+
         </div>
     </main>
 </div>

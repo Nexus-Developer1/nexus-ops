@@ -70,6 +70,11 @@ class Ficha extends Component
         return view('livewire.contratos.ficha', [
             'contrato' => $this->contrato,
             'saldo' => $this->saldoVisitas(),
+            // Relatórios feitos no âmbito do contrato (mais recentes primeiro).
+            'relatorios' => $this->contrato->relatorios()
+                ->with('intervencao.equipamento', 'intervencao.tecnico')
+                ->orderByDesc('data')
+                ->get(),
         ]);
     }
 

@@ -84,6 +84,13 @@ class Contrato extends Model
         return $this->hasMany(EventoAgenda::class);
     }
 
+    // Relatórios das intervenções feitas no âmbito deste contrato (via intervencoes.contrato_id
+    // — é este campo que decide "incluído no contrato" vs. faturável à parte, CLAUDE.md §6).
+    public function relatorios(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
+    {
+        return $this->hasManyThrough(Relatorio::class, Intervencao::class, 'contrato_id', 'intervencao_id');
+    }
+
     // Contratos ativos dentro da própria janela de aviso de renovação (CLAUDE.md §6).
     // Expressão ciente do driver: Postgres em produção, sqlite nos testes.
     public function scopeAExpirar(Builder $query): Builder
