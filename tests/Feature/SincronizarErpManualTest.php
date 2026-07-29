@@ -159,10 +159,24 @@ class SincronizarErpManualTest extends TestCase
 
         $c = Livewire::actingAs($this->admin())->test(DashboardGestao::class);
         $c->call('sincronizarErp');
-        $c->set('syncPedidoEm', now()->subMinutes(5)->toIso8601String()); // simula 5 min de espera
 
-        // Desiste do poll (o desfecho fica no log); o aviso vai no flash 'erro-sync'.
+        // 5 minutos depois, sem resultado em cache (corrida longa) → desiste do poll.
+        $this->travel(5)->minutes();
         $c->call('verificarSync')->assertSet('syncPedidoEm', null)->assertSet('syncResultado', null);
+        $this->travelBack();
+    }
+
+    public function test_props_do_poll_sao_trancadas_ao_browser(): void
+    {
+        Queue::fake();
+        config()->set('erp.driver', 'fake');
+
+        // #[Locked]: um payload forjado a definir o estado do poll (que rebentava no
+        // Carbon::parse/render) é recusado pelo Livewire.
+        $this->expectException(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
+
+        Livewire::actingAs($this->admin())->test(DashboardGestao::class)
+            ->set('syncPedidoEm', 'lixo');
     }
 
     public function test_job_deixa_o_resultado_em_cache(): void

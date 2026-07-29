@@ -138,10 +138,21 @@ class Ficha extends Component
             return;
         }
 
+        $clienteAntigo = $this->equipamento->local->cliente;
         $local = Local::firstOrCreate(['cliente_id' => $cliente->id, 'designacao' => 'Instalação principal']);
         $this->equipamento->update(['local_id' => $local->id]);
         $this->equipamento = $this->equipamento->fresh()->load('local.cliente');
         $this->novoClienteBusca = '';
+
+        // Auditoria: mover um equipamento redesenha o perímetro do portal (o histórico de
+        // intervenções/relatórios dele passa a resolver no cliente novo) — fica registado
+        // quem fez a mudança e o de/para (11.ª revisão de segurança).
+        \Illuminate\Support\Facades\Log::info('Equipamento mudou de cliente.', [
+            'equipamento' => $this->equipamento->numero_serie ?? $this->equipamento->id,
+            'de' => $clienteAntigo->nome,
+            'para' => $cliente->nome,
+            'utilizador' => auth()->user()?->email,
+        ]);
 
         session()->flash('sucesso', "Equipamento movido para {$cliente->nome}.");
     }

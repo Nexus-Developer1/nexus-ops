@@ -22,7 +22,9 @@ class Dashboard extends Component
                 ->orderBy('inicio')
                 ->limit(5)
                 ->get(),
+            // Só ENVIADOS — igual à listagem do portal (o cliente nunca vê trabalho interno).
             'relatoriosRecentes' => Relatorio::query()
+                ->where('estado', \App\Enums\EstadoRelatorio::Enviado)
                 ->with('intervencao.equipamento')
                 ->orderByDesc('data')
                 ->limit(5)

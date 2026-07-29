@@ -28,9 +28,13 @@ class DashboardGestao extends Component
 
     // Enquanto espera pelo fim do sync pedido pelo botão, a view faz poll e depois troca a
     // mensagem pelo RESUMO por etapa (criados/atualizados) — o job deixa-o em cache.
+    // #[Locked]: estado interno do fluxo, nunca definível pelo browser — sem isto, um valor
+    // forjado rebentava no Carbon::parse/render (500 provocável; 11.ª revisão de segurança).
+    #[\Livewire\Attributes\Locked]
     public ?string $syncPedidoEm = null;
 
     /** @var array{falhou: bool, resultados: array<string, array{ok: bool, detalhe: string}>}|null */
+    #[\Livewire\Attributes\Locked]
     public ?array $syncResultado = null;
 
     // Força a sincronização de TODOS os dados do PHC já (sem esperar pelo agendado das
@@ -67,7 +71,9 @@ class DashboardGestao extends Component
         }
 
         $ultimo = Cache::get('erp-sync:ultimo');
-        if ($ultimo && $ultimo['terminado_em'] >= $this->syncPedidoEm) {
+        // Comparação por Carbon (não lexicográfica): strings ISO-8601 com offsets diferentes
+        // (mudança de hora) ordenavam mal na comparação de texto.
+        if ($ultimo && \Illuminate\Support\Carbon::parse($ultimo['terminado_em'])->gte(\Illuminate\Support\Carbon::parse($this->syncPedidoEm))) {
             $this->syncResultado = ['falhou' => (bool) $ultimo['falhou'], 'resultados' => $ultimo['resultados']];
             $this->syncPedidoEm = null;
 

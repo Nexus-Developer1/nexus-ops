@@ -72,7 +72,7 @@
                                             <li>
                                                 <button type="button" wire:key="novo-cli-{{ $nc->id }}"
                                                     wire:click="mudarCliente({{ $nc->id }})"
-                                                    wire:confirm="Atualizar a ficha do equipamento?&#10;&#10;O equipamento passa do cliente «{{ $equipamento->local->cliente->nome }}» para «{{ $nc->nome }}» (local: Instalação principal).{{ $contratos->isNotEmpty() ? ' Atenção: está ligado a ' . $contratos->count() . ' contrato(s) do cliente atual — reveja as coberturas depois da mudança.' : '' }}"
+                                                    wire:confirm="Atualizar a ficha do equipamento?&#10;&#10;O equipamento passa do cliente «{{ $equipamento->local->cliente->nome }}» para «{{ $nc->nome }}» (local: Instalação principal).&#10;&#10;Atenção: todo o histórico de intervenções e relatórios deste equipamento passa a estar visível no portal do cliente novo (e deixa de estar no do antigo).{{ $contratos->isNotEmpty() ? ' Está também ligado a ' . $contratos->count() . ' contrato(s) do cliente atual — reveja as coberturas.' : '' }}"
                                                     class="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm transition hover:bg-verde-50">
                                                     <span class="truncate font-medium text-texto-forte">{{ $nc->nome }}</span>
                                                     <span class="shrink-0 text-xs text-texto-fraco">{{ $nc->nif ?? '—' }}</span>

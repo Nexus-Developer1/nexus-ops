@@ -22,7 +22,9 @@ class PortalTest extends TestCase
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
         $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
         $interv = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'preventiva', 'estado' => 'concluida']);
-        $rel = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/' . $cliente->id, 'data' => now(), 'estado' => 'finalizado']);
+        // ENVIADO: desde a 11.ª revisão o portal só mostra relatórios enviados (rascunhos e
+        // finalizados são trabalho interno — podem estar a meio de uma reedição).
+        $rel = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/' . $cliente->id, 'data' => now(), 'estado' => 'enviado', 'enviado_em' => now()]);
         $user = User::create(['nome' => 'C' . $cliente->id, 'email' => 'c' . $cliente->id . '@x.pt', 'password' => 'x',
             'papel' => PapelUtilizador::Cliente, 'cliente_id' => $cliente->id, 'ativo' => true]);
 
@@ -55,6 +57,28 @@ class PortalTest extends TestCase
         $this->actingAs($user)->get('/portal')->assertOk()->assertSee('Central Norte');
         $this->actingAs($user)->get('/portal/equipamentos')->assertOk();
         $this->actingAs($user)->get('/portal/relatorios')->assertOk()->assertSee('2026/' . $cliente->id);
+    }
+
+    public function test_portal_so_mostra_relatorios_enviados(): void
+    {
+        [$cliente, $user, , $equip] = $this->clienteComRelatorio('A');
+
+        // Um FINALIZADO (trabalho interno — ex.: enviado reaberto para edição) do PRÓPRIO cliente.
+        $interv = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'preventiva', 'estado' => 'concluida']);
+        $interno = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/9999', 'data' => now(), 'estado' => 'finalizado']);
+
+        // A listagem e o dashboard do portal só mostram o enviado.
+        $this->actingAs($user)->get('/portal/relatorios')
+            ->assertOk()
+            ->assertSee('2026/' . $cliente->id)
+            ->assertDontSee('2026/9999');
+        $this->actingAs($user)->get('/portal')
+            ->assertOk()
+            ->assertDontSee('2026/9999');
+
+        // E o PDF de um não-enviado dá 404 MESMO sendo do próprio cliente (não revela
+        // trabalho em curso — versões a meio da edição nunca chegam ao portal).
+        $this->actingAs($user)->get(route('portal.relatorios.pdf', $interno))->assertNotFound();
     }
 
     public function test_cliente_nao_acede_a_relatorio_de_outro_cliente(): void

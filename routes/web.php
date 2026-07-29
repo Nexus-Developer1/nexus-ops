@@ -159,8 +159,13 @@ Route::middleware(['auth', 'papel:cliente'])->prefix('portal')->name('portal.')-
     Route::get('/relatorios', \App\Livewire\Portal\Relatorios::class)->name('relatorios');
 
     // PDF do relatório — o route-model-binding aplica o global scope: um cliente
-    // só resolve relatórios seus (os de outro cliente dão 404).
+    // só resolve relatórios seus (os de outro cliente dão 404). SÓ ENVIADOS: um relatório
+    // reaberto para edição (rascunho/finalizado) é trabalho interno — servi-lo aqui dava ao
+    // cliente versões a meio da edição (11.ª revisão de segurança). 404 e não 403 para não
+    // revelar a existência de trabalho em curso.
     Route::get('/relatorios/{relatorio}/pdf', function (\App\Models\Relatorio $relatorio, \App\Services\GeradorRelatorio $gerador) {
+        abort_unless($relatorio->estado === \App\Enums\EstadoRelatorio::Enviado, 404);
+
         $disco = \Illuminate\Support\Facades\Storage::disk('local');
 
         if (! $relatorio->pdf_path || ! $disco->exists($relatorio->pdf_path)) {
