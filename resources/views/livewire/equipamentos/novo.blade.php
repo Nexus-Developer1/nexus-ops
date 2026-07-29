@@ -74,7 +74,8 @@
                 <div class="grid grid-cols-1 gap-x-8 gap-y-6 border-t border-borda px-6 py-6 sm:grid-cols-2">
                     <div>
                         <label class="campo-label">Tipo <span class="text-perigo-500">*</span></label>
-                        <select wire:model="tipo" class="campo-select">
+                        {{-- live: as secções abaixo (bancos/componentes) aparecem consoante o tipo. --}}
+                        <select wire:model.live="tipo" class="campo-select">
                             @foreach ($tipos as $t)
                                 <option value="{{ $t->value }}">{{ $t->rotulo() }}</option>
                             @endforeach
@@ -130,8 +131,9 @@
                 </div>
             </section>
 
-            {{-- Bancos de baterias (parte do mesmo equipamento) — um UPS pode ter vários --}}
-            <section class="cartao mt-8">
+            {{-- Bancos de baterias (parte do mesmo equipamento) — um UPS pode ter vários. Só para UPS. --}}
+            @if ($this->tipoTemBancos())
+            <section class="cartao mt-8" wire:key="seccao-bancos">
                 <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
                     <div>
                         <h2 class="text-lg font-semibold text-texto-forte">Bancos de baterias</h2>
@@ -187,9 +189,11 @@
                     @endforelse
                 </div>
             </section>
+            @endif
 
-            {{-- Componentes do sistema (equipamentos compostos, ex.: deteção de incêndio) --}}
-            <section class="cartao mt-8">
+            {{-- Componentes do sistema (equipamentos compostos) — só deteção de incêndio / sistema. --}}
+            @if ($this->tipoTemComponentes())
+            <section class="cartao mt-8" wire:key="seccao-componentes">
                 <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
                     <div>
                         <h2 class="text-lg font-semibold text-texto-forte">Componentes do sistema</h2>
@@ -214,6 +218,7 @@
                     @endforelse
                 </div>
             </section>
+            @endif
 
             {{-- Notas --}}
             <section class="cartao mt-8">

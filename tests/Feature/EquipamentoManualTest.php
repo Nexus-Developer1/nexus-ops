@@ -119,6 +119,59 @@ class EquipamentoManualTest extends TestCase
             ->assertHasErrors('cliente_id');
     }
 
+    // PDU saiu do catálogo do registo manual (o case do enum mantém-se p/ equipamentos legados).
+    public function test_pdu_nao_e_aceite_no_registo_manual(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->set('modelo', 'PDU X')
+            ->set('tipo', 'pdu')
+            ->call('guardar')
+            ->assertHasErrors('tipo');
+    }
+
+    // As secções dependem do tipo: bancos são de UPS, componentes de incêndio/sistema.
+    // Dados preenchidos ANTES de mudar o tipo não podem gravar-se "escondidos".
+    public function test_bancos_e_componentes_so_gravam_no_tipo_a_que_pertencem(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+
+        // Gerador: nem bancos nem componentes, mesmo que tenham ficado preenchidos.
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->set('modelo', 'Gerador Y')
+            ->set('bancos', [['numero_serie' => 'BANK-Z', 'modelo' => '', 'capacidade' => '', 'num_baterias' => '8', 'data_instalacao' => '', 'proxima_troca' => '2027-01-01']])
+            ->set('componentes', [['designacao' => 'Peça avulsa', 'quantidade' => 2]])
+            ->set('tipo', 'gerador')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $eq = Equipamento::where('modelo', 'Gerador Y')->firstOrFail();
+        $this->assertArrayNotHasKey('bancos', $eq->atributos ?? []);
+        $this->assertArrayNotHasKey('componentes', $eq->atributos ?? []);
+        $this->assertNull($eq->proxima_troca_baterias);
+
+        // UPS: bancos sim, componentes não.
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->set('modelo', 'UPS Z')
+            ->set('tipo', 'ups')
+            ->set('bancos', [['numero_serie' => 'BANK-U', 'modelo' => '', 'capacidade' => '', 'num_baterias' => '4', 'data_instalacao' => '', 'proxima_troca' => '']])
+            ->set('componentes', [['designacao' => 'Não devia gravar', 'quantidade' => 1]])
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $ups = Equipamento::where('modelo', 'UPS Z')->firstOrFail();
+        $this->assertSame('BANK-U', $ups->atributos['bancos'][0]['numero_serie']);
+        $this->assertArrayNotHasKey('componentes', $ups->atributos);
+    }
+
     // ---- Cliente final e localização da instalação ----
 
     public function test_novo_equipamento_guarda_cliente_final_e_localizacao(): void

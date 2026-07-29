@@ -10,6 +10,18 @@ enum TipoEquipamento: string
     case Incendio = 'incendio';
     case Sistema = 'sistema';
 
+    /**
+     * Tipos oferecidos ao registar um equipamento (PDU saiu do catálogo a pedido da equipa).
+     * O case Pdu mantém-se no enum: equipamentos legados/do ERP com esse tipo continuam válidos
+     * nas listagens e filtros.
+     *
+     * @return list<self>
+     */
+    public static function selecionaveis(): array
+    {
+        return array_values(array_filter(self::cases(), fn (self $t) => $t !== self::Pdu));
+    }
+
     public function rotulo(): string
     {
         return match ($this) {

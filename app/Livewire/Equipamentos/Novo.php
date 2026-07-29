@@ -52,6 +52,19 @@ class Novo extends Component
     /** @var list<array{designacao: string, quantidade: string|int}> */
     public array $componentes = [];
 
+    // As secções extra do formulário dependem do tipo: bancos de baterias são de UPS;
+    // componentes do sistema são de equipamentos compostos (deteção de incêndio / sistema).
+    // A view esconde as secções; a gravação re-verifica (o tipo pode mudar depois de preencher).
+    public function tipoTemBancos(): bool
+    {
+        return $this->tipo === TipoEquipamento::Ups->value;
+    }
+
+    public function tipoTemComponentes(): bool
+    {
+        return in_array($this->tipo, [TipoEquipamento::Incendio->value, TipoEquipamento::Sistema->value], true);
+    }
+
     public function adicionarBanco(): void
     {
         $this->bancos[] = ['numero_serie' => '', 'modelo' => '', 'capacidade' => '', 'num_baterias' => '', 'data_instalacao' => '', 'proxima_troca' => ''];
@@ -112,7 +125,8 @@ class Novo extends Component
         $this->validate([
             'cliente_id' => ['required', 'integer', 'exists:clientes,id'],
             'local_id' => ['nullable', 'integer', Rule::exists('locais', 'id')->where('cliente_id', $this->cliente_id)],
-            'tipo' => ['required', Rule::enum(TipoEquipamento::class)],
+            // Só os tipos do catálogo (sem PDU) — Rule::enum aceitaria o case legado.
+            'tipo' => ['required', Rule::in(array_column(TipoEquipamento::selecionaveis(), 'value'))],
             'fabricante' => ['nullable', 'string', 'max:255'],
             'modelo' => ['nullable', 'string', 'max:255'],
             'numero_serie' => ['nullable', 'string', 'max:255'],
@@ -145,7 +159,7 @@ class Novo extends Component
 
         // Bancos de baterias (lista). num_baterias = TOTAL (p/ ficha de medição); a coluna
         // proxima_troca_baterias = a mais próxima (p/ alertas). Ver Equipamento::normalizarBancos().
-        [$bancos, $totalBaterias, $proximaTroca] = Equipamento::normalizarBancos($this->bancos);
+        [$bancos, $totalBaterias, $proximaTroca] = Equipamento::normalizarBancos($this->tipoTemBancos() ? $this->bancos : []);
         if ($bancos !== []) {
             $atributos['bancos'] = $bancos;
         }
@@ -154,7 +168,7 @@ class Novo extends Component
         }
 
         // Componentes do sistema (lista { designacao, quantidade }), só linhas preenchidas.
-        $componentes = $this->componentesNormalizados();
+        $componentes = $this->tipoTemComponentes() ? $this->componentesNormalizados() : [];
         if ($componentes !== []) {
             $atributos['componentes'] = $componentes;
         }
@@ -216,7 +230,7 @@ class Novo extends Component
         return view('livewire.equipamentos.novo', [
             'clientesFiltrados' => $this->clientesFiltrados(),
             'locais' => $locais,
-            'tipos' => TipoEquipamento::cases(),
+            'tipos' => TipoEquipamento::selecionaveis(),
             'estados' => EstadoEquipamento::cases(),
         ]);
     }

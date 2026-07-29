@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-07-29
+
+- 🧰 **Criar equipamento: secções consoante o tipo + PDU fora do catálogo** — pedido da equipa: (1) as secções de baixo passam a **aparecer só quando fazem sentido para o tipo** escolhido — "Bancos de baterias" só para UPS; "Componentes do sistema" só para Deteção de incêndio e Sistema; Gerador fica só com os dados gerais e notas. A gravação re-verifica (dados preenchidos antes de mudar o tipo não gravam "escondidos"); (2) o tipo **"PDU" sai do catálogo** do registo manual (dropdown e validação) — o case mantém-se no enum, por isso equipamentos legados/do ERP com esse tipo continuam válidos nas listagens e filtros. +2 testes (340 no total).
+
 ## 2026-07-28
 
 - 🧰 **Popup "ativar / suspender" ao guardar um contrato** — ao guardar um contrato **em rascunho** (novo ou ainda não ativado), em vez de sair logo aparece um popup: **Ativar já** / **Suspender** / **Deixar em rascunho**. O "Ativar já" respeita a regra de sempre (exige ≥1 equipamento — sem equipamentos o botão fica desativado com explicação, e o servidor re-verifica na mesma); a escolha aplica o estado e segue para a ficha. Contratos já ativos/suspensos gravam e saem como antes, sem pergunta. +4 testes, 1 ajustado (338 no total).
