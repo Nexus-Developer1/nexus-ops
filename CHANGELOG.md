@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-07-29
 
-- 🧰 **Criar equipamento: secções consoante o tipo + PDU fora do catálogo** — pedido da equipa: (1) as secções de baixo passam a **aparecer só quando fazem sentido para o tipo** escolhido — "Bancos de baterias" só para UPS; "Componentes do sistema" só para Deteção de incêndio e Sistema; Gerador fica só com os dados gerais e notas. A gravação re-verifica (dados preenchidos antes de mudar o tipo não gravam "escondidos"); (2) o tipo **"PDU" sai do catálogo** do registo manual (dropdown e validação) — o case mantém-se no enum, por isso equipamentos legados/do ERP com esse tipo continuam válidos nas listagens e filtros. +2 testes (340 no total).
+- 🧰 **Criar equipamento: secções consoante o tipo + PDU fora do catálogo** — pedido da equipa: (1) as secções de baixo passam a **aparecer só quando fazem sentido para o tipo** escolhido — "Bancos de baterias" só para UPS; "Componentes do sistema" só para Deteção de incêndio e Sistema; Gerador fica só com os dados gerais e notas. A gravação re-verifica (dados preenchidos antes de mudar o tipo não gravam "escondidos"); (2) o tipo **"PDU" sai do catálogo** do registo manual (dropdown e validação) — o case mantém-se no enum, por isso equipamentos legados/do ERP com esse tipo continuam válidos nas listagens e filtros. +2 testes (340 no total). `82d5e0c`
 
 ## 2026-07-28
 
