@@ -79,6 +79,39 @@ class ContratoPopupEstadoTest extends TestCase
         $this->assertSame(EstadoContrato::Rascunho, Contrato::firstOrFail()->estado);
     }
 
+    public function test_decidir_estado_forjado_nao_ressuscita_contrato_expirado(): void
+    {
+        [$admin, $cliente, $equip] = $this->base();
+        $contrato = Contrato::create(['numero' => '2026/0200', 'cliente_id' => $cliente->id,
+            'data_inicio' => now()->subYears(2), 'data_fim' => now()->subYear(), 'estado' => EstadoContrato::Expirado,
+            'tipo' => 'preventiva', 'modelo_faturacao_id' => ModeloFaturacao::query()->value('id'),
+            'renovacao_automatica' => false, 'periodo_aviso_dias' => 30]);
+        $contrato->equipamentos()->sync([$equip->id]);
+
+        // Chamada forjada (o popup nunca aparece para expirados) → o estado não muda.
+        Livewire::actingAs($admin)->test(Editor::class, ['contrato' => $contrato])
+            ->call('decidirEstado', 'ativar')
+            ->assertRedirect();
+
+        $this->assertSame(EstadoContrato::Expirado, $contrato->fresh()->estado);
+    }
+
+    public function test_reativar_suspenso_sem_equipamentos_e_bloqueado(): void
+    {
+        [$admin, $cliente] = $this->base();
+
+        // O caminho de 3 cliques: guardar rascunho sem equipamentos → suspender no popup...
+        $this->editor($admin, $cliente)->call('decidirEstado', 'suspender');
+        $contrato = Contrato::firstOrFail();
+        $this->assertSame(EstadoContrato::Suspenso, $contrato->estado);
+
+        // ...reativar na ficha → BLOQUEADO (a invariante "ativo exige equipamentos" mantém-se).
+        Livewire::actingAs($admin)->test(\App\Livewire\Contratos\Ficha::class, ['contrato' => $contrato])
+            ->call('reativar');
+
+        $this->assertSame(EstadoContrato::Suspenso, $contrato->fresh()->estado);
+    }
+
     public function test_editar_contrato_ja_ativo_nao_pergunta(): void
     {
         [$admin, $cliente, $equip] = $this->base();

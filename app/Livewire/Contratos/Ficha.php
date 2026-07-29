@@ -54,6 +54,14 @@ class Ficha extends Component
     public function reativar(): void
     {
         if ($this->contrato->estado === EstadoContrato::Suspenso) {
+            // Mesma invariante do ativar (CLAUDE.md §6): sem equipamentos não há contrato ativo.
+            // Sem isto, rascunho→suspender→reativar contornava a regra em 3 cliques (12.ª revisão).
+            if ($this->contrato->equipamentos()->count() === 0) {
+                session()->flash('erro', 'Associe pelo menos um equipamento antes de reativar.');
+
+                return;
+            }
+
             $this->contrato->update(['estado' => EstadoContrato::Ativo]);
             session()->flash('sucesso', 'Contrato reativado.');
         }

@@ -315,6 +315,29 @@ class EquipamentoManualTest extends TestCase
             ]]);
     }
 
+    public function test_seccao_escondida_com_dados_invalidos_nao_bloqueia_o_guardar(): void
+    {
+        // Preencheu bancos (com data inválida) como UPS e depois mudou o tipo para gerador:
+        // a secção escondeu-se — a validação NÃO pode rebentar a apontar para campos
+        // invisíveis (a gravação descarta os dados escondidos de qualquer forma).
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->set('tipo', 'gerador')
+            ->set('bancos', [['numero_serie' => 'X', 'modelo' => '', 'capacidade' => '',
+                'num_baterias' => 'nao-e-numero', 'data_instalacao' => 'data-invalida', 'proxima_troca' => '']])
+            ->call('guardar')
+            ->assertHasNoErrors()
+            ->assertRedirect();
+
+        $eq = Equipamento::whereNull('id_erp')->firstOrFail();
+        $this->assertSame('gerador', $eq->tipo->value);
+        $this->assertNull($eq->atributos['bancos'] ?? null); // os bancos escondidos não gravaram
+    }
+
     // ---- Sistema composto (ex.: deteção de incêndio): tipo novo + lista de componentes ----
 
     public function test_novo_equipamento_incendio_sem_serie_com_componentes(): void
