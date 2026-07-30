@@ -343,7 +343,12 @@
                                 </button>
                             </div>
                             <div class="border-t border-borda px-6 py-6">
-                                <x-relatorios.ficha-ups :prefixo="'fichas.' . $e->id" />
+                                {{-- Equipamentos de incêndio têm ficha técnica própria (SADEI); os restantes usam a de medições UPS. --}}
+                                @if ($e->tipo === \App\Enums\TipoEquipamento::Incendio)
+                                    <x-relatorios.ficha-incendio :prefixo="'fichas.' . $e->id" />
+                                @else
+                                    <x-relatorios.ficha-ups :prefixo="'fichas.' . $e->id" />
+                                @endif
                             </div>
 
                             {{-- Fotografias DESTE equipamento (aparecem junto das medições no PDF). --}}

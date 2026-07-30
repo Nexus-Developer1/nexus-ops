@@ -41,6 +41,7 @@
         .ficha-rot { color: #9ca3af; font-size: 8px; text-transform: uppercase; }
         .cel-num { text-align: center; }
         .cel-ok { text-align: center; color: #16A34A; font-weight: bold; width: 8%; }
+        .cel-na { text-align: center; color: #6b7280; font-weight: bold; width: 8%; } /* N/A (ficha SADEI) */
         .temp-alerta { color: #dc2626; font-weight: bold; } /* temperatura acima de 25 °C */
         .cel-nok { text-align: center; color: #dc2626; font-weight: bold; width: 8%; }
     </style>
@@ -226,6 +227,10 @@
             @php($mostrarClienteFinal = $cfTexto !== '' || ($fcli && $i->contrato && $fcli->id !== $i->contrato->cliente_id))
             @php($clienteFinalValor = $cfTexto !== '' ? $cfTexto : ($fcli?->nome ?? '—'))
             <div class="ficha-pagina">
+                @if (($fe?->tipo ?? null) === \App\Enums\TipoEquipamento::Incendio)
+                    {{-- Equipamentos de incêndio: Ficha de Verificações SADEI (folha própria). --}}
+                    @include('pdf._ficha_sadei')
+                @else
                 <div class="ficha-titulo">Ficha de Medições — UPS</div>
                 <div class="ficha-sub">Relatório {{ $relatorio->numero }} · {{ $ficha->serie ?: ($fe?->numero_serie ?? '—') }}</div>
 
@@ -375,6 +380,7 @@
                         </tr>
                     </table>
                 @endif
+                @endif {{-- /ramo UPS vs SADEI --}}
 
                 {{-- Fotografias DESTE equipamento (junto das medições). --}}
                 @php($fotosEq = ($fotosPorEquipamento[$ficha->equipamento_id]['fotos'] ?? []))

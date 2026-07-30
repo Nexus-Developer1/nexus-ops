@@ -30,6 +30,7 @@ class FichaMedicao extends Model
         'verificacoes', 'teste_descarga', 'baterias_funcionamento',
         'carga_a_funcionar', 'ups_modo_normal', 'notas_finais',
         'recomendacao', 'prioridade',
+        'sadei',
     ];
 
     /** @return array<string, string> */
@@ -41,6 +42,7 @@ class FichaMedicao extends Model
             'bancos_bateria' => 'array',
             'verificacoes' => 'array',
             'teste_descarga' => 'array',
+            'sadei' => 'array',
         ];
     }
 
@@ -88,6 +90,106 @@ class FichaMedicao extends Model
 
     /** Nº máximo de linhas nas grelhas de módulos e bancos de bateria. */
     public const MAX_LINHAS = 4;
+
+    // --- Ficha de Verificações SADEI (equipamentos tipo "incendio") ------------------
+    // Espelho da folha oficial Nexus 2024 (deteção/extinção de incêndio). Cada secção é
+    // chave => rótulo; o estado é ''|'ok'|'ko' (central, cilindros, final) ou
+    // ''|'ok'|'ko'|'na' (restantes). Partilhadas pelo formulário e pelo PDF.
+
+    /** Central de deteção e extinção (OK/KO + nota). */
+    public const SADEI_CENTRAL = [
+        'limpeza' => 'Limpeza',
+        'bezouro' => 'Bezouro interno',
+        'baterias' => 'Baterias',
+        'botoes' => 'Botões',
+        'leds' => 'Leds',
+        'ligacoes' => 'Verificação das ligações',
+        'botoneira_ativacao' => 'Botoneira ativação',
+        'botoneira_inibicao' => 'Botoneira inibição',
+    ];
+
+    /** Sistema de deteção (OK/KO/N\A + nota). */
+    public const SADEI_DETECAO = [
+        'aspiracao' => 'Aspiração',
+        'detecao' => 'Detecção',
+    ];
+
+    /** Sistema de aspiração (OK/KO/N\A + nota). */
+    public const SADEI_ASPIRACAO = [
+        'sem_avarias' => 'Equipamento sem avarias',
+        'sem_alarmes' => 'Equipamento sem alarmes',
+        'rele_zona1' => 'Relé zona 1',
+        'rele_zona2' => 'Relé zona 2',
+        'diagnostico_software' => 'Diagnóstico por software',
+        'pontos_aspiracao' => 'Pontos de aspiração',
+        'filtro' => 'Filtro',
+        'ligacoes' => 'Ligações',
+    ];
+
+    /** Sistema por sensores (OK/KO/N\A + nota). */
+    public const SADEI_SENSORES = [
+        'opticos_fumo' => 'Óticos fumo',
+        'termo_velocimetricos' => 'Termo-velocimétricos',
+        'multicriterio' => 'Multicritério',
+        'outro' => 'Outro',
+    ];
+
+    /** Verificação trimestral (OK/KO/N\A; inibir o sistema antes de iniciar). */
+    public const SADEI_TRIMESTRAL = [
+        'acessos' => 'Acesso livre e sem obstruções às áreas de risco, botoneiras, comandos manuais e cilindros difusores',
+        'inspecao_cilindros' => 'Inspeção geral a todos os cilindros, com eventual reaperto das mangueiras (disparo e pilotagem)',
+        'pressao_cilindros' => 'Pressão interna dos cilindros',
+        'pressao_piloto' => 'Pressão do cilindro piloto (ou sparklet) de N2, caso exista',
+        'livro_registos' => 'Entradas no livro de registos de ocorrências verificadas e ações necessárias tomadas',
+        'mudancas_estruturais' => 'Mudanças estruturais/ocupacionais que possam ter afetado a localização de sensores e difusores',
+    ];
+
+    /** Verificação semestral (OK/KO/N\A; inibir o sistema antes de iniciar). */
+    public const SADEI_SEMESTRAL = [
+        'rotinas_trimestrais' => 'Inspeção e rotinas de testes da verificação trimestral executadas',
+        'teste_sensores' => 'Operado ≥1 sensor em locais distintos (central recebe/exibe o sinal, soa o alarme e aciona avisos, com o disparo bloqueado)',
+        'monitorizacao_anomalias' => 'Funções de monitorização de anomalias da central de extinção',
+        'comando_distancia' => 'Central opera comandos à distância (simulação da ordem de extinção)',
+        'fixacao' => 'Fixação correta de tubagens, cilindros e todos os cabos',
+        'estado_tubagem' => 'Estado geral da tubagem e difusores sem alterações face ao projeto inicial',
+        'local_limpo' => 'Local de armazenamento limpo e desobstruído (acesso a manómetros, válvulas, cilindros)',
+        'pintura' => 'Estado da pintura dos cilindros e tubagem',
+        'acesso_atuacao_manual' => 'Fácil acessibilidade aos sistemas de atuação manual',
+        'selos' => 'Estado dos selos de segurança nos comandos manuais',
+        'instrucoes' => 'Instruções para atuação manual existentes, legíveis e resistentes',
+        'linha_pilotagem' => 'Linha de pilotagem pneumática protegida de danos mecânicos, caso exista',
+        'mangueiras' => 'Mangueiras sem tensão',
+        'valvulas_antirretorno' => 'Válvulas anti-retorno com a direção de fluxo correta (pilotagem e descarga)',
+        'restritores' => 'Restritores corretos no coletor de descarga (~60 bar — só gases inertes)',
+        'pesagem' => 'Sistema de pesagem indica "carga correta" e testado manualmente, caso exista',
+        'continuidade_eletrica' => 'Continuidade no sistema elétrico de alimentação',
+        'sensor_fluxo' => 'Funcionamento do sensor de fluxo, caso exista',
+    ];
+
+    /** Verificação anual (OK/KO/N\A; inibir o sistema antes de iniciar). */
+    public const SADEI_ANUAL = [
+        'rotinas_anteriores' => 'Inspeção e rotinas de testes trimestrais e semestrais executadas',
+        'teste_cada_sensor' => 'Funcionamento de cada sensor e comando manual (recomendações do fabricante)',
+        'inspecao_visual' => 'Inspeção visual: mudanças estruturais/ocupacionais; espaço desimpedido à volta de cada sensor/difusor e acesso ao comando manual',
+        'baterias' => 'Baterias examinadas e testadas (substituídas nos intervalos do fabricante)',
+        'valvulas_direcionais' => 'Válvulas direcionais (caso existam)',
+        'vd_abertura_manual' => '— abertura e fecho manual realizados',
+        'vd_ligacoes' => '— ligações nos comandos elétricos e manuais',
+        'vd_abertura_pilotagem' => '— abertura com pressão na linha de pilotagem de disparo',
+        'vd_fecho_pos_teste' => '— em posição fechada após os testes',
+        'pesagem_co2' => 'Sistemas de CO2 sem pesagem automática: pesagem manual efetuada',
+    ];
+
+    /** Linhas das grelhas de cilindros (agente extintor) e piloto. */
+    public const SADEI_CILINDROS_LINHAS = 4;
+
+    public const SADEI_PILOTO_LINHAS = 2;
+
+    /** Colunas das grelhas de cilindros/piloto (chave => rótulo). */
+    public const SADEI_COLS_CILINDRO = [
+        'identificacao' => 'Identificação', 'pressao' => 'Pressão', 'data_carga' => 'Data carga',
+        'qt_agente' => 'QT agente', 'peso_total' => 'Peso total',
+    ];
 
     public function intervencao(): BelongsTo
     {
@@ -148,7 +250,40 @@ class FichaMedicao extends Model
         $ficha['recomendacao'] = '';
         $ficha['prioridade'] = 'Normal';
 
+        // Bloco SADEI (só é mostrado/preenchido em equipamentos tipo "incendio"; nos
+        // restantes fica vazio e grava null). Estar sempre presente simplifica o binding.
+        $ficha['sadei'] = self::sadeiVazia();
+
         return $ficha;
+    }
+
+    /**
+     * Estrutura vazia do bloco SADEI (formulário) — espelho da folha oficial.
+     *
+     * @return array<string, mixed>
+     */
+    public static function sadeiVazia(): array
+    {
+        $comNota = static fn (array $itens) => array_map(static fn () => ['estado' => '', 'nota' => ''], $itens);
+        $soEstado = static fn (array $itens) => array_map(static fn () => ['estado' => ''], $itens);
+        $linhaCilindro = array_fill_keys(array_keys(self::SADEI_COLS_CILINDRO), '') + ['estado' => ''];
+
+        return [
+            'tipo_manutencao' => '',                       // trimestral|semestral|anual
+            'central' => $comNota(self::SADEI_CENTRAL),
+            'detecao' => $comNota(self::SADEI_DETECAO),
+            'aspiracao' => $comNota(self::SADEI_ASPIRACAO),
+            'sensores' => $comNota(self::SADEI_SENSORES),
+            'num_sensores' => '',
+            'trimestral' => $soEstado(self::SADEI_TRIMESTRAL),
+            'semestral' => $soEstado(self::SADEI_SEMESTRAL),
+            'anual' => $soEstado(self::SADEI_ANUAL),
+            'tipo_agente' => '',
+            'cilindros' => array_fill(0, self::SADEI_CILINDROS_LINHAS, $linhaCilindro),
+            'tipo_piloto' => '',
+            'piloto' => array_fill(0, self::SADEI_PILOTO_LINHAS, $linhaCilindro),
+            'final_automatico' => '',                      // ok|ko — "em automático, selenoide colocada, a funcionar"
+        ];
     }
 
     /**
@@ -194,6 +329,32 @@ class FichaMedicao extends Model
         foreach (array_keys(self::LINHAS_DESCARGA) as $linha) {
             foreach (array_keys(self::COLS_DESCARGA) as $col) {
                 $base['teste_descarga'][$linha][$col] = (string) ($this->teste_descarga[$linha][$col] ?? '');
+            }
+        }
+
+        // SADEI: preenche o esqueleto com o que estiver gravado (strings para o binding).
+        $g = $this->sadei ?? [];
+        foreach (['tipo_manutencao', 'num_sensores', 'tipo_agente', 'tipo_piloto', 'final_automatico'] as $c) {
+            $base['sadei'][$c] = (string) ($g[$c] ?? '');
+        }
+        foreach (['central' => self::SADEI_CENTRAL, 'detecao' => self::SADEI_DETECAO, 'aspiracao' => self::SADEI_ASPIRACAO, 'sensores' => self::SADEI_SENSORES] as $sec => $itens) {
+            foreach (array_keys($itens) as $k) {
+                $base['sadei'][$sec][$k] = [
+                    'estado' => (string) ($g[$sec][$k]['estado'] ?? ''),
+                    'nota' => (string) ($g[$sec][$k]['nota'] ?? ''),
+                ];
+            }
+        }
+        foreach (['trimestral' => self::SADEI_TRIMESTRAL, 'semestral' => self::SADEI_SEMESTRAL, 'anual' => self::SADEI_ANUAL] as $sec => $itens) {
+            foreach (array_keys($itens) as $k) {
+                $base['sadei'][$sec][$k] = ['estado' => (string) ($g[$sec][$k]['estado'] ?? '')];
+            }
+        }
+        foreach (['cilindros' => self::SADEI_CILINDROS_LINHAS, 'piloto' => self::SADEI_PILOTO_LINHAS] as $grelha => $n) {
+            for ($i = 0; $i < $n; $i++) {
+                foreach ([...array_keys(self::SADEI_COLS_CILINDRO), 'estado'] as $col) {
+                    $base['sadei'][$grelha][$i][$col] = (string) ($g[$grelha][$i][$col] ?? '');
+                }
             }
         }
 
@@ -253,7 +414,66 @@ class FichaMedicao extends Model
         }
         $attrs['teste_descarga'] = $descarga;
 
+        // SADEI: normaliza contra o esqueleto (só chaves conhecidas; estados whitelisted);
+        // se nada estiver preenchido, grava null — as fichas UPS ficam sempre a null.
+        $attrs['sadei'] = self::sadeiAtributos($dados['sadei'] ?? []);
+
         return $attrs;
+    }
+
+    /**
+     * Normaliza o bloco SADEI do formulário: whitelist de chaves e estados, vazios → null,
+     * grelhas sem linhas vazias. Devolve null quando não há conteúdo nenhum.
+     *
+     * @param  array<string, mixed>  $g
+     * @return array<string, mixed>|null
+     */
+    public static function sadeiAtributos(array $g): ?array
+    {
+        $limpar = static fn ($v) => (is_string($v) && trim($v) === '') || $v === null ? null : trim((string) $v);
+        $estado = static fn ($v, array $validos) => in_array($v, $validos, true) ? $v : null;
+
+        $out = [
+            'tipo_manutencao' => $estado($g['tipo_manutencao'] ?? null, ['trimestral', 'semestral', 'anual']),
+            'num_sensores' => $limpar($g['num_sensores'] ?? null),
+            'tipo_agente' => $limpar($g['tipo_agente'] ?? null),
+            'tipo_piloto' => $limpar($g['tipo_piloto'] ?? null),
+            'final_automatico' => $estado($g['final_automatico'] ?? null, ['ok', 'ko']),
+        ];
+        $tem = array_filter($out) !== [];
+
+        foreach (['central' => [self::SADEI_CENTRAL, ['ok', 'ko']], 'detecao' => [self::SADEI_DETECAO, ['ok', 'ko', 'na']], 'aspiracao' => [self::SADEI_ASPIRACAO, ['ok', 'ko', 'na']], 'sensores' => [self::SADEI_SENSORES, ['ok', 'ko', 'na']]] as $sec => [$itens, $validos]) {
+            foreach (array_keys($itens) as $k) {
+                $out[$sec][$k] = [
+                    'estado' => $estado($g[$sec][$k]['estado'] ?? null, $validos),
+                    'nota' => $limpar($g[$sec][$k]['nota'] ?? null),
+                ];
+                $tem = $tem || $out[$sec][$k]['estado'] !== null || $out[$sec][$k]['nota'] !== null;
+            }
+        }
+        foreach (['trimestral' => self::SADEI_TRIMESTRAL, 'semestral' => self::SADEI_SEMESTRAL, 'anual' => self::SADEI_ANUAL] as $sec => $itens) {
+            foreach (array_keys($itens) as $k) {
+                $out[$sec][$k] = ['estado' => $estado($g[$sec][$k]['estado'] ?? null, ['ok', 'ko', 'na'])];
+                $tem = $tem || $out[$sec][$k]['estado'] !== null;
+            }
+        }
+        foreach (['cilindros' => self::SADEI_CILINDROS_LINHAS, 'piloto' => self::SADEI_PILOTO_LINHAS] as $grelha => $n) {
+            $linhas = [];
+            for ($i = 0; $i < $n; $i++) {
+                $linha = [];
+                foreach (array_keys(self::SADEI_COLS_CILINDRO) as $col) {
+                    $linha[$col] = $limpar($g[$grelha][$i][$col] ?? null);
+                }
+                $linha['estado'] = $estado($g[$grelha][$i]['estado'] ?? null, ['ok', 'ko']);
+                if (array_filter($linha) !== []) {
+                    $linhas[] = $linha;
+                }
+            }
+            $out[$grelha] = $linhas;
+            $tem = $tem || $linhas !== [];
+        }
+
+        return $tem ? $out : null;
     }
 
     /**
@@ -296,6 +516,11 @@ class FichaMedicao extends Model
                     return true;
                 }
             }
+        }
+
+        // Bloco SADEI (equipamentos de incêndio): sadeiAtributos devolve null quando vazio.
+        if (($attrs['sadei'] ?? null) !== null) {
+            return true;
         }
 
         return false;
