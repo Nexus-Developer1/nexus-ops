@@ -227,7 +227,10 @@
             @php($mostrarClienteFinal = $cfTexto !== '' || ($fcli && $i->contrato && $fcli->id !== $i->contrato->cliente_id))
             @php($clienteFinalValor = $cfTexto !== '' ? $cfTexto : ($fcli?->nome ?? '—'))
             <div class="ficha-pagina">
-                @if (($fe?->tipo ?? null) === \App\Enums\TipoEquipamento::Incendio)
+                {{-- Decide pela FICHA (tipo_equipamento gravado) com fallback ao equipamento:
+                     imune a equipamentos entretanto apagados (soft delete) e cobre fichas
+                     antigas gravadas antes do tipo real ser registado. --}}
+                @if ($ficha->tipo_equipamento === 'incendio' || ($fe?->tipo ?? null) === \App\Enums\TipoEquipamento::Incendio)
                     {{-- Equipamentos de incêndio: Ficha de Verificações SADEI (folha própria). --}}
                     @include('pdf._ficha_sadei')
                 @else

@@ -370,7 +370,16 @@ class FichaMedicao extends Model
      */
     public static function atributosDeFormulario(array $dados): array
     {
-        $limpar = static fn ($v) => (is_string($v) && trim($v) === '') || $v === null ? null : $v;
+        // Só escalares (payload forjado com arrays rebentava com "Array to string"); strings
+        // truncadas a 2000 chars (sem limite, notas forjadas de MBs inchavam a BD e o PDF).
+        $limpar = static function ($v) {
+            if ($v === null || ! is_scalar($v)) {
+                return null;
+            }
+            $v = is_string($v) ? trim($v) : $v;
+
+            return $v === '' ? null : (is_string($v) ? mb_substr($v, 0, 2000) : $v);
+        };
 
         $attrs = [];
 
@@ -416,7 +425,8 @@ class FichaMedicao extends Model
 
         // SADEI: normaliza contra o esqueleto (só chaves conhecidas; estados whitelisted);
         // se nada estiver preenchido, grava null — as fichas UPS ficam sempre a null.
-        $attrs['sadei'] = self::sadeiAtributos($dados['sadei'] ?? []);
+        // is_array: um payload forjado com sadei="x" (string) rebentava com TypeError.
+        $attrs['sadei'] = is_array($dados['sadei'] ?? null) ? self::sadeiAtributos($dados['sadei']) : null;
 
         return $attrs;
     }
@@ -430,8 +440,13 @@ class FichaMedicao extends Model
      */
     public static function sadeiAtributos(array $g): ?array
     {
-        $limpar = static fn ($v) => (is_string($v) && trim($v) === '') || $v === null ? null : trim((string) $v);
+        // Só escalares + truncagem (ver o $limpar de atributosDeFormulario — mesmas razões).
+        $limpar = static fn ($v) => $v === null || ! is_scalar($v) || trim((string) $v) === ''
+            ? null
+            : mb_substr(trim((string) $v), 0, 2000);
         $estado = static fn ($v, array $validos) => in_array($v, $validos, true) ? $v : null;
+        // Filtro estrito (só descarta null): array_filter por omissão descartava valores "0".
+        $temAlgum = static fn (array $a) => array_filter($a, static fn ($v) => $v !== null) !== [];
 
         $out = [
             'tipo_manutencao' => $estado($g['tipo_manutencao'] ?? null, ['trimestral', 'semestral', 'anual']),
@@ -440,7 +455,7 @@ class FichaMedicao extends Model
             'tipo_piloto' => $limpar($g['tipo_piloto'] ?? null),
             'final_automatico' => $estado($g['final_automatico'] ?? null, ['ok', 'ko']),
         ];
-        $tem = array_filter($out) !== [];
+        $tem = $temAlgum($out);
 
         foreach (['central' => [self::SADEI_CENTRAL, ['ok', 'ko']], 'detecao' => [self::SADEI_DETECAO, ['ok', 'ko', 'na']], 'aspiracao' => [self::SADEI_ASPIRACAO, ['ok', 'ko', 'na']], 'sensores' => [self::SADEI_SENSORES, ['ok', 'ko', 'na']]] as $sec => [$itens, $validos]) {
             foreach (array_keys($itens) as $k) {
@@ -465,7 +480,7 @@ class FichaMedicao extends Model
                     $linha[$col] = $limpar($g[$grelha][$i][$col] ?? null);
                 }
                 $linha['estado'] = $estado($g[$grelha][$i]['estado'] ?? null, ['ok', 'ko']);
-                if (array_filter($linha) !== []) {
+                if ($temAlgum($linha)) {
                     $linhas[] = $linha;
                 }
             }

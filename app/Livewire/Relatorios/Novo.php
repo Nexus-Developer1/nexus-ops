@@ -830,6 +830,13 @@ class Novo extends Component
             $dados = $this->fichas[$equipId] ?? FichaMedicao::estruturaVazia();
             $attrs = FichaMedicao::atributosDeFormulario($dados);
 
+            // O bloco SADEI só faz sentido em equipamentos de incêndio — noutros tipos, um
+            // payload forjado não pode gravar SADEI "invisível" (mesma regra das secções
+            // escondidas por tipo no registo de equipamentos).
+            if (($tipos[$equipId] ?? null) !== \App\Enums\TipoEquipamento::Incendio) {
+                $attrs['sadei'] = null;
+            }
+
             // Só persiste fichas com medições. Uma ficha vazia (só a identificação
             // auto-preenchida) não cria registo; se já existia e foi esvaziada, remove-se.
             if (! FichaMedicao::temConteudo($attrs)) {

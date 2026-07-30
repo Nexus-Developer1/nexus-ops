@@ -102,11 +102,45 @@ class RelatorioFichaSadeiTest extends TestCase
             ->assertSee('Teste de descarga')
             ->assertDontSee('Central de deteção e extinção de incêndio')
             ->set("fichas.{$equip->id}.ve_ln_l1", '231.4')
+            // Payload forjado: SADEI numa UPS (a secção nem existe no formulário) → descartado.
+            ->set("fichas.{$equip->id}.sadei.final_automatico", 'ok')
             ->call('guardarRascunho')
             ->assertHasNoErrors();
 
         $ficha = FichaMedicao::firstOrFail();
-        $this->assertNull($ficha->sadei); // fichas UPS nunca gravam bloco SADEI
+        $this->assertNull($ficha->sadei); // fichas UPS nunca gravam bloco SADEI (nem forjado)
+    }
+
+    public function test_payloads_hostis_nao_rebentam_nem_incham_a_ficha(): void
+    {
+        [$tecnico, $equip] = $this->cenario('incendio');
+
+        // sadei como string (em vez de array) + nota gigante + valor não-escalar: nada
+        // rebenta (500) e a nota é truncada a 2000 caracteres.
+        Livewire::actingAs($tecnico)->test(Novo::class)
+            ->set('equipamento_id', $equip->id)
+            ->set('data', now()->toDateString())
+            ->set("fichas.{$equip->id}.sadei.central.limpeza.estado", 'ok')
+            ->set("fichas.{$equip->id}.sadei.central.limpeza.nota", str_repeat('A', 50000))
+            ->set("fichas.{$equip->id}.sadei.num_sensores", ['a' => 'b'])
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $ficha = FichaMedicao::firstOrFail();
+        $this->assertSame(2000, mb_strlen($ficha->sadei['central']['limpeza']['nota']));
+        $this->assertNull($ficha->sadei['num_sensores']); // não-escalar descartado
+
+        // sadei inteiro como string → ignorado sem erro (grava null, resto da ficha vive).
+        $ficha->delete();
+        Livewire::actingAs($tecnico)->test(Novo::class)
+            ->set('equipamento_id', $equip->id)
+            ->set('data', now()->toDateString())
+            ->set("fichas.{$equip->id}.notas_finais", 'ok')
+            ->set("fichas.{$equip->id}.sadei", 'lixo')
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $this->assertNull(FichaMedicao::firstOrFail()->sadei);
     }
 
     public function test_pdf_de_incendio_usa_a_ficha_sadei(): void
