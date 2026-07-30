@@ -262,7 +262,7 @@ class FichaMedicao extends Model
      *
      * @return array<string, mixed>
      */
-    public static function sadeiVazia(): array
+    private static function sadeiVazia(): array
     {
         $comNota = static fn (array $itens) => array_map(static fn () => ['estado' => '', 'nota' => ''], $itens);
         $soEstado = static fn (array $itens) => array_map(static fn () => ['estado' => ''], $itens);
@@ -438,7 +438,7 @@ class FichaMedicao extends Model
      * @param  array<string, mixed>  $g
      * @return array<string, mixed>|null
      */
-    public static function sadeiAtributos(array $g): ?array
+    private static function sadeiAtributos(array $g): ?array
     {
         // Só escalares + truncagem (ver o $limpar de atributosDeFormulario — mesmas razões).
         $limpar = static fn ($v) => $v === null || ! is_scalar($v) || trim((string) $v) === ''
