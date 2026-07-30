@@ -822,6 +822,10 @@ class Novo extends Component
             array_merge([$this->equipamento_id], $this->equipamentosCobertos)
         )));
 
+        // Tipo REAL de cada equipamento (a ficha regista-o — era 'ups' hardcoded e as
+        // centrais de incêndio ficavam gravadas como UPS).
+        $tipos = Equipamento::whereIn('id', $ids)->pluck('tipo', 'id');
+
         foreach ($ids as $equipId) {
             $dados = $this->fichas[$equipId] ?? FichaMedicao::estruturaVazia();
             $attrs = FichaMedicao::atributosDeFormulario($dados);
@@ -836,7 +840,7 @@ class Novo extends Component
 
             FichaMedicao::updateOrCreate(
                 ['intervencao_id' => $intervencao->id, 'equipamento_id' => $equipId],
-                $attrs + ['tipo_equipamento' => 'ups'],
+                $attrs + ['tipo_equipamento' => $tipos[$equipId]->value ?? 'ups'],
             );
         }
 

@@ -68,6 +68,8 @@ class RelatorioFichaSadeiTest extends TestCase
         $this->assertSame('ok', $ficha->sadei['final_automatico']);
         // Pré-preenchimento da identificação a partir do equipamento.
         $this->assertSame('Bosch', $ficha->marca);
+        // A ficha regista o TIPO real do equipamento (era 'ups' hardcoded).
+        $this->assertSame('incendio', $ficha->tipo_equipamento);
     }
 
     public function test_estado_forjado_fora_da_whitelist_e_descartado(): void

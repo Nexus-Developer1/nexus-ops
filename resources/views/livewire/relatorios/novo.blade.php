@@ -333,7 +333,8 @@
                                         <h2 class="flex items-center gap-2 text-lg font-semibold text-texto-forte">
                                             <span class="truncate">{{ $e->numero_serie ?? '—' }}</span>
                                         </h2>
-                                        <p class="truncate text-sm text-texto-medio">{{ trim($e->fabricante . ' ' . $e->modelo) ?: 'UPS' }}</p>
+                                        {{-- Fallback pelo TIPO real (era 'UPS' fixo — uma central de incêndio sem marca/modelo aparecia como UPS). --}}
+                                        <p class="truncate text-sm text-texto-medio">{{ trim($e->fabricante . ' ' . $e->modelo) ?: $e->tipo->rotulo() }}</p>
                                     </div>
                                 </div>
                                 {{-- Remove o equipamento do relatório e volta aos Dados Gerais. --}}
