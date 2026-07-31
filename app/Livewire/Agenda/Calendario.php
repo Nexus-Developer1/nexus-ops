@@ -39,6 +39,10 @@ class Calendario extends Component
         // ao admin). Sem auto-filtro à sua própria agenda.
     }
 
+    // Duração máxima de um evento (dias). Serviços reais não passam disto; o limite existe
+    // para travar enganos/abusos que tornariam o técnico inagendável (14.ª revisão).
+    private const MAX_DIAS_EVENTO = 31;
+
     // Detalhe de um evento (clique num evento).
     public ?int $eventoSelecionadoId = null;
 
@@ -395,7 +399,10 @@ class Calendario extends Component
                     ->where('ativo', true)],
             'formEquipamentoId' => ['nullable', 'exists:equipamentos,id'],
             'formInicio' => ['required', 'date'],
-            'formFim' => ['required', 'date', 'after:formInicio'],
+            // Teto de duração: sem ele (e sem o travão do horário de cobertura, que já não se
+            // aplica a multi-dia) dava para gravar um evento de anos, que colidiria com tudo e
+            // tornaria o técnico inagendável para sempre (14.ª revisão de segurança).
+            'formFim' => ['required', 'date', 'after:formInicio', 'before_or_equal:' . Carbon::parse($this->formInicio ?: 'now')->addDays(self::MAX_DIAS_EVENTO)->toDateTimeString()],
             'formContratoId' => ['nullable', 'exists:contratos,id'],
             'formCobertura' => ['nullable', 'required_with:formContratoId', 'in:incluida,extra'],
             'formHorasDias' => ['array', 'max:32'],

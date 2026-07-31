@@ -67,9 +67,12 @@ class GeradorEventoDeRelatorio
                 'cliente_id' => $equipamento->local?->cliente_id,
             ];
 
-            // Já tem evento ligado → atualiza (move na agenda) em vez de duplicar.
+            // Já tem evento ligado → atualiza (move na agenda) em vez de duplicar. As horas por
+            // dia são limpas: passam a ser do intervalo ANTIGO e, se sobrassem, o evento ficava
+            // a "valer" só nos dias antigos — os dias novos ficavam invisíveis no calendário e
+            // livres para double-booking (14.ª revisão de segurança). Mesma guarda do reagendar.
             if ($existente) {
-                $existente->update($dados);
+                $existente->update($dados + ['horas_dias' => null]);
 
                 return $existente;
             }

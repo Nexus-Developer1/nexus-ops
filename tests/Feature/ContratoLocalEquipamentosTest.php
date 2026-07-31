@@ -42,11 +42,10 @@ class ContratoLocalEquipamentosTest extends TestCase
             ->assertSee('Rua do Local, 5')              // morada do local
             ->assertSee('Av. da Sede, 100 · 1000-001 Lisboa'); // sede do cliente
 
-        // A cascata em si (independente da renderização).
-        $editor = new Editor;
-        $this->assertSame('Edifício B, piso 2, sala UPS', $editor->localDe($comExplicita->load('local.cliente')));
-        $this->assertSame('Rua do Local, 5', $editor->localDe($comMoradaLocal->load('local.cliente')));
-        $this->assertSame('Av. da Sede, 100 · 1000-001 Lisboa', $editor->localDe($comSede->load('local.cliente')));
+        // A cascata em si (vive no modelo — não é ação Livewire invocável do browser).
+        $this->assertSame('Edifício B, piso 2, sala UPS', $comExplicita->load('local.cliente')->localInstalacao());
+        $this->assertSame('Rua do Local, 5', $comMoradaLocal->load('local.cliente')->localInstalacao());
+        $this->assertSame('Av. da Sede, 100 · 1000-001 Lisboa', $comSede->load('local.cliente')->localInstalacao());
     }
 
     public function test_ficha_do_contrato_tambem_mostra_a_morada(): void
@@ -72,6 +71,6 @@ class ContratoLocalEquipamentosTest extends TestCase
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Armazém Norte']);
         $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-X']);
 
-        $this->assertSame('Armazém Norte', (new Editor)->localDe($equip->load('local.cliente')));
+        $this->assertSame('Armazém Norte', $equip->load('local.cliente')->localInstalacao());
     }
 }

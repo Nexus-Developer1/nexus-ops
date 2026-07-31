@@ -66,24 +66,99 @@ class RelatorioAssinaturaSadeiTest extends TestCase
         $this->assertStringStartsWith('assinaturas/fichas/', $ficha->assinatura_cliente_key);
     }
 
-    public function test_payload_invalido_e_ignorado(): void
+    public function test_payload_invalido_e_recusado_com_erro_visivel(): void
     {
         [$tecnico, $equip] = $this->cenario();
 
         Livewire::actingAs($tecnico)->test(Novo::class)
             ->set('equipamento_id', $equip->id)
             ->set('data', now()->toDateString())
-            ->set("fichas.{$equip->id}.assinatura_cliente_nome', 'x'")
             // Nem PNG, nem data URI de imagem: um SVG com script e um texto qualquer.
             ->set("fichas.{$equip->id}.assinatura_cliente", 'data:image/svg+xml;base64,' . base64_encode('<svg onload=alert(1)>'))
             ->set("fichas.{$equip->id}.assinatura_tecnico", 'data:image/png;base64,ISTO-NAO-E-BASE64')
             ->set("fichas.{$equip->id}.sadei.final_automatico", 'ok')
             ->call('guardarRascunho')
-            ->assertHasNoErrors();
+            // Numa folha que é prova de execução, o técnico TEM de saber que não ficou assinada.
+            ->assertHasErrors("fichas.{$equip->id}.assinatura_cliente")
+            ->assertHasErrors("fichas.{$equip->id}.assinatura_tecnico");
 
         $ficha = FichaMedicao::firstOrFail();
         $this->assertNull($ficha->assinatura_cliente_key);
         $this->assertNull($ficha->assinatura_tecnico_key);
+    }
+
+    public function test_png_gigante_e_recusado_bomba_de_descompressao(): void
+    {
+        [$tecnico, $equip] = $this->cenario();
+
+        // PNG que ANUNCIA 20000×20000 no cabeçalho mas ocupa uns bytes — é assim que uma
+        // "bomba de descompressão" se apresenta: pequena no disco, enorme ao descodificar
+        // (o DomPDF rebentava a memória/CPU do worker ao gerar o PDF). O header é remendado
+        // sobre um PNG 1×1 válido: getimagesizefromstring lê as dimensões daí.
+        $png = base64_decode(substr($this->pngDataUri(), strlen('data:image/png;base64,')));
+        $png = substr_replace($png, pack('N', 20000), 16, 4);  // largura no IHDR
+        $png = substr_replace($png, pack('N', 20000), 20, 4);  // altura no IHDR
+
+        $this->assertLessThan(FichaMedicao::ASSINATURA_MAX_BYTES, strlen($png)); // passaria no limite de tamanho
+        $this->assertSame([20000, 20000], array_slice(getimagesizefromstring($png), 0, 2));
+        $this->assertNull(FichaMedicao::pngDeAssinatura('data:image/png;base64,' . base64_encode($png)));
+
+        Livewire::actingAs($tecnico)->test(Novo::class)
+            ->set('equipamento_id', $equip->id)
+            ->set('data', now()->toDateString())
+            ->set("fichas.{$equip->id}.assinatura_cliente", 'data:image/png;base64,' . base64_encode($png))
+            ->call('guardarRascunho')
+            ->assertHasErrors("fichas.{$equip->id}.assinatura_cliente");
+    }
+
+    public function test_ficha_so_com_assinatura_persiste_e_a_data_nao_muda_ao_gravar_de_novo(): void
+    {
+        [$tecnico, $equip] = $this->cenario();
+
+        // Só a assinatura (sem preencher mais nada) — a ficha tem de ser criada.
+        $c = Livewire::actingAs($tecnico)->test(Novo::class)
+            ->set('equipamento_id', $equip->id)
+            ->set('data', now()->toDateString())
+            ->set("fichas.{$equip->id}.assinatura_cliente", $this->pngDataUri())
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $ficha = FichaMedicao::firstOrFail();
+        $this->assertNotNull($ficha->assinatura_cliente_key);
+        $assinadoEm = $ficha->assinado_em;
+        $keyOriginal = $ficha->assinatura_cliente_key;
+
+        // Gravar outra vez não regrava o PNG nem empurra a data da assinatura para a frente.
+        $this->travel(5)->minutes();
+        $c->call('guardarRascunho')->assertHasNoErrors();
+        $this->travelBack();
+
+        $ficha->refresh();
+        $this->assertSame($keyOriginal, $ficha->assinatura_cliente_key);
+        $this->assertEquals($assinadoEm, $ficha->assinado_em);
+        Storage::disk('local')->assertExists($keyOriginal);
+    }
+
+    public function test_limpar_a_assinatura_apaga_o_png_e_a_ficha_vazia(): void
+    {
+        [$tecnico, $equip] = $this->cenario();
+
+        $c = Livewire::actingAs($tecnico)->test(Novo::class)
+            ->set('equipamento_id', $equip->id)
+            ->set('data', now()->toDateString())
+            ->set("fichas.{$equip->id}.assinatura_cliente", $this->pngDataUri())
+            ->call('guardarRascunho');
+
+        $key = FichaMedicao::firstOrFail()->assinatura_cliente_key;
+        Storage::disk('local')->assertExists($key);
+
+        // Limpar a única coisa que a ficha tinha: a ficha desaparece e o PNG não fica órfão.
+        $c->set("fichas.{$equip->id}.assinatura_cliente", 'limpar')
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $this->assertSame(0, FichaMedicao::count());
+        Storage::disk('local')->assertMissing($key);
     }
 
     public function test_assinatura_aparece_no_pdf(): void

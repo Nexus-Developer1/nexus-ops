@@ -67,6 +67,30 @@ class Equipamento extends Model
         return $this->belongsTo(Local::class);
     }
 
+    /**
+     * ONDE o equipamento está instalado, para mostrar em listas e fichas. O nome do local
+     * ("Instalação principal") não diz nada, por isso a cascata é: localização explícita →
+     * morada do local → morada da sede do cliente (ERP) → nome do local.
+     */
+    public function localInstalacao(): string
+    {
+        $explicito = trim((string) $this->localizacao_instalacao);
+        if ($explicito !== '') {
+            return $explicito;
+        }
+
+        $moradaLocal = trim((string) ($this->local?->morada ?? ''));
+        if ($moradaLocal !== '') {
+            return $moradaLocal;
+        }
+
+        $sede = collect([trim((string) ($this->local?->cliente?->morada ?? '')), trim((string) ($this->local?->cliente?->codpost ?? ''))])
+            ->filter(fn ($s) => $s !== '')
+            ->implode(' · ');
+
+        return $sede !== '' ? $sede : trim((string) ($this->local?->designacao ?? '—'));
+    }
+
     // Equipamento "pai" — ex.: o UPS a que este banco de baterias está associado.
     public function equipamentoPai(): BelongsTo
     {

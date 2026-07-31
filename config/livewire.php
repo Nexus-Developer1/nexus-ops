@@ -65,7 +65,10 @@ return [
 
     'temporary_file_upload' => [
         'disk' => 'local',     // Ficheiros temporários no disco local (não no S3/MinIO)
-        'rules' => null,       // Example: ['file', 'mimes:png,jpg']  | Default: ['required', 'file', 'max:12288'] (12MB)
+        // Alinhado com a validação da app (max:20480). O default do Livewire é 12 MB: entre
+        // 12 e 20 MB o upload era recusado no endpoint temporário, ANTES de chegar ao
+        // componente — o mesmo "failed" sem explicação que se corrigiu no PHP (14.ª revisão).
+        'rules' => ['required', 'file', 'max:20480'],
         'directory' => null,   // Example: 'tmp'                      | Default: 'livewire-tmp'
         'middleware' => null,  // Example: 'throttle:5,1'             | Default: 'throttle:60,1'
         'preview_mimes' => [   // Supported file types for temporary pre-signed file URLs...

@@ -525,7 +525,7 @@ class Novo extends Component
             'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
             'tipo' => ['required', 'in:preventiva,corretiva,instalacao'],
             'data' => ['required', 'date'],
-            'fotosNovas.*.*' => ['image', 'max:20480'], // 20 MB (o PHP em produção aceita até 20M por ficheiro; ver 99-nexus-uploads.ini)
+            'fotosNovas.*.*' => ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'], // 20 MB (o PHP em produção aceita até 20M por ficheiro; ver 99-nexus-uploads.ini)
             // Finalizar exige saber quem fez a intervenção (o PDF identifica os técnicos).
             'tecnicoIds' => ['required', 'array', 'min:1'],
         ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos() + $this->regrasCobertos();
@@ -585,7 +585,7 @@ class Novo extends Component
     public function updatedFotos($value, $key): void
     {
         $equipId = (int) $key;
-        $this->validate(["fotos.$key.*" => ['image', 'max:20480']]);
+        $this->validate(["fotos.$key.*" => ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000']]);
 
         $this->fotosNovas[$equipId] = array_merge($this->fotosNovas[$equipId] ?? [], $this->fotos[$key] ?? []);
         $this->fotos[$key] = [];
@@ -640,7 +640,7 @@ class Novo extends Component
 
         $this->validate([
             'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
-            'fotosNovas.*.*' => ['image', 'max:20480'],
+            'fotosNovas.*.*' => ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'],
         ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos() + $this->regrasCobertos());
     }
 
@@ -880,7 +880,9 @@ class Novo extends Component
 
             $png = FichaMedicao::pngDeAssinatura(is_string($novo) ? $novo : null);
             if ($png === null) {
-                continue; // payload inválido → ignora em silêncio (mantém a anterior)
+                // O erro já foi levantado em persistirFichas() (que valida todas as fichas,
+                // incluindo as que nem chegam a ser criadas) — aqui só não se grava.
+                continue;
             }
 
             $antiga = $ficha->{$campoKey};
@@ -889,13 +891,20 @@ class Novo extends Component
             $ficha->{$campoKey} = $key;
             $mudou = true;
 
+            // Tira o data URI do estado do formulário: sem isto, cada gravação seguinte
+            // regravava o mesmo PNG e empurrava a data da assinatura para a frente.
+            $this->fichas[$ficha->equipamento_id]["assinatura_{$quem}"] = '';
+
             if ($antiga) {
                 Storage::disk()->delete($antiga);
             }
         }
 
         if ($mudou) {
-            $ficha->assinado_em = ($ficha->assinatura_cliente_key || $ficha->assinatura_tecnico_key) ? now() : null;
+            $temAssinatura = $ficha->assinatura_cliente_key || $ficha->assinatura_tecnico_key;
+            // Data da PRIMEIRA assinatura (não se renova a cada gravação; se ficarem ambas
+            // sem assinatura, limpa-se).
+            $ficha->assinado_em = $temAssinatura ? ($ficha->assinado_em ?? now()) : null;
             $ficha->save();
         }
     }
@@ -921,10 +930,41 @@ class Novo extends Component
                 $attrs['sadei'] = null;
             }
 
+            // Os payloads de assinatura validam-se AQUI (e não só ao gravar) porque uma ficha
+            // que tenha apenas uma assinatura inválida nem chega a ser criada — e o erro
+            // nunca chegava ao técnico. Numa folha que é prova de execução, uma assinatura
+            // perdida em silêncio é pior do que um erro (14.ª revisão de segurança).
+            $assinaturasNovas = 0;
+            foreach (['cliente', 'tecnico'] as $quem) {
+                $bruto = $dados["assinatura_{$quem}"] ?? '';
+                if (! is_string($bruto) || $bruto === '' || $bruto === 'limpar') {
+                    continue;
+                }
+
+                if (FichaMedicao::pngDeAssinatura($bruto) === null) {
+                    $this->addError("fichas.{$equipId}.assinatura_{$quem}",
+                        'A assinatura não foi guardada (imagem inválida ou demasiado grande). Assine outra vez.');
+
+                    continue;
+                }
+
+                $assinaturasNovas++;
+            }
+
+            // Uma assinatura é conteúdo por si só (o técnico pode assinar antes de preencher
+            // o resto). Conta a acabada de desenhar E a que já está gravada: como o data URI
+            // sai do formulário depois de gravado, uma ficha assinada mas sem medições era
+            // APAGADA na gravação seguinte — a assinatura desaparecia sozinha.
+            $existente = $intervencao->fichasMedicao()->where('equipamento_id', $equipId)->first();
+            $assinaturaGuardada = $existente && (
+                ($existente->assinatura_cliente_key && ($dados['assinatura_cliente'] ?? '') !== 'limpar')
+                || ($existente->assinatura_tecnico_key && ($dados['assinatura_tecnico'] ?? '') !== 'limpar')
+            );
+
             // Só persiste fichas com medições. Uma ficha vazia (só a identificação
             // auto-preenchida) não cria registo; se já existia e foi esvaziada, remove-se.
-            if (! FichaMedicao::temConteudo($attrs)) {
-                $intervencao->fichasMedicao()->where('equipamento_id', $equipId)->delete();
+            if ($assinaturasNovas === 0 && ! $assinaturaGuardada && ! FichaMedicao::temConteudo($attrs)) {
+                $this->apagarFicha($existente);
 
                 continue;
             }
@@ -938,10 +978,29 @@ class Novo extends Component
         }
 
         // Fichas de equipamentos que deixaram de estar cobertos (órfãs).
-        // (as assinaturas dessas fichas ficam no storage; ver comentário em persistirAssinaturas)
         $intervencao->fichasMedicao()
             ->when($ids !== [], fn ($q) => $q->whereNotIn('equipamento_id', $ids))
-            ->delete();
+            ->get()
+            ->each(fn (FichaMedicao $f) => $this->apagarFicha($f));
+    }
+
+    /**
+     * Apaga a ficha E os PNGs das assinaturas. Sem isto, cada ficha removida deixava os
+     * ficheiros no object storage para sempre, sem nada na BD a apontar-lhes (14.ª revisão).
+     */
+    private function apagarFicha(?FichaMedicao $ficha): void
+    {
+        if (! $ficha) {
+            return;
+        }
+
+        foreach ([$ficha->assinatura_cliente_key, $ficha->assinatura_tecnico_key] as $key) {
+            if ($key) {
+                Storage::disk()->delete($key);
+            }
+        }
+
+        $ficha->delete();
     }
 
     // Garante uma ficha de medições (pré-preenchida) para cada equipamento coberto, sem
@@ -1023,8 +1082,8 @@ class Novo extends Component
             'equipamentoPrincipal' => $equipamentoPrincipal,
             'contratos' => $contratos,
             'tecnicos' => $tecnicos,
-            // Assinaturas já gravadas (URL assinada e temporária por ficha/equipamento) —
-            // a ficha SADEI mostra-as até serem redesenhadas.
+            // Assinaturas já gravadas (data URI lido do storage) — a ficha SADEI mostra-as
+            // até serem redesenhadas. Uma query + leituras do storage por render.
             'assinaturasGravadas' => $this->assinaturasGravadas(),
         ]);
     }

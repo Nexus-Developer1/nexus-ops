@@ -38,6 +38,11 @@ class FichaMedicao extends Model
     /** Tamanho máximo do PNG de assinatura (data URI decodificado). */
     public const ASSINATURA_MAX_BYTES = 300 * 1024;
 
+    /** Limites de dimensão do PNG de assinatura (anti bomba de descompressão). */
+    public const ASSINATURA_MAX_LADO = 4000;
+
+    public const ASSINATURA_MAX_PIXEIS = 4_000_000;
+
     /** @return array<string, string> */
     protected function casts(): array
     {
@@ -63,6 +68,12 @@ class FichaMedicao extends Model
             return null;
         }
 
+        // Tamanho verificado ANTES de descodificar: com post_max_size de 60M, um data URI
+        // gigante fazia o servidor gastar centenas de MB só para depois rejeitar.
+        if (strlen($dataUri) > self::ASSINATURA_MAX_BYTES * 2) {
+            return null;
+        }
+
         $bytes = base64_decode(substr($dataUri, strlen('data:image/png;base64,')), true);
         if ($bytes === false || $bytes === '' || strlen($bytes) > self::ASSINATURA_MAX_BYTES) {
             return null;
@@ -70,8 +81,20 @@ class FichaMedicao extends Model
 
         // Confirma que é mesmo um PNG (e não outro formato/lixo com o prefixo certo).
         $info = @getimagesizefromstring($bytes);
+        if (! $info || $info[2] !== IMAGETYPE_PNG) {
+            return null;
+        }
 
-        return ($info && $info[2] === IMAGETYPE_PNG) ? $bytes : null;
+        // DIMENSÕES: 300 KB de PNG chegam para 20000×20000 px (uniforme comprime >1000:1) —
+        // uma "bomba de descompressão" que rebentava a memória/CPU do worker ao gerar o PDF
+        // (o DomPDF descodifica a imagem toda). Uma assinatura real cabe folgadamente aqui.
+        // 14.ª revisão de segurança.
+        if ($info[0] > self::ASSINATURA_MAX_LADO || $info[1] > self::ASSINATURA_MAX_LADO
+            || ($info[0] * $info[1]) > self::ASSINATURA_MAX_PIXEIS) {
+            return null;
+        }
+
+        return $bytes;
     }
 
     // --- Metadados da estrutura (partilhados com a UI) -------------------------------

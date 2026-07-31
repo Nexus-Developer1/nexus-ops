@@ -164,7 +164,7 @@
                         <div
                             x-data="{
                                 busca: '',
-                                itens: @js($equipamentos->map(fn ($e) => ['nome' => trim($e->fabricante . ' ' . $e->modelo), 'serie' => $e->numero_serie ?? '', 'local' => $this->localDe($e)])->values()),
+                                itens: @js($equipamentos->map(fn ($e) => ['nome' => trim($e->fabricante . ' ' . $e->modelo), 'serie' => $e->numero_serie ?? '', 'local' => $e->localInstalacao()])->values()),
                                 norm(s) { return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); },
                                 casa(it, n) { return this.norm(it.nome).includes(n) || this.norm(it.serie).includes(n) || this.norm(it.local).includes(n); },
                                 visivel(i) {
@@ -204,7 +204,7 @@
                                             {{-- ONDE está instalado (morada real, não o nome do local). --}}
                                             <span class="mt-0.5 flex items-center gap-1 text-xs text-texto-medio">
                                                 <svg class="h-3 w-3 shrink-0 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                                <span class="truncate">{{ $this->localDe($e) }}</span>
+                                                <span class="truncate">{{ $e->localInstalacao() }}</span>
                                             </span>
                                         </span>
                                     </label>

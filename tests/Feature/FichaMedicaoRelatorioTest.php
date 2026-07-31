@@ -334,7 +334,7 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->call('definirModo', 'individual')
             ->set('equipamento_id', $e1->id)
             ->set('data', now()->toDateString())
-            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->create('foto.jpg', 100, 'image/jpeg')])
+            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->image('foto.png', 800, 600)])
             ->call('guardarRascunho')
             ->assertHasNoErrors();
 
@@ -362,10 +362,10 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->set('equipamento_id', $e1->id)
             ->set('data', now()->toDateString())
             // 1.ª seleção no equipamento
-            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->create('a.jpg', 100, 'image/jpeg')])
+            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->image('a.png', 800, 600)])
             ->assertCount('fotosNovas.' . $e1->id, 1)
             // 2.ª seleção: ACRESCENTA (antes substituía → a 1.ª desaparecia).
-            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->create('b.jpg', 100, 'image/jpeg')])
+            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->image('b.png', 800, 600)])
             ->assertCount('fotosNovas.' . $e1->id, 2);
 
         // Remover uma da pré-visualização (por gravar) deixa 1.
@@ -390,7 +390,7 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->call('selecionarContrato', $contrato->id)
             ->set('data', now()->toDateString())
             ->set("fichas.{$e1->id}.ve_ln_l1", '230.00')
-            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->create('up.jpg', 100, 'image/jpeg')])
+            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->image('up.png', 800, 600)])
             ->set('tecnicoIds', [$tec->id]) // finalizar exige quem fez a intervenção
             ->call('finalizar')
             ->assertHasNoErrors();

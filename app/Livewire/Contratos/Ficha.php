@@ -67,29 +67,6 @@ class Ficha extends Component
         }
     }
 
-    /**
-     * ONDE o equipamento está instalado (mesma cascata do Editor e da ficha de medições —
-     * o nome do local, "Instalação principal", não diz nada): localização explícita →
-     * morada do local → morada da sede do cliente → nome do local.
-     */
-    public function localDe(\App\Models\Equipamento $e): string
-    {
-        $explicito = trim((string) $e->localizacao_instalacao);
-        if ($explicito !== '') {
-            return $explicito;
-        }
-
-        $moradaLocal = trim((string) ($e->local?->morada ?? ''));
-        if ($moradaLocal !== '') {
-            return $moradaLocal;
-        }
-
-        $sede = collect([trim((string) ($e->local?->cliente?->morada ?? '')), trim((string) ($e->local?->cliente?->codpost ?? ''))])
-            ->filter(fn ($s) => $s !== '')
-            ->implode(' · ');
-
-        return $sede !== '' ? $sede : trim((string) ($e->local?->designacao ?? '—'));
-    }
 
     public function render()
     {

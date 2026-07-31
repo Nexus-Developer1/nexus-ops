@@ -87,7 +87,18 @@ class EventoAgenda extends Model
             ->sortBy(fn (array $s) => $s[0])
             ->values();
 
-        return $segmentos->count() >= 2 ? $segmentos->all() : [[$this->inicio, $this->fim]];
+        if ($segmentos->count() < 2) {
+            return [[$this->inicio, $this->fim]];
+        }
+
+        // Os segmentos têm de cobrir o PRIMEIRO e o ÚLTIMO dia do evento. Se não cobrem, são
+        // restos de um intervalo anterior (ex.: o fim foi esticado noutro sítio) e usá-los
+        // deixava os dias novos invisíveis no calendário e livres para double-booking — nesse
+        // caso vale o intervalo contínuo, que nunca subestima o trabalho (14.ª revisão).
+        $cobrePrimeiro = $segmentos->first()[0]->isSameDay($this->inicio);
+        $cobreUltimo = $segmentos->last()[1]->isSameDay($this->fim);
+
+        return ($cobrePrimeiro && $cobreUltimo) ? $segmentos->all() : [[$this->inicio, $this->fim]];
     }
 
     public function tecnico(): BelongsTo
