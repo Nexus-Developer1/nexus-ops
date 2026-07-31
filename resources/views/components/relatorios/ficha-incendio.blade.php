@@ -82,9 +82,10 @@
                 <p class="campo-label">{{ $tituloSec }}</p>
                 <span class="text-xs text-aviso-500">Inibir o sistema antes de iniciar · repor em automático no fim</span>
             </div>
-            <div class="space-y-2">
+            {{-- Uma linha horizontal a separar cada questão (leitura mais fácil em listas longas). --}}
+            <div class="divide-y divide-borda">
                 @foreach ($sec['itens'] as $k => $rotulo)
-                    <div class="grid grid-cols-1 items-center gap-2 sm:grid-cols-12" wire:key="sadei-{{ $sec['chave'] }}-{{ $k }}-{{ $prefixo }}">
+                    <div class="grid grid-cols-1 items-center gap-2 py-2 sm:grid-cols-12" wire:key="sadei-{{ $sec['chave'] }}-{{ $k }}-{{ $prefixo }}">
                         <span class="text-sm text-texto-forte sm:col-span-9">{{ $rotulo }}</span>
                         <div class="flex items-center gap-3 sm:col-span-3">
                             @foreach (['ok' => 'OK', 'ko' => 'KO', 'na' => 'N/A'] as $ev => $er)
