@@ -7,6 +7,24 @@ import interactionPlugin from '@fullcalendar/interaction';
 import ptLocale from '@fullcalendar/core/locales/pt';
 import Chart from 'chart.js/auto';
 
+// Ações que não devem mexer na posição da página (tirar/remover fotos): sem isto, o
+// re-render do Livewire — que remove do DOM o botão em foco — devolvia o técnico ao topo,
+// obrigando-o a descer outra vez a cada foto. Marca-se antes da ação e repõe-se no fim.
+let scrollAPreservar = null;
+window.preservarScroll = () => { scrollAPreservar = window.scrollY; };
+
+document.addEventListener('livewire:init', () => {
+    window.Livewire.hook('commit', ({ succeed }) => {
+        succeed(() => {
+            if (scrollAPreservar === null) return;
+            const y = scrollAPreservar;
+            scrollAPreservar = null;
+            // Depois do morph (2 frames): a altura do bloco de fotos já estabilizou.
+            requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ top: y })));
+        });
+    });
+});
+
 // Componente Alpine da Agenda (FullCalendar). O $wire vem do componente Livewire
 // que envolve este DOM. Eventos e reagendamento passam pelo backend (fonte de verdade).
 document.addEventListener('alpine:init', () => {
@@ -35,6 +53,8 @@ document.addEventListener('alpine:init', () => {
             const ficheiros = Array.from(evento.target.files || []);
             evento.target.value = ''; // permite escolher/tirar a MESMA foto outra vez
             if (!ficheiros.length) return;
+
+            window.preservarScroll(); // fica onde está: dá para tirar várias seguidas
 
             const prontos = [];
             for (const f of ficheiros) {
