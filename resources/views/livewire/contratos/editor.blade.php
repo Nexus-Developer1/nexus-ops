@@ -161,18 +161,18 @@
                         <div
                             x-data="{
                                 busca: '',
-                                itens: @js($equipamentos->map(fn ($e) => ['nome' => trim($e->fabricante . ' ' . $e->modelo), 'serie' => $e->numero_serie ?? ''])->values()),
+                                itens: @js($equipamentos->map(fn ($e) => ['nome' => trim($e->fabricante . ' ' . $e->modelo), 'serie' => $e->numero_serie ?? '', 'local' => $this->localDe($e)])->values()),
                                 norm(s) { return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); },
+                                casa(it, n) { return this.norm(it.nome).includes(n) || this.norm(it.serie).includes(n) || this.norm(it.local).includes(n); },
                                 visivel(i) {
                                     const n = this.norm(this.busca);
                                     if (n === '') return true;
-                                    const it = this.itens[i];
-                                    return this.norm(it.nome).includes(n) || this.norm(it.serie).includes(n);
+                                    return this.casa(this.itens[i], n);
                                 },
                                 get nenhum() {
                                     const n = this.norm(this.busca);
                                     if (n === '') return false;
-                                    return !this.itens.some(it => this.norm(it.nome).includes(n) || this.norm(it.serie).includes(n));
+                                    return !this.itens.some(it => this.casa(it, n));
                                 },
                             }"
                         >
@@ -186,7 +186,7 @@
                             </div>
                             <div class="relative mb-4">
                                 <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 17a6 6 0 100-12 6 6 0 000 12z"/></svg>
-                                <input type="text" x-model="busca" placeholder="Pesquisar por nome ou nº de série..." autocomplete="off" class="campo-input pl-10 pr-10">
+                                <input type="text" x-model="busca" placeholder="Pesquisar por nome, nº de série ou local..." autocomplete="off" class="campo-input pl-10 pr-10">
                                 <button type="button" x-show="busca !== ''" x-cloak @click="busca = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-texto-fraco hover:text-texto-forte" aria-label="Limpar pesquisa">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                                 </button>
@@ -196,8 +196,13 @@
                                     <label x-show="visivel({{ $loop->index }})" class="flex items-center gap-3 rounded-lg border border-borda px-4 py-3 hover:bg-fundo" wire:key="equip-{{ $e->id }}">
                                         <input wire:model="equipamentoIds" type="checkbox" value="{{ $e->id }}" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-600">
                                         <span class="min-w-0">
-                                            <span class="block truncate text-sm font-medium text-texto-forte">{{ $e->fabricante }} {{ $e->modelo }}</span>
-                                            <span class="block truncate text-xs text-texto-fraco">{{ $e->numero_serie ?? '—' }} · {{ $e->local->designacao }}</span>
+                                            <span class="block truncate text-sm font-medium text-texto-forte">{{ trim($e->fabricante . ' ' . $e->modelo) ?: $e->tipo->rotulo() }}</span>
+                                            <span class="block truncate text-xs text-texto-fraco">{{ $e->numero_serie ?? '—' }}</span>
+                                            {{-- ONDE está instalado (morada real, não o nome do local). --}}
+                                            <span class="mt-0.5 flex items-center gap-1 text-xs text-texto-medio">
+                                                <svg class="h-3 w-3 shrink-0 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                                <span class="truncate">{{ $this->localDe($e) }}</span>
+                                            </span>
                                         </span>
                                     </label>
                                 @endforeach

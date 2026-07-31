@@ -278,6 +278,31 @@ class Editor extends Component
         $this->equipamentoIds = [];
     }
 
+    /**
+     * ONDE o equipamento está instalado, para a lista de seleção do contrato. Mesma cascata
+     * da ficha de medições no PDF (o nome do local — "Instalação principal" — não diz nada):
+     * localização explícita do equipamento → morada do local → morada da sede do cliente →
+     * nome do local. Público: a view usa-o por equipamento.
+     */
+    public function localDe(Equipamento $e): string
+    {
+        $explicito = trim((string) $e->localizacao_instalacao);
+        if ($explicito !== '') {
+            return $explicito;
+        }
+
+        $moradaLocal = trim((string) ($e->local?->morada ?? ''));
+        if ($moradaLocal !== '') {
+            return $moradaLocal;
+        }
+
+        $sede = collect([trim((string) ($e->local?->cliente?->morada ?? '')), trim((string) ($e->local?->cliente?->codpost ?? ''))])
+            ->filter(fn ($s) => $s !== '')
+            ->implode(' · ');
+
+        return $sede !== '' ? $sede : trim((string) ($e->local?->designacao ?? '—'));
+    }
+
     // Normaliza o termo de pesquisa (minúsculas, sem acentos) para casar com a
     // expressão translate() aplicada ao nome.
     private function normalizarBusca(string $valor): string
@@ -292,10 +317,11 @@ class Editor extends Component
     public function render()
     {
         // Equipamentos disponíveis para o cliente escolhido (âmbito do contrato).
+        // with local.cliente: a lista mostra a MORADA de instalação (ver localDe()).
         $equipamentos = $this->cliente_id
             ? Equipamento::query()
                 ->whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
-                ->with('local')
+                ->with('local.cliente')
                 ->orderBy('id')
                 ->get()
             : collect();
