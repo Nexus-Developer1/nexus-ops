@@ -50,6 +50,16 @@
                         <option value="sem">Sem banco associado</option>
                         <option value="banco">Só bancos associados a UPS</option>
                     </select>
+
+                    {{-- Ordenação (padrão da lista de clientes). Por defeito: mais recentes. --}}
+                    <div class="flex w-full items-center gap-2 sm:w-auto">
+                        <label for="ordenar" class="shrink-0 text-sm text-texto-medio">Ordenar:</label>
+                        <select id="ordenar" wire:model.live="ordenar" class="campo-select w-full sm:w-56">
+                            @foreach ($ordenacoes as $valor => $rotulo)
+                                <option value="{{ $valor }}">{{ $rotulo }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
             </div>
 

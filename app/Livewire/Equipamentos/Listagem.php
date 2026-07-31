@@ -31,6 +31,41 @@ class Listagem extends Component
     #[Url]
     public string $banco = '';
 
+    // Ordenação ativa (valor de uma whitelist — nunca interpolado em cru). Por defeito, os
+    // MAIS RECENTES primeiro: era a ordem de inserção do ERP (id), que escondia lá no fim
+    // os equipamentos acabados de sincronizar/registar.
+    #[Url]
+    public string $ordenar = 'recentes';
+
+    /** Opções de ordenação (valor => rótulo), no padrão da lista de clientes. */
+    private function ordenacoes(): array
+    {
+        return [
+            'recentes' => 'Mais recentes',
+            'antigos' => 'Mais antigos',
+            'serie_asc' => 'Nº de série (A → Z)',
+            'serie_desc' => 'Nº de série (Z → A)',
+            'cliente_asc' => 'Cliente (A → Z)',
+            'cliente_desc' => 'Cliente (Z → A)',
+        ];
+    }
+
+    // Subquery com o nome do cliente (equipamento → local → cliente), sem acentos, para
+    // ordenar sem carregar as relações linha a linha.
+    private function subNomeCliente(): \Illuminate\Database\Query\Builder
+    {
+        return \Illuminate\Support\Facades\DB::table('locais')
+            ->join('clientes', 'clientes.id', '=', 'locais.cliente_id')
+            ->whereColumn('locais.id', 'equipamentos.local_id')
+            ->selectRaw("translate(lower(btrim(clientes.nome)), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')")
+            ->limit(1);
+    }
+
+    public function updatingOrdenar(): void
+    {
+        $this->resetPage();
+    }
+
     public function updatingPesquisa(): void
     {
         $this->resetPage();
@@ -73,8 +108,19 @@ class Listagem extends Component
                         ->orWhereHas('equipamentosAssociados', fn ($q) => $q->where('numero_serie', 'ilike', $termo));
                 });
             })
-            ->orderBy('id')
-            ->paginate(10);
+            ;
+
+        // Whitelist (default = mais recentes). Desempate por id → paginação estável.
+        match ($this->ordenar) {
+            'antigos' => $equipamentos->orderBy('id'),
+            'serie_asc' => $equipamentos->orderByRaw('numero_serie asc nulls last')->orderBy('id'),
+            'serie_desc' => $equipamentos->orderByRaw('numero_serie desc nulls last')->orderBy('id'),
+            'cliente_asc' => $equipamentos->orderBy($this->subNomeCliente())->orderByDesc('id'),
+            'cliente_desc' => $equipamentos->orderByDesc($this->subNomeCliente())->orderByDesc('id'),
+            default => $equipamentos->orderByDesc('id'),
+        };
+
+        $equipamentos = $equipamentos->paginate(10);
 
         // Famílias disponíveis (nomes distintos já presentes) para o dropdown do filtro.
         $familias = Equipamento::query()
@@ -87,6 +133,7 @@ class Listagem extends Component
             'equipamentos' => $equipamentos,
             'tipos' => TipoEquipamento::cases(),
             'familias' => $familias,
+            'ordenacoes' => $this->ordenacoes(),
         ]);
     }
 }

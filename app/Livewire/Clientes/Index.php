@@ -24,9 +24,11 @@ class Index extends Component
     #[Url]
     public string $pesquisa = '';
 
-    // Ordenação ativa (valor de uma whitelist — nunca interpolado em cru).
+    // Ordenação ativa (valor de uma whitelist — nunca interpolado em cru). Por defeito, os
+    // MAIS RECENTES primeiro (igual à lista de equipamentos): quem chega novo do PHC fica à
+    // vista, em vez de enterrado no meio de 3 mil nomes.
     #[Url]
-    public string $ordenar = 'nome_asc';
+    public string $ordenar = 'recentes';
 
     public function updatingPesquisa(): void
     {
