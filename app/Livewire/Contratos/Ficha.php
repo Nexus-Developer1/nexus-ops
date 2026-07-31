@@ -67,7 +67,6 @@ class Ficha extends Component
         }
     }
 
-
     public function render()
     {
         $this->contrato->load([

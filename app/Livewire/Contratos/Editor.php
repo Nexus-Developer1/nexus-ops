@@ -278,7 +278,6 @@ class Editor extends Component
         $this->equipamentoIds = [];
     }
 
-
     // Normaliza o termo de pesquisa (minúsculas, sem acentos) para casar com a
     // expressão translate() aplicada ao nome.
     private function normalizarBusca(string $valor): string

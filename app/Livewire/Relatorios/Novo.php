@@ -579,9 +579,10 @@ class Novo extends Component
     }
 
     // ---- Fotos novas (por gravar), por equipamento ----
-    // O seletor de cada ficha é wire:model="fotos.{equipId}"; ao mudar, o Livewire chama este hook
-    // com $key = equipId. Validamos as novas e acumulamos em $fotosNovas[equipId], limpando o input
-    // desse equipamento para a próxima ronda (cada seleção ACRESCENTA, não substitui).
+    // O upload chega via $wire.uploadMultiple('fotos.{equipId}', ...) (comprimido no cliente —
+    // ver fotosUpload em app.js); ao aterrar, o Livewire chama este hook com $key = equipId.
+    // Validamos as novas e acumulamos em $fotosNovas[equipId], limpando o input desse
+    // equipamento para a próxima ronda (cada seleção ACRESCENTA, não substitui).
     public function updatedFotos($value, $key): void
     {
         $equipId = (int) $key;
