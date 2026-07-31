@@ -49,6 +49,23 @@ class ContratoLocalEquipamentosTest extends TestCase
         $this->assertSame('Av. da Sede, 100 · 1000-001 Lisboa', $editor->localDe($comSede->load('local.cliente')));
     }
 
+    public function test_ficha_do_contrato_tambem_mostra_a_morada(): void
+    {
+        $admin = User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Instalação principal', 'morada' => 'Rua do Local, 5']);
+        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-1']);
+        $contrato = \App\Models\Contrato::create(['numero' => '2026/0500', 'cliente_id' => $cliente->id,
+            'data_inicio' => now(), 'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'preventiva',
+            'modelo_faturacao_id' => \App\Models\ModeloFaturacao::query()->value('id'),
+            'renovacao_automatica' => false, 'periodo_aviso_dias' => 30]);
+        $contrato->equipamentos()->sync([$equip->id]);
+
+        Livewire::actingAs($admin)->test(\App\Livewire\Contratos\Ficha::class, ['contrato' => $contrato])
+            ->assertSee('Rua do Local, 5')
+            ->assertDontSee('Instalação principal');
+    }
+
     public function test_sem_moradas_cai_no_nome_do_local(): void
     {
         $cliente = Cliente::create(['nome' => 'Beta', 'ativo' => true]); // sem morada

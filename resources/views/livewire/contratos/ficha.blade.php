@@ -101,8 +101,13 @@
                     @forelse ($contrato->equipamentos as $e)
                         <li class="flex items-center justify-between border-b border-borda px-6 py-3.5 last:border-0">
                             <div>
-                                <a href="{{ route('equipamentos.ficha', $e) }}" wire:navigate class="text-sm font-medium text-texto-forte hover:text-verde-600">{{ $e->fabricante }} {{ $e->modelo }}</a>
-                                <div class="text-xs text-texto-fraco">{{ $e->numero_serie ?? '—' }} · {{ $e->local->designacao }}</div>
+                                <a href="{{ route('equipamentos.ficha', $e) }}" wire:navigate class="text-sm font-medium text-texto-forte hover:text-verde-600">{{ trim($e->fabricante . ' ' . $e->modelo) ?: $e->tipo->rotulo() }}</a>
+                                <div class="text-xs text-texto-fraco">{{ $e->numero_serie ?? '—' }}</div>
+                                {{-- ONDE está instalado (morada real, não o nome do local). --}}
+                                <div class="mt-0.5 flex items-center gap-1 text-xs text-texto-medio">
+                                    <svg class="h-3 w-3 shrink-0 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    <span class="truncate">{{ $this->localDe($e) }}</span>
+                                </div>
                             </div>
                             <span class="etiqueta {{ $e->tipo->classesEtiqueta() }}">{{ $e->tipo->rotulo() }}</span>
                         </li>
