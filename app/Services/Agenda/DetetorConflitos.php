@@ -28,8 +28,16 @@ class DetetorConflitos
     }
 
     // Evento fora do horário comercial / fim-de-semana? (independente de técnico).
+    // Só se aplica a eventos DENTRO do mesmo dia — o horário de cobertura serve para o
+    // planeamento normal. Um evento que atravessa dias é registo de trabalho REAL
+    // (deslocações longas, intervenções de noite/fim-de-semana): regulariza-se como foi,
+    // sem ser bloqueado. A deteção de conflitos/double-booking aplica-se sempre.
     public function foraDeHorario(Carbon $inicio, Carbon $fim): ?string
     {
+        if (! $inicio->isSameDay($fim)) {
+            return null;
+        }
+
         $abertura = (int) config('agenda.hora_abertura');
         $fecho = (int) config('agenda.hora_fecho');
         $diasUteis = (array) config('agenda.dias_uteis');

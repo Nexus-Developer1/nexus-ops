@@ -82,8 +82,10 @@ document.addEventListener('alpine:init', () => {
                 eventDrop: (info) => this.aoMover(info),
                 eventResize: (info) => this.aoMover(info),
                 select: (info) => {
-                    // Selecionar um intervalo livre → criar evento próprio.
-                    this.$wire.abrirCriacao(info.startStr, info.endStr);
+                    // Criação por DIA: manda só a data (sem hora) — as horas reais escrevem-se
+                    // no formulário, que aceita vários dias. Antes o evento nascia colado à
+                    // faixa horária clicada, o que obrigava a corrigir sempre a seguir.
+                    this.$wire.abrirCriacao(info.startStr.slice(0, 10), info.startStr.slice(0, 10));
                     this.calendar.unselect();
                 },
                 eventClick: (info) => {

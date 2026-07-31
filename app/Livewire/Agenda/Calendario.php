@@ -176,8 +176,18 @@ class Calendario extends Component
         abort_if(auth()->user()->ehCliente(), 403);
 
         $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoIds', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura']);
-        $this->formInicio = Carbon::parse($inicio)->format('Y-m-d\TH:i');
-        $this->formFim = Carbon::parse($fim)->format('Y-m-d\TH:i');
+
+        // A agenda manda o DIA (sem hora) — as horas reais escrevem-se no formulário e podem
+        // abranger vários dias. Sem hora, arranca na abertura e propõe 1h (fácil de ajustar).
+        $ini = Carbon::parse($inicio);
+        $fimC = Carbon::parse($fim);
+        if (! str_contains($inicio, 'T')) {
+            $ini = $ini->setTime((int) config('agenda.hora_abertura'), 0);
+            $fimC = $ini->copy()->addHour();
+        }
+
+        $this->formInicio = $ini->format('Y-m-d\TH:i');
+        $this->formFim = $fimC->format('Y-m-d\TH:i');
         $this->modalCriar = true;
     }
 
