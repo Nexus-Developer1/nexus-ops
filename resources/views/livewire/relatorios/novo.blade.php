@@ -359,21 +359,24 @@
                                      (capture) e "Galeria" abre o seletor de ficheiros/álbum. Em
                                      telemóvel/tablet mostram-se as duas; no computador só a galeria
                                      (o capture é ignorado e só confundia). --}}
-                                <div x-data="{ toque: ('ontouchstart' in window) || navigator.maxTouchPoints > 0 }"
+                                <div x-data="{ toque: ('ontouchstart' in window) || navigator.maxTouchPoints > 0, ...fotosUpload(@js('fotos.' . $e->id)) }"
+                                    wire:key="fotos-{{ $e->id }}"
                                     class="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-borda py-6 text-texto-fraco">
                                     <div wire:loading.remove wire:target="fotos.{{ $e->id }}" class="flex flex-wrap items-center justify-center gap-3">
                                         <label x-show="toque" x-cloak class="botao-secundario inline-flex cursor-pointer items-center gap-2">
-                                            <input type="file" wire:model="fotos.{{ $e->id }}" accept="image/*" capture="environment" class="hidden">
+                                            {{-- multiple + capture: nos telemóveis que o suportam dá para tirar várias
+                                                 seguidas; nos restantes tira uma e o botão volta a estar disponível. --}}
+                                            <input type="file" @change="escolher($event)" accept="image/*" capture="environment" multiple class="hidden">
                                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                                             Tirar foto
                                         </label>
                                         <label class="botao-secundario inline-flex cursor-pointer items-center gap-2">
-                                            <input type="file" wire:model="fotos.{{ $e->id }}" multiple accept="image/*" class="hidden">
+                                            <input type="file" @change="escolher($event)" multiple accept="image/*" class="hidden">
                                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                             <span x-text="toque ? 'Galeria' : 'Escolher ficheiros'">Escolher ficheiros</span>
                                         </label>
                                     </div>
-                                    <span class="text-xs font-medium" wire:loading.remove wire:target="fotos.{{ $e->id }}">Fotografias deste equipamento</span>
+                                    <span class="text-xs font-medium" wire:loading.remove wire:target="fotos.{{ $e->id }}">Fotografias deste equipamento · pode adicionar várias</span>
                                     <span class="flex items-center gap-2 text-xs font-medium" wire:loading wire:target="fotos.{{ $e->id }}">
                                         <svg class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 018-8"/></svg>
                                         A enviar…

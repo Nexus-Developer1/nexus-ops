@@ -22,6 +22,58 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
+    // Fotos da intervenção: COMPRIME no telemóvel antes de enviar (CLAUDE.md §6). Uma foto
+    // de telemóvel tem 3–6 MB; redimensionada a 1920px e recomprimida em JPEG fica em
+    // ~300–600 KB — sobe depressa em 4G e deixa de esbarrar nos limites de upload do PHP.
+    // O ficheiro comprimido é enviado ao Livewire por uploadMultiple (a propriedade é a
+    // mesma do wire:model, por isso o hook updatedFotos continua a acumular as seleções).
+    window.Alpine.data('fotosUpload', (campo) => ({
+        MAX_LADO: 1920,
+        QUALIDADE: 0.82,
+
+        async escolher(evento) {
+            const ficheiros = Array.from(evento.target.files || []);
+            evento.target.value = ''; // permite escolher/tirar a MESMA foto outra vez
+            if (!ficheiros.length) return;
+
+            const prontos = [];
+            for (const f of ficheiros) {
+                prontos.push(f.type.startsWith('image/') ? await this.comprimir(f) : f);
+            }
+
+            this.$wire.uploadMultiple(campo, prontos);
+        },
+
+        comprimir(ficheiro) {
+            return new Promise((resolve) => {
+                const url = URL.createObjectURL(ficheiro);
+                const img = new Image();
+
+                img.onload = () => {
+                    URL.revokeObjectURL(url);
+                    const escala = Math.min(1, this.MAX_LADO / Math.max(img.width, img.height));
+                    // Já pequena: envia como está (não vale a pena recomprimir e perder nitidez).
+                    if (escala === 1 && ficheiro.size <= 1.5 * 1024 * 1024) return resolve(ficheiro);
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.round(img.width * escala);
+                    canvas.height = Math.round(img.height * escala);
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    canvas.toBlob((blob) => {
+                        if (!blob || blob.size >= ficheiro.size) return resolve(ficheiro);
+                        const nome = ficheiro.name.replace(/\.[^.]+$/, '') + '.jpg';
+                        resolve(new File([blob], nome, { type: 'image/jpeg', lastModified: Date.now() }));
+                    }, 'image/jpeg', this.QUALIDADE);
+                };
+
+                // Formato que o browser não abre (HEIC antigo, etc.) → envia o original.
+                img.onerror = () => { URL.revokeObjectURL(url); resolve(ficheiro); };
+                img.src = url;
+            });
+        },
+    }));
+
     // Assinatura desenhada (iPad + Apple Pencil, dedo ou rato). Captura por pointer events
     // num canvas e envia o PNG ao Livewire ao levantar a caneta. O canvas é redimensionado
     // ao pixel-ratio do ecrã para o traço não sair serrilhado no PDF.

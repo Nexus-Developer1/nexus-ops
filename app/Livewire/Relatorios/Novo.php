@@ -525,7 +525,7 @@ class Novo extends Component
             'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
             'tipo' => ['required', 'in:preventiva,corretiva,instalacao'],
             'data' => ['required', 'date'],
-            'fotosNovas.*.*' => ['image', 'max:8192'], // 8 MB
+            'fotosNovas.*.*' => ['image', 'max:20480'], // 20 MB (o PHP em produção aceita até 20M por ficheiro; ver 99-nexus-uploads.ini)
             // Finalizar exige saber quem fez a intervenção (o PDF identifica os técnicos).
             'tecnicoIds' => ['required', 'array', 'min:1'],
         ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos() + $this->regrasCobertos();
@@ -585,7 +585,7 @@ class Novo extends Component
     public function updatedFotos($value, $key): void
     {
         $equipId = (int) $key;
-        $this->validate(["fotos.$key.*" => ['image', 'max:8192']]);
+        $this->validate(["fotos.$key.*" => ['image', 'max:20480']]);
 
         $this->fotosNovas[$equipId] = array_merge($this->fotosNovas[$equipId] ?? [], $this->fotos[$key] ?? []);
         $this->fotos[$key] = [];
@@ -640,7 +640,7 @@ class Novo extends Component
 
         $this->validate([
             'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
-            'fotosNovas.*.*' => ['image', 'max:8192'],
+            'fotosNovas.*.*' => ['image', 'max:20480'],
         ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos() + $this->regrasCobertos());
     }
 
