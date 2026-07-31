@@ -240,17 +240,39 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="campo-label">Início <span class="text-perigo-500">*</span></label>
-                                    <input wire:model="formInicio" type="datetime-local" class="campo-input">
+                                    {{-- live: com fim noutro dia, aparecem as linhas de horas por dia. --}}
+                                    <input wire:model.live="formInicio" type="datetime-local" class="campo-input">
                                     @error('formInicio') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label class="campo-label">Fim <span class="text-perigo-500">*</span></label>
-                                    <input wire:model="formFim" type="datetime-local" class="campo-input">
+                                    <input wire:model.live="formFim" type="datetime-local" class="campo-input">
                                     @error('formFim') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                                 </div>
                                 <p class="text-xs text-texto-fraco sm:col-span-2">
                                     Escreva as horas realmente trabalhadas — o fim pode ser <strong>noutro dia</strong> (trabalho que atravessa dias não é limitado pelo horário de cobertura).
                                 </p>
+
+                                {{-- Horas trabalhadas POR DIA (serviços de vários dias): uma linha
+                                     por dia, horas editáveis — o calendário mostra um bloco por dia. --}}
+                                @if (count($formHorasDias) > 1)
+                                    <div class="sm:col-span-2 rounded-lg border border-borda bg-slate-50/60 p-4">
+                                        <p class="campo-label">Horas trabalhadas em cada dia</p>
+                                        <div class="mt-1 space-y-2">
+                                            @foreach ($formHorasDias as $i => $linha)
+                                                <div class="flex flex-wrap items-center gap-2" wire:key="hd-{{ $linha['dia'] }}">
+                                                    <span class="w-32 text-sm font-medium text-texto-forte">{{ \Illuminate\Support\Carbon::parse($linha['dia'])->translatedFormat('D, d/m') }}</span>
+                                                    <input type="time" wire:model="formHorasDias.{{ $i }}.inicio" class="campo-input w-28 py-1.5 text-sm">
+                                                    <span class="text-texto-fraco">–</span>
+                                                    <input type="time" wire:model="formHorasDias.{{ $i }}.fim" class="campo-input w-28 py-1.5 text-sm">
+                                                    @error("formHorasDias.$i.inicio") <p class="w-full text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                                    @error("formHorasDias.$i.fim") <p class="w-full text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                        <p class="mt-2 text-xs text-texto-fraco">Cada dia pode ter o seu horário — pode voltar aqui em qualquer dia e acertar as horas realmente trabalhadas.</p>
+                                    </div>
+                                @endif
                             </div>
 
                             {{-- Contrato (opcional) + cobertura — liga a visita ao saldo do contrato. --}}

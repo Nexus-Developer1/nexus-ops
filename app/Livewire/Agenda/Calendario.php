@@ -59,6 +59,12 @@ class Calendario extends Component
     public string $formInicio = '';
     public string $formFim = '';
 
+    // Horas trabalhadas POR DIA — só quando o intervalo atravessa vários dias. Linhas
+    // {dia: 'Y-m-d', inicio: 'H:i', fim: 'H:i'} geradas a partir de formInicio/formFim
+    // (uma por dia, horas editáveis). Vazio = evento de um só dia.
+    /** @var list<array{dia: string, inicio: string, fim: string}> */
+    public array $formHorasDias = [];
+
     // Equipamento opcional do evento (pesquisa server-side; deriva local/cliente).
     public ?int $formEquipamentoId = null;
     public string $formEquipamentoBusca = '';
@@ -71,6 +77,64 @@ class Calendario extends Component
     public function updatedTecnicoNome(): void
     {
         $this->recarregar();
+    }
+
+    // Mudar o intervalo refaz as linhas por dia (mantendo as horas já editadas).
+    public function updatedFormInicio(): void
+    {
+        $this->reconstruirHorasDias();
+    }
+
+    public function updatedFormFim(): void
+    {
+        $this->reconstruirHorasDias();
+    }
+
+    // Uma linha por dia do intervalo [formInicio..formFim]: dias novos herdam as horas do
+    // intervalo, dias já editados mantêm as suas; dias fora do intervalo caem. Um só dia
+    // (ou intervalo inválido/desmesurado) → sem linhas, o evento fica contínuo como sempre.
+    private function reconstruirHorasDias(): void
+    {
+        try {
+            $ini = Carbon::parse($this->formInicio);
+            $fim = Carbon::parse($this->formFim);
+        } catch (\Throwable) {
+            $this->formHorasDias = [];
+
+            return;
+        }
+
+        // Nº de meias-noites cruzadas. 0 = mesmo dia; 1 com fim "mais cedo" que o início =
+        // turno NOTURNO (ex.: 22:00→06:00) — fica contínuo, como registo de um só turno;
+        // linhas por dia só para serviços que ocupam vários dias de trabalho.
+        $diasCalendario = (int) $ini->copy()->startOfDay()->diffInDays($fim->copy()->startOfDay());
+        if (! $ini->lt($fim) || $diasCalendario === 0 || $diasCalendario > 31
+            || ($diasCalendario === 1 && $fim->format('H:i') <= $ini->format('H:i'))) {
+            $this->formHorasDias = [];
+
+            return;
+        }
+
+        $existentes = collect($this->formHorasDias)->keyBy('dia');
+        $horaIni = $ini->format('H:i');
+        $horaFim = $fim->format('H:i');
+        if ($horaFim <= $horaIni) {
+            // Horas do intervalo não servem de padrão por dia — usa o horário de cobertura.
+            $horaIni = sprintf('%02d:00', (int) config('agenda.hora_abertura'));
+            $horaFim = sprintf('%02d:00', (int) config('agenda.hora_fecho'));
+        }
+
+        $linhas = [];
+        for ($dia = $ini->copy()->startOfDay(); $dia->lte($fim); $dia->addDay()) {
+            $chave = $dia->toDateString();
+            $linhas[] = [
+                'dia' => $chave,
+                'inicio' => $existentes[$chave]['inicio'] ?? $horaIni,
+                'fim' => $existentes[$chave]['fim'] ?? $horaFim,
+            ];
+        }
+
+        $this->formHorasDias = $linhas;
     }
 
     private function recarregar(): void
@@ -167,6 +231,8 @@ class Calendario extends Component
             'formEquipamentoId' => 'equipamento',
             'formInicio' => 'início',
             'formFim' => 'fim',
+            'formHorasDias.*.inicio' => 'hora de início do dia',
+            'formHorasDias.*.fim' => 'hora de fim do dia',
         ];
     }
 
@@ -175,7 +241,7 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoIds', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura']);
+        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoIds', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura', 'formHorasDias']);
 
         // A agenda manda o DIA (sem hora) — as horas reais escrevem-se no formulário e podem
         // abranger vários dias. Sem hora, arranca na abertura e propõe 1h (fácil de ajustar).
@@ -188,6 +254,7 @@ class Calendario extends Component
 
         $this->formInicio = $ini->format('Y-m-d\TH:i');
         $this->formFim = $fimC->format('Y-m-d\TH:i');
+        $this->reconstruirHorasDias();
         $this->modalCriar = true;
     }
 
@@ -227,6 +294,16 @@ class Calendario extends Component
         $this->formCobertura = $evento->cobertura;
         $this->formInicio = $evento->inicio->format('Y-m-d\TH:i');
         $this->formFim = $evento->fim->format('Y-m-d\TH:i');
+        // Horas por dia gravadas → pré-preenche; reconstruir alinha com o intervalo
+        // (acrescenta dias em falta, descarta dias fora, mantém as horas editadas).
+        $this->formHorasDias = collect($evento->horas_dias ?? [])
+            ->map(fn ($l) => [
+                'dia' => (string) ($l['dia'] ?? ''),
+                'inicio' => substr((string) ($l['inicio'] ?? ''), 0, 5),
+                'fim' => substr((string) ($l['fim'] ?? ''), 0, 5),
+            ])
+            ->all();
+        $this->reconstruirHorasDias();
 
         $this->eventoSelecionadoId = null; // fecha o detalhe; abre o formulário
         $this->modalCriar = true;
@@ -304,6 +381,10 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
+        // Refaz as linhas por dia a partir do intervalo submetido (à prova de payload forjado:
+        // os DIAS vêm sempre do intervalo; só as horas de cada dia vêm do formulário).
+        $this->reconstruirHorasDias();
+
         $this->validate([
             'formTitulo' => ['required', 'string', 'max:255'],
             // Técnicos = contas ativas com papel técnico (mesma regra dos colaboradores no relatório).
@@ -317,10 +398,31 @@ class Calendario extends Component
             'formFim' => ['required', 'date', 'after:formInicio'],
             'formContratoId' => ['nullable', 'exists:contratos,id'],
             'formCobertura' => ['nullable', 'required_with:formContratoId', 'in:incluida,extra'],
+            'formHorasDias' => ['array', 'max:32'],
+            'formHorasDias.*.inicio' => ['required', 'date_format:H:i'],
+            'formHorasDias.*.fim' => ['required', 'date_format:H:i'],
         ]);
+
+        // Cada dia tem de ter fim depois do início (as horas são dentro do próprio dia).
+        foreach ($this->formHorasDias as $i => $linha) {
+            if ($linha['fim'] <= $linha['inicio']) {
+                $this->addError("formHorasDias.$i.fim", 'O fim tem de ser depois do início (dia ' . Carbon::parse($linha['dia'])->format('d/m') . ').');
+
+                return;
+            }
+        }
 
         $inicio = Carbon::parse($this->formInicio);
         $fim = Carbon::parse($this->formFim);
+
+        // Com horas por dia, o intervalo real do evento é do início do 1.º dia ao fim do último.
+        $horasDias = $this->formHorasDias !== [] ? $this->formHorasDias : null;
+        if ($horasDias) {
+            $primeira = $horasDias[0];
+            $ultima = $horasDias[count($horasDias) - 1];
+            $inicio = Carbon::parse($primeira['dia'] . ' ' . $primeira['inicio']);
+            $fim = Carbon::parse($ultima['dia'] . ' ' . $ultima['fim']);
+        }
 
         // Contas escolhidas, por ordem alfabética (determinística): 1.º = principal, resto = adicionais.
         // Re-filtra por papel/ativo (defesa em profundidade): mesmo que a validação acima fosse
@@ -372,6 +474,8 @@ class Calendario extends Component
             'contrato_id' => $this->formContratoId,
             // Cobertura só se houver contrato (incluída = desconta saldo; extra = faturável).
             'cobertura' => $this->formContratoId ? $this->formCobertura : null,
+            // Horas trabalhadas por dia (multi-dia); null = evento contínuo de um dia.
+            'horas_dias' => $horasDias,
         ];
 
         $resultado = $agendador->gravar($atributos, $tecnicosEscolhidos, $adicionaisIds, $this->editandoId);

@@ -41,6 +41,7 @@ class EventoAgenda extends Model
         'contrato_id',
         'cobertura', // 'incluida' | 'extra' | null — marcação para o saldo de visitas do contrato
         'intervencao_id',
+        'horas_dias', // horas trabalhadas por dia (eventos multi-dia): [{dia, inicio, fim}, ...]
     ];
 
     /** @return array<string, string> */
@@ -51,7 +52,42 @@ class EventoAgenda extends Model
             'estado' => EstadoEvento::class,
             'inicio' => 'datetime',
             'fim' => 'datetime',
+            'horas_dias' => 'array',
         ];
+    }
+
+    // Intervalos de trabalho REAIS do evento, como pares [início, fim] (Carbon).
+    // Multi-dia com horas por dia → um segmento por dia (só linhas válidas e dentro de
+    // [inicio..fim] — imune a horas_dias tornado obsoleto por uma edição do intervalo);
+    // caso contrário → o próprio [inicio, fim] (evento de um dia ou legado contínuo).
+    /** @return list<array{0: \Illuminate\Support\Carbon, 1: \Illuminate\Support\Carbon}> */
+    public function segmentos(): array
+    {
+        $segmentos = collect($this->horas_dias ?? [])
+            ->map(function ($linha): ?array {
+                $dia = $linha['dia'] ?? null;
+                $ini = $linha['inicio'] ?? null;
+                $fim = $linha['fim'] ?? null;
+                if (! is_string($dia) || ! is_string($ini) || ! is_string($fim)) {
+                    return null;
+                }
+
+                try {
+                    $de = \Illuminate\Support\Carbon::parse("$dia $ini");
+                    $ate = \Illuminate\Support\Carbon::parse("$dia $fim");
+                } catch (\Throwable) {
+                    return null;
+                }
+
+                return $de->lt($ate) ? [$de, $ate] : null;
+            })
+            ->filter()
+            ->filter(fn (array $s) => ! $s[0]->lt($this->inicio->copy()->startOfDay())
+                && ! $s[1]->gt($this->fim->copy()->endOfDay()))
+            ->sortBy(fn (array $s) => $s[0])
+            ->values();
+
+        return $segmentos->count() >= 2 ? $segmentos->all() : [[$this->inicio, $this->fim]];
     }
 
     public function tecnico(): BelongsTo

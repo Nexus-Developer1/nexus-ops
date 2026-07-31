@@ -31,7 +31,7 @@ class FonteCalendario
             ->where('fim', '>', $de)
             ->when($tecnicoNome !== '', fn ($q) => $q->where('tecnico_nome', $tecnicoNome))
             ->get()
-            ->map(function (EventoAgenda $e) {
+            ->flatMap(function (EventoAgenda $e) {
                 // Cores de TODOS os técnicos do evento (principal + adicionais, sem repetidos):
                 // com mais do que um, o frontend divide o bloco em faixas verticais, uma cor
                 // por técnico (eventDidMount no app.js). Com um só, comporta-se como sempre.
@@ -45,22 +45,44 @@ class FonteCalendario
                     ->values();
                 $cor = $cores->first() ?? $this->corTecnico(null);
 
-                return [
-                    'id' => (string) $e->id,
+                $props = [
+                    'kind' => 'evento',
+                    'evento_id' => $e->id, // id do EVENTO mesmo em segmentos (clique/detalhe)
+                    'tecnico_id' => $e->tecnico_id,
+                    'tipo' => $e->tipo->value,
+                    'estado' => $e->estado->value,
+                    'cores' => $cores->all(),
+                ];
+
+                $segmentos = $e->segmentos();
+
+                // Evento de um dia (ou multi-dia legado sem horas por dia): um bloco, como sempre.
+                if (count($segmentos) === 1) {
+                    return [[
+                        'id' => (string) $e->id,
+                        'title' => $e->titulo,
+                        'start' => $e->inicio->format('Y-m-d\TH:i:s'),
+                        'end' => $e->fim->format('Y-m-d\TH:i:s'),
+                        'backgroundColor' => $cor,
+                        'borderColor' => $cor,
+                        'extendedProps' => $props,
+                    ]];
+                }
+
+                // Multi-dia com horas por dia: um bloco POR DIA com as horas reais trabalhadas.
+                // Não arrastáveis (editable: false) — as horas de cada dia editam-se no formulário.
+                return collect($segmentos)->map(fn (array $s, int $i) => [
+                    'id' => $e->id . ':' . $i,
                     'title' => $e->titulo,
-                    'start' => $e->inicio->format('Y-m-d\TH:i:s'),
-                    'end' => $e->fim->format('Y-m-d\TH:i:s'),
+                    'start' => $s[0]->format('Y-m-d\TH:i:s'),
+                    'end' => $s[1]->format('Y-m-d\TH:i:s'),
                     'backgroundColor' => $cor,
                     'borderColor' => $cor,
-                    'extendedProps' => [
-                        'kind' => 'evento',
-                        'tecnico_id' => $e->tecnico_id,
-                        'tipo' => $e->tipo->value,
-                        'estado' => $e->estado->value,
-                        'cores' => $cores->all(),
-                    ],
-                ];
+                    'editable' => false,
+                    'extendedProps' => $props,
+                ])->all();
             })
+            ->values()
             ->all();
 
         return $eventos;

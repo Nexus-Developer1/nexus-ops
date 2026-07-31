@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-07-31
+
+- 🧰 **Agenda: serviços de vários dias com horas trabalhadas POR DIA (editáveis)** — refinamento do item "criação por dia" a pedido da equipa: um serviço multi-dia deixava de caber num só bloco contínuo (as noites contavam como trabalho e não havia como dizer as horas de cada dia). Agora, quando o fim é noutro dia, o formulário mostra **uma linha por dia com horas editáveis** (pré-preenchidas com as horas do intervalo) — o técnico pode voltar ao evento **em qualquer dia** e acertar as horas realmente trabalhadas nesse dia. O calendário mostra **um bloco por dia com as horas reais** (não arrastáveis — editam-se no formulário; o clique abre o mesmo evento) e a **deteção de conflitos passa a comparar as horas efetivas** (as noites/fins de tarde entre dias de serviço ficam livres para outros eventos; sobreposição com as horas trabalhadas continua bloqueada). Turnos noturnos que só cruzam a meia-noite (ex.: 22:00→06:00) continuam um bloco contínuo, como antes. Guardado em `eventos_agenda.horas_dias` (JSONB); edição pela agenda de eventos convertidos propaga como antes (início/fim reais). Requer migração **e** `npm run build`. +4 testes (363 no total).
+
 ## 2026-07-29
 
 - 🧰 **Agenda: criação por dia e registo de horas reais (mesmo em vários dias)** — pedido da equipa: (1) clicar/selecionar no calendário passa a marcar apenas o **dia** — o evento deixa de nascer colado à faixa horária onde se clicou (que obrigava a corrigir sempre a seguir); abre na hora de abertura com 1h proposta e as **horas reais escrevem-se no formulário**; (2) um evento pode **atravessar dias** (ex.: 22:00 de 2ª → 06:00 de 3ª) e, nesse caso, **deixa de ser bloqueado pelo horário de cobertura** — é registo de trabalho já feito, não planeamento. O que **não** mudou: eventos dentro do mesmo dia mantêm a regra do horário (8h–19h, dias úteis) e a **deteção de conflitos/double-booking aplica-se sempre**, incluindo aos multi-dia. Requer `npm run build`. +5 testes (359 no total).

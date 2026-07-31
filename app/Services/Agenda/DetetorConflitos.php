@@ -55,38 +55,53 @@ class DetetorConflitos
     }
 
     // Devolve a razão do conflito (texto legível) ou null se não houver conflito.
-    public function conflito(int $tecnicoId, Carbon $inicio, Carbon $fim, ?int $excetoEventoId = null): ?string
+    // $segmentos: intervalos de trabalho REAIS do evento a gravar (eventos multi-dia com
+    // horas por dia) — sem eles, usa [inicio, fim] contínuo. A comparação é sempre
+    // segmento-a-segmento dos dois lados: as noites entre dias de um serviço longo NÃO
+    // bloqueiam (nem são bloqueadas por) outros eventos.
+    /** @param list<array{0: Carbon, 1: Carbon}>|null $segmentos */
+    public function conflito(int $tecnicoId, Carbon $inicio, Carbon $fim, ?int $excetoEventoId = null, ?array $segmentos = null): ?string
     {
-        // Sobreposição com outro evento do mesmo técnico (intervalos que se cruzam).
-        $sobreposto = EventoAgenda::query()
+        $candidatos = EventoAgenda::query()
             ->where('tecnico_id', $tecnicoId)
             ->where('estado', '!=', EstadoEvento::Cancelado->value)
             ->when($excetoEventoId, fn ($q) => $q->where('id', '!=', $excetoEventoId))
             ->where('inicio', '<', $fim)
             ->where('fim', '>', $inicio)
-            ->first();
+            ->get();
 
-        if ($sobreposto) {
-            return 'O técnico já tem "' . $sobreposto->titulo . '" neste horário.';
-        }
-
-        return null;
+        return $this->sobreposicaoPorSegmentos($candidatos, $segmentos ?: [[$inicio, $fim]]);
     }
 
     // Sobreposição para um técnico em TEXTO LIVRE (sem conta): deteta o double-booking com
     // outro evento do mesmo nome.
-    public function conflitoPorNome(string $nome, Carbon $inicio, Carbon $fim, ?int $excetoEventoId = null): ?string
+    /** @param list<array{0: Carbon, 1: Carbon}>|null $segmentos */
+    public function conflitoPorNome(string $nome, Carbon $inicio, Carbon $fim, ?int $excetoEventoId = null, ?array $segmentos = null): ?string
     {
-        $sobreposto = EventoAgenda::query()
+        $candidatos = EventoAgenda::query()
             ->where('tecnico_nome', $nome)
             ->where('estado', '!=', EstadoEvento::Cancelado->value)
             ->when($excetoEventoId, fn ($q) => $q->where('id', '!=', $excetoEventoId))
             ->where('inicio', '<', $fim)
             ->where('fim', '>', $inicio)
-            ->first();
+            ->get();
 
-        if ($sobreposto) {
-            return 'O técnico já tem "' . $sobreposto->titulo . '" neste horário.';
+        return $this->sobreposicaoPorSegmentos($candidatos, $segmentos ?: [[$inicio, $fim]]);
+    }
+
+    // Compara os segmentos reais dos candidatos (span sobreposto, pré-filtrado em SQL) com os
+    // segmentos do evento a gravar. Candidatos são poucos — a comparação fina é em PHP.
+    /** @param list<array{0: Carbon, 1: Carbon}> $meus */
+    private function sobreposicaoPorSegmentos(\Illuminate\Support\Collection $candidatos, array $meus): ?string
+    {
+        foreach ($candidatos as $outro) {
+            foreach ($outro->segmentos() as [$outroIni, $outroFim]) {
+                foreach ($meus as [$meuIni, $meuFim]) {
+                    if ($meuIni->lt($outroFim) && $meuFim->gt($outroIni)) {
+                        return 'O técnico já tem "' . $outro->titulo . '" neste horário.';
+                    }
+                }
+            }
         }
 
         return null;

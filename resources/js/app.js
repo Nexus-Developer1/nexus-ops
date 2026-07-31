@@ -89,7 +89,9 @@ document.addEventListener('alpine:init', () => {
                     this.calendar.unselect();
                 },
                 eventClick: (info) => {
-                    this.$wire.selecionar(Number(info.event.id));
+                    // Segmentos de eventos multi-dia têm id "123:0" — o id do EVENTO vem
+                    // sempre em extendedProps.evento_id (fallback ao id para o formato antigo).
+                    this.$wire.selecionar(Number(info.event.extendedProps.evento_id ?? info.event.id));
                 },
             });
 

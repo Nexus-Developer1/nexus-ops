@@ -37,7 +37,17 @@ class AgendadorEvento
             return ['erro' => $razao];
         }
 
-        return DB::transaction(function () use ($atributos, $tecnicos, $adicionaisIds, $editandoId, $inicio, $fim) {
+        // Segmentos reais (horas por dia, eventos multi-dia): os conflitos comparam o trabalho
+        // efetivo de cada dia, não o intervalo contínuo (as noites pelo meio ficam livres).
+        $segmentos = collect($atributos['horas_dias'] ?? [])
+            ->map(fn (array $l) => [
+                Carbon::parse($l['dia'] . ' ' . $l['inicio']),
+                Carbon::parse($l['dia'] . ' ' . $l['fim']),
+            ])
+            ->values()
+            ->all() ?: null;
+
+        return DB::transaction(function () use ($atributos, $tecnicos, $adicionaisIds, $editandoId, $inicio, $fim, $segmentos) {
             // Trava por id de conta E por nome: o reagendamento de eventos legados trava
             // pelo nome, e assim os dois caminhos serializam entre si.
             $this->detetor->travarAgendaDe([
@@ -49,8 +59,8 @@ class AgendadorEvento
                 // Por CONTA: sobreposição com eventos ligados à conta do técnico.
                 // Por NOME: apanha também eventos legados (só texto, sem conta) do mesmo técnico.
                 // Na edição, o próprio evento é excluído (senão conflituava consigo mesmo).
-                $razao = $this->detetor->conflito($t->id, $inicio, $fim, $editandoId)
-                    ?? $this->detetor->conflitoPorNome($t->nome, $inicio, $fim, $editandoId);
+                $razao = $this->detetor->conflito($t->id, $inicio, $fim, $editandoId, $segmentos)
+                    ?? $this->detetor->conflitoPorNome($t->nome, $inicio, $fim, $editandoId, $segmentos);
                 if ($razao) {
                     return ['erro' => $razao];
                 }
@@ -77,6 +87,7 @@ class AgendadorEvento
                         'tecnico_id' => $atributos['tecnico_id'],
                         'tecnico_nome' => $atributos['tecnico_nome'],
                         'cobertura' => $evento->contrato_id ? ($atributos['cobertura'] ?? null) : null,
+                        'horas_dias' => $atributos['horas_dias'] ?? null,
                     ]);
 
                     $evento->intervencao->update(array_filter([
@@ -138,7 +149,9 @@ class AgendadorEvento
                 return ['ok' => false, 'mensagem' => $razao];
             }
 
-            $evento->update(['inicio' => $novoInicio, 'fim' => $novoFim]);
+            // O arrasto define um intervalo contínuo novo — horas por dia anteriores deixariam
+            // de corresponder (a UI nem oferece arrasto a eventos segmentados; guarda defensiva).
+            $evento->update(['inicio' => $novoInicio, 'fim' => $novoFim, 'horas_dias' => null]);
 
             return ['ok' => true];
         });
