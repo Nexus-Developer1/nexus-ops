@@ -7,6 +7,7 @@
                 <div>
                     <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Novo equipamento</h1>
                     <p class="mt-2 text-sm text-texto-medio">Registo manual de um equipamento não vendido por nós — fica disponível em contratos e relatórios.</p>
+                    <p class="mt-2 text-sm text-texto-medio">Os campos marcados com <span class="text-perigo-500">*</span> são obrigatórios.</p>
                 </div>
                 <div class="flex items-center gap-3">
                     <a href="{{ route('ativos') }}" wire:navigate class="botao-secundario">Cancelar</a>
@@ -83,7 +84,7 @@
                         @error('tipo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="campo-label">Estado</label>
+                        <label class="campo-label">Estado <span class="text-perigo-500">*</span></label>
                         <select wire:model="estado" class="campo-select">
                             @foreach ($estados as $e)
                                 <option value="{{ $e->value }}">{{ $e->rotulo() }}</option>

@@ -52,7 +52,7 @@
             <div class="flex items-start justify-between">
                 <div>
                     <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Relatório de Intervenção Técnica</h1>
-                    <p class="mt-2 text-sm text-texto-medio">Preencha todos os campos obrigatórios para submeter a folha de obra.</p>
+                    <p class="mt-2 text-sm text-texto-medio">Os campos marcados com <span class="text-perigo-500">*</span> são obrigatórios para <strong>finalizar</strong> — o rascunho só precisa do equipamento.</p>
                 </div>
                 @php($estadoBadge = \App\Enums\EstadoRelatorio::tryFrom($estadoInicial ?? '') ?? \App\Enums\EstadoRelatorio::Rascunho)
                 <span class="etiqueta {{ $estadoBadge->classesEtiqueta() }} uppercase tracking-wide">{{ $estadoBadge->rotulo() }}</span>
@@ -233,7 +233,7 @@
                             @error('tipo') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <label class="campo-label">Datas da intervenção</label>
+                            <label class="campo-label">Datas da intervenção <span class="text-perigo-500">*</span></label>
                             <div class="grid grid-cols-2 gap-4">
                                 <input wire:model="data" type="date" class="campo-input" aria-label="Data de início">
                                 <input wire:model="data_fim" type="date" class="campo-input" aria-label="Data de término">
@@ -273,7 +273,7 @@
                              relatório) — nada vem pré-selecionado e não há hierarquia entre eles.
                              A lista vem da BD a cada render, por isso reflete quem for entrando. --}}
                         <div class="sm:col-span-2">
-                            <label class="campo-label">Técnicos</label>
+                            <label class="campo-label">Técnicos <span class="text-perigo-500">*</span></label>
                             <div class="flex flex-wrap gap-2">
                                 @foreach ($tecnicos as $t)
                                     <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition {{ in_array($t->id, array_map('intval', $tecnicoIds), true) ? 'border-verde-400 bg-verde-50 font-medium text-verde-700' : 'border-borda text-texto-medio hover:bg-fundo' }}">

@@ -5,7 +5,10 @@
         <form wire:submit="guardar" class="mx-auto max-w-4xl">
 
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ $contrato ? 'Editar contrato' : 'Novo contrato' }}</h1>
+                <div>
+                    <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ $contrato ? 'Editar contrato' : 'Novo contrato' }}</h1>
+                    <p class="mt-2 text-sm text-texto-medio">Os campos marcados com <span class="text-perigo-500">*</span> são obrigatórios.</p>
+                </div>
                 <div class="flex items-center gap-3">
                     <a href="{{ $contrato ? route('contratos.ficha', $contrato) : route('contratos') }}" wire:navigate class="botao-secundario">Cancelar</a>
                     <button type="submit" class="botao-primario">
@@ -20,12 +23,12 @@
                 <div class="px-6 py-5"><h2 class="text-lg font-semibold text-texto-forte">Dados gerais</h2></div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 border-t border-borda px-6 py-6">
                     <div>
-                        <label class="campo-label">Nº do contrato</label>
+                        <label class="campo-label">Nº do contrato <span class="text-perigo-500">*</span></label>
                         <input wire:model="numero" type="text" class="campo-input" placeholder="2026/0007">
                         @error('numero') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="campo-label" for="cliente-combo">Cliente</label>
+                        <label class="campo-label" for="cliente-combo">Cliente <span class="text-perigo-500">*</span></label>
                         {{-- Combobox com pesquisa server-side (nome/NIF/nº ERP). Guarda em cliente_id. --}}
                         <div x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
                             <input
@@ -64,12 +67,12 @@
                         @error('cliente_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="campo-label">Data de início</label>
+                        <label class="campo-label">Data de início <span class="text-perigo-500">*</span></label>
                         <input wire:model="data_inicio" type="date" class="campo-input">
                         @error('data_inicio') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="campo-label">Data de fim</label>
+                        <label class="campo-label">Data de fim <span class="text-perigo-500">*</span></label>
                         <input wire:model="data_fim" type="date" class="campo-input">
                         @error('data_fim') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
@@ -80,7 +83,7 @@
                         @error('visitas_incluidas') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="campo-label">Tipo</label>
+                        <label class="campo-label">Tipo <span class="text-perigo-500">*</span></label>
                         <select wire:model="tipo" class="campo-select">
                             <option value="">Selecione...</option>
                             @foreach ($tiposContrato as $t)
@@ -90,7 +93,7 @@
                         @error('tipo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
                     <div x-data="{ adicionando: false, novo: '' }">
-                        <label class="campo-label">Modelo de faturação</label>
+                        <label class="campo-label">Modelo de faturação <span class="text-perigo-500">*</span></label>
 
                         {{-- Seleção de um modelo existente --}}
                         <select x-show="!adicionando" wire:model="modelo_faturacao_id" class="campo-select">
@@ -130,7 +133,7 @@
                         @error('periodo_faturacao') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="campo-label">Aviso de renovação (dias)</label>
+                        <label class="campo-label">Aviso de renovação (dias) <span class="text-perigo-500">*</span></label>
                         <input wire:model="periodo_aviso_dias" type="number" class="campo-input" placeholder="30">
                         @error('periodo_aviso_dias') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
@@ -216,7 +219,10 @@
             {{-- SLAs --}}
             <section class="cartao mt-8">
                 <div class="flex items-center justify-between px-6 py-5">
-                    <h2 class="text-lg font-semibold text-texto-forte">SLAs</h2>
+                    <div>
+                        <h2 class="text-lg font-semibold text-texto-forte">SLAs</h2>
+                        <p class="mt-1 text-xs text-texto-fraco">Opcionais; em cada linha adicionada, a <span class="text-perigo-500">*</span>prioridade e a cobertura (8x5/24x7) são obrigatórias.</p>
+                    </div>
                     <button type="button" wire:click="adicionarSla" class="botao-secundario">+ SLA</button>
                 </div>
                 <div class="border-t border-borda px-6 py-6">
@@ -224,7 +230,7 @@
                         <div class="mb-4 grid grid-cols-2 sm:grid-cols-12 items-start gap-3 border-b border-borda pb-4 last:mb-0 last:border-0 last:pb-0 sm:border-0 sm:pb-0" wire:key="sla-{{ $i }}">
                             <div class="col-span-2 sm:col-span-3">
                                 <select wire:model="slas.{{ $i }}.prioridade" class="campo-select">
-                                    <option value="">Prioridade...</option>
+                                    <option value="">Prioridade... *</option>
                                     @foreach ($prioridades as $p)
                                         <option value="{{ $p->value }}">{{ $p->rotulo() }}</option>
                                     @endforeach
