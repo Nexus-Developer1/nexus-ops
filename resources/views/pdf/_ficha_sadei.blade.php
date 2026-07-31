@@ -135,3 +135,30 @@
         </tr>
     </table>
 @endif
+
+{{-- Assinaturas no local (cliente e técnico), lidas do storage como data URI. --}}
+@php($assinaturas = ($assinaturasFichas ?? [])[$ficha->id] ?? [])
+@if (($assinaturas['cliente'] ?? null) || ($assinaturas['tecnico'] ?? null) || $ficha->assinado_em)
+    <div class="ficha-seccao">Assinaturas</div>
+    <table class="ficha-tab">
+        <tr>
+            <td style="width:50%; height:70px; vertical-align:bottom;">
+                @if ($assinaturas['cliente'] ?? null)
+                    <img src="{{ $assinaturas['cliente'] }}" alt="Assinatura do cliente" style="max-height:60px; max-width:100%;">
+                @endif
+            </td>
+            <td style="height:70px; vertical-align:bottom;">
+                @if ($assinaturas['tecnico'] ?? null)
+                    <img src="{{ $assinaturas['tecnico'] }}" alt="Assinatura do técnico" style="max-height:60px; max-width:100%;">
+                @endif
+            </td>
+        </tr>
+        <tr>
+            <td><span class="ficha-rot">Cliente</span><br>{{ $ficha->assinatura_cliente_nome ?: '—' }}</td>
+            <td><span class="ficha-rot">Técnico</span><br>{{ $ficha->assinatura_tecnico_nome ?: '—' }}</td>
+        </tr>
+        <tr>
+            <td colspan="2"><span class="ficha-rot">Data</span><br>{{ $ficha->assinado_em?->format('d/m/Y H:i') ?? ($i->data_inicio?->format('d/m/Y') ?? '—') }}</td>
+        </tr>
+    </table>
+@endif

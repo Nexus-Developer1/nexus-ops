@@ -816,6 +816,90 @@ class Novo extends Component
     }
 
     // Grava (upsert) uma ficha de medições por equipamento coberto e remove as órfãs.
+    /**
+     * URLs das assinaturas já gravadas, por equipamento: [equipId => ['cliente' => url, ...]].
+     * Data URI lido do storage (as imagens são pequenas e assim não é preciso rota pública).
+     *
+     * @return array<int, array<string, string>>
+     */
+    private function assinaturasGravadas(): array
+    {
+        if (! $this->intervencaoId) {
+            return [];
+        }
+
+        return FichaMedicao::where('intervencao_id', $this->intervencaoId)
+            ->get(['equipamento_id', 'assinatura_cliente_key', 'assinatura_tecnico_key'])
+            ->mapWithKeys(function (FichaMedicao $f) {
+                $url = function (?string $key): ?string {
+                    if (! $key || ! Storage::disk()->exists($key)) {
+                        return null;
+                    }
+
+                    return 'data:image/png;base64,' . base64_encode(Storage::disk()->get($key));
+                };
+
+                return [$f->equipamento_id => array_filter([
+                    'cliente' => $url($f->assinatura_cliente_key),
+                    'tecnico' => $url($f->assinatura_tecnico_key),
+                ])];
+            })
+            ->all();
+    }
+
+    /**
+     * Assinaturas da ficha (SADEI): o data URI desenhado no ecrã vira ficheiro PNG no object
+     * storage (CLAUDE.md §2 — nada de blobs na BD); a ficha guarda só a storage_key. Um data
+     * URI inválido//grande demais é ignorado (a assinatura anterior mantém-se). O ficheiro
+     * antigo é apagado quando a assinatura é substituída ou limpa.
+     *
+     * @param  array<string, mixed>  $dados  estrutura do formulário desta ficha
+     */
+    private function persistirAssinaturas(FichaMedicao $ficha, array $dados): void
+    {
+        $mudou = false;
+
+        foreach (['cliente', 'tecnico'] as $quem) {
+            $campoKey = "assinatura_{$quem}_key";
+            $novo = $dados["assinatura_{$quem}"] ?? '';
+
+            // Vazio = não mexeu (a UI só envia quando desenha) ou limpou explicitamente.
+            if ($novo === '' || $novo === null) {
+                continue;
+            }
+
+            if ($novo === 'limpar') {
+                if ($ficha->{$campoKey}) {
+                    Storage::disk()->delete($ficha->{$campoKey});
+                    $ficha->{$campoKey} = null;
+                    $mudou = true;
+                }
+
+                continue;
+            }
+
+            $png = FichaMedicao::pngDeAssinatura(is_string($novo) ? $novo : null);
+            if ($png === null) {
+                continue; // payload inválido → ignora em silêncio (mantém a anterior)
+            }
+
+            $antiga = $ficha->{$campoKey};
+            $key = "assinaturas/fichas/{$ficha->intervencao_id}/{$ficha->equipamento_id}-{$quem}-" . uniqid() . '.png';
+            Storage::disk()->put($key, $png);
+            $ficha->{$campoKey} = $key;
+            $mudou = true;
+
+            if ($antiga) {
+                Storage::disk()->delete($antiga);
+            }
+        }
+
+        if ($mudou) {
+            $ficha->assinado_em = ($ficha->assinatura_cliente_key || $ficha->assinatura_tecnico_key) ? now() : null;
+            $ficha->save();
+        }
+    }
+
     private function persistirFichas(Intervencao $intervencao): void
     {
         $ids = array_values(array_unique(array_filter(
@@ -845,13 +929,16 @@ class Novo extends Component
                 continue;
             }
 
-            FichaMedicao::updateOrCreate(
+            $ficha = FichaMedicao::updateOrCreate(
                 ['intervencao_id' => $intervencao->id, 'equipamento_id' => $equipId],
                 $attrs + ['tipo_equipamento' => $tipos[$equipId]->value ?? 'ups'],
             );
+
+            $this->persistirAssinaturas($ficha, $dados);
         }
 
         // Fichas de equipamentos que deixaram de estar cobertos (órfãs).
+        // (as assinaturas dessas fichas ficam no storage; ver comentário em persistirAssinaturas)
         $intervencao->fichasMedicao()
             ->when($ids !== [], fn ($q) => $q->whereNotIn('equipamento_id', $ids))
             ->delete();
@@ -936,6 +1023,9 @@ class Novo extends Component
             'equipamentoPrincipal' => $equipamentoPrincipal,
             'contratos' => $contratos,
             'tecnicos' => $tecnicos,
+            // Assinaturas já gravadas (URL assinada e temporária por ficha/equipamento) —
+            // a ficha SADEI mostra-as até serem redesenhadas.
+            'assinaturasGravadas' => $this->assinaturasGravadas(),
         ]);
     }
 }

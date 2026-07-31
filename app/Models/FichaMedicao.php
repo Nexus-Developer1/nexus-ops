@@ -31,7 +31,12 @@ class FichaMedicao extends Model
         'carga_a_funcionar', 'ups_modo_normal', 'notas_finais',
         'recomendacao', 'prioridade',
         'sadei',
+        'assinatura_cliente_key', 'assinatura_cliente_nome',
+        'assinatura_tecnico_key', 'assinatura_tecnico_nome', 'assinado_em',
     ];
+
+    /** Tamanho máximo do PNG de assinatura (data URI decodificado). */
+    public const ASSINATURA_MAX_BYTES = 300 * 1024;
 
     /** @return array<string, string> */
     protected function casts(): array
@@ -43,7 +48,30 @@ class FichaMedicao extends Model
             'verificacoes' => 'array',
             'teste_descarga' => 'array',
             'sadei' => 'array',
+            'assinado_em' => 'datetime',
         ];
+    }
+
+    /**
+     * Valida e decodifica um data URI de assinatura (PNG desenhado no ecrã). Devolve os bytes
+     * do PNG ou null se não for um PNG válido/dentro do tamanho — nunca se confia na string
+     * que vem do browser (é prop pública) nem se guarda o data URI em cru.
+     */
+    public static function pngDeAssinatura(?string $dataUri): ?string
+    {
+        if (! is_string($dataUri) || ! str_starts_with($dataUri, 'data:image/png;base64,')) {
+            return null;
+        }
+
+        $bytes = base64_decode(substr($dataUri, strlen('data:image/png;base64,')), true);
+        if ($bytes === false || $bytes === '' || strlen($bytes) > self::ASSINATURA_MAX_BYTES) {
+            return null;
+        }
+
+        // Confirma que é mesmo um PNG (e não outro formato/lixo com o prefixo certo).
+        $info = @getimagesizefromstring($bytes);
+
+        return ($info && $info[2] === IMAGETYPE_PNG) ? $bytes : null;
     }
 
     // --- Metadados da estrutura (partilhados com a UI) -------------------------------
@@ -254,6 +282,13 @@ class FichaMedicao extends Model
         // restantes fica vazio e grava null). Estar sempre presente simplifica o binding.
         $ficha['sadei'] = self::sadeiVazia();
 
+        // Assinaturas (SADEI): data URI desenhado no ecrã + nome de quem assina. O data URI
+        // só vive no formulário — ao gravar vira ficheiro no storage (ver Novo::persistirFichas).
+        $ficha['assinatura_cliente'] = '';
+        $ficha['assinatura_cliente_nome'] = '';
+        $ficha['assinatura_tecnico'] = '';
+        $ficha['assinatura_tecnico_nome'] = '';
+
         return $ficha;
     }
 
@@ -331,6 +366,11 @@ class FichaMedicao extends Model
                 $base['teste_descarga'][$linha][$col] = (string) ($this->teste_descarga[$linha][$col] ?? '');
             }
         }
+
+        // Assinaturas: só os nomes voltam ao formulário; a imagem já gravada é mostrada a
+        // partir do storage (não se reenvia o PNG para o browser a cada render).
+        $base['assinatura_cliente_nome'] = (string) ($this->assinatura_cliente_nome ?? '');
+        $base['assinatura_tecnico_nome'] = (string) ($this->assinatura_tecnico_nome ?? '');
 
         // SADEI: preenche o esqueleto com o que estiver gravado (strings para o binding).
         $g = $this->sadei ?? [];
@@ -422,6 +462,10 @@ class FichaMedicao extends Model
             }
         }
         $attrs['teste_descarga'] = $descarga;
+
+        // Nomes de quem assina (a imagem é gravada no storage pelo componente).
+        $attrs['assinatura_cliente_nome'] = $limpar($dados['assinatura_cliente_nome'] ?? null);
+        $attrs['assinatura_tecnico_nome'] = $limpar($dados['assinatura_tecnico_nome'] ?? null);
 
         // SADEI: normaliza contra o esqueleto (só chaves conhecidas; estados whitelisted);
         // se nada estiver preenchido, grava null — as fichas UPS ficam sempre a null.
@@ -535,6 +579,11 @@ class FichaMedicao extends Model
 
         // Bloco SADEI (equipamentos de incêndio): sadeiAtributos devolve null quando vazio.
         if (($attrs['sadei'] ?? null) !== null) {
+            return true;
+        }
+
+        // Assinaturas (nome de quem assina) também são conteúdo.
+        if (($attrs['assinatura_cliente_nome'] ?? null) !== null || ($attrs['assinatura_tecnico_nome'] ?? null) !== null) {
             return true;
         }
 

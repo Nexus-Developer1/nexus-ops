@@ -121,10 +121,30 @@ class GeradorRelatorio
 
         $fotosGerais = $imagens->whereNull('equipamento_id')->map($dataUri)->values()->all();
 
+        // Assinaturas das fichas (SADEI) como data URI, por id de ficha. Lidas do storage —
+        // o dompdf tem enable_remote=false, nunca vai buscar nada por URL.
+        $assinaturasFichas = $relatorio->intervencao->fichasMedicao
+            ->mapWithKeys(function ($ficha) {
+                $img = function (?string $key): ?string {
+                    if (! $key || ! Storage::disk()->exists($key)) {
+                        return null;
+                    }
+
+                    return 'data:image/png;base64,' . base64_encode(Storage::disk()->get($key));
+                };
+
+                return [$ficha->id => array_filter([
+                    'cliente' => $img($ficha->assinatura_cliente_key),
+                    'tecnico' => $img($ficha->assinatura_tecnico_key),
+                ])];
+            })
+            ->all();
+
         $pdf = Pdf::loadView('pdf.relatorio', [
             'relatorio' => $relatorio,
             'fotosPorEquipamento' => $fotosPorEquipamento,
             'fotosGerais' => $fotosGerais,
+            'assinaturasFichas' => $assinaturasFichas,
         ])->setPaper('a4');
 
         $caminho = 'relatorios/' . str_replace('/', '-', $relatorio->numero) . '.pdf';

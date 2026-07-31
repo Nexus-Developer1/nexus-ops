@@ -22,6 +22,76 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
+    // Assinatura desenhada (iPad + Apple Pencil, dedo ou rato). Captura por pointer events
+    // num canvas e envia o PNG ao Livewire ao levantar a caneta. O canvas é redimensionado
+    // ao pixel-ratio do ecrã para o traço não sair serrilhado no PDF.
+    window.Alpine.data('assinaturaPad', (campo, jaGravada) => ({
+        temTraco: false,
+        desenhando: false,
+        ctx: null,
+
+        init() {
+            const pad = this.$refs.pad;
+            const ratio = window.devicePixelRatio || 1;
+            const ajustar = () => {
+                const r = pad.getBoundingClientRect();
+                if (!r.width) return;
+                pad.width = r.width * ratio;
+                pad.height = r.height * ratio;
+                this.ctx = pad.getContext('2d');
+                this.ctx.scale(ratio, ratio);
+                this.ctx.lineWidth = 2;
+                this.ctx.lineCap = 'round';
+                this.ctx.lineJoin = 'round';
+                this.ctx.strokeStyle = '#111827';
+            };
+            ajustar();
+            window.addEventListener('resize', ajustar);
+
+            const pos = (e) => {
+                const r = pad.getBoundingClientRect();
+                return [e.clientX - r.left, e.clientY - r.top];
+            };
+
+            pad.addEventListener('pointerdown', (e) => {
+                if (!this.ctx) ajustar();
+                pad.setPointerCapture(e.pointerId);
+                this.desenhando = true;
+                this.temTraco = true;
+                const [x, y] = pos(e);
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, y);
+                e.preventDefault();
+            });
+
+            pad.addEventListener('pointermove', (e) => {
+                if (!this.desenhando) return;
+                const [x, y] = pos(e);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+                e.preventDefault();
+            });
+
+            const terminar = () => {
+                if (!this.desenhando) return;
+                this.desenhando = false;
+                // Só ao levantar a caneta: um PNG por traço seria pesado de mais.
+                this.$wire.set(campo, pad.toDataURL('image/png'), false);
+            };
+            pad.addEventListener('pointerup', terminar);
+            pad.addEventListener('pointerleave', terminar);
+            pad.addEventListener('pointercancel', terminar);
+        },
+
+        limpar() {
+            const pad = this.$refs.pad;
+            this.ctx?.clearRect(0, 0, pad.width, pad.height);
+            this.temTraco = false;
+            // 'limpar' diz ao servidor para apagar a assinatura gravada (se existir).
+            this.$wire.set(campo, jaGravada ? 'limpar' : '', false);
+        },
+    }));
+
     // Toolbar/vista responsivos: num telemóvel a barra do FullCalendar (prev/next/today +
     // título + 3 botões de vista) não cabe. Em ecrã estreito reduzimos os botões e abrimos
     // na vista de DIA (a semana fica ilegível a 375px).

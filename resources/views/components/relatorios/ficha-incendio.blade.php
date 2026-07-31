@@ -1,5 +1,6 @@
 @props([
     'prefixo',              // caminho Livewire da ficha, ex.: "fichas.123"
+    'assinaturas' => [],    // ['cliente' => url|null, 'tecnico' => url|null] das já gravadas
 ])
 
 @php
@@ -141,6 +142,16 @@
             <label class="campo-label">Notas</label>
             <textarea wire:model="{{ $prefixo }}.notas_finais" rows="3" class="campo-input"></textarea>
         </div>
+    </div>
+
+    {{-- Assinaturas no local (obrigatórias nesta folha): cliente e técnico. --}}
+    <div>
+        <p class="campo-label">Assinaturas</p>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <x-relatorios.assinatura :prefixo="$prefixo" quem="cliente" rotulo="Assinatura do cliente" :guardada="$assinaturas['cliente'] ?? null" />
+            <x-relatorios.assinatura :prefixo="$prefixo" quem="tecnico" rotulo="Assinatura do técnico" :guardada="$assinaturas['tecnico'] ?? null" />
+        </div>
+        <p class="mt-1.5 text-xs text-texto-fraco">Assine com a caneta (ou o dedo) diretamente no retângulo. As assinaturas saem no PDF do relatório.</p>
     </div>
 
     {{-- Recomendações e próximos passos (igual à ficha UPS — alimenta o PDF e os alertas) --}}
