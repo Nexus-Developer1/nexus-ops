@@ -17,8 +17,17 @@ class Listagem extends Component
 
     use WithPagination;
 
+    private const NOME_SEM_ACENTOS = "translate(lower(nome), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
+
     #[Url]
     public string $pesquisa = '';
+
+    // Filtro 1º por CLIENTE (combobox com pesquisa por nome/NIF): com um cliente escolhido,
+    // a pesquisa de texto (nº série/modelo) atua só dentro dos equipamentos dele.
+    #[Url]
+    public ?int $clienteId = null;
+
+    public string $clienteBusca = '';
 
     #[Url]
     public string $tipo = '';
@@ -87,11 +96,41 @@ class Listagem extends Component
         $this->resetPage();
     }
 
+    public function selecionarClienteFiltro(int $id): void
+    {
+        $cliente = \App\Models\Cliente::find($id);
+        if (! $cliente) {
+            return;
+        }
+
+        $this->clienteId = $cliente->id;
+        $this->clienteBusca = $cliente->nome ?? '';
+        $this->resetPage();
+    }
+
+    public function limparClienteFiltro(): void
+    {
+        $this->clienteId = null;
+        $this->clienteBusca = '';
+        $this->resetPage();
+    }
+
+    // Escrever na caixa desfaz a seleção (o texto volta a ser pesquisa de sugestões).
+    public function updatedClienteBusca(): void
+    {
+        if ($this->clienteId !== null) {
+            $this->clienteId = null;
+            $this->resetPage();
+        }
+    }
+
     public function render()
     {
         $equipamentos = Equipamento::query()
             ->with('local.cliente')
             ->withCount('equipamentosAssociados')
+            // 1º filtro: cliente escolhido no combobox — tudo o resto atua dentro dele.
+            ->when($this->clienteId, fn ($q) => $q->whereHas('local', fn ($q2) => $q2->where('cliente_id', $this->clienteId)))
             ->when($this->tipo, fn ($q) => $q->where('tipo', $this->tipo))
             ->when($this->familia, fn ($q) => $q->where('faminome', $this->familia))
             // 'com'/'sem' banco associado (exclui os próprios bancos); 'banco' = só bancos associados a um UPS.
@@ -129,11 +168,31 @@ class Listagem extends Component
             ->orderBy('faminome')
             ->pluck('faminome');
 
+        // Sugestões do combobox de cliente (server-side, nome sem acentos + NIF), só enquanto
+        // se escreve e ainda não há cliente fixado.
+        $clientesFiltrados = ($this->clienteId === null && trim($this->clienteBusca) !== '')
+            ? \App\Models\Cliente::query()
+                ->where(function ($q) {
+                    $termo = '%' . trim($this->clienteBusca) . '%';
+                    $norm = '%' . mb_strtolower(str_replace(
+                        ['á', 'à', 'â', 'ã', 'ä', 'ç', 'é', 'è', 'ê', 'ë', 'í', 'ì', 'î', 'ï', 'ó', 'ò', 'ô', 'õ', 'ö', 'ú', 'ù', 'û', 'ü'],
+                        ['a', 'a', 'a', 'a', 'a', 'c', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u'],
+                        trim($this->clienteBusca)
+                    )) . '%';
+                    $q->whereRaw(self::NOME_SEM_ACENTOS . ' like ?', [$norm])
+                        ->orWhere('nif', 'ilike', $termo);
+                })
+                ->orderBy('nome')
+                ->limit(20)
+                ->get()
+            : collect();
+
         return view('livewire.equipamentos.listagem', [
             'equipamentos' => $equipamentos,
             'tipos' => TipoEquipamento::cases(),
             'familias' => $familias,
             'ordenacoes' => $this->ordenacoes(),
+            'clientesFiltrados' => $clientesFiltrados,
         ]);
     }
 }

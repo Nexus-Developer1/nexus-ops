@@ -109,6 +109,37 @@ class EquipamentoManualTest extends TestCase
             ->assertViewHas('equipamentos', fn ($p) => $p->pluck('id')->contains($ups->id) && ! $p->pluck('id')->contains($peca->id));
     }
 
+    // Listagem: 1º filtra-se o CLIENTE (combobox), depois a pesquisa atua dentro dele.
+    public function test_listagem_filtra_primeiro_por_cliente_e_depois_pesquisa(): void
+    {
+        $admin = $this->admin();
+        $acme = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $beta = Cliente::create(['nome' => 'BETA', 'ativo' => true]);
+        $localA = Local::create(['cliente_id' => $acme->id, 'designacao' => 'DC-A']);
+        $localB = Local::create(['cliente_id' => $beta->id, 'designacao' => 'DC-B']);
+        $upsAcme = Equipamento::create(['local_id' => $localA->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-ACME-1', 'modelo' => 'NPW 2000']);
+        $outroAcme = Equipamento::create(['local_id' => $localA->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-ACME-2', 'modelo' => 'MST 60']);
+        $upsBeta = Equipamento::create(['local_id' => $localB->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-BETA-1', 'modelo' => 'NPW 2000']);
+
+        $c = Livewire::actingAs($admin)->test(Listagem::class)
+            ->call('selecionarClienteFiltro', $acme->id);
+
+        // Só equipamentos do cliente escolhido.
+        $c->assertViewHas('equipamentos', fn ($p) => $p->pluck('id')->contains($upsAcme->id)
+            && $p->pluck('id')->contains($outroAcme->id)
+            && ! $p->pluck('id')->contains($upsBeta->id));
+
+        // 2º filtro: a pesquisa (modelo) atua DENTRO do cliente — o NPW da BETA não entra.
+        $c->set('pesquisa', 'NPW')
+            ->assertViewHas('equipamentos', fn ($p) => $p->pluck('id')->contains($upsAcme->id)
+                && ! $p->pluck('id')->contains($outroAcme->id)
+                && ! $p->pluck('id')->contains($upsBeta->id));
+
+        // Limpar volta a mostrar todos.
+        $c->set('pesquisa', '')->call('limparClienteFiltro')
+            ->assertViewHas('equipamentos', fn ($p) => $p->total() === 3);
+    }
+
     public function test_cliente_e_obrigatorio(): void
     {
         $admin = $this->admin();
