@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-08-04
 
-- 🧰 **Ficha do equipamento: histórico de intervenções abre o relatório respetivo** — pedido da equipa: cada linha do "Histórico de Intervenções" com relatório ligado passa a ser **clicável** (a linha inteira abre o editor do relatório), com o nº do relatório na linha ("Relatório 2026/0042", ou "em rascunho"), realce ao passar o rato e seta à direita. Intervenções sem relatório ficam como estavam (só informativas). Bónus: corrigido um caso raro nas **horas por dia da agenda** — com o campo de fim ainda vazio, `Carbon::parse('')` devolve "agora" (não falha) e podiam nascer linhas fantasma com o fim na hora atual; campos vazios passam a ser tratados como intervalo inválido (na UI real não acontecia — os dois campos vêm sempre preenchidos). +1 teste (373 no total).
+- 🧰 **Ficha do equipamento: histórico de intervenções abre o relatório respetivo** — pedido da equipa: cada linha do "Histórico de Intervenções" com relatório ligado passa a ser **clicável** (a linha inteira abre o editor do relatório), com o nº do relatório na linha ("Relatório 2026/0042", ou "em rascunho"), realce ao passar o rato e seta à direita. Intervenções sem relatório ficam como estavam (só informativas). Bónus: corrigido um caso raro nas **horas por dia da agenda** — com o campo de fim ainda vazio, `Carbon::parse('')` devolve "agora" (não falha) e podiam nascer linhas fantasma com o fim na hora atual; campos vazios passam a ser tratados como intervalo inválido (na UI real não acontecia — os dois campos vêm sempre preenchidos). +1 teste (373 no total). `a06038c`
 
 ## 2026-07-31
 
