@@ -2,41 +2,86 @@
     <x-topbar :breadcrumb="['Despesas', $despesaId ? 'Editar' : 'Nova']" />
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
-        <div class="mx-auto max-w-3xl">
-            <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ $despesaId ? 'Editar despesa' : 'Nova despesa' }}</h1>
-            <p class="mt-2 text-sm text-texto-medio">Custo da operação · ligue a um cliente para acompanhar a rentabilidade.</p>
+        <div class="mx-auto max-w-5xl">
+            <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ $despesaId ? 'Editar despesa' : 'Registo de despesas' }}</h1>
+            <p class="mt-2 text-sm text-texto-medio">No formato da folha da empresa — preenche as colunas que se aplicam; cada coluna com valor regista uma despesa dessa categoria.</p>
 
             <form wire:submit="guardar" class="cartao mt-8 p-6 sm:p-8">
-                <div class="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-                    <div>
-                        <label class="campo-label">Data <span class="text-perigo-500">*</span></label>
-                        <input wire:model="data" type="date" class="campo-input">
-                        @error('data') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-                    {{-- Categoria: as COLUNAS fixas da folha de despesas (iguais à folha impressa). --}}
-                    <div>
-                        <label class="campo-label" for="categoria-select">Categoria <span class="text-perigo-500">*</span></label>
-                        <select id="categoria-select" wire:model="categoria" class="campo-select">
-                            <option value="">— Escolher —</option>
-                            @foreach (\App\Models\Despesa::CATEGORIAS as $c)
-                                <option value="{{ $c }}">{{ $c }}</option>
-                            @endforeach
-                        </select>
-                        @error('categoria') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
+                {{-- ===== Cabeçalho da folha (como na folha impressa) ===== --}}
+                <div class="overflow-hidden rounded-lg border border-borda">
+                    <table class="w-full text-sm">
+                        <tr class="border-b border-borda">
+                            <td class="w-40 bg-fundo px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-texto-medio">Nome colaborador</td>
+                            <td class="px-4 py-2.5 font-medium text-texto-forte">{{ auth()->user()->nome }}</td>
+                            <td class="w-32 border-l border-borda bg-fundo px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-texto-medio">Matrícula</td>
+                            <td class="px-2 py-1.5"><input wire:model="matricula" type="text" class="campo-input px-2 py-1.5 text-sm" placeholder="Ex: BD-71-VI"></td>
+                        </tr>
+                        <tr>
+                            <td class="bg-fundo px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-texto-medio">Departamento</td>
+                            <td class="px-2 py-1.5"><input wire:model="departamento" type="text" class="campo-input px-2 py-1.5 text-sm" placeholder="Ex: Infraestruturas"></td>
+                            <td class="border-l border-borda bg-fundo px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-texto-medio">Data <span class="text-perigo-500">*</span></td>
+                            <td class="px-2 py-1.5"><input wire:model="data" type="date" class="campo-input px-2 py-1.5 text-sm"></td>
+                        </tr>
+                    </table>
+                </div>
+                @error('data') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
 
-                    <div class="sm:col-span-2">
-                        <label class="campo-label">Descrição <span class="text-perigo-500">*</span></label>
-                        <input wire:model="descricao" type="text" class="campo-input" placeholder="Ex: Baterias 12V ×4, deslocação ao Porto...">
-                        @error('descricao') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
+                {{-- ===== Grelha da folha: descrição + colunas de valores (uma linha) ===== --}}
+                <div class="mt-5 overflow-x-auto rounded-lg border border-borda">
+                    <table class="w-full min-w-[880px] text-sm">
+                        <thead>
+                            <tr class="bg-fundo text-xs uppercase tracking-wide text-texto-medio">
+                                <th rowspan="2" class="border-b border-r border-borda px-3 py-2 text-left font-semibold">Descrição<br><span class="font-normal normal-case text-texto-fraco">(cliente - localidade)</span></th>
+                                <th colspan="2" class="border-b border-r border-borda px-3 py-2 text-center font-semibold">Veículos da empresa</th>
+                                <th rowspan="2" class="border-b border-r border-borda px-3 py-2 text-center font-semibold">Hotel</th>
+                                <th rowspan="2" class="border-b border-r border-borda px-3 py-2 text-center font-semibold">Refeições <span class="normal-case">a)</span></th>
+                                <th rowspan="2" class="border-b border-r border-borda px-3 py-2 text-center font-semibold">Táxi · Comboio<br>Avião, etc</th>
+                                <th rowspan="2" class="border-b border-borda px-3 py-2 text-center font-semibold">Outras <span class="normal-case">b)</span></th>
+                            </tr>
+                            <tr class="bg-fundo text-xs uppercase tracking-wide text-texto-medio">
+                                <th class="border-b border-r border-borda px-3 py-1.5 text-center font-semibold">Combustíveis</th>
+                                <th class="border-b border-r border-borda px-3 py-1.5 text-center font-semibold">Outros</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="border-r border-borda px-2 py-2">
+                                    <input wire:model="descricao" type="text" class="campo-input w-full min-w-[14rem] px-2 py-1.5 text-sm" placeholder="Ex: ACME - Porto">
+                                </td>
+                                @foreach (\App\Models\Despesa::CATEGORIAS as $i => $c)
+                                    <td class="px-1.5 py-2 {{ $i < count(\App\Models\Despesa::CATEGORIAS) - 1 ? 'border-r border-borda' : '' }}">
+                                        <input wire:model.live.debounce.500ms="valores.{{ $i }}" type="number" step="0.01" min="0" inputmode="decimal" class="campo-input w-24 px-2 py-1.5 text-right text-sm" placeholder="0,00">
+                                    </td>
+                                @endforeach
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="border-t border-borda bg-fundo text-sm font-semibold text-texto-forte">
+                                <td class="border-r border-borda px-3 py-2 text-right uppercase tracking-wide">Euros</td>
+                                @foreach (\App\Models\Despesa::CATEGORIAS as $i => $c)
+                                    <td class="px-3 py-2 text-right {{ $i < count(\App\Models\Despesa::CATEGORIAS) - 1 ? 'border-r border-borda' : '' }}">
+                                        {{ is_numeric($valores[$i] ?? '') ? number_format((float) $valores[$i], 2, ',', ' ') . ' €' : '' }}
+                                    </td>
+                                @endforeach
+                            </tr>
+                            <tr class="border-t border-borda">
+                                <td colspan="6" class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-texto-medio">Total despesas</td>
+                                <td class="px-3 py-2 text-right text-sm font-semibold text-texto-forte">{{ number_format($total, 2, ',', ' ') }} €</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                @error('descricao') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                @error('valores') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                @foreach (\App\Models\Despesa::CATEGORIAS as $i => $c)
+                    @error("valores.$i") <p class="mt-1.5 text-xs text-perigo-500">{{ $c }}: {{ $message }}</p> @enderror
+                @endforeach
+                <p class="mt-2 text-xs text-texto-fraco">
+                    a) Indicar: A - almoço · J - jantar (sempre que incluir refeições com outros colaboradores, indicar na descrição o respetivo nome.)<br>
+                    b) Especificar na descrição.
+                </p>
 
-                    <div>
-                        <label class="campo-label">Valor (€) <span class="text-perigo-500">*</span></label>
-                        <input wire:model="valor" type="number" step="0.01" min="0" class="campo-input" placeholder="0,00">
-                        @error('valor') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-
+                <div class="mt-6 grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
                     {{-- Intervenção (opcional): pesquisa GLOBAL. Ao associar, herda cliente/equipamento/contrato. --}}
                     <div class="sm:col-span-2">
                         <label class="campo-label" for="intervencao-combo">Intervenção (opcional)</label>

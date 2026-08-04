@@ -29,6 +29,8 @@ class Despesa extends Model
         'intervencao_id',
         'contrato_id',
         'criado_por',
+        'matricula',    // veículo usado (cabeçalho da folha da empresa)
+        'departamento', // departamento do colaborador (idem)
     ];
 
     /** @return array<string, string> */

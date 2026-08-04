@@ -22,10 +22,17 @@ class Editor extends Component
     public ?int $despesaId = null;
 
     public string $data = '';
-    public string $categoria = '';
     public string $descricao = '';
-    public string $valor = '';
     public bool $faturavel = false;
+
+    // Cabeçalho da folha (como na folha impressa da empresa).
+    public string $matricula = '';
+    public string $departamento = '';
+
+    // Valores por COLUNA da folha (índice → Despesa::CATEGORIAS): preenche-se o que se
+    // aplica; cada coluna com valor grava uma despesa individual dessa categoria.
+    /** @var array<int, string> */
+    public array $valores = [];
 
     // Cliente (opcional) — pesquisa server-side.
     public ?int $cliente_id = null;
@@ -52,12 +59,17 @@ class Editor extends Component
 
     public function mount(?Despesa $despesa = null): void
     {
+        $this->valores = array_fill(0, count(Despesa::CATEGORIAS), '');
+
         if ($despesa && $despesa->exists) {
             $this->despesaId = $despesa->id;
             $this->data = $despesa->data->toDateString();
-            $this->categoria = $despesa->categoria;
+            // O valor entra na coluna da categoria da despesa (legado desconhecido → "Outras").
+            $indice = array_search($despesa->categoria, Despesa::CATEGORIAS, true);
+            $this->valores[$indice === false ? count(Despesa::CATEGORIAS) - 1 : $indice] = (string) $despesa->valor;
             $this->descricao = $despesa->descricao;
-            $this->valor = (string) $despesa->valor;
+            $this->matricula = $despesa->matricula ?? '';
+            $this->departamento = $despesa->departamento ?? '';
             $this->faturavel = $despesa->faturavel;
             $this->cliente_id = $despesa->cliente_id;
             $this->clienteBusca = $despesa->cliente?->nome ?? '';
@@ -188,16 +200,38 @@ class Editor extends Component
 
     public function guardar()
     {
-        $dados = $this->validate([
+        $this->validate([
             'data' => ['required', 'date'],
-            // Categorias FIXAS (whitelist no servidor).
-            'categoria' => ['required', \Illuminate\Validation\Rule::in(Despesa::CATEGORIAS)],
             'descricao' => ['required', 'string', 'max:255'],
-            'valor' => ['required', 'numeric', 'min:0'],
+            'matricula' => ['nullable', 'string', 'max:50'],
+            'departamento' => ['nullable', 'string', 'max:100'],
+            'valores' => ['array', 'max:' . count(Despesa::CATEGORIAS)],
+            'valores.*' => ['nullable', 'numeric', 'min:0'],
             'faturavel' => ['boolean'],
             'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
             'intervencao_id' => ['nullable', 'integer', 'exists:intervencoes,id'],
         ]);
+
+        // Colunas preenchidas (valor > 0) → uma despesa por coluna, na categoria respetiva.
+        // A categoria nunca vem do cliente: deriva do ÍNDICE da coluna (whitelist estrutural).
+        $lancamentos = collect(Despesa::CATEGORIAS)
+            ->map(fn (string $cat, int $i) => ['categoria' => $cat, 'valor' => trim((string) ($this->valores[$i] ?? ''))])
+            ->filter(fn (array $l) => $l['valor'] !== '' && (float) $l['valor'] > 0)
+            ->values();
+
+        if ($lancamentos->isEmpty()) {
+            $this->addError('valores', 'Preencha pelo menos uma coluna com o valor da despesa.');
+
+            return;
+        }
+
+        $dados = [
+            'data' => $this->data,
+            'descricao' => trim($this->descricao),
+            'matricula' => trim($this->matricula) ?: null,
+            'departamento' => trim($this->departamento) ?: null,
+            'faturavel' => $this->faturavel,
+        ];
 
         // Ligações. Com intervenção associada, o cliente/equipamento/contrato são HERDADOS dela
         // (fonte da verdade, re-lida no servidor — não se confia no que vem do cliente). Sem
@@ -215,20 +249,29 @@ class Editor extends Component
             $dados['cliente_id'] = $this->cliente_id;
         }
 
-        if ($this->despesaId) {
-            $despesa = Despesa::findOrFail($this->despesaId);
-            $despesa->update($dados);
-            session()->flash('sucesso', 'Despesa atualizada.');
-        } else {
-            $dados['criado_por'] = auth()->id();
-            $despesa = Despesa::create($dados);
-            session()->flash('sucesso', 'Despesa registada.');
+        // EDIÇÃO: a 1.ª coluna preenchida atualiza a despesa aberta (categoria incluída — o
+        // valor pode ter mudado de coluna); colunas adicionais criam despesas novas.
+        // CRIAÇÃO: cada coluna preenchida cria a sua despesa.
+        $primeira = null;
+        foreach ($lancamentos as $i => $lancamento) {
+            $atributos = $dados + ['categoria' => $lancamento['categoria'], 'valor' => (float) $lancamento['valor']];
+
+            if ($i === 0 && $this->despesaId) {
+                $despesa = Despesa::findOrFail($this->despesaId);
+                $despesa->update($atributos);
+            } else {
+                $despesa = Despesa::create($atributos + ['criado_por' => auth()->id()]);
+            }
+
+            $primeira ??= $despesa;
         }
 
-        // Recibos pendentes → object storage + metadados anexados à despesa (CLAUDE.md §2).
+        session()->flash('sucesso', $this->despesaId ? 'Despesa atualizada.' : 'Despesa registada.');
+
+        // Recibos pendentes → object storage + metadados anexados à 1.ª despesa (CLAUDE.md §2).
         foreach ($this->recibos as $ficheiro) {
-            $key = $ficheiro->store('anexos/despesas/' . $despesa->id);
-            $despesa->anexos()->create([
+            $key = $ficheiro->store('anexos/despesas/' . $primeira->id);
+            $primeira->anexos()->create([
                 'nome_ficheiro' => $ficheiro->getClientOriginalName() ?: 'recibo.jpg',
                 'storage_key' => $key,
                 'mime' => $ficheiro->getMimeType(),
@@ -277,9 +320,13 @@ class Editor extends Component
             ->limit(20)
             ->get();
 
+        // Total das colunas preenchidas (rodapé da grelha, atualiza enquanto se escreve).
+        $total = collect($this->valores)->filter(fn ($v) => is_numeric($v))->sum(fn ($v) => (float) $v);
+
         return view('livewire.despesas.editor', [
             'clientesFiltrados' => $clientesFiltrados,
             'intervencoesFiltradas' => $this->intervencoesFiltradas(),
+            'total' => $total,
             'recibosGravados' => $this->despesaId
                 ? Despesa::findOrFail($this->despesaId)->anexos()->orderBy('id')->get()
                 : collect(),

@@ -38,11 +38,11 @@ class DespesaTest extends TestCase
         $admin = $this->admin();
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
 
+        // Grelha no formato da folha: a coluna 5 = "Outras despesas".
         Livewire::actingAs($admin)->test(Editor::class)
             ->set('data', now()->toDateString())
-            ->set('categoria', 'Outras despesas')
             ->set('descricao', 'Baterias 12V x4')
-            ->set('valor', '320')
+            ->set('valores.5', '320')
             ->set('faturavel', true)
             ->set('cliente_id', $cliente->id)
             ->call('guardar')
@@ -59,16 +59,36 @@ class DespesaTest extends TestCase
         ]);
     }
 
-    // As categorias passaram a ser FIXAS (as colunas da folha de despesas) — texto livre é recusado.
-    public function test_categoria_fora_das_colunas_fixas_e_recusada(): void
+    // Várias colunas preenchidas → uma despesa por coluna (categoria deriva do índice — não
+    // há categoria forjável); cabeçalho (matrícula/departamento) partilhado.
+    public function test_varias_colunas_criam_uma_despesa_por_categoria(): void
+    {
+        $admin = $this->admin();
+
+        Livewire::actingAs($admin)->test(Editor::class)
+            ->set('data', now()->toDateString())
+            ->set('descricao', 'ACME - Porto')
+            ->set('matricula', 'BD-71-VI')
+            ->set('valores.0', '20.50')   // Combustíveis
+            ->set('valores.3', '12')      // Refeições
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('despesas', ['categoria' => 'Combustíveis', 'valor' => 20.50, 'descricao' => 'ACME - Porto', 'matricula' => 'BD-71-VI']);
+        $this->assertDatabaseHas('despesas', ['categoria' => 'Refeições', 'valor' => 12.00, 'descricao' => 'ACME - Porto']);
+        $this->assertSame(2, Despesa::count());
+    }
+
+    // Sem nenhuma coluna preenchida, não grava (a folha exige pelo menos um valor).
+    public function test_sem_valores_nao_grava(): void
     {
         Livewire::actingAs($this->admin())->test(Editor::class)
             ->set('data', now()->toDateString())
-            ->set('categoria', 'Material')
-            ->set('descricao', 'Cabo')
-            ->set('valor', '10')
+            ->set('descricao', 'Vazio')
             ->call('guardar')
-            ->assertHasErrors('categoria');
+            ->assertHasErrors('valores');
+
+        $this->assertSame(0, Despesa::count());
     }
 
     // Recibos digitalizados: ficam pendentes no formulário e gravam-se COM a despesa
@@ -81,9 +101,8 @@ class DespesaTest extends TestCase
 
         Livewire::actingAs($admin)->test(Editor::class)
             ->set('data', now()->toDateString())
-            ->set('categoria', 'Refeições')
             ->set('descricao', 'Almoço ACME')
-            ->set('valor', '14.20')
+            ->set('valores.3', '14.20') // Refeições
             ->set('recibosUpload', [\Illuminate\Http\UploadedFile::fake()->image('recibo.jpg', 800, 600)])
             ->call('guardar')
             ->assertHasNoErrors();
@@ -148,9 +167,8 @@ class DespesaTest extends TestCase
 
         Livewire::actingAs($admin)->test(Editor::class)
             ->set('data', now()->toDateString())
-            ->set('categoria', 'Combustíveis')
             ->set('descricao', 'Baterias')
-            ->set('valor', '100')
+            ->set('valores.0', '100') // Combustíveis
             ->call('selecionarIntervencao', $interv->id)
             ->assertSet('cliente_id', $cliente->id)     // herdados da intervenção
             ->assertSet('equipamento_id', $equip->id)
