@@ -73,7 +73,7 @@ class PdfFichaMedicaoTest extends TestCase
         $this->assertSame(2, substr_count($html, '<div class="ficha-pagina">'));
 
         // Secções e valores medidos presentes (sem inventar).
-        $this->assertStringContainsString('Valores elétricos', $html);
+        $this->assertStringContainsString('Medições elétricas', $html);
         $this->assertStringContainsString('Teste de descarga', $html);
         $this->assertStringContainsString('231.40', $html);
         $this->assertStringContainsString('55.00', $html);
@@ -97,7 +97,7 @@ class PdfFichaMedicaoTest extends TestCase
 
         $this->assertStringContainsString('<h2>Checklist</h2>', $html);
         $this->assertStringContainsString('Verificar ventoinhas', $html);
-        $this->assertStringNotContainsString('Valores elétricos', $html); // sem fichas → sem secção de ficha
+        $this->assertStringNotContainsString('Medições elétricas', $html); // sem fichas → sem secção de ficha
         $this->assertStringNotContainsString('<div class="ficha-pagina">', $html);
     }
 
@@ -134,7 +134,7 @@ class PdfFichaMedicaoTest extends TestCase
 
         $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
 
-        $this->assertStringContainsString('Valores elétricos', $html);           // ficha renderizada
+        $this->assertStringContainsString('Medições elétricas', $html);           // ficha renderizada
         $this->assertStringContainsString('<div class="ficha-pagina">', $html);
         $this->assertStringContainsString('231.40', $html);
         $this->assertStringNotContainsString('<h2>Checklist</h2>', $html);        // sem checklist quando há ficha

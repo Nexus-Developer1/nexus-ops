@@ -42,6 +42,15 @@
         .cel-num { text-align: center; }
         .cel-ok { text-align: center; color: #16A34A; font-weight: bold; width: 8%; }
         .cel-na { text-align: center; color: #6b7280; font-weight: bold; width: 8%; } /* N/A (ficha SADEI) */
+        /* Grelha de caixas das medições — espelho do formulário (3 grupos por linha). */
+        .med-grid { width: 100%; border-collapse: separate; border-spacing: 3px 2px; }
+        .med-cel { width: 33.33%; vertical-align: top; }
+        .med-caixa { border: 1px solid #d1d5db; border-radius: 4px; padding: 5px 7px; }
+        .med-titulo { font-size: 9px; font-weight: bold; color: #374151; margin-bottom: 3px; }
+        .med-vals { width: 100%; border-collapse: collapse; }
+        .med-vals td { padding: 0 6px 0 0; vertical-align: bottom; }
+        .med-rot { color: #9ca3af; font-size: 7px; text-transform: uppercase; }
+        .med-val { font-size: 10px; color: #111827; border-bottom: 1px solid #e5e7eb; padding: 1px 2px 2px; }
         .temp-alerta { color: #dc2626; font-weight: bold; } /* temperatura acima de 25 °C */
         .cel-nok { text-align: center; color: #dc2626; font-weight: bold; width: 8%; }
     </style>
@@ -290,32 +299,46 @@
                     </table>
                 @endif
 
-                <div class="ficha-seccao">Valores elétricos</div>
-                @php($tabelasE = [
-                    ['Tensão de entrada L/N (V)', ['L1' => 've_ln_l1', 'L2' => 've_ln_l2', 'L3' => 've_ln_l3']],
-                    ['Tensão de entrada L/L (V)', ['L1-L2' => 've_ll_l1l2', 'L1-L3' => 've_ll_l1l3', 'L2-L3' => 've_ll_l2l3']],
+                {{-- Medições elétricas: espelho EXATO do formulário — grelha de caixas (3 por
+                     linha), cada uma com o título do grupo e os valores por baixo dos rótulos. --}}
+                <div class="ficha-seccao">Medições elétricas</div>
+                @php($gruposE = [
+                    ['Entrada — Tensão L-N (V)', ['L1' => 've_ln_l1', 'L2' => 've_ln_l2', 'L3' => 've_ln_l3']],
+                    ['Entrada — Tensão L-L (V)', ['L1-L2' => 've_ll_l1l2', 'L1-L3' => 've_ll_l1l3', 'L2-L3' => 've_ll_l2l3']],
                     ['Carga (%)', ['L1' => 'carga_l1', 'L2' => 'carga_l2', 'L3' => 'carga_l3']],
                     ['Frequência (Hz)', ['Hz' => 'frequencia']],
-                    ['Tensão de saída L/N (V)', ['L1' => 'vs_ln_l1', 'L2' => 'vs_ln_l2', 'L3' => 'vs_ln_l3']],
-                    ['Tensão de saída L/L (V)', ['L1-L2' => 'vs_ll_l1l2', 'L1-L3' => 'vs_ll_l1l3', 'L2-L3' => 'vs_ll_l2l3']],
-                    ['Corrente de saída (A)', ['L1' => 'is_l1', 'L2' => 'is_l2', 'L3' => 'is_l3']],
-                    ['Corrente de saída pico (A)', ['L1' => 'ispico_l1', 'L2' => 'ispico_l2', 'L3' => 'ispico_l3']],
-                    ['Tensão de baterias (V)', ['V+' => 'vbat_pos', 'V-' => 'vbat_neg']],
-                    ['Temperatura (°C)', ['°C' => 'temperatura']],
+                    ['Saída — Tensão L-N (V)', ['L1' => 'vs_ln_l1', 'L2' => 'vs_ln_l2', 'L3' => 'vs_ln_l3']],
+                    ['Saída — Tensão L-L (V)', ['L1-L2' => 'vs_ll_l1l2', 'L1-L3' => 'vs_ll_l1l3', 'L2-L3' => 'vs_ll_l2l3']],
+                    ['Saída — Corrente (A)', ['L1' => 'is_l1', 'L2' => 'is_l2', 'L3' => 'is_l3']],
+                    ['Saída — Corrente de pico (A)', ['L1' => 'ispico_l1', 'L2' => 'ispico_l2', 'L3' => 'ispico_l3']],
+                    ['Baterias / Temperatura', ['Vbat +' => 'vbat_pos', 'Vbat −' => 'vbat_neg', 'Temp (°C)' => 'temperatura']],
                 ])
-                <table class="ficha-tab">
-                    @foreach ($tabelasE as [$titulo, $campos])
+                @foreach (array_chunk($gruposE, 3) as $linhaGrupos)
+                    <table class="med-grid">
                         <tr>
-                            <td style="width:34%;">{{ $titulo }}</td>
-                            @foreach ($campos as $lab => $campo)
-                                {{-- Temperatura acima de 25 °C sai a vermelho (alerta visual no relatório). --}}
-                                @php($tempAlta = $campo === 'temperatura' && is_numeric($ficha->temperatura) && (float) $ficha->temperatura > 25)
-                                <td class="cel-num{{ $tempAlta ? ' temp-alerta' : '' }}" style="width:22%;"><span class="ficha-rot">{{ $lab }}</span> {{ $ficha->{$campo} }}</td>
+                            @foreach ($linhaGrupos as [$titulo, $campos])
+                                <td class="med-cel">
+                                    <div class="med-caixa">
+                                        <div class="med-titulo">{{ $titulo }}</div>
+                                        <table class="med-vals">
+                                            <tr>
+                                                @foreach ($campos as $lab => $campo)
+                                                    {{-- Temperatura acima de 25 °C sai a vermelho (alerta visual). --}}
+                                                    @php($tempAlta = $campo === 'temperatura' && is_numeric($ficha->temperatura) && (float) $ficha->temperatura > 25)
+                                                    <td>
+                                                        <div class="med-rot">{{ $lab }}</div>
+                                                        <div class="med-val{{ $tempAlta ? ' temp-alerta' : '' }}">{{ ($ficha->{$campo} ?? '') !== '' ? $ficha->{$campo} : '—' }}</div>
+                                                    </td>
+                                                @endforeach
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </td>
                             @endforeach
-                            @for ($k = count($campos); $k < 3; $k++)<td></td>@endfor
+                            @for ($k = count($linhaGrupos); $k < 3; $k++)<td class="med-cel"></td>@endfor
                         </tr>
-                    @endforeach
-                </table>
+                    </table>
+                @endforeach
 
                 <div class="ficha-seccao">Verificações</div>
                 <table class="ficha-tab">
