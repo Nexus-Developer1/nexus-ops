@@ -71,6 +71,37 @@ class DespesaTest extends TestCase
             ->assertHasErrors('categoria');
     }
 
+    // Recibos digitalizados: ficam pendentes no formulário e gravam-se COM a despesa
+    // (funciona na criação, antes de existir id); na edição removem-se. As asserções são
+    // sobre os metadados (BD) — o upload fake do Livewire não aterra no disco que o Storage
+    // lê neste ambiente (limitação conhecida, igual às fotos dos relatórios).
+    public function test_recibos_gravam_com_a_despesa_e_removem_se(): void
+    {
+        $admin = $this->admin();
+
+        Livewire::actingAs($admin)->test(Editor::class)
+            ->set('data', now()->toDateString())
+            ->set('categoria', 'Refeições')
+            ->set('descricao', 'Almoço ACME')
+            ->set('valor', '14.20')
+            ->set('recibosUpload', [\Illuminate\Http\UploadedFile::fake()->image('recibo.jpg', 800, 600)])
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $despesa = Despesa::where('descricao', 'Almoço ACME')->firstOrFail();
+        $recibo = $despesa->anexos()->firstOrFail();
+        $this->assertSame('recibo.jpg', $recibo->nome_ficheiro);
+        $this->assertNotSame('', (string) $recibo->storage_key);
+
+        // Edição: o recibo gravado aparece e pode remover-se.
+        Livewire::actingAs($admin)->test(Editor::class, ['despesa' => $despesa])
+            ->assertViewHas('recibosGravados', fn ($r) => $r->count() === 1)
+            ->call('removerReciboGravado', $recibo->id);
+
+        $this->assertSame(0, $despesa->anexos()->count());
+        \Illuminate\Support\Facades\Storage::disk()->delete($recibo->storage_key); // limpeza best-effort
+    }
+
     public function test_kpis_separam_faturavel_de_incluido(): void
     {
         $admin = $this->admin();

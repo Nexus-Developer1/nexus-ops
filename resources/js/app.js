@@ -164,6 +164,84 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
+    // "Digitalizar recibo" (despesas): abre a câmara na própria app (getUserMedia), captura
+    // para canvas e aplica um filtro de DOCUMENTO (tons de cinzento + contraste alto — texto
+    // escuro, papel claro) antes de enviar ao Livewire. Precisa de HTTPS (produção tem).
+    window.Alpine.data('scannerRecibo', () => ({
+        aberto: false,
+        capturado: false,
+        stream: null,
+        erro: '',
+
+        async abrir() {
+            this.erro = '';
+            this.capturado = false;
+            this.aberto = true;
+            if (!navigator.mediaDevices?.getUserMedia) {
+                this.erro = 'A câmara não está disponível neste dispositivo/navegador.';
+                return;
+            }
+            try {
+                this.stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: { ideal: 2560 } },
+                    audio: false,
+                });
+                this.$refs.video.srcObject = this.stream;
+                await this.$refs.video.play();
+            } catch (e) {
+                this.erro = 'Não foi possível abrir a câmara (verifica as permissões).';
+            }
+        },
+
+        capturar() {
+            const video = this.$refs.video;
+            const tela = this.$refs.tela;
+            if (!video.videoWidth) return;
+            tela.width = video.videoWidth;
+            tela.height = video.videoHeight;
+            const ctx = tela.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+
+            // Filtro de documento: luminância + curva de contraste com deslocamento para o
+            // branco (papel fica claro, tinta fica escura — aspeto de digitalização).
+            const img = ctx.getImageData(0, 0, tela.width, tela.height);
+            const d = img.data;
+            for (let i = 0; i < d.length; i += 4) {
+                const cinza = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                const valor = Math.max(0, Math.min(255, (cinza - 128) * 1.8 + 150));
+                d[i] = d[i + 1] = d[i + 2] = valor;
+            }
+            ctx.putImageData(img, 0, 0);
+
+            this.capturado = true;
+            this.pararCamara(); // congela a captura; "Repetir" reabre
+        },
+
+        repetir() {
+            this.abrir();
+        },
+
+        usar() {
+            this.$refs.tela.toBlob((blob) => {
+                const ficheiro = new File([blob], 'recibo-digitalizado.jpg', { type: 'image/jpeg' });
+                this.$wire.upload('reciboDigitalizado', ficheiro, () => {}, () => {
+                    this.erro = 'Falha ao enviar a digitalização.';
+                });
+                this.fechar();
+            }, 'image/jpeg', 0.9);
+        },
+
+        pararCamara() {
+            this.stream?.getTracks().forEach((t) => t.stop());
+            this.stream = null;
+        },
+
+        fechar() {
+            this.pararCamara();
+            this.aberto = false;
+        },
+    }));
+
     // Toolbar/vista responsivos: num telemóvel a barra do FullCalendar (prev/next/today +
     // título + 3 botões de vista) não cabe. Em ecrã estreito reduzimos os botões e abrimos
     // na vista de DIA (a semana fica ilegível a 375px).

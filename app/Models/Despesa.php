@@ -14,6 +14,9 @@ class Despesa extends Model
 
     protected $table = 'despesas';
 
+    // Categorias FIXAS (as da folha de despesas da empresa) — whitelist no editor.
+    public const CATEGORIAS = ['Combustíveis', 'Outros (veículos)', 'Hotel', 'Refeições', 'Táxi / Comboio / Avião', 'Outras despesas'];
+
     /** @var list<string> */
     protected $fillable = [
         'data',
@@ -26,7 +29,6 @@ class Despesa extends Model
         'intervencao_id',
         'contrato_id',
         'criado_por',
-        'folha_despesa_id', // folha mensal do colaborador a que o lançamento pertence (null = avulsa)
     ];
 
     /** @return array<string, string> */
@@ -59,8 +61,9 @@ class Despesa extends Model
         return $this->belongsTo(Contrato::class);
     }
 
-    public function folha(): BelongsTo
+    // Recibos digitalizados (fotos/digitalizações da câmara) — anexos polimórficos.
+    public function anexos(): \Illuminate\Database\Eloquent\Relations\MorphMany
     {
-        return $this->belongsTo(FolhaDespesa::class, 'folha_despesa_id');
+        return $this->morphMany(Anexo::class, 'anexavel');
     }
 }

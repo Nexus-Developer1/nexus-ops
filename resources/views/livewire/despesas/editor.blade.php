@@ -18,7 +18,7 @@
                         <label class="campo-label" for="categoria-select">Categoria <span class="text-perigo-500">*</span></label>
                         <select id="categoria-select" wire:model="categoria" class="campo-select">
                             <option value="">— Escolher —</option>
-                            @foreach (\App\Models\FolhaDespesa::COLUNAS as $c)
+                            @foreach (\App\Models\Despesa::CATEGORIAS as $c)
                                 <option value="{{ $c }}">{{ $c }}</option>
                             @endforeach
                         </select>
@@ -114,6 +114,83 @@
                             @endif
                         @endif
                         @error('cliente_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Recibos: digitalizar com a câmara (filtro de documento), tirar foto ou galeria.
+                         Pendentes gravam-se COM a despesa (funciona na criação); na edição os
+                         gravados aparecem com remover. --}}
+                    <div class="sm:col-span-2" x-data="scannerRecibo">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <label class="campo-label mb-0">Recibos</label>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button type="button" @click="abrir()" class="botao-secundario">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0a4 4 0 11-8 0 4 4 0 018 0zM4 16H2m2-5.5L2.5 9M20 10.5L21.5 9M7 4h10l1 3H6l1-3z"/></svg>
+                                    Digitalizar
+                                </button>
+                                <label class="botao-secundario cursor-pointer">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    Tirar foto
+                                    <input type="file" wire:model="recibosUpload" accept="image/*" capture="environment" class="hidden">
+                                </label>
+                                <label class="botao-secundario cursor-pointer">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                    Galeria
+                                    <input type="file" wire:model="recibosUpload" accept="image/*" multiple class="hidden">
+                                </label>
+                            </div>
+                        </div>
+                        <div wire:loading wire:target="recibosUpload,reciboDigitalizado" class="mt-2 text-sm text-texto-medio">A carregar recibo…</div>
+                        @error('recibosUpload.*') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                        @error('reciboDigitalizado') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+
+                        @if (count($recibos) || $recibosGravados->isNotEmpty())
+                            <div class="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-6">
+                                @foreach ($recibosGravados as $recibo)
+                                    <div class="group relative" wire:key="recibo-g-{{ $recibo->id }}">
+                                        <a href="{{ route('anexos.ver', $recibo) }}" target="_blank">
+                                            <img src="{{ route('anexos.ver', $recibo) }}" alt="{{ $recibo->nome_ficheiro }}" class="h-24 w-full rounded-lg border border-borda object-cover">
+                                        </a>
+                                        <button type="button" wire:click="removerReciboGravado({{ $recibo->id }})" wire:confirm="Remover este recibo?"
+                                            class="absolute -right-2 -top-2 hidden h-6 w-6 items-center justify-center rounded-full bg-perigo-600 text-white shadow group-hover:flex" title="Remover">
+                                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                    </div>
+                                @endforeach
+                                @foreach ($recibos as $i => $pendente)
+                                    <div class="group relative" wire:key="recibo-p-{{ $i }}">
+                                        <img src="{{ $pendente->temporaryUrl() }}" alt="Recibo pendente" class="h-24 w-full rounded-lg border border-verde-300 object-cover">
+                                        <button type="button" wire:click="removerReciboPendente({{ $i }})"
+                                            class="absolute -right-2 -top-2 hidden h-6 w-6 items-center justify-center rounded-full bg-perigo-600 text-white shadow group-hover:flex" title="Remover">
+                                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                    </div>
+                                @endforeach
+                            </div>
+                            <p class="mt-1.5 text-xs text-texto-fraco">Os recibos com contorno verde são gravados ao registar a despesa.</p>
+                        @endif
+
+                        {{-- Modal do scanner: câmara em direto → capturar → filtro de documento → usar/repetir. --}}
+                        <div x-show="aberto" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+                            <div class="w-full max-w-lg rounded-xl bg-white p-4 shadow-xl">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="text-base font-semibold text-texto-forte">Digitalizar recibo</h3>
+                                    <button type="button" @click="fechar()" class="text-texto-fraco hover:text-texto-forte">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+                                <p x-show="erro" x-text="erro" class="mt-2 text-sm text-perigo-500"></p>
+                                <div class="mt-3 overflow-hidden rounded-lg bg-black">
+                                    <video x-ref="video" x-show="!capturado" playsinline muted class="max-h-[60vh] w-full object-contain"></video>
+                                    <canvas x-ref="tela" x-show="capturado" class="max-h-[60vh] w-full object-contain"></canvas>
+                                </div>
+                                <div class="mt-4 flex items-center justify-end gap-2">
+                                    <button type="button" x-show="!capturado" @click="capturar()" class="botao-primario">Capturar</button>
+                                    <button type="button" x-show="capturado" @click="repetir()" class="botao-secundario">Repetir</button>
+                                    <button type="button" x-show="capturado" @click="usar()" class="botao-primario">Usar digitalização</button>
+                                </div>
+                                <p class="mt-2 text-xs text-texto-fraco">Enquadra o recibo e captura — é aplicado um filtro de documento (preto e branco, alto contraste).</p>
+                            </div>
+                        </div>
                     </div>
 
                     {{-- Faturável vs incluído no contrato. --}}

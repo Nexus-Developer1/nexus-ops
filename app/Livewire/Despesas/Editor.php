@@ -14,6 +14,7 @@ use Livewire\Component;
 class Editor extends Component
 {
     use ApenasEquipa;
+    use \Livewire\WithFileUploads;
 
     // Dobra de acentos em SQL, para a pesquisa de cliente (igual ao editor de contratos).
     private const NOME_SEM_ACENTOS = "translate(lower(nome), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
@@ -29,6 +30,16 @@ class Editor extends Component
     // Cliente (opcional) — pesquisa server-side.
     public ?int $cliente_id = null;
     public string $clienteBusca = '';
+
+    // Recibos: pendentes (ficam com a despesa ao guardar — funciona também na criação, antes
+    // de existir id) + alvo dos uploads (câmara/galeria e o "Digitalizar" via JS).
+    /** @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
+    public array $recibos = [];
+
+    /** @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
+    public array $recibosUpload = [];
+
+    public $reciboDigitalizado = null; // upload único vindo do scanner (JS)
 
     // Intervenção (opcional) — pesquisa GLOBAL server-side (nº relatório / nº série / cliente).
     // Ao associar, herda cliente + equipamento + contrato da intervenção.
@@ -65,6 +76,39 @@ class Editor extends Component
         }
 
         $this->data = now()->toDateString();
+    }
+
+    private const REGRAS_RECIBO = ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'];
+
+    // Câmara nativa / galeria: valida e junta aos pendentes (gravam-se com a despesa).
+    public function updatedRecibosUpload(): void
+    {
+        $this->validate(['recibosUpload.*' => self::REGRAS_RECIBO]);
+        $this->recibos = array_merge($this->recibos, $this->recibosUpload);
+        $this->recibosUpload = [];
+    }
+
+    // "Digitalizar": o scanner (JS) envia a imagem já com o filtro de documento aplicado.
+    public function updatedReciboDigitalizado(): void
+    {
+        $this->validate(['reciboDigitalizado' => self::REGRAS_RECIBO]);
+        $this->recibos[] = $this->reciboDigitalizado;
+        $this->reciboDigitalizado = null;
+    }
+
+    public function removerReciboPendente(int $indice): void
+    {
+        unset($this->recibos[$indice]);
+        $this->recibos = array_values($this->recibos);
+    }
+
+    // Remove um recibo JÁ GRAVADO (edição) — apaga o ficheiro e os metadados.
+    public function removerReciboGravado(int $anexoId): void
+    {
+        abort_unless($this->despesaId !== null, 404);
+        $anexo = Despesa::findOrFail($this->despesaId)->anexos()->whereKey($anexoId)->firstOrFail();
+        \Illuminate\Support\Facades\Storage::disk()->delete($anexo->storage_key);
+        $anexo->delete();
     }
 
     public function selecionarCliente(int $id): void
@@ -146,8 +190,8 @@ class Editor extends Component
     {
         $dados = $this->validate([
             'data' => ['required', 'date'],
-            // Categorias FIXAS = colunas da folha de despesas (whitelist no servidor).
-            'categoria' => ['required', \Illuminate\Validation\Rule::in(\App\Models\FolhaDespesa::COLUNAS)],
+            // Categorias FIXAS (whitelist no servidor).
+            'categoria' => ['required', \Illuminate\Validation\Rule::in(Despesa::CATEGORIAS)],
             'descricao' => ['required', 'string', 'max:255'],
             'valor' => ['required', 'numeric', 'min:0'],
             'faturavel' => ['boolean'],
@@ -172,12 +216,25 @@ class Editor extends Component
         }
 
         if ($this->despesaId) {
-            Despesa::findOrFail($this->despesaId)->update($dados);
+            $despesa = Despesa::findOrFail($this->despesaId);
+            $despesa->update($dados);
             session()->flash('sucesso', 'Despesa atualizada.');
         } else {
             $dados['criado_por'] = auth()->id();
-            Despesa::create($dados);
+            $despesa = Despesa::create($dados);
             session()->flash('sucesso', 'Despesa registada.');
+        }
+
+        // Recibos pendentes → object storage + metadados anexados à despesa (CLAUDE.md §2).
+        foreach ($this->recibos as $ficheiro) {
+            $key = $ficheiro->store('anexos/despesas/' . $despesa->id);
+            $despesa->anexos()->create([
+                'nome_ficheiro' => $ficheiro->getClientOriginalName() ?: 'recibo.jpg',
+                'storage_key' => $key,
+                'mime' => $ficheiro->getMimeType(),
+                'tamanho' => $ficheiro->getSize(),
+                'criado_por' => auth()->id(),
+            ]);
         }
 
         return redirect()->route('despesas');
@@ -223,6 +280,9 @@ class Editor extends Component
         return view('livewire.despesas.editor', [
             'clientesFiltrados' => $clientesFiltrados,
             'intervencoesFiltradas' => $this->intervencoesFiltradas(),
+            'recibosGravados' => $this->despesaId
+                ? Despesa::findOrFail($this->despesaId)->anexos()->orderBy('id')->get()
+                : collect(),
         ]);
     }
 }
