@@ -44,6 +44,10 @@ class Editor extends Component
     /** @var array<int, int> */
     public array $equipamentoIds = [];
 
+    // Filtro por tipo no seletor de equipamentos ('' = todos; 'ups', 'incendio', …) —
+    // permite ver e marcar só as UPS ou só os equipamentos de incêndio de um cliente.
+    public string $filtroTipoEquipamento = '';
+
     /** @var array<int, array<string, mixed>> */
     public array $slas = [];
 
@@ -259,17 +263,20 @@ class Editor extends Component
     }
 
     // Conveniência: marca TODOS os equipamentos do cliente atual como cobertos (evita marcar
-    // centenas de checkboxes à mão). Só ids inteiros. Equipamentos novos continuam a ser
-    // adicionados à mão — isto é só o "marcar de uma vez".
+    // centenas de checkboxes à mão). Respeita o filtro por tipo (com "UPS" ativo marca só as
+    // UPS) e JUNTA à seleção existente — nunca desmarca (para isso há o "Limpar").
     public function selecionarTodosEquipamentos(): void
     {
         if (! $this->cliente_id) {
             return;
         }
 
-        $this->equipamentoIds = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
+        $ids = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente_id))
+            ->when($this->filtroTipoEquipamento !== '', fn ($q) => $q->where('tipo', $this->filtroTipoEquipamento))
             ->pluck('id')
             ->all();
+
+        $this->equipamentoIds = array_values(array_unique(array_map(intval(...), array_merge($this->equipamentoIds, $ids))));
     }
 
     // Desmarca todos.
@@ -301,6 +308,16 @@ class Editor extends Component
                 ->get()
             : collect();
 
+        // Chips do filtro por tipo: só os tipos que o cliente realmente tem (ex.: UPS,
+        // Deteção de incêndio). A lista apresentada respeita o filtro ativo.
+        $tiposEquipamentos = $equipamentos->pluck('tipo')->unique()->values();
+        if ($this->filtroTipoEquipamento !== '' && ! $tiposEquipamentos->contains(fn ($t) => $t->value === $this->filtroTipoEquipamento)) {
+            $this->filtroTipoEquipamento = ''; // cliente mudou e o tipo já não existe
+        }
+        if ($this->filtroTipoEquipamento !== '') {
+            $equipamentos = $equipamentos->filter(fn ($e) => $e->tipo->value === $this->filtroTipoEquipamento)->values();
+        }
+
         // Pesquisa de clientes server-side (nome sem acentos + NIF + nº ERP), limitada.
         $clientesFiltrados = Cliente::query()
             ->when($this->clienteBusca !== '', function ($q) {
@@ -319,6 +336,7 @@ class Editor extends Component
         return view('livewire.contratos.editor', [
             'clientesFiltrados' => $clientesFiltrados,
             'equipamentos' => $equipamentos,
+            'tiposEquipamentos' => $tiposEquipamentos,
             'tiposContrato' => TipoContrato::cases(),
             'modelosFaturacao' => ModeloFaturacao::orderBy('nome')->get(),
             'prioridades' => PrioridadeSla::cases(),

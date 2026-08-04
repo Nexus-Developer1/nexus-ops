@@ -161,7 +161,24 @@
                     @elseif ($equipamentos->isEmpty())
                         <p class="text-sm text-texto-medio">Este cliente não tem equipamentos registados.</p>
                     @else
+                        {{-- Filtro por tipo (UPS / Deteção de incêndio / …): só com 2+ tipos no cliente.
+                             "Selecionar todos" respeita o tipo ativo — marca só esse tipo. --}}
+                        @if ($tiposEquipamentos->count() > 1)
+                            <div class="mb-4 flex flex-wrap items-center gap-2">
+                                <button type="button" wire:click="$set('filtroTipoEquipamento', '')"
+                                    class="rounded-full px-3 py-1.5 text-xs font-medium transition {{ $filtroTipoEquipamento === '' ? 'bg-verde-600 text-white' : 'border border-borda text-texto-medio hover:text-texto-forte' }}">
+                                    Todos
+                                </button>
+                                @foreach ($tiposEquipamentos as $t)
+                                    <button type="button" wire:click="$set('filtroTipoEquipamento', '{{ $t->value }}')"
+                                        class="rounded-full px-3 py-1.5 text-xs font-medium transition {{ $filtroTipoEquipamento === $t->value ? 'bg-verde-600 text-white' : 'border border-borda text-texto-medio hover:text-texto-forte' }}">
+                                        {{ $t->rotulo() }}
+                                    </button>
+                                @endforeach
+                            </div>
+                        @endif
                         <div
+                            wire:key="picker-equipamentos-{{ $filtroTipoEquipamento ?: 'todos' }}"
                             x-data="{
                                 busca: '',
                                 itens: @js($equipamentos->map(fn ($e) => ['nome' => trim($e->fabricante . ' ' . $e->modelo), 'serie' => $e->numero_serie ?? '', 'local' => $e->localInstalacao()])->values()),
