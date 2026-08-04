@@ -1,8 +1,8 @@
 <div>
     <x-topbar :breadcrumb="['Início', 'Despesas']">
-        <a href="{{ route('despesas.nova') }}" wire:navigate class="botao-primario">
+        <a href="{{ route('despesas.nova') }}" class="botao-primario">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
-            Nova despesa
+            A minha folha deste mês
         </a>
     </x-topbar>
 

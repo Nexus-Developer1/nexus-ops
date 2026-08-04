@@ -109,6 +109,47 @@
                 </div>
             </section>
 
+            {{-- Recibos digitalizados: tirar foto com a câmara do telemóvel ou escolher da galeria.
+                 Upload imediato (nada se perde); "Tirar foto" SEM multiple (o multiple+capture
+                 quebrava o "Repetir" no iOS — mesma lição das fotos dos relatórios). --}}
+            <section class="cartao mt-6">
+                <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
+                    <div>
+                        <h2 class="text-lg font-semibold text-texto-forte">Recibos</h2>
+                        <p class="mt-1 text-xs text-texto-fraco">Digitaliza os recibos com a câmara — ficam anexados a esta folha.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="botao-secundario cursor-pointer">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            Tirar foto
+                            <input type="file" wire:model="recibosNovos" accept="image/*" capture="environment" class="hidden">
+                        </label>
+                        <label class="botao-secundario cursor-pointer">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            Galeria
+                            <input type="file" wire:model="recibosNovos" accept="image/*" multiple class="hidden">
+                        </label>
+                    </div>
+                </div>
+                <div wire:loading wire:target="recibosNovos" class="px-6 pb-3 text-sm text-texto-medio">A carregar recibo…</div>
+                @error('recibosNovos.*') <p class="px-6 pb-3 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                @if ($recibos->isNotEmpty())
+                    <div class="grid grid-cols-2 gap-3 border-t border-borda px-6 py-5 sm:grid-cols-4 lg:grid-cols-6">
+                        @foreach ($recibos as $recibo)
+                            <div class="group relative" wire:key="recibo-{{ $recibo->id }}">
+                                <a href="{{ route('anexos.ver', $recibo) }}" target="_blank">
+                                    <img src="{{ route('anexos.ver', $recibo) }}" alt="{{ $recibo->nome_ficheiro }}" class="h-28 w-full rounded-lg border border-borda object-cover">
+                                </a>
+                                <button type="button" wire:click="removerRecibo({{ $recibo->id }})" wire:confirm="Remover este recibo?"
+                                    class="absolute -right-2 -top-2 hidden h-6 w-6 items-center justify-center rounded-full bg-perigo-600 text-white shadow group-hover:flex" title="Remover">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </section>
+
             <div class="mt-6 flex justify-end">
                 <button wire:click="guardar" wire:loading.attr="disabled" wire:target="guardar" class="botao-primario">Guardar folha</button>
             </div>

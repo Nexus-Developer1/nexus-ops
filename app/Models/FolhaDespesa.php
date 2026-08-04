@@ -39,6 +39,12 @@ class FolhaDespesa extends Model
         return $this->hasMany(Despesa::class, 'folha_despesa_id');
     }
 
+    // Recibos digitalizados (fotos tiradas com o telemóvel) — anexos polimórficos.
+    public function anexos(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(Anexo::class, 'anexavel');
+    }
+
     // "julho 2026" — cabeçalho e listagens.
     public function rotuloMes(): string
     {

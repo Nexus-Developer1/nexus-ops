@@ -3,11 +3,14 @@
 namespace App\Livewire\Despesas;
 
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Models\Anexo;
 use App\Models\Despesa;
 use App\Models\FolhaDespesa;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 // Folha MENSAL de despesas do colaborador — grelha igual à folha impressa da empresa:
 // uma linha por DIA, colunas fixas (Combustíveis, Outros, Hotel, Refeições, Táxi/Comboio/
@@ -17,8 +20,14 @@ use Livewire\Component;
 class Folha extends Component
 {
     use ApenasEquipa;
+    use WithFileUploads;
 
     public FolhaDespesa $folha;
+
+    // Recibos digitalizados a carregar (câmara do telemóvel ou galeria) — gravados
+    // no object storage assim que chegam; a BD fica só com os metadados (CLAUDE.md §2).
+    /** @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
+    public array $recibosNovos = [];
 
     public string $matricula = '';
     public string $departamento = '';
@@ -57,6 +66,36 @@ class Folha extends Component
         }
 
         $this->linhas = $linhas;
+    }
+
+    // Upload imediato: cada recibo escolhido/tirado grava logo (nada se perde se a folha
+    // não for guardada). Mesmos limites das fotos dos relatórios.
+    public function updatedRecibosNovos(): void
+    {
+        $this->validate([
+            'recibosNovos.*' => ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'],
+        ]);
+
+        foreach ($this->recibosNovos as $ficheiro) {
+            $key = $ficheiro->store('anexos/despesas/' . $this->folha->id);
+            $this->folha->anexos()->create([
+                'nome_ficheiro' => $ficheiro->getClientOriginalName() ?: 'recibo.jpg',
+                'storage_key' => $key,
+                'mime' => $ficheiro->getMimeType(),
+                'tamanho' => $ficheiro->getSize(),
+                'criado_por' => auth()->id(),
+            ]);
+        }
+
+        $this->recibosNovos = [];
+    }
+
+    public function removerRecibo(int $anexoId): void
+    {
+        // Só recibos DESTA folha (um id forjado de outra entidade não é encontrado aqui).
+        $anexo = $this->folha->anexos()->whereKey($anexoId)->firstOrFail();
+        Storage::disk()->delete($anexo->storage_key);
+        $anexo->delete();
     }
 
     public function guardar(): void
@@ -148,6 +187,7 @@ class Folha extends Component
             'total' => $total,
             'aDevolver' => max(0, $adiantado - $total),
             'aReceber' => max(0, $total - $adiantado),
+            'recibos' => $this->folha->anexos()->orderBy('id')->get(),
         ]);
     }
 }

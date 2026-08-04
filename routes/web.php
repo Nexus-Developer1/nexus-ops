@@ -71,7 +71,21 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
 
     // Despesas (custos da operação). Rotas literais/compostas ANTES de /{despesa} para não colidir.
     Route::get('/despesas', \App\Livewire\Despesas\Listagem::class)->name('despesas');
-    Route::get('/despesas/nova', \App\Livewire\Despesas\Editor::class)->name('despesas.nova');
+
+    // "Registar despesas" = abrir a FOLHA MENSAL do próprio colaborador (cria/restaura se
+    // preciso) — as despesas registam-se na grelha da folha, como na folha impressa.
+    Route::get('/despesas/nova', function () {
+        $agora = now();
+        $folha = \App\Models\FolhaDespesa::withTrashed()->firstOrNew([
+            'user_id' => auth()->id(), 'ano' => $agora->year, 'mes' => $agora->month,
+        ]);
+        if ($folha->trashed()) {
+            $folha->restore();
+        }
+        $folha->save();
+
+        return redirect()->route('despesas.folha', $folha);
+    })->name('despesas.nova');
 
     // Folha MENSAL de despesas do colaborador (grelha) + PDF no formato da folha da empresa.
     Route::get('/despesas/folha/{folha}', \App\Livewire\Despesas\Folha::class)->name('despesas.folha');

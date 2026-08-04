@@ -124,6 +124,43 @@ class FolhaDespesasTest extends TestCase
         $this->assertStringStartsWith('%PDF', $resp->getContent());
     }
 
+    // "Nova despesa" abre a folha do PRÓPRIO colaborador para o mês atual (cria se preciso).
+    public function test_nova_despesa_abre_a_folha_do_proprio_mes(): void
+    {
+        $admin = $this->admin();
+
+        $resp = $this->actingAs($admin)->get(route('despesas.nova'));
+
+        $folha = FolhaDespesa::where('user_id', $admin->id)
+            ->where('ano', now()->year)->where('mes', now()->month)->firstOrFail();
+        $resp->assertRedirect(route('despesas.folha', $folha));
+    }
+
+    // Recibos digitalizados (câmara/galeria): upload imediato + remoção. As asserções são
+    // sobre os METADADOS (BD): neste ambiente o upload fake do Livewire não aterra no disco
+    // que o Storage lê (mesma limitação conhecida dos testes de fotos dos relatórios); o
+    // fluxo físico é o mesmo padrão das fotos, comprovado em produção.
+    public function test_recibos_registam_se_e_removem_se(): void
+    {
+        $admin = $this->admin();
+        $folha = $this->folhaDe($admin);
+
+        $c = Livewire::actingAs($admin)->test(Folha::class, ['folha' => $folha])
+            ->set('recibosNovos', [\Illuminate\Http\UploadedFile::fake()->image('recibo-almoco.jpg', 800, 600)])
+            ->assertHasNoErrors();
+
+        $recibo = $folha->anexos()->firstOrFail();
+        $this->assertSame('recibo-almoco.jpg', $recibo->nome_ficheiro);
+        $this->assertNotSame('', (string) $recibo->storage_key);
+        $this->assertSame($admin->id, $recibo->criado_por);
+
+        $c->call('removerRecibo', $recibo->id);
+        $this->assertSame(0, $folha->anexos()->count());
+
+        // Um ficheiro que tenha ficado no disco real é limpo (best-effort).
+        \Illuminate\Support\Facades\Storage::disk()->delete($recibo->storage_key);
+    }
+
     public function test_despesas_da_folha_entram_nos_kpis_da_listagem(): void
     {
         $admin = $this->admin();
