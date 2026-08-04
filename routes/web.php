@@ -69,10 +69,32 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
     // Alertas proativos (renovações, baterias, visitas em atraso, SLA).
     Route::get('/alertas', \App\Livewire\Alertas\Painel::class)->name('alertas');
 
-    // Despesas (custos da operação, individuais). Rota /nova ANTES de /{despesa} para não colidir.
+    // Despesas: REGISTOS (documento com linhas, como a folha da empresa). Rotas literais/
+    // compostas ANTES de /{despesa} para não colidir.
     Route::get('/despesas', \App\Livewire\Despesas\Listagem::class)->name('despesas');
     Route::get('/despesas/nova', \App\Livewire\Despesas\Editor::class)->name('despesas.nova');
-    Route::get('/despesas/{despesa}/editar', \App\Livewire\Despesas\Editor::class)->name('despesas.editar');
+    Route::get('/despesas/registo/{registo}/editar', \App\Livewire\Despesas\Editor::class)->name('despesas.registo.editar');
+
+    // PDF do registo (layout da folha da empresa, logótipo Nexus) — transferível.
+    Route::get('/despesas/registo/{registo}/pdf', function (\App\Models\RegistoDespesa $registo) {
+        $html = view('pdf.registo-despesas', ['registo' => $registo])->render();
+        $dompdf = new \Dompdf\Dompdf(['enable_remote' => false]);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('a4', 'landscape'); // a folha é larga (7 colunas de valores)
+        $dompdf->render();
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="registo-despesas-' . $registo->id . '.pdf"',
+        ]);
+    })->name('despesas.registo.pdf');
+
+    // Caminho antigo (despesa individual): abre o registo a que a linha pertence.
+    Route::get('/despesas/{despesa}/editar', function (\App\Models\Despesa $despesa) {
+        abort_unless($despesa->registo_despesa_id !== null, 404);
+
+        return redirect()->route('despesas.registo.editar', $despesa->registo_despesa_id);
+    })->name('despesas.editar');
 });
 
 // ---- Gestão de utilizadores (ÚNICA área exclusiva do admin) ----

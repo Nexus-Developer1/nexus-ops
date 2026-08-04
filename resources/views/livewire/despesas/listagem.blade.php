@@ -63,46 +63,44 @@
                 </div>
             </div>
 
-            {{-- Tabela (scroll horizontal no telemóvel em vez de cortar as colunas) --}}
+            {{-- Tabela de REGISTOS: uma entrada por documento (as linhas/categorias vivem dentro). --}}
             <div class="cartao mt-5 overflow-x-auto">
                 <table class="w-full min-w-[720px] text-sm">
                     <thead>
                         <tr class="border-b border-borda text-left text-xs uppercase tracking-wide text-texto-fraco">
-                            <th class="px-6 py-3 font-semibold">Data</th>
-                            <th class="px-6 py-3 font-semibold">Categoria</th>
+                            <th class="px-6 py-3 font-semibold">Data(s)</th>
                             <th class="px-6 py-3 font-semibold">Descrição</th>
-                            <th class="px-6 py-3 font-semibold">Cliente</th>
-                            <th class="px-6 py-3 text-right font-semibold">Valor</th>
-                            <th class="px-6 py-3 font-semibold">Faturável</th>
+                            <th class="px-6 py-3 font-semibold">Colaborador</th>
+                            <th class="px-6 py-3 font-semibold">Lançamentos</th>
+                            <th class="px-6 py-3 text-right font-semibold">Total</th>
                             <th class="px-6 py-3"></th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($despesas as $d)
+                        @forelse ($registos as $r)
+                            @php($datas = $r->despesas->pluck('data')->sort())
+                            @php($descricoes = $r->despesas->pluck('descricao')->unique()->values())
                             <tr class="border-b border-borda last:border-0 hover:bg-fundo">
-                                <td class="whitespace-nowrap px-6 py-3.5 text-texto-medio">{{ $d->data->translatedFormat('d M Y') }}</td>
-                                {{-- Refeições mostram o A/J (nota a) da folha). --}}
-                                <td class="px-6 py-3.5"><span class="etiqueta bg-slate-100 text-texto-medio">{{ $d->categoria }}{{ $d->refeicao_tipo ? ' · ' . $d->refeicao_tipo : '' }}</span></td>
-                                <td class="px-6 py-3.5 font-medium text-texto-forte">{{ $d->descricao }}</td>
-                                <td class="px-6 py-3.5 text-texto-medio">{{ $d->cliente?->nome ?? '—' }}</td>
-                                <td class="whitespace-nowrap px-6 py-3.5 text-right font-medium text-texto-forte">{{ number_format($d->valor, 2, ',', '.') }} €</td>
-                                <td class="px-6 py-3.5">
-                                    @if ($d->faturavel)
-                                        <span class="inline-flex items-center gap-1.5 text-info-600"><span class="h-2 w-2 rounded-full bg-info-600"></span> À parte</span>
-                                    @else
-                                        <span class="inline-flex items-center gap-1.5 text-texto-fraco"><span class="h-2 w-2 rounded-full bg-slate-300"></span> Contrato</span>
-                                    @endif
+                                <td class="whitespace-nowrap px-6 py-3.5 text-texto-medio">
+                                    {{ $datas->first()?->translatedFormat('d M Y') ?? '—' }}@if ($datas->count() > 1 && ! $datas->first()->isSameDay($datas->last())) – {{ $datas->last()->translatedFormat('d M Y') }}@endif
                                 </td>
+                                <td class="px-6 py-3.5 font-medium text-texto-forte">
+                                    {{ \Illuminate\Support\Str::limit($descricoes->first() ?? '—', 40) }}@if ($descricoes->count() > 1) <span class="text-xs font-normal text-texto-fraco">+{{ $descricoes->count() - 1 }}</span>@endif
+                                </td>
+                                <td class="px-6 py-3.5 text-texto-medio">{{ $r->colaborador?->nome ?? '—' }}</td>
+                                <td class="px-6 py-3.5 text-texto-medio">{{ $r->despesas->count() }}</td>
+                                <td class="whitespace-nowrap px-6 py-3.5 text-right font-medium text-texto-forte">{{ number_format((float) $r->despesas->sum('valor'), 2, ',', ' ') }} €</td>
                                 <td class="whitespace-nowrap px-6 py-3.5 text-right">
-                                    <a href="{{ route('despesas.editar', $d) }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">Editar</a>
-                                    <button wire:click="eliminar({{ $d->id }})" wire:confirm="Eliminar esta despesa? Fica recuperável." class="ml-3 text-texto-fraco hover:text-perigo-600" title="Eliminar">
+                                    <a href="{{ route('despesas.registo.editar', $r) }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">Editar</a>
+                                    <a href="{{ route('despesas.registo.pdf', $r) }}" class="ml-3 text-sm font-medium text-texto-medio hover:text-texto-forte">PDF</a>
+                                    <button wire:click="eliminar({{ $r->id }})" wire:confirm="Eliminar este registo de despesas? Fica recuperável." class="ml-3 text-texto-fraco hover:text-perigo-600" title="Eliminar">
                                         <svg class="inline h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                     </button>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-12 text-center">
+                                <td colspan="6" class="px-6 py-12 text-center">
                                     <p class="text-sm text-texto-medio">Sem despesas no período/filtros selecionados.</p>
                                     <p class="mt-1 text-xs text-texto-fraco">Use "Nova despesa" para registar a primeira.</p>
                                 </td>
@@ -112,7 +110,7 @@
                 </table>
             </div>
 
-            <div class="mt-5">{{ $despesas->links() }}</div>
+            <div class="mt-5">{{ $registos->links() }}</div>
         </div>
     </main>
 </div>

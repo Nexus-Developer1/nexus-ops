@@ -29,8 +29,7 @@ class Despesa extends Model
         'intervencao_id',
         'contrato_id',
         'criado_por',
-        'matricula',    // veículo usado (cabeçalho da folha da empresa)
-        'departamento', // departamento do colaborador (idem)
+        'registo_despesa_id', // documento (registo) a que esta linha pertence
         'refeicao_tipo', // 'A' (almoço) | 'J' (jantar) — só nas despesas de Refeições (nota a) da folha)
     ];
 
@@ -64,9 +63,9 @@ class Despesa extends Model
         return $this->belongsTo(Contrato::class);
     }
 
-    // Recibos digitalizados (fotos/digitalizações da câmara) — anexos polimórficos.
-    public function anexos(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    // Registo (documento) a que esta linha pertence — os recibos vivem lá.
+    public function registo(): BelongsTo
     {
-        return $this->morphMany(Anexo::class, 'anexavel');
+        return $this->belongsTo(RegistoDespesa::class, 'registo_despesa_id');
     }
 }

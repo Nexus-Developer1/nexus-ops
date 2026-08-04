@@ -4,39 +4,34 @@ namespace App\Livewire\Despesas;
 
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Despesa;
+use App\Models\RegistoDespesa;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
-// Registo de despesa individual, no LAYOUT da folha da empresa: cabeçalho (colaborador,
-// matrícula, departamento, data) + grelha com as colunas fixas — cada coluna com valor
-// grava uma despesa dessa categoria — + recibos digitalizados. As ligações a cliente/
-// intervenção saíram do formulário (pedido da equipa); despesas antigas mantêm as suas.
+// REGISTO de despesas no LAYOUT da folha da empresa: cabeçalho (colaborador, matrícula,
+// departamento) + grelha com VÁRIAS linhas (data + descrição + colunas fixas). O registo
+// aparece na listagem como UMA só entrada e tem PDF transferível; por baixo, cada célula
+// com valor é uma linha em `despesas` (mantém os KPIs por categoria).
 #[Layout('components.layouts.app', ['ativo' => 'despesas', 'titulo' => 'Despesa'])]
 class Editor extends Component
 {
     use ApenasEquipa;
     use WithFileUploads;
 
-    public ?int $despesaId = null;
-
-    public string $data = '';
-    public string $descricao = '';
+    public ?int $registoId = null;
 
     // Cabeçalho da folha (como na folha impressa da empresa).
     public string $matricula = '';
     public string $departamento = '';
 
-    // Valores por COLUNA da folha (índice → Despesa::CATEGORIAS): preenche-se o que se
-    // aplica; cada coluna com valor grava uma despesa individual dessa categoria.
-    /** @var array<int, string> */
-    public array $valores = [];
+    // Linhas da grelha: data, descrição "(cliente - localidade)", valores por COLUNA
+    // (índice → Despesa::CATEGORIAS) e o A/J das refeições (nota a) da folha).
+    /** @var array<int, array{data: string, descricao: string, valores: array<int, string>, refeicao_tipo: string}> */
+    public array $linhas = [];
 
-    // Nota a) da folha: com valor em Refeições, indica-se A (almoço) ou J (jantar).
-    public string $refeicaoTipo = '';
-
-    // Recibos: pendentes (ficam com a despesa ao guardar — funciona também na criação, antes
-    // de existir id) + alvo dos uploads (câmara/galeria e o "Digitalizar" via JS).
+    // Recibos: pendentes (gravam-se com o registo — funciona também na criação, antes de
+    // existir id) + alvo dos uploads (câmara/galeria e o "Digitalizar" via JS).
     /** @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
     public array $recibos = [];
 
@@ -45,30 +40,50 @@ class Editor extends Component
 
     public $reciboDigitalizado = null; // upload único vindo do scanner (JS)
 
-    public function mount(?Despesa $despesa = null): void
+    private function linhaVazia(): array
     {
-        $this->valores = array_fill(0, count(Despesa::CATEGORIAS), '');
+        return [
+            'data' => now()->toDateString(),
+            'descricao' => '',
+            'valores' => array_fill(0, count(Despesa::CATEGORIAS), ''),
+            'refeicao_tipo' => '',
+        ];
+    }
 
-        if ($despesa && $despesa->exists) {
-            $this->despesaId = $despesa->id;
-            $this->data = $despesa->data->toDateString();
-            // O valor entra na coluna da categoria da despesa (legado desconhecido → "Outras").
-            $indice = array_search($despesa->categoria, Despesa::CATEGORIAS, true);
-            $this->valores[$indice === false ? count(Despesa::CATEGORIAS) - 1 : $indice] = (string) $despesa->valor;
-            $this->descricao = $despesa->descricao;
-            $this->matricula = $despesa->matricula ?? '';
-            $this->departamento = $despesa->departamento ?? '';
-            $this->refeicaoTipo = $despesa->refeicao_tipo ?? '';
+    public function mount(?RegistoDespesa $registo = null): void
+    {
+        if ($registo && $registo->exists) {
+            $this->registoId = $registo->id;
+            $this->matricula = $registo->matricula ?? '';
+            $this->departamento = $registo->departamento ?? '';
+            $this->linhas = $registo->linhas() ?: [$this->linhaVazia()];
 
             return;
         }
 
-        $this->data = now()->toDateString();
+        $this->linhas = [$this->linhaVazia()];
+    }
+
+    public function adicionarLinha(): void
+    {
+        // Máx. 31 linhas (um mês de despesas de uma vez chega bem).
+        if (count($this->linhas) < 31) {
+            $this->linhas[] = $this->linhaVazia();
+        }
+    }
+
+    public function removerLinha(int $indice): void
+    {
+        if (count($this->linhas) <= 1) {
+            return; // fica sempre pelo menos uma linha
+        }
+        unset($this->linhas[$indice]);
+        $this->linhas = array_values($this->linhas);
     }
 
     private const REGRAS_RECIBO = ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'];
 
-    // Câmara nativa / galeria: valida e junta aos pendentes (gravam-se com a despesa).
+    // Câmara nativa / galeria: valida e junta aos pendentes (gravam-se com o registo).
     public function updatedRecibosUpload(): void
     {
         $this->validate(['recibosUpload.*' => self::REGRAS_RECIBO]);
@@ -93,8 +108,8 @@ class Editor extends Component
     // Remove um recibo JÁ GRAVADO (edição) — apaga o ficheiro e os metadados.
     public function removerReciboGravado(int $anexoId): void
     {
-        abort_unless($this->despesaId !== null, 404);
-        $anexo = Despesa::findOrFail($this->despesaId)->anexos()->whereKey($anexoId)->firstOrFail();
+        abort_unless($this->registoId !== null, 404);
+        $anexo = RegistoDespesa::findOrFail($this->registoId)->anexos()->whereKey($anexoId)->firstOrFail();
         \Illuminate\Support\Facades\Storage::disk()->delete($anexo->storage_key);
         $anexo->delete();
     }
@@ -102,71 +117,87 @@ class Editor extends Component
     public function guardar()
     {
         $this->validate([
-            'data' => ['required', 'date'],
-            'descricao' => ['required', 'string', 'max:255'],
             'matricula' => ['nullable', 'string', 'max:50'],
             'departamento' => ['nullable', 'string', 'max:100'],
-            'valores' => ['array', 'max:' . count(Despesa::CATEGORIAS)],
-            'valores.*' => ['nullable', 'numeric', 'min:0'],
+            'linhas' => ['array', 'max:31'],
+            'linhas.*.data' => ['required', 'date'],
+            'linhas.*.descricao' => ['nullable', 'string', 'max:255'],
+            'linhas.*.valores' => ['array', 'max:' . count(Despesa::CATEGORIAS)],
+            'linhas.*.valores.*' => ['nullable', 'numeric', 'min:0'],
+            'linhas.*.refeicao_tipo' => ['nullable', 'in:A,J'],
         ]);
 
-        // Colunas preenchidas (valor > 0) → uma despesa por coluna, na categoria respetiva.
+        // Lançamentos: por linha, cada coluna com valor > 0 → uma despesa dessa categoria.
         // A categoria nunca vem do cliente: deriva do ÍNDICE da coluna (whitelist estrutural).
-        $lancamentos = collect(Despesa::CATEGORIAS)
-            ->map(fn (string $cat, int $i) => ['categoria' => $cat, 'valor' => trim((string) ($this->valores[$i] ?? ''))])
-            ->filter(fn (array $l) => $l['valor'] !== '' && (float) $l['valor'] > 0)
-            ->values();
+        $lancamentos = [];
+        foreach ($this->linhas as $n => $linha) {
+            $daLinha = collect(Despesa::CATEGORIAS)
+                ->map(fn (string $cat, int $i) => ['categoria' => $cat, 'valor' => trim((string) ($linha['valores'][$i] ?? ''))])
+                ->filter(fn (array $l) => $l['valor'] !== '' && (float) $l['valor'] > 0)
+                ->values();
 
-        if ($lancamentos->isEmpty()) {
-            $this->addError('valores', 'Preencha pelo menos uma coluna com o valor da despesa.');
+            if ($daLinha->isEmpty()) {
+                continue; // linha em branco — ignorada
+            }
+
+            $descricao = trim((string) ($linha['descricao'] ?? ''));
+            if ($descricao === '') {
+                $this->addError("linhas.$n.descricao", 'Indique a descrição (cliente - localidade) na linha ' . ($n + 1) . '.');
+
+                return;
+            }
+
+            // Nota a) da folha, imposta a sério: com valor em Refeições, A ou J é obrigatório.
+            $temRefeicoes = $daLinha->contains(fn (array $l) => $l['categoria'] === 'Refeições');
+            $refeicaoTipo = (string) ($linha['refeicao_tipo'] ?? '');
+            if ($temRefeicoes && ! in_array($refeicaoTipo, ['A', 'J'], true)) {
+                $this->addError("linhas.$n.refeicao_tipo", 'Nas refeições, indique A (almoço) ou J (jantar) — linha ' . ($n + 1) . '.');
+
+                return;
+            }
+
+            foreach ($daLinha as $l) {
+                $lancamentos[] = [
+                    'data' => $linha['data'],
+                    'descricao' => $descricao,
+                    'categoria' => $l['categoria'],
+                    'valor' => (float) $l['valor'],
+                    // A/J só na despesa de Refeições; null nas restantes.
+                    'refeicao_tipo' => $l['categoria'] === 'Refeições' ? $refeicaoTipo : null,
+                ];
+            }
+        }
+
+        if ($lancamentos === []) {
+            $this->addError('linhas', 'Preencha pelo menos uma célula com o valor da despesa.');
 
             return;
         }
 
-        // Nota a) da folha, imposta a sério: com valor em Refeições, A ou J é obrigatório.
-        $temRefeicoes = $lancamentos->contains(fn (array $l) => $l['categoria'] === 'Refeições');
-        if ($temRefeicoes && ! in_array($this->refeicaoTipo, ['A', 'J'], true)) {
-            $this->addError('refeicaoTipo', 'Nas refeições, indique A (almoço) ou J (jantar).');
-
-            return;
-        }
-
-        $dados = [
-            'data' => $this->data,
-            'descricao' => trim($this->descricao),
+        $cabecalho = [
             'matricula' => trim($this->matricula) ?: null,
             'departamento' => trim($this->departamento) ?: null,
         ];
 
-        // EDIÇÃO: a 1.ª coluna preenchida atualiza a despesa aberta (categoria incluída — o
-        // valor pode ter mudado de coluna) e preserva as ligações antigas (cliente/intervenção,
-        // que já não se editam aqui); colunas adicionais criam despesas novas.
-        // CRIAÇÃO: cada coluna preenchida cria a sua despesa.
-        $primeira = null;
-        foreach ($lancamentos as $i => $lancamento) {
-            $atributos = $dados + [
-                'categoria' => $lancamento['categoria'],
-                'valor' => (float) $lancamento['valor'],
-                // A/J só na despesa de Refeições; limpo nas restantes (e ao mudar de coluna).
-                'refeicao_tipo' => $lancamento['categoria'] === 'Refeições' ? $this->refeicaoTipo : null,
-            ];
-
-            if ($i === 0 && $this->despesaId) {
-                $despesa = Despesa::findOrFail($this->despesaId);
-                $despesa->update($atributos);
-            } else {
-                $despesa = Despesa::create($atributos + ['faturavel' => false, 'criado_por' => auth()->id()]);
-            }
-
-            $primeira ??= $despesa;
+        if ($this->registoId) {
+            $registo = RegistoDespesa::findOrFail($this->registoId);
+            $registo->update($cabecalho);
+            // As linhas são substituídas pelo que está na grelha (edição total do documento).
+            $registo->despesas()->delete();
+        } else {
+            $registo = RegistoDespesa::create($cabecalho + ['criado_por' => auth()->id()]);
         }
 
-        session()->flash('sucesso', $this->despesaId ? 'Despesa atualizada.' : 'Despesa registada.');
+        foreach ($lancamentos as $lancamento) {
+            $registo->despesas()->create($lancamento + ['faturavel' => false, 'criado_por' => auth()->id()]);
+        }
 
-        // Recibos pendentes → object storage + metadados anexados à 1.ª despesa (CLAUDE.md §2).
+        session()->flash('sucesso', $this->registoId ? 'Registo de despesas atualizado.' : 'Registo de despesas guardado.');
+
+        // Recibos pendentes → object storage + metadados anexados ao registo (CLAUDE.md §2).
         foreach ($this->recibos as $ficheiro) {
-            $key = $ficheiro->store('anexos/despesas/' . $primeira->id);
-            $primeira->anexos()->create([
+            $key = $ficheiro->store('anexos/despesas/' . $registo->id);
+            $registo->anexos()->create([
                 'nome_ficheiro' => $ficheiro->getClientOriginalName() ?: 'recibo.jpg',
                 'storage_key' => $key,
                 'mime' => $ficheiro->getMimeType(),
@@ -180,13 +211,21 @@ class Editor extends Component
 
     public function render()
     {
-        // Total das colunas preenchidas (rodapé da grelha, atualiza enquanto se escreve).
-        $total = collect($this->valores)->filter(fn ($v) => is_numeric($v))->sum(fn ($v) => (float) $v);
+        // Totais por coluna e total geral (rodapé da grelha, atualizam enquanto se escreve).
+        $totais = array_fill(0, count(Despesa::CATEGORIAS), 0.0);
+        foreach ($this->linhas as $linha) {
+            foreach ($linha['valores'] ?? [] as $i => $v) {
+                if (is_numeric($v)) {
+                    $totais[$i] += (float) $v;
+                }
+            }
+        }
 
         return view('livewire.despesas.editor', [
-            'total' => $total,
-            'recibosGravados' => $this->despesaId
-                ? Despesa::findOrFail($this->despesaId)->anexos()->orderBy('id')->get()
+            'totais' => $totais,
+            'total' => array_sum($totais),
+            'recibosGravados' => $this->registoId
+                ? RegistoDespesa::findOrFail($this->registoId)->anexos()->orderBy('id')->get()
                 : collect(),
         ]);
     }

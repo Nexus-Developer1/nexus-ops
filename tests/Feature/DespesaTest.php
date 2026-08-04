@@ -6,14 +6,15 @@ use App\Enums\PapelUtilizador;
 use App\Livewire\Despesas\Editor;
 use App\Livewire\Despesas\Listagem;
 use App\Models\Despesa;
+use App\Models\RegistoDespesa;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-// Módulo de despesas: registo individual no LAYOUT da folha da empresa (cabeçalho +
-// grelha de colunas fixas) com recibos digitalizados. As ligações a cliente/intervenção
-// saíram do formulário (despesas antigas mantêm as suas).
+// Módulo de despesas: REGISTOS no layout da folha da empresa (cabeçalho + grelha com
+// várias linhas). O registo aparece na listagem como UMA só entrada e tem PDF
+// transferível; por baixo, cada célula é uma linha em `despesas` (KPIs por categoria).
 class DespesaTest extends TestCase
 {
     use RefreshDatabase;
@@ -28,147 +29,146 @@ class DespesaTest extends TestCase
         return User::create(['nome' => 'Téc', 'email' => 't@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
     }
 
-    public function test_cria_despesa_pela_grelha_da_folha(): void
+    // Um registo com 2 linhas × células → UMA entrada (registo) com as despesas dentro.
+    public function test_registo_multilinha_aparece_como_uma_so_entrada(): void
     {
         $admin = $this->admin();
 
-        // Coluna 5 = "Outras despesas".
         Livewire::actingAs($admin)->test(Editor::class)
-            ->set('data', now()->toDateString())
-            ->set('descricao', 'Baterias 12V x4')
-            ->set('valores.5', '320')
+            ->set('matricula', 'BD-71-VI')
+            ->set('linhas.0.data', now()->toDateString())
+            ->set('linhas.0.descricao', 'ACME - Porto')
+            ->set('linhas.0.valores.0', '20.50')   // Combustíveis
+            ->set('linhas.0.valores.3', '12')      // Refeições
+            ->set('linhas.0.refeicao_tipo', 'A')
+            ->call('adicionarLinha')
+            ->set('linhas.1.data', now()->addDay()->toDateString())
+            ->set('linhas.1.descricao', 'Beta - Lisboa')
+            ->set('linhas.1.valores.2', '80')      // Hotel
             ->call('guardar')
             ->assertHasNoErrors()
             ->assertRedirect(route('despesas'));
 
-        $this->assertDatabaseHas('despesas', [
-            'descricao' => 'Baterias 12V x4',
-            'categoria' => 'Outras despesas',
-            'valor' => 320.00,
-            'criado_por' => $admin->id,
-        ]);
+        // UM registo; 3 lançamentos por baixo (KPIs por categoria preservados).
+        $this->assertSame(1, RegistoDespesa::count());
+        $registo = RegistoDespesa::firstOrFail();
+        $this->assertSame('BD-71-VI', $registo->matricula);
+        $this->assertSame(3, $registo->despesas()->count());
+        $this->assertDatabaseHas('despesas', ['categoria' => 'Combustíveis', 'valor' => 20.50, 'registo_despesa_id' => $registo->id]);
+        $this->assertDatabaseHas('despesas', ['categoria' => 'Refeições', 'valor' => 12.00, 'refeicao_tipo' => 'A']);
+        $this->assertDatabaseHas('despesas', ['categoria' => 'Hotel', 'valor' => 80.00, 'descricao' => 'Beta - Lisboa']);
+        $this->assertSame(112.5, $registo->total());
+
+        // A listagem mostra UMA entrada.
+        Livewire::actingAs($admin)->test(Listagem::class)
+            ->assertViewHas('registos', fn ($p) => $p->total() === 1);
     }
 
-    // Várias colunas preenchidas → uma despesa por coluna (categoria deriva do índice — não
-    // há categoria forjável); cabeçalho (matrícula/departamento) partilhado.
-    public function test_varias_colunas_criam_uma_despesa_por_categoria(): void
-    {
-        $admin = $this->admin();
-
-        Livewire::actingAs($admin)->test(Editor::class)
-            ->set('data', now()->toDateString())
-            ->set('descricao', 'ACME - Porto')
-            ->set('matricula', 'BD-71-VI')
-            ->set('valores.0', '20.50')   // Combustíveis
-            ->set('valores.3', '12')      // Refeições
-            ->set('refeicaoTipo', 'J')    // nota a): jantar
-            ->call('guardar')
-            ->assertHasNoErrors();
-
-        $this->assertDatabaseHas('despesas', ['categoria' => 'Combustíveis', 'valor' => 20.50, 'descricao' => 'ACME - Porto', 'matricula' => 'BD-71-VI']);
-        $this->assertDatabaseHas('despesas', ['categoria' => 'Refeições', 'valor' => 12.00, 'descricao' => 'ACME - Porto']);
-        $this->assertSame(2, Despesa::count());
-    }
-
-    // Nota a) da folha em funcionamento: refeições exigem A (almoço) ou J (jantar); o tipo
-    // grava-se só na despesa de Refeições — as outras colunas ficam null.
+    // Nota a) da folha: refeições exigem A/J (por linha).
     public function test_refeicoes_exigem_a_ou_j(): void
     {
-        $admin = $this->admin();
-
-        // Sem A/J → bloqueia.
-        Livewire::actingAs($admin)->test(Editor::class)
-            ->set('data', now()->toDateString())
-            ->set('descricao', 'Almoço ACME')
-            ->set('valores.3', '12')
+        Livewire::actingAs($this->admin())->test(Editor::class)
+            ->set('linhas.0.data', now()->toDateString())
+            ->set('linhas.0.descricao', 'Almoço ACME')
+            ->set('linhas.0.valores.3', '12')
             ->call('guardar')
-            ->assertHasErrors('refeicaoTipo');
-        $this->assertSame(0, Despesa::count());
+            ->assertHasErrors('linhas.0.refeicao_tipo');
 
-        // Com A e outra coluna: refeição fica com 'A', o combustível fica null.
-        Livewire::actingAs($admin)->test(Editor::class)
-            ->set('data', now()->toDateString())
-            ->set('descricao', 'ACME - Porto')
-            ->set('valores.0', '20')
-            ->set('valores.3', '12')
-            ->set('refeicaoTipo', 'A')
-            ->call('guardar')
-            ->assertHasNoErrors();
-
-        $this->assertDatabaseHas('despesas', ['categoria' => 'Refeições', 'refeicao_tipo' => 'A']);
-        $this->assertDatabaseHas('despesas', ['categoria' => 'Combustíveis', 'refeicao_tipo' => null]);
-
-        // Outra categoria sozinha não exige A/J.
-        Livewire::actingAs($admin)->test(Editor::class)
-            ->set('data', now()->toDateString())
-            ->set('descricao', 'Hotel Beta')
-            ->set('valores.2', '80')
-            ->call('guardar')
-            ->assertHasNoErrors();
+        $this->assertSame(0, RegistoDespesa::count());
     }
 
-    // Sem nenhuma coluna preenchida, não grava (a folha exige pelo menos um valor).
+    // Sem nenhuma célula preenchida, não grava.
     public function test_sem_valores_nao_grava(): void
     {
         Livewire::actingAs($this->admin())->test(Editor::class)
-            ->set('data', now()->toDateString())
-            ->set('descricao', 'Vazio')
+            ->set('linhas.0.descricao', 'Vazio')
             ->call('guardar')
-            ->assertHasErrors('valores');
+            ->assertHasErrors('linhas');
 
-        $this->assertSame(0, Despesa::count());
+        $this->assertSame(0, RegistoDespesa::count());
     }
 
-    // Editar: o valor aparece na coluna da categoria e pode mudar de coluna; as ligações
-    // antigas (cliente/intervenção, que já não se editam aqui) são preservadas.
-    public function test_editar_carrega_a_coluna_certa_e_preserva_ligacoes(): void
+    // Editar: as linhas gravadas pré-carregam a grelha; guardar substitui as linhas do registo.
+    public function test_editar_pre_carrega_e_substitui_as_linhas(): void
     {
         $admin = $this->admin();
-        $cliente = \App\Models\Cliente::create(['nome' => 'ACME', 'ativo' => true]);
-        $despesa = Despesa::create(['data' => now(), 'categoria' => 'Hotel', 'descricao' => 'Estadia', 'valor' => 80,
-            'faturavel' => true, 'cliente_id' => $cliente->id]);
+        $registo = RegistoDespesa::create(['criado_por' => $admin->id, 'matricula' => 'AA-00-BB']);
+        $registo->despesas()->create(['data' => '2026-08-03', 'categoria' => 'Hotel', 'descricao' => 'Estadia Beta', 'valor' => 80, 'faturavel' => false]);
 
-        Livewire::actingAs($admin)->test(Editor::class, ['despesa' => $despesa])
-            ->assertSet('valores.2', '80.00') // Hotel = coluna 2
-            ->set('valores.2', '')
-            ->set('valores.4', '95')          // muda para Táxi/Comboio/Avião
+        Livewire::actingAs($admin)->test(Editor::class, ['registo' => $registo])
+            ->assertSet('matricula', 'AA-00-BB')
+            ->assertSet('linhas.0.descricao', 'Estadia Beta')
+            ->assertSet('linhas.0.valores.2', '80.00')  // Hotel = coluna 2
+            ->set('linhas.0.valores.2', '95')
             ->call('guardar')
             ->assertHasNoErrors();
 
-        $despesa->refresh();
-        $this->assertSame('Táxi / Comboio / Avião', $despesa->categoria);
-        $this->assertSame('95.00', (string) $despesa->valor);
-        $this->assertSame($cliente->id, $despesa->cliente_id); // ligação antiga intacta
-        $this->assertTrue($despesa->faturavel);                // idem
+        $registo->refresh();
+        $this->assertSame(1, $registo->despesas()->count());
+        $this->assertDatabaseHas('despesas', ['registo_despesa_id' => $registo->id, 'categoria' => 'Hotel', 'valor' => 95.00]);
     }
 
-    // Recibos digitalizados: pendentes no formulário, gravam-se com a despesa; na edição
-    // removem-se. Asserções sobre metadados (o upload fake do Livewire não aterra no disco
-    // que o Storage lê neste ambiente — limitação conhecida, igual às fotos dos relatórios).
-    public function test_recibos_gravam_com_a_despesa_e_removem_se(): void
+    // Recibos: pendentes gravam-se com o registo; na edição removem-se. Asserções sobre
+    // metadados (o upload fake do Livewire não aterra no disco que o Storage lê neste
+    // ambiente — limitação conhecida, igual às fotos dos relatórios).
+    public function test_recibos_gravam_com_o_registo_e_removem_se(): void
     {
         $admin = $this->admin();
 
         Livewire::actingAs($admin)->test(Editor::class)
-            ->set('data', now()->toDateString())
-            ->set('descricao', 'Almoço ACME')
-            ->set('valores.3', '14.20') // Refeições
-            ->set('refeicaoTipo', 'A')  // nota a): almoço
+            ->set('linhas.0.data', now()->toDateString())
+            ->set('linhas.0.descricao', 'Almoço ACME')
+            ->set('linhas.0.valores.3', '14.20')
+            ->set('linhas.0.refeicao_tipo', 'A')
             ->set('recibosUpload', [\Illuminate\Http\UploadedFile::fake()->image('recibo.jpg', 800, 600)])
             ->call('guardar')
             ->assertHasNoErrors();
 
-        $despesa = Despesa::where('descricao', 'Almoço ACME')->firstOrFail();
-        $recibo = $despesa->anexos()->firstOrFail();
+        $registo = RegistoDespesa::firstOrFail();
+        $recibo = $registo->anexos()->firstOrFail();
         $this->assertSame('recibo.jpg', $recibo->nome_ficheiro);
-        $this->assertNotSame('', (string) $recibo->storage_key);
 
-        Livewire::actingAs($admin)->test(Editor::class, ['despesa' => $despesa])
+        Livewire::actingAs($admin)->test(Editor::class, ['registo' => $registo])
             ->assertViewHas('recibosGravados', fn ($r) => $r->count() === 1)
             ->call('removerReciboGravado', $recibo->id);
 
-        $this->assertSame(0, $despesa->anexos()->count());
+        $this->assertSame(0, $registo->anexos()->count());
         \Illuminate\Support\Facades\Storage::disk()->delete($recibo->storage_key); // limpeza best-effort
+    }
+
+    // PDF do registo: transferível, no layout da folha (logótipo + valores + A/J).
+    public function test_pdf_do_registo_e_transferivel(): void
+    {
+        $admin = $this->admin();
+        $registo = RegistoDespesa::create(['criado_por' => $admin->id, 'matricula' => 'BD-71-VI']);
+        $registo->despesas()->create(['data' => '2026-08-03', 'categoria' => 'Refeições', 'descricao' => 'ACME - Porto', 'valor' => 12.5, 'refeicao_tipo' => 'A', 'faturavel' => false]);
+
+        $html = view('pdf.registo-despesas', ['registo' => $registo])->render();
+        $this->assertStringContainsString('Admin', $html);
+        $this->assertStringContainsString('BD-71-VI', $html);
+        $this->assertStringContainsString('ACME - Porto', $html);
+        $this->assertStringContainsString('12,50', $html);
+        $this->assertStringContainsString('(A)', $html); // A/J junto ao valor das refeições
+        $this->assertStringContainsString('data:image/png;base64', $html); // logótipo embebido
+
+        $resp = $this->actingAs($admin)->get(route('despesas.registo.pdf', $registo));
+        $resp->assertOk();
+        $resp->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', $resp->getContent());
+        $this->assertStringContainsString('attachment', $resp->headers->get('Content-Disposition')); // transferível
+    }
+
+    // Eliminar o registo elimina as linhas (soft delete).
+    public function test_eliminar_registo_elimina_as_linhas(): void
+    {
+        $admin = $this->admin();
+        $registo = RegistoDespesa::create(['criado_por' => $admin->id]);
+        $registo->despesas()->create(['data' => now(), 'categoria' => 'Hotel', 'descricao' => 'X', 'valor' => 10, 'faturavel' => false]);
+
+        Livewire::actingAs($admin)->test(Listagem::class)->call('eliminar', $registo->id);
+
+        $this->assertSoftDeleted('registos_despesa', ['id' => $registo->id]);
+        $this->assertSame(0, Despesa::count()); // soft deleted também
     }
 
     public function test_kpis_separam_faturavel_de_incluido(): void

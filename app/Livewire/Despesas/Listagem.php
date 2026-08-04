@@ -48,10 +48,13 @@ class Listagem extends Component
         $this->resetPage();
     }
 
-    public function eliminar(int $despesa): void
+    // Elimina um REGISTO inteiro (documento + linhas) — soft delete (recuperável).
+    public function eliminar(int $registo): void
     {
-        Despesa::findOrFail($despesa)->delete(); // soft delete (recuperável)
-        session()->flash('sucesso', 'Despesa eliminada.');
+        $registo = \App\Models\RegistoDespesa::findOrFail($registo);
+        $registo->despesas()->delete();
+        $registo->delete();
+        session()->flash('sucesso', 'Registo de despesas eliminado.');
     }
 
 
@@ -72,13 +75,19 @@ class Listagem extends Component
 
     public function render()
     {
-        $despesas = $this->base()
-            ->with('cliente', 'equipamento')
-            ->orderByDesc('data')
+        // A listagem mostra REGISTOS (uma entrada por documento); os filtros aplicam-se às
+        // linhas (despesas) — um registo aparece se alguma linha lhe corresponder.
+        $registos = \App\Models\RegistoDespesa::query()
+            ->with(['colaborador', 'despesas'])
+            ->whereHas('despesas', function ($q) {
+                $filtrada = $this->base();
+                $q->whereIn('id', $filtrada->select('id'));
+            })
             ->orderByDesc('id')
             ->paginate(12);
 
-        // KPIs sobre o conjunto filtrado (cada base() devolve uma query nova).
+        // KPIs sobre as LINHAS filtradas (cada base() devolve uma query nova) — por categoria
+        // continuam exatos, mesmo com o agrupamento em registos.
         $kpis = [
             'total' => (float) $this->base()->sum('valor'),
             'faturavel' => (float) $this->base()->where('faturavel', true)->sum('valor'),
@@ -87,7 +96,7 @@ class Listagem extends Component
         ];
 
         return view('livewire.despesas.listagem', [
-            'despesas' => $despesas,
+            'registos' => $registos,
             'kpis' => $kpis,
             'categorias' => Despesa::CATEGORIAS, // categorias fixas (filtro)
         ]);
