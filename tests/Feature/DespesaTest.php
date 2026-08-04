@@ -61,12 +61,50 @@ class DespesaTest extends TestCase
             ->set('matricula', 'BD-71-VI')
             ->set('valores.0', '20.50')   // Combustíveis
             ->set('valores.3', '12')      // Refeições
+            ->set('refeicaoTipo', 'J')    // nota a): jantar
             ->call('guardar')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('despesas', ['categoria' => 'Combustíveis', 'valor' => 20.50, 'descricao' => 'ACME - Porto', 'matricula' => 'BD-71-VI']);
         $this->assertDatabaseHas('despesas', ['categoria' => 'Refeições', 'valor' => 12.00, 'descricao' => 'ACME - Porto']);
         $this->assertSame(2, Despesa::count());
+    }
+
+    // Nota a) da folha em funcionamento: refeições exigem A (almoço) ou J (jantar); o tipo
+    // grava-se só na despesa de Refeições — as outras colunas ficam null.
+    public function test_refeicoes_exigem_a_ou_j(): void
+    {
+        $admin = $this->admin();
+
+        // Sem A/J → bloqueia.
+        Livewire::actingAs($admin)->test(Editor::class)
+            ->set('data', now()->toDateString())
+            ->set('descricao', 'Almoço ACME')
+            ->set('valores.3', '12')
+            ->call('guardar')
+            ->assertHasErrors('refeicaoTipo');
+        $this->assertSame(0, Despesa::count());
+
+        // Com A e outra coluna: refeição fica com 'A', o combustível fica null.
+        Livewire::actingAs($admin)->test(Editor::class)
+            ->set('data', now()->toDateString())
+            ->set('descricao', 'ACME - Porto')
+            ->set('valores.0', '20')
+            ->set('valores.3', '12')
+            ->set('refeicaoTipo', 'A')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('despesas', ['categoria' => 'Refeições', 'refeicao_tipo' => 'A']);
+        $this->assertDatabaseHas('despesas', ['categoria' => 'Combustíveis', 'refeicao_tipo' => null]);
+
+        // Outra categoria sozinha não exige A/J.
+        Livewire::actingAs($admin)->test(Editor::class)
+            ->set('data', now()->toDateString())
+            ->set('descricao', 'Hotel Beta')
+            ->set('valores.2', '80')
+            ->call('guardar')
+            ->assertHasNoErrors();
     }
 
     // Sem nenhuma coluna preenchida, não grava (a folha exige pelo menos um valor).
@@ -115,6 +153,7 @@ class DespesaTest extends TestCase
             ->set('data', now()->toDateString())
             ->set('descricao', 'Almoço ACME')
             ->set('valores.3', '14.20') // Refeições
+            ->set('refeicaoTipo', 'A')  // nota a): almoço
             ->set('recibosUpload', [\Illuminate\Http\UploadedFile::fake()->image('recibo.jpg', 800, 600)])
             ->call('guardar')
             ->assertHasNoErrors();

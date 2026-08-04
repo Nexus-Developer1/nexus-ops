@@ -49,8 +49,16 @@
                                     <input wire:model="descricao" type="text" class="campo-input w-full min-w-[14rem] px-2 py-1.5 text-sm" placeholder="Ex: ACME - Porto">
                                 </td>
                                 @foreach (\App\Models\Despesa::CATEGORIAS as $i => $c)
-                                    <td class="px-1.5 py-2 {{ $i < count(\App\Models\Despesa::CATEGORIAS) - 1 ? 'border-r border-borda' : '' }}">
+                                    <td class="px-1.5 py-2 align-top {{ $i < count(\App\Models\Despesa::CATEGORIAS) - 1 ? 'border-r border-borda' : '' }}">
                                         <input wire:model.live.debounce.500ms="valores.{{ $i }}" type="number" step="0.01" min="0" inputmode="decimal" class="campo-input w-24 px-2 py-1.5 text-right text-sm" placeholder="0,00">
+                                        @if ($c === 'Refeições')
+                                            {{-- Nota a) em funcionamento: A (almoço) / J (jantar), obrigatório com valor. --}}
+                                            <select wire:model="refeicaoTipo" class="campo-select mt-1 w-24 px-2 py-1 text-xs" title="A — almoço · J — jantar">
+                                                <option value="">A / J?</option>
+                                                <option value="A">A — almoço</option>
+                                                <option value="J">J — jantar</option>
+                                            </select>
+                                        @endif
                                     </td>
                                 @endforeach
                             </tr>
@@ -73,6 +81,7 @@
                 </div>
                 @error('descricao') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                 @error('valores') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                @error('refeicaoTipo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                 @foreach (\App\Models\Despesa::CATEGORIAS as $i => $c)
                     @error("valores.$i") <p class="mt-1.5 text-xs text-perigo-500">{{ $c }}: {{ $message }}</p> @enderror
                 @endforeach

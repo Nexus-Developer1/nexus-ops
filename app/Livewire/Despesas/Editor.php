@@ -32,6 +32,9 @@ class Editor extends Component
     /** @var array<int, string> */
     public array $valores = [];
 
+    // Nota a) da folha: com valor em Refeições, indica-se A (almoço) ou J (jantar).
+    public string $refeicaoTipo = '';
+
     // Recibos: pendentes (ficam com a despesa ao guardar — funciona também na criação, antes
     // de existir id) + alvo dos uploads (câmara/galeria e o "Digitalizar" via JS).
     /** @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
@@ -55,6 +58,7 @@ class Editor extends Component
             $this->descricao = $despesa->descricao;
             $this->matricula = $despesa->matricula ?? '';
             $this->departamento = $despesa->departamento ?? '';
+            $this->refeicaoTipo = $despesa->refeicao_tipo ?? '';
 
             return;
         }
@@ -119,6 +123,14 @@ class Editor extends Component
             return;
         }
 
+        // Nota a) da folha, imposta a sério: com valor em Refeições, A ou J é obrigatório.
+        $temRefeicoes = $lancamentos->contains(fn (array $l) => $l['categoria'] === 'Refeições');
+        if ($temRefeicoes && ! in_array($this->refeicaoTipo, ['A', 'J'], true)) {
+            $this->addError('refeicaoTipo', 'Nas refeições, indique A (almoço) ou J (jantar).');
+
+            return;
+        }
+
         $dados = [
             'data' => $this->data,
             'descricao' => trim($this->descricao),
@@ -132,7 +144,12 @@ class Editor extends Component
         // CRIAÇÃO: cada coluna preenchida cria a sua despesa.
         $primeira = null;
         foreach ($lancamentos as $i => $lancamento) {
-            $atributos = $dados + ['categoria' => $lancamento['categoria'], 'valor' => (float) $lancamento['valor']];
+            $atributos = $dados + [
+                'categoria' => $lancamento['categoria'],
+                'valor' => (float) $lancamento['valor'],
+                // A/J só na despesa de Refeições; limpo nas restantes (e ao mudar de coluna).
+                'refeicao_tipo' => $lancamento['categoria'] === 'Refeições' ? $this->refeicaoTipo : null,
+            ];
 
             if ($i === 0 && $this->despesaId) {
                 $despesa = Despesa::findOrFail($this->despesaId);

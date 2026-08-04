@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-08-05
+
+- 🧰 **Despesas: nota a) da folha em funcionamento (A — almoço / J — jantar)** — a nota deixou de ser só texto: a célula de **Refeições** ganha um seletor **A / J** e, com valor preenchido nas refeições, escolher um passa a ser **obrigatório** (validação no servidor, com mensagem clara). O tipo grava-se apenas na despesa de Refeições (`despesas.refeicao_tipo`; as outras colunas ficam a null, e mudar o valor de coluna limpa-o) e aparece na listagem junto à categoria ("Refeições · A"). A nota b) (especificar na descrição) já era imposta pela descrição obrigatória. Requer migração. +1 teste, 2 ajustados (378 no total).
+
 ## 2026-08-04
 
 - 🧹 **Despesas: saem do formulário a intervenção, o cliente e o "faturável à parte"** — pedido da equipa: o formulário fica só com o essencial da folha (cabeçalho, grelha de colunas, recibos). Vertical completa: comboboxes de intervenção/cliente, pesquisa server-side, herança de ligações e o checkbox saem do componente e da view. **Despesas antigas mantêm as ligações que já têm** (a edição preserva-as — só deixam de se editar aqui); despesas novas nascem sem ligações e não-faturáveis. Os KPIs da listagem (faturável/incluído) mantêm-se para o histórico. −4/+1 testes, ficheiro de testes reescrito (377 no total). `9330d27`

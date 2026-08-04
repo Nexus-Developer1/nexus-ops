@@ -81,7 +81,8 @@
                         @forelse ($despesas as $d)
                             <tr class="border-b border-borda last:border-0 hover:bg-fundo">
                                 <td class="whitespace-nowrap px-6 py-3.5 text-texto-medio">{{ $d->data->translatedFormat('d M Y') }}</td>
-                                <td class="px-6 py-3.5"><span class="etiqueta bg-slate-100 text-texto-medio">{{ $d->categoria }}</span></td>
+                                {{-- Refeições mostram o A/J (nota a) da folha). --}}
+                                <td class="px-6 py-3.5"><span class="etiqueta bg-slate-100 text-texto-medio">{{ $d->categoria }}{{ $d->refeicao_tipo ? ' · ' . $d->refeicao_tipo : '' }}</span></td>
                                 <td class="px-6 py-3.5 font-medium text-texto-forte">{{ $d->descricao }}</td>
                                 <td class="px-6 py-3.5 text-texto-medio">{{ $d->cliente?->nome ?? '—' }}</td>
                                 <td class="whitespace-nowrap px-6 py-3.5 text-right font-medium text-texto-forte">{{ number_format($d->valor, 2, ',', '.') }} €</td>

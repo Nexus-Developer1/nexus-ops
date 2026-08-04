@@ -31,6 +31,7 @@ class Despesa extends Model
         'criado_por',
         'matricula',    // veículo usado (cabeçalho da folha da empresa)
         'departamento', // departamento do colaborador (idem)
+        'refeicao_tipo', // 'A' (almoço) | 'J' (jantar) — só nas despesas de Refeições (nota a) da folha)
     ];
 
     /** @return array<string, string> */
