@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-08-05
 
-- 🧰 **Despesas: nota a) da folha em funcionamento (A — almoço / J — jantar)** — a nota deixou de ser só texto: a célula de **Refeições** ganha um seletor **A / J** e, com valor preenchido nas refeições, escolher um passa a ser **obrigatório** (validação no servidor, com mensagem clara). O tipo grava-se apenas na despesa de Refeições (`despesas.refeicao_tipo`; as outras colunas ficam a null, e mudar o valor de coluna limpa-o) e aparece na listagem junto à categoria ("Refeições · A"). A nota b) (especificar na descrição) já era imposta pela descrição obrigatória. Requer migração. +1 teste, 2 ajustados (378 no total).
+- 🧰 **Despesas: nota a) da folha em funcionamento (A — almoço / J — jantar)** — a nota deixou de ser só texto: a célula de **Refeições** ganha um seletor **A / J** e, com valor preenchido nas refeições, escolher um passa a ser **obrigatório** (validação no servidor, com mensagem clara). O tipo grava-se apenas na despesa de Refeições (`despesas.refeicao_tipo`; as outras colunas ficam a null, e mudar o valor de coluna limpa-o) e aparece na listagem junto à categoria ("Refeições · A"). A nota b) (especificar na descrição) já era imposta pela descrição obrigatória. Requer migração. +1 teste, 2 ajustados (378 no total). `e9e50d6`
 
 ## 2026-08-04
 
