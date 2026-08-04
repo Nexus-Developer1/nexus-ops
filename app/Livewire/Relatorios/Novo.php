@@ -145,10 +145,10 @@ class Novo extends Component
             }
 
             // Modo contrato: faixa pela contagem de equipamentos DO CONTRATO. Carrega SÓ os cobertos
-            // já gravados (acima); se o contrato for grande, mostra a pesquisa para acrescentar mais
+            // já gravados (acima); com 2+ mostra a lista/pesquisa (a seleção gravada fica marcada)
             // — nunca monta as fichas todas (editar um contrato de cobertura ampla não rebenta).
             if ($this->modo === 'contrato') {
-                $this->faixaEquipamentos = $this->faixaPara($this->equipamentosCandidatos()->count());
+                $this->faixaEquipamentos = $this->faixaParaContrato($this->equipamentosCandidatos()->count());
             }
             $this->tipo = $intervencao->tipo->value;
             $this->data = $intervencao->data_inicio?->format('Y-m-d') ?? '';
@@ -210,10 +210,10 @@ class Novo extends Component
         }
     }
 
-    // Modo contrato: ao escolher o contrato, decide a faixa pelo nº de equipamentos DO CONTRATO
-    // (mesma lógica do individual, mas a fonte é o contrato). Contratos pequenos (≤10) anexam todos
-    // como hoje; grandes (>10) NÃO anexam nada — o técnico escolhe os que vai medir nesta visita
-    // (senão montaria centenas de fichas → 500 por memory_limit).
+    // Modo contrato: ao escolher o contrato, o técnico ESCOLHE os equipamentos a intervencionar
+    // (o contrato pode cobrir 20 e a intervenção ser só num) — com 2+ nada é anexado
+    // automaticamente: 2..50 → lista de checkboxes; >50 → pesquisa. Só com 1 equipamento
+    // (não há escolha) é anexado direto.
     public function selecionarContrato(int $id): void
     {
         $contrato = Contrato::with('cliente')->find($id);
@@ -226,17 +226,17 @@ class Novo extends Component
         $this->contratoBusca = trim($contrato->numero . ' · ' . ($contrato->cliente?->nome ?? ''));
         $this->equipamentoBusca = '';
 
-        $this->faixaEquipamentos = $this->faixaPara($this->equipamentosCandidatos()->count());
+        $this->faixaEquipamentos = $this->faixaParaContrato($this->equipamentosCandidatos()->count());
 
         if ($this->faixaEquipamentos !== 'auto') {
-            // >10 equipamentos no contrato → o técnico escolhe (lista/pesquisa); não anexa nada.
+            // 2+ equipamentos no contrato → o técnico escolhe (lista/pesquisa); não anexa nada.
             $this->equipamento_id = null;
             $this->equipamentosCobertos = [];
 
             return;
         }
 
-        // ≤10 → anexa todos os do contrato, ordenados por nº de série (1.º = principal).
+        // 1 só → anexa-o (não há escolha a fazer).
         $ids = $this->equipamentosCandidatos()->orderBy('numero_serie')->pluck('id')->all();
         $this->equipamento_id = $ids[0] ?? null;
         $this->equipamentosCobertos = array_values(array_slice($ids, 1));
@@ -279,6 +279,18 @@ class Novo extends Component
         }
 
         return 'pesquisa';
+    }
+
+    // Faixa do modo CONTRATO: a intervenção pode ser só num dos equipamentos cobertos, por
+    // isso nunca se anexa tudo às cegas — 1 equipamento → anexa (não há escolha); 2..50 →
+    // lista de checkboxes (o técnico marca os que vai intervencionar); >50 → pesquisa.
+    private function faixaParaContrato(int $total): string
+    {
+        if ($total <= 1) {
+            return 'auto';
+        }
+
+        return $total <= self::MAX_LISTA_CHECKBOXES ? 'lista' : 'pesquisa';
     }
 
     // Modo individual: escolhe o CLIENTE e decide a faixa pela contagem de equipamentos:
@@ -472,9 +484,10 @@ class Novo extends Component
                 $q->where('numero_serie', 'ilike', $termo)
                     ->orWhereRaw($semAcentos . ' like ?', [$norm]);
             })
+            ->with('local.cliente') // a lista mostra ONDE está instalado (localInstalacao())
             ->orderBy('numero_serie')
             ->limit(20)
-            ->get(['id', 'numero_serie', 'fabricante', 'modelo']);
+            ->get(['id', 'numero_serie', 'fabricante', 'modelo', 'local_id', 'localizacao_instalacao']);
     }
 
     // Atalho (modo individual): pesquisa GLOBAL por nº de série — de TODOS os clientes, não
@@ -504,9 +517,10 @@ class Novo extends Component
         }
 
         return $this->equipamentosCandidatos()
+            ->with('local.cliente') // a lista mostra ONDE está instalado (localInstalacao())
             ->orderBy('numero_serie')
             ->limit(self::MAX_LISTA_CHECKBOXES)
-            ->get(['id', 'numero_serie', 'fabricante', 'modelo']);
+            ->get(['id', 'numero_serie', 'fabricante', 'modelo', 'local_id', 'localizacao_instalacao']);
     }
 
     // Nomes amigáveis nas mensagens de validação.

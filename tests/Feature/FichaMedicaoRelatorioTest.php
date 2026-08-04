@@ -49,7 +49,7 @@ class FichaMedicaoRelatorioTest extends TestCase
 
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
-            ->call('selecionarContrato', $contrato->id)
+            ->call('selecionarContrato', $contrato->id)->call('selecionarTodosEquipamentos')
             ->set('data', now()->toDateString())
             // Uma medição em cada → ambas as fichas têm conteúdo e são persistidas.
             ->set("fichas.{$e1->id}.verificacoes.acessibilidade.estado", 'ok')
@@ -78,7 +78,7 @@ class FichaMedicaoRelatorioTest extends TestCase
 
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
-            ->call('selecionarContrato', $contrato->id)
+            ->call('selecionarContrato', $contrato->id)->call('selecionarTodosEquipamentos')
             ->assertSet("fichas.{$e1->id}.marca", 'Riello')
             ->assertSet("fichas.{$e1->id}.serie", 'SN-1');
     }
@@ -89,7 +89,7 @@ class FichaMedicaoRelatorioTest extends TestCase
 
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
-            ->call('selecionarContrato', $contrato->id)
+            ->call('selecionarContrato', $contrato->id)->call('selecionarTodosEquipamentos')
             ->set('data', now()->toDateString())
             ->set("fichas.{$e1->id}.ve_ln_l1", '230.5')
             ->set("fichas.{$e1->id}.ve_ln_l2", '')                 // vazio → null
@@ -117,7 +117,7 @@ class FichaMedicaoRelatorioTest extends TestCase
 
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
-            ->call('selecionarContrato', $contrato->id)
+            ->call('selecionarContrato', $contrato->id)->call('selecionarTodosEquipamentos')
             ->set('data', now()->toDateString())
             ->set("fichas.{$e1->id}.notas_finais", 'Tudo OK')
             ->call('guardarRascunho');
@@ -134,7 +134,7 @@ class FichaMedicaoRelatorioTest extends TestCase
 
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
-            ->call('selecionarContrato', $contrato->id)
+            ->call('selecionarContrato', $contrato->id)->call('selecionarTodosEquipamentos')
             ->set('data', now()->toDateString())
             // Recomendações distintas por equipamento (sem qualquer outra medição).
             ->set("fichas.{$e1->id}.recomendacao", 'Substituir baterias')
@@ -162,7 +162,7 @@ class FichaMedicaoRelatorioTest extends TestCase
 
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
-            ->call('selecionarContrato', $contrato->id)
+            ->call('selecionarContrato', $contrato->id)->call('selecionarTodosEquipamentos')
             ->set('data', now()->toDateString())
             ->set("fichas.{$e1->id}.recomendacao", 'Substituir baterias em 2027')
             ->set("fichas.{$e1->id}.prioridade", 'Alta')
@@ -181,7 +181,7 @@ class FichaMedicaoRelatorioTest extends TestCase
 
         $c = Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
-            ->call('selecionarContrato', $contrato->id)
+            ->call('selecionarContrato', $contrato->id)->call('selecionarTodosEquipamentos')
             ->set('data', now()->toDateString())
             // Ambas com conteúdo → 2 fichas persistidas.
             ->set("fichas.{$e1->id}.notas_finais", 'ficha principal')
@@ -209,7 +209,7 @@ class FichaMedicaoRelatorioTest extends TestCase
         // Contrato escolhido, nenhuma medição introduzida → nenhuma ficha gravada.
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
-            ->call('selecionarContrato', $contrato->id)
+            ->call('selecionarContrato', $contrato->id)->call('selecionarTodosEquipamentos')
             ->set('data', now()->toDateString())
             ->call('guardarRascunho')
             ->assertHasNoErrors();
@@ -228,7 +228,7 @@ class FichaMedicaoRelatorioTest extends TestCase
         // 1) Gravar rascunho com 2 fichas preenchidas (e1, e2); e3 fica vazio.
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
-            ->call('selecionarContrato', $contrato->id)
+            ->call('selecionarContrato', $contrato->id)->call('selecionarTodosEquipamentos')
             ->set('data', now()->toDateString())
             ->set("fichas.{$e1->id}.ve_ln_l1", '230.1')
             ->set("fichas.{$e1->id}.notas_finais", 'ficha e1')
@@ -309,7 +309,7 @@ class FichaMedicaoRelatorioTest extends TestCase
         $tec = User::create(['nome' => 'Téc', 'email' => 'tec@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
-            ->call('selecionarContrato', $contrato->id)
+            ->call('selecionarContrato', $contrato->id)->call('selecionarTodosEquipamentos')
             ->set('data', now()->toDateString())
             ->set('hora_inicio', '10:00')
             ->set('hora_fim', '11:00')
@@ -387,7 +387,7 @@ class FichaMedicaoRelatorioTest extends TestCase
         $tec = User::create(['nome' => 'Téc', 'email' => 'tec@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
-            ->call('selecionarContrato', $contrato->id)
+            ->call('selecionarContrato', $contrato->id)->call('selecionarTodosEquipamentos')
             ->set('data', now()->toDateString())
             ->set("fichas.{$e1->id}.ve_ln_l1", '230.00')
             ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->image('up.png', 800, 600)])

@@ -20,9 +20,16 @@
             @foreach ($equipamentosLista as $e)
                 <label wire:key="chk-{{ $e->id }}" class="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 hover:bg-fundo">
                     <input type="checkbox" wire:click="alternarEquipamento({{ $e->id }})" @checked(in_array($e->id, $anexadosIds, true)) class="h-4 w-4 shrink-0 rounded border-borda text-verde-600 focus:ring-verde-500">
-                    <span class="min-w-0 truncate text-sm">
-                        <span class="font-medium text-texto-forte">{{ $e->numero_serie ?? '—' }}</span>
-                        <span class="text-texto-fraco"> · {{ trim($e->fabricante . ' ' . $e->modelo) ?: '—' }}</span>
+                    <span class="min-w-0 text-sm">
+                        <span class="block truncate">
+                            <span class="font-medium text-texto-forte">{{ $e->numero_serie ?? '—' }}</span>
+                            <span class="text-texto-fraco"> · {{ trim($e->fabricante . ' ' . $e->modelo) ?: '—' }}</span>
+                        </span>
+                        {{-- ONDE está instalado (morada real — distingue equipamentos iguais em sítios diferentes). --}}
+                        <span class="flex items-center gap-1 text-xs text-texto-medio">
+                            <svg class="h-3 w-3 shrink-0 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            <span class="truncate">{{ $e->localInstalacao() }}</span>
+                        </span>
                     </span>
                 </label>
             @endforeach
@@ -54,6 +61,7 @@
                         class="cursor-pointer px-4 py-2 text-sm" role="option">
                         <span class="font-medium">{{ $e->numero_serie ?? '—' }}</span>
                         <span class="text-xs text-texto-fraco"> · {{ trim($e->fabricante . ' ' . $e->modelo) ?: '—' }}</span>
+                        <span class="block truncate text-xs text-texto-medio">{{ $e->localInstalacao() }}</span>
                     </li>
                 @empty
                     <li class="px-4 py-2 text-sm text-texto-medio">{{ $equipamentoBusca === '' ? 'Escreva o nº de série para pesquisar…' : 'Nenhum equipamento encontrado.' }}</li>
@@ -72,12 +80,12 @@
         @if ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty())
             <div class="flex flex-wrap gap-2">
                 @if ($equipamentoPrincipal)
-                    <button type="button" wire:key="chip-{{ $equipamentoPrincipal->id }}" @click="tab='equip-{{ $equipamentoPrincipal->id }}'" class="inline-flex items-center gap-1.5 rounded-full border border-verde-200 bg-verde-50 px-3 py-1 text-xs font-medium text-verde-700 hover:bg-verde-100 transition">
+                    <button type="button" wire:key="chip-{{ $equipamentoPrincipal->id }}" @click="tab='equip-{{ $equipamentoPrincipal->id }}'" title="{{ $equipamentoPrincipal->localInstalacao() }}" class="inline-flex items-center gap-1.5 rounded-full border border-verde-200 bg-verde-50 px-3 py-1 text-xs font-medium text-verde-700 hover:bg-verde-100 transition">
                         {{ $equipamentoPrincipal->numero_serie ?? '—' }}
                     </button>
                 @endif
                 @foreach ($cobertosSelecionados as $e)
-                    <button type="button" wire:key="chip-{{ $e->id }}" @click="tab='equip-{{ $e->id }}'" class="inline-flex items-center gap-1.5 rounded-full border border-borda bg-fundo px-3 py-1 text-xs text-texto-forte hover:border-verde-300 hover:text-verde-700 transition">
+                    <button type="button" wire:key="chip-{{ $e->id }}" @click="tab='equip-{{ $e->id }}'" title="{{ $e->localInstalacao() }}" class="inline-flex items-center gap-1.5 rounded-full border border-borda bg-fundo px-3 py-1 text-xs text-texto-forte hover:border-verde-300 hover:text-verde-700 transition">
                         {{ $e->numero_serie ?? '—' }}
                     </button>
                 @endforeach

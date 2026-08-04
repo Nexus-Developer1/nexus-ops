@@ -128,6 +128,7 @@ class RelatorioEquipamentosTest extends TestCase
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
             ->call('selecionarContrato', $contrato->id)
+            ->call('selecionarTodosEquipamentos') // com 2+ o técnico escolhe — aqui marca ambos
             ->set('data', now()->toDateString())
             ->call('guardarRascunho')
             ->assertHasNoErrors();
@@ -375,7 +376,8 @@ class RelatorioEquipamentosTest extends TestCase
 
         $c = Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
-            ->call('selecionarContrato', $contrato->id);
+            ->call('selecionarContrato', $contrato->id)
+            ->call('selecionarTodosEquipamentos'); // com 2+ o técnico escolhe — marca ambos
 
         // Carregou o equipamento do contrato.
         $this->assertNotNull($c->get('equipamento_id'));
@@ -524,19 +526,28 @@ class RelatorioEquipamentosTest extends TestCase
         return $contrato;
     }
 
-    public function test_contrato_pequeno_anexa_todos_os_seus_equipamentos(): void
+    // O contrato pode cobrir muitos equipamentos e a intervenção ser só num: com 2+ nada é
+    // anexado automaticamente (o técnico escolhe na lista); só com 1 (sem escolha) anexa direto.
+    public function test_contrato_com_um_anexa_o_e_com_varios_o_tecnico_escolhe(): void
     {
         [$admin] = $this->cenario();
-        $contrato = $this->contratoComN(3); // ≤10 → auto
 
+        // 3 equipamentos → lista de checkboxes, nada anexado.
+        $tres = $this->contratoComN(3);
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $tres->id)
+            ->assertSet('faixaEquipamentos', 'lista')
+            ->assertSet('equipamento_id', null)
+            ->assertSet('equipamentosCobertos', []);
+
+        // 1 equipamento → anexa-o (não há escolha a fazer).
+        $um = $this->contratoComN(1);
         $c = Livewire::actingAs($admin)->test(Novo::class)
             ->call('definirModo', 'contrato')
-            ->call('selecionarContrato', $contrato->id)
+            ->call('selecionarContrato', $um->id)
             ->assertSet('faixaEquipamentos', 'auto');
-
         $this->assertNotNull($c->get('equipamento_id'));
-        $todos = collect([$c->get('equipamento_id')])->merge($c->get('equipamentosCobertos'))->filter()->all();
-        $this->assertCount(3, $todos); // anexa os 3 do contrato (como hoje)
     }
 
     public function test_contrato_faixa_lista_nao_anexa_e_selecionar_todos_ate_50(): void
