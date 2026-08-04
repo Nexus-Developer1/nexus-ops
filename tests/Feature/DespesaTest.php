@@ -171,6 +171,28 @@ class DespesaTest extends TestCase
         $this->assertSame(0, Despesa::count()); // soft deleted também
     }
 
+    // Consolidação (migração): despesas do mesmo colaborador/data/descrição espalhadas por
+    // vários registos (efeito do backfill) juntam-se num só; registos esvaziados desaparecem.
+    public function test_consolidacao_junta_registos_do_mesmo_lancamento(): void
+    {
+        $admin = $this->admin();
+        $r1 = RegistoDespesa::create(['criado_por' => $admin->id]);
+        $r2 = RegistoDespesa::create(['criado_por' => $admin->id]);
+        $r3 = RegistoDespesa::create(['criado_por' => $admin->id]);
+        $r1->despesas()->create(['data' => '2026-08-04', 'categoria' => 'Combustíveis', 'descricao' => 'BNP', 'valor' => 10, 'faturavel' => false, 'criado_por' => $admin->id]);
+        $r2->despesas()->create(['data' => '2026-08-04', 'categoria' => 'Hotel', 'descricao' => 'BNP', 'valor' => 120, 'faturavel' => false, 'criado_por' => $admin->id]);
+        // Registo de OUTRA descrição não é tocado.
+        $r3->despesas()->create(['data' => '2026-08-04', 'categoria' => 'Hotel', 'descricao' => 'Outro sítio', 'valor' => 30, 'faturavel' => false, 'criado_por' => $admin->id]);
+
+        $migracao = require database_path('migrations/2026_08_05_000003_consolida_registos_despesa.php');
+        $migracao->up();
+
+        // BNP juntos no registo mais antigo; o esvaziado desapareceu; o "Outro sítio" intacto.
+        $this->assertSame(2, $r1->despesas()->count());
+        $this->assertDatabaseMissing('registos_despesa', ['id' => $r2->id]);
+        $this->assertSame(1, $r3->despesas()->count());
+    }
+
     public function test_kpis_separam_faturavel_de_incluido(): void
     {
         $admin = $this->admin();
