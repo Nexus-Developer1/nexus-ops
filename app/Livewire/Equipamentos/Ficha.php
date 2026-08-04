@@ -363,7 +363,7 @@ class Ficha extends Component
         $intervencoes = Intervencao::query()
             ->where(fn ($q) => $q->where('equipamento_id', $id)
                 ->orWhereHas('equipamentosCobertos', fn ($q) => $q->whereKey($id)))
-            ->with('tecnico')
+            ->with(['tecnico', 'relatorio']) // relatorio: o histórico liga cada intervenção ao seu relatório
             ->orderByDesc('data_inicio')
             ->get();
 

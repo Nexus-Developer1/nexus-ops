@@ -99,6 +99,14 @@ class Calendario extends Component
     // (ou intervalo inválido/desmesurado) → sem linhas, o evento fica contínuo como sempre.
     private function reconstruirHorasDias(): void
     {
+        // Campo vazio: Carbon::parse('') devolve "agora" (não falha) e gerava linhas fantasma
+        // com o fim na hora atual, preservadas depois como se fossem horas editadas.
+        if (trim($this->formInicio) === '' || trim($this->formFim) === '') {
+            $this->formHorasDias = [];
+
+            return;
+        }
+
         try {
             $ini = Carbon::parse($this->formInicio);
             $fim = Carbon::parse($this->formFim);

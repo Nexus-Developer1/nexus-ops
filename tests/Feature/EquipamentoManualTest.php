@@ -230,6 +230,23 @@ class EquipamentoManualTest extends TestCase
         $this->assertStringContainsString('Edifício B, piso 2', $html);
     }
 
+    // Histórico de intervenções: com relatório ligado, a linha abre-o; sem relatório, não há link.
+    public function test_historico_de_intervencoes_liga_ao_relatorio_respetivo(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $eq = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-HIST']);
+
+        $comRelatorio = Intervencao::create(['equipamento_id' => $eq->id, 'tipo' => 'corretiva', 'estado' => 'concluida', 'data_inicio' => '2026-07-20']);
+        $relatorio = Relatorio::create(['intervencao_id' => $comRelatorio->id, 'numero' => '2026/0042', 'data' => now(), 'estado' => 'finalizado']);
+        Intervencao::create(['equipamento_id' => $eq->id, 'tipo' => 'preventiva', 'estado' => 'em_curso', 'data_inicio' => '2026-07-21']); // sem relatório
+
+        Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $eq])
+            ->assertSeeHtml(route('relatorios.editar', $relatorio)) // linha com relatório → link para ele
+            ->assertSee('Relatório 2026/0042');
+    }
+
     // ---- Banco de baterias (parte do equipamento) ----
 
     public function test_novo_equipamento_guarda_banco_de_baterias(): void

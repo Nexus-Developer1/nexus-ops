@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-08-04
+
+- 🧰 **Ficha do equipamento: histórico de intervenções abre o relatório respetivo** — pedido da equipa: cada linha do "Histórico de Intervenções" com relatório ligado passa a ser **clicável** (a linha inteira abre o editor do relatório), com o nº do relatório na linha ("Relatório 2026/0042", ou "em rascunho"), realce ao passar o rato e seta à direita. Intervenções sem relatório ficam como estavam (só informativas). Bónus: corrigido um caso raro nas **horas por dia da agenda** — com o campo de fim ainda vazio, `Carbon::parse('')` devolve "agora" (não falha) e podiam nascer linhas fantasma com o fim na hora atual; campos vazios passam a ser tratados como intervalo inválido (na UI real não acontecia — os dois campos vêm sempre preenchidos). +1 teste (373 no total).
+
 ## 2026-07-31
 
 - 🧹 **Varredura de código morto: nada órfão** — verificado tudo o que mudou desde a última limpeza (assinaturas SADEI, fotos multi/compressão, ordenação de equipamentos/clientes, horas por dia na agenda, moradas nos contratos, 14.ª revisão): métodos, constantes (`ASSINATURA_MAX_*`, `MAX_DIAS_EVENTO`), imports, componentes Blade, funções JS (`preservarScroll`, `fotosUpload`, `assinaturaPad`) e props Livewire — todos com uso real. Únicos retoques: um comentário desatualizado no upload de fotos (dizia `wire:model`, o mecanismo passou a `$wire.uploadMultiple` com compressão) e linhas em branco duplicadas em 2 ficheiros. 372 testes verdes.

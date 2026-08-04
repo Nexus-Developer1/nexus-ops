@@ -282,7 +282,10 @@
                             <span class="text-sm text-texto-fraco">{{ $intervencoes->count() }}</span>
                         </div>
                         @forelse ($intervencoes as $i)
-                            <div class="flex items-center gap-4 border-t border-borda px-6 py-4">
+                            {{-- Com relatório ligado, a linha inteira abre-o (editor); sem relatório fica só informativa. --}}
+                            @php($tag = $i->relatorio ? 'a' : 'div')
+                            <{{ $tag }} @if ($i->relatorio) href="{{ route('relatorios.editar', $i->relatorio) }}" wire:navigate @endif
+                                class="flex items-center gap-4 border-t border-borda px-6 py-4 {{ $i->relatorio ? 'transition hover:bg-verde-50/60' : '' }}">
                                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $i->estado->classesEtiqueta() }}">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                                 </span>
@@ -290,10 +293,15 @@
                                     <div class="truncate text-sm font-medium text-texto-forte">
                                         {{ $i->tipo->rotulo() }}@if ($i->descricao_problema) — {{ \Illuminate\Support\Str::limit($i->descricao_problema, 48) }}@endif
                                     </div>
-                                    <div class="text-xs text-texto-fraco">{{ $i->tecnico?->nome ?? 'Sem técnico' }} · {{ $i->data_inicio?->translatedFormat('d M Y') ?? '—' }}</div>
+                                    <div class="text-xs text-texto-fraco">
+                                        {{ $i->tecnico?->nome ?? 'Sem técnico' }} · {{ $i->data_inicio?->translatedFormat('d M Y') ?? '—' }}@if ($i->relatorio) · Relatório {{ $i->relatorio->numero ?? 'em rascunho' }}@endif
+                                    </div>
                                 </div>
                                 <span class="etiqueta {{ $i->estado->classesEtiqueta() }}">{{ $i->estado->rotulo() }}</span>
-                            </div>
+                                @if ($i->relatorio)
+                                    <svg class="h-4 w-4 shrink-0 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                @endif
+                            </{{ $tag }}>
                         @empty
                             <div class="border-t border-borda px-6 py-10 text-center">
                                 <p class="text-sm text-texto-medio">Ainda sem intervenções registadas.</p>
