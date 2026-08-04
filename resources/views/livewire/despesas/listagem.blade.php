@@ -19,6 +19,44 @@
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Despesas</h1>
             <p class="mt-2 text-sm text-texto-medio">Custos da operação · {{ $periodo === 'mes' ? 'mês atual' : 'todo o período' }}.</p>
 
+            {{-- Folhas mensais por colaborador (espelho da folha impressa da empresa). --}}
+            <section class="cartao mt-8">
+                <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
+                    <div>
+                        <h2 class="text-lg font-semibold text-texto-forte">Folhas de despesas mensais</h2>
+                        <p class="mt-1 text-xs text-texto-fraco">Registo por colaborador e mês, com PDF no formato da folha da empresa.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select wire:model="novaFolhaUserId" class="campo-select w-48">
+                            @foreach ($colaboradores as $col)
+                                <option value="{{ $col->id }}">{{ $col->nome }}</option>
+                            @endforeach
+                        </select>
+                        <input wire:model="novaFolhaMes" type="month" class="campo-input w-44">
+                        <button wire:click="abrirFolha" class="botao-primario">Abrir folha</button>
+                    </div>
+                </div>
+                @if ($folhas->isNotEmpty())
+                    <div class="border-t border-borda">
+                        @foreach ($folhas as $f)
+                            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-borda/60 px-6 py-3 last:border-b-0">
+                                <div class="min-w-0">
+                                    <span class="text-sm font-medium text-texto-forte">{{ $f->colaborador?->nome ?? '—' }}</span>
+                                    <span class="text-sm text-texto-medio"> · {{ ucfirst($f->rotuloMes()) }}</span>
+                                </div>
+                                <div class="flex items-center gap-4">
+                                    <span class="text-sm font-semibold text-texto-forte">{{ number_format((float) ($f->despesas_sum_valor ?? 0), 2, ',', ' ') }} €</span>
+                                    <a href="{{ route('despesas.folha', $f) }}" wire:navigate class="text-sm font-medium text-verde-700 hover:text-verde-800">Abrir</a>
+                                    <a href="{{ route('despesas.folha.pdf', $f) }}" target="_blank" class="text-sm font-medium text-texto-medio hover:text-texto-forte">PDF</a>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+                @error('novaFolhaMes') <p class="px-6 pb-3 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                @error('novaFolhaUserId') <p class="px-6 pb-3 text-xs text-perigo-500">{{ $message }}</p> @enderror
+            </section>
+
             {{-- KPIs --}}
             <div class="mt-8 grid grid-cols-2 gap-5 lg:grid-cols-4">
                 <div class="cartao p-6">
@@ -48,7 +86,7 @@
                 <select wire:model.live="categoria" class="campo-select w-44">
                     <option value="">Todas as categorias</option>
                     @foreach ($categorias as $c)
-                        <option value="{{ $c->nome }}">{{ $c->nome }}</option>
+                        <option value="{{ $c }}">{{ $c }}</option>
                     @endforeach
                 </select>
                 <select wire:model.live="faturavel" class="campo-select w-44">

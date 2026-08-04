@@ -26,6 +26,7 @@ class Despesa extends Model
         'intervencao_id',
         'contrato_id',
         'criado_por',
+        'folha_despesa_id', // folha mensal do colaborador a que o lançamento pertence (null = avulsa)
     ];
 
     /** @return array<string, string> */
@@ -56,5 +57,10 @@ class Despesa extends Model
     public function contrato(): BelongsTo
     {
         return $this->belongsTo(Contrato::class);
+    }
+
+    public function folha(): BelongsTo
+    {
+        return $this->belongsTo(FolhaDespesa::class, 'folha_despesa_id');
     }
 }

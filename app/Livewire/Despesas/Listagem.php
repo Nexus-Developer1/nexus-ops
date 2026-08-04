@@ -3,8 +3,8 @@
 namespace App\Livewire\Despesas;
 
 use App\Livewire\Concerns\ApenasEquipa;
-use App\Models\CategoriaDespesa;
 use App\Models\Despesa;
+use App\Models\FolhaDespesa;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -55,6 +55,34 @@ class Listagem extends Component
         session()->flash('sucesso', 'Despesa eliminada.');
     }
 
+    // ---- Folhas mensais por colaborador (espelho da folha impressa) ----
+
+    public string $novaFolhaMes = '';
+    public ?int $novaFolhaUserId = null;
+
+    // Abre (ou cria) a folha do colaborador para o mês escolhido — idempotente: se já
+    // existir, é reutilizada; uma folha apagada é restaurada (o unique não deixa duplicar).
+    public function abrirFolha()
+    {
+        $this->validate([
+            'novaFolhaMes' => ['required', 'date_format:Y-m'],
+            'novaFolhaUserId' => ['required', 'integer',
+                \Illuminate\Validation\Rule::exists('utilizadores', 'id')->where('ativo', true)->whereNot('papel', \App\Enums\PapelUtilizador::Cliente->value)],
+        ]);
+
+        [$ano, $mes] = array_map('intval', explode('-', $this->novaFolhaMes));
+
+        $folha = FolhaDespesa::withTrashed()->firstOrNew([
+            'user_id' => $this->novaFolhaUserId, 'ano' => $ano, 'mes' => $mes,
+        ]);
+        if ($folha->trashed()) {
+            $folha->restore();
+        }
+        $folha->save();
+
+        return redirect()->route('despesas.folha', $folha);
+    }
+
     // Query base com os filtros aplicados (reutilizada para KPIs e listagem).
     private function base()
     {
@@ -86,10 +114,27 @@ class Listagem extends Component
             'numero' => $this->base()->count(),
         ];
 
+        // Folhas mensais mais recentes (colaborador + total já somado).
+        $folhas = FolhaDespesa::query()
+            ->with('colaborador')
+            ->withSum('despesas', 'valor')
+            ->orderByDesc('ano')->orderByDesc('mes')->orderBy('id')
+            ->limit(24)
+            ->get();
+
+        if ($this->novaFolhaMes === '') {
+            $this->novaFolhaMes = now()->format('Y-m');
+        }
+        $this->novaFolhaUserId ??= auth()->id();
+
         return view('livewire.despesas.listagem', [
             'despesas' => $despesas,
             'kpis' => $kpis,
-            'categorias' => CategoriaDespesa::orderBy('nome')->get(),
+            'categorias' => FolhaDespesa::COLUNAS, // colunas fixas da folha (filtro)
+            'folhas' => $folhas,
+            'colaboradores' => \App\Models\User::where('ativo', true)
+                ->whereNot('papel', \App\Enums\PapelUtilizador::Cliente->value)
+                ->orderBy('nome')->get(['id', 'nome']),
         ]);
     }
 }

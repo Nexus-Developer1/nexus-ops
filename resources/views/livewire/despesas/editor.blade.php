@@ -13,59 +13,16 @@
                         <input wire:model="data" type="date" class="campo-input">
                         @error('data') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
-                    {{-- Categoria: campo pesquisável ligado à lookup (cresce com o uso).
-                         Filtra as existentes à medida que se escreve; "Adicionar «X»" guarda uma nova. --}}
-                    <div
-                        x-data="{
-                            categorias: @js($categorias->map(fn ($c) => ['nome' => $c->nome])->values()),
-                            valor: $wire.entangle('categoria'),
-                            aberto: false,
-                            destaque: 0,
-                            norm(s) { return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); },
-                            get filtrados() {
-                                const n = this.norm(this.valor);
-                                if (n === '') return this.categorias;
-                                return this.categorias.filter(c => this.norm(c.nome).includes(n));
-                            },
-                            get existeExato() {
-                                const n = this.norm(this.valor);
-                                return n !== '' && this.categorias.some(c => this.norm(c.nome) === n);
-                            },
-                            abrir() { this.aberto = true; this.destaque = 0; },
-                            fechar() { this.aberto = false; },
-                            escolher(nome) { this.valor = nome; this.aberto = false; },
-                            adicionar() {
-                                const v = (this.valor || '').trim();
-                                if (v === '') return;
-                                this.$wire.adicionarCategoria(v).then(ok => {
-                                    if (ok) { this.categorias.push({ nome: v }); this.aberto = false; }
-                                });
-                            },
-                        }"
-                        @click.outside="fechar()"
-                        @keydown.escape.stop="fechar()"
-                        class="relative"
-                    >
-                        <label class="campo-label" for="categoria-combo">Categoria <span class="text-perigo-500">*</span></label>
-                        <input id="categoria-combo" type="text" x-model="valor"
-                            @focus="abrir()" @click="abrir()" @input="abrir()"
-                            @keydown.enter.prevent="existeExato ? fechar() : adicionar()"
-                            class="campo-input" placeholder="Ex: Material, Deslocação..." autocomplete="off"
-                            role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
-                        <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
-                            <template x-for="(c, i) in filtrados" :key="c.nome">
-                                <li @click="escolher(c.nome)" @mouseenter="destaque = i" :class="i === destaque ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'" class="cursor-pointer px-4 py-2 text-sm" role="option">
-                                    <span x-text="c.nome"></span>
-                                </li>
-                            </template>
-                            <li x-show="valor && valor.trim() !== '' && !existeExato" @click="adicionar()" class="flex cursor-pointer items-center gap-1.5 px-4 py-2 text-sm font-medium text-verde-600 hover:bg-verde-50">
-                                <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
-                                <span>Adicionar «<span x-text="valor.trim()"></span>»</span>
-                            </li>
-                            <li x-show="filtrados.length === 0 && (!valor || valor.trim() === '')" class="px-4 py-2 text-sm text-texto-medio">Escreva para criar uma categoria.</li>
-                        </ul>
+                    {{-- Categoria: as COLUNAS fixas da folha de despesas (iguais à folha impressa). --}}
+                    <div>
+                        <label class="campo-label" for="categoria-select">Categoria <span class="text-perigo-500">*</span></label>
+                        <select id="categoria-select" wire:model="categoria" class="campo-select">
+                            <option value="">— Escolher —</option>
+                            @foreach (\App\Models\FolhaDespesa::COLUNAS as $c)
+                                <option value="{{ $c }}">{{ $c }}</option>
+                            @endforeach
+                        </select>
                         @error('categoria') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                        @error('novaCategoria') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="sm:col-span-2">

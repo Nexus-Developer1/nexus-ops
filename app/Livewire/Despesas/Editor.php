@@ -3,7 +3,6 @@
 namespace App\Livewire\Despesas;
 
 use App\Livewire\Concerns\ApenasEquipa;
-use App\Models\CategoriaDespesa;
 use App\Models\Cliente;
 use App\Models\Despesa;
 use App\Models\Intervencao;
@@ -134,29 +133,6 @@ class Editor extends Component
         return implode(' · ', $partes);
     }
 
-    // Guarda uma nova categoria (lookup que cresce) e seleciona-a. Idempotente:
-    // se já existir (sem acentos/maiúsculas), reutiliza a existente.
-    public function adicionarCategoria(string $nome): bool
-    {
-        $nome = trim(preg_replace('/\s+/', ' ', $nome));
-
-        if ($nome === '') {
-            $this->addError('novaCategoria', 'Indique a categoria.');
-
-            return false;
-        }
-
-        $categoria = CategoriaDespesa::firstOrCreate(
-            ['nome_normalizado' => CategoriaDespesa::normalizar($nome)],
-            ['nome' => $nome],
-        );
-
-        $this->categoria = $categoria->nome; // forma canónica
-        $this->resetErrorBag('novaCategoria');
-
-        return true;
-    }
-
     private function normalizarBusca(string $valor): string
     {
         $valor = mb_strtolower(trim($valor));
@@ -170,21 +146,14 @@ class Editor extends Component
     {
         $dados = $this->validate([
             'data' => ['required', 'date'],
-            'categoria' => ['required', 'string', 'max:100'],
+            // Categorias FIXAS = colunas da folha de despesas (whitelist no servidor).
+            'categoria' => ['required', \Illuminate\Validation\Rule::in(\App\Models\FolhaDespesa::COLUNAS)],
             'descricao' => ['required', 'string', 'max:255'],
             'valor' => ['required', 'numeric', 'min:0'],
             'faturavel' => ['boolean'],
             'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
             'intervencao_id' => ['nullable', 'integer', 'exists:intervencoes,id'],
         ]);
-
-        // Categoria fica guardada para reutilização futura (lookup que cresce com o uso);
-        // o valor gravado é a forma canónica da lookup.
-        $categoria = CategoriaDespesa::firstOrCreate(
-            ['nome_normalizado' => CategoriaDespesa::normalizar($this->categoria)],
-            ['nome' => trim($this->categoria)],
-        );
-        $dados['categoria'] = $categoria->nome;
 
         // Ligações. Com intervenção associada, o cliente/equipamento/contrato são HERDADOS dela
         // (fonte da verdade, re-lida no servidor — não se confia no que vem do cliente). Sem
@@ -252,7 +221,6 @@ class Editor extends Component
             ->get();
 
         return view('livewire.despesas.editor', [
-            'categorias' => CategoriaDespesa::orderBy('nome')->get(),
             'clientesFiltrados' => $clientesFiltrados,
             'intervencoesFiltradas' => $this->intervencoesFiltradas(),
         ]);

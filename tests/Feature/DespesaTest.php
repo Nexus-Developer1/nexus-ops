@@ -40,7 +40,7 @@ class DespesaTest extends TestCase
 
         Livewire::actingAs($admin)->test(Editor::class)
             ->set('data', now()->toDateString())
-            ->set('categoria', 'Material')
+            ->set('categoria', 'Outras despesas')
             ->set('descricao', 'Baterias 12V x4')
             ->set('valor', '320')
             ->set('faturavel', true)
@@ -51,7 +51,7 @@ class DespesaTest extends TestCase
 
         $this->assertDatabaseHas('despesas', [
             'descricao' => 'Baterias 12V x4',
-            'categoria' => 'Material',
+            'categoria' => 'Outras despesas',
             'valor' => 320.00,
             'faturavel' => true,
             'cliente_id' => $cliente->id,
@@ -59,33 +59,16 @@ class DespesaTest extends TestCase
         ]);
     }
 
-    public function test_categoria_nova_cresce_no_lookup_e_reutiliza_existente(): void
+    // As categorias passaram a ser FIXAS (as colunas da folha de despesas) — texto livre é recusado.
+    public function test_categoria_fora_das_colunas_fixas_e_recusada(): void
     {
-        $admin = $this->admin();
-
-        // Categoria nova (não existe nas 4 seedadas) → fica guardada.
-        Livewire::actingAs($admin)->test(Editor::class)
+        Livewire::actingAs($this->admin())->test(Editor::class)
             ->set('data', now()->toDateString())
-            ->set('categoria', 'Peças sobressalentes')
-            ->set('descricao', 'Ventoinha')
-            ->set('valor', '40')
-            ->call('guardar')
-            ->assertHasNoErrors();
-
-        $this->assertDatabaseHas('categorias_despesa', ['nome' => 'Peças sobressalentes']);
-
-        // Escrever "material" (minúsculas) reutiliza a "Material" seedada — sem duplicar
-        // e gravando a forma canónica.
-        Livewire::actingAs($admin)->test(Editor::class)
-            ->set('data', now()->toDateString())
-            ->set('categoria', 'material')
+            ->set('categoria', 'Material')
             ->set('descricao', 'Cabo')
             ->set('valor', '10')
             ->call('guardar')
-            ->assertHasNoErrors();
-
-        $this->assertSame(1, \App\Models\CategoriaDespesa::where('nome_normalizado', 'material')->count());
-        $this->assertDatabaseHas('despesas', ['descricao' => 'Cabo', 'categoria' => 'Material']);
+            ->assertHasErrors('categoria');
     }
 
     public function test_kpis_separam_faturavel_de_incluido(): void
@@ -134,7 +117,7 @@ class DespesaTest extends TestCase
 
         Livewire::actingAs($admin)->test(Editor::class)
             ->set('data', now()->toDateString())
-            ->set('categoria', 'Material')
+            ->set('categoria', 'Combustíveis')
             ->set('descricao', 'Baterias')
             ->set('valor', '100')
             ->call('selecionarIntervencao', $interv->id)

@@ -69,9 +69,27 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
     // Alertas proativos (renovações, baterias, visitas em atraso, SLA).
     Route::get('/alertas', \App\Livewire\Alertas\Painel::class)->name('alertas');
 
-    // Despesas (custos da operação). Rota /nova ANTES de /{despesa} para não colidir.
+    // Despesas (custos da operação). Rotas literais/compostas ANTES de /{despesa} para não colidir.
     Route::get('/despesas', \App\Livewire\Despesas\Listagem::class)->name('despesas');
     Route::get('/despesas/nova', \App\Livewire\Despesas\Editor::class)->name('despesas.nova');
+
+    // Folha MENSAL de despesas do colaborador (grelha) + PDF no formato da folha da empresa.
+    Route::get('/despesas/folha/{folha}', \App\Livewire\Despesas\Folha::class)->name('despesas.folha');
+    Route::get('/despesas/folha/{folha}/pdf', function (\App\Models\FolhaDespesa $folha) {
+        $html = view('pdf.folha-despesas', ['folha' => $folha])->render();
+        $dompdf = new \Dompdf\Dompdf(['enable_remote' => false]);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('a4', 'landscape'); // a folha é larga (7 colunas de valores)
+        $dompdf->render();
+
+        $nome = 'despesas-' . $folha->ano . '-' . str_pad((string) $folha->mes, 2, '0', STR_PAD_LEFT) . '.pdf';
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $nome . '"',
+        ]);
+    })->name('despesas.folha.pdf');
+
     Route::get('/despesas/{despesa}/editar', \App\Livewire\Despesas\Editor::class)->name('despesas.editar');
 });
 
