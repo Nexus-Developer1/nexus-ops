@@ -326,33 +326,6 @@ class Ficha extends Component
         return redirect()->route('intervencoes.formulario', $intervencao);
     }
 
-    // Especificações formatadas a partir dos atributos JSONB (adapta-se ao tipo).
-    public function especificacoes(): array
-    {
-        $atributos = $this->equipamento->atributos ?? [];
-
-        $mapa = [
-            'potencia_kva' => fn ($v) => ['Potência', $v . ' kVA'],
-            'topologia' => fn ($v) => ['Topologia', $v],
-            'autonomia_min' => fn ($v) => ['Autonomia', $v . ' min'],
-            'firmware' => fn ($v) => ['Firmware', $v],
-            'combustivel' => fn ($v) => ['Combustível', $v],
-            'horas_funcionamento' => fn ($v) => ['Horas de funcionamento', number_format($v, 0, ',', '.') . ' h'],
-            'num_tomadas' => fn ($v) => ['Nº de tomadas', $v],
-            'corrente_a' => fn ($v) => ['Corrente', $v . ' A'],
-        ];
-
-        $specs = [];
-        foreach ($atributos as $chave => $valor) {
-            if (isset($mapa[$chave]) && $valor !== null && $valor !== '') {
-                [$rotulo, $val] = $mapa[$chave]($valor);
-                $specs[] = ['rotulo' => $rotulo, 'valor' => $val];
-            }
-        }
-
-        return $specs;
-    }
-
     public function render()
     {
         $id = $this->equipamento->id;
@@ -373,7 +346,6 @@ class Ficha extends Component
             ->get();
 
         return view('livewire.equipamentos.ficha', [
-            'especificacoes' => $this->especificacoes(),
             'intervencoes' => $intervencoes,
             'contratos' => $contratos,
             // Bancos/kits associados a este equipamento e (se for um banco) o UPS pai.

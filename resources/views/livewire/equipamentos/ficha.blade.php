@@ -38,12 +38,18 @@
                                 <svg class="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.4"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 3h3m0 0h3m-3 0v3m0-3v-3"/></svg>
                             </div>
                         </div>
-                        <dl class="mt-4 grid grid-cols-1 gap-x-10 gap-y-3 text-sm sm:grid-cols-2">
-                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Nº de série</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->numero_serie ?? '—' }}</dd></div>
-                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Fabricante</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->fabricante ?? '—' }}</dd></div>
-                            <div class="flex justify-between gap-4 sm:col-span-2"><dt class="shrink-0 text-texto-medio">Modelo</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->modelo ?? '—' }}</dd></div>
-                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Instalação</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->data_instalacao?->translatedFormat('d M Y') ?? '—' }}</dd></div>
-                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Fim de garantia</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->fim_garantia?->translatedFormat('d M Y') ?? '—' }}</dd></div>
+                        {{-- MODELO primeiro (em destaque, largura toda), depois o resto em 2 colunas. --}}
+                        <dl class="mt-4 text-sm">
+                            <div class="border-b border-borda pb-3">
+                                <dt class="text-xs uppercase tracking-wide text-texto-fraco">Modelo</dt>
+                                <dd class="mt-1 text-base font-semibold text-texto-forte">{{ $equipamento->modelo ?? '—' }}</dd>
+                            </div>
+                            <div class="mt-3 grid grid-cols-1 gap-x-10 gap-y-3 sm:grid-cols-2">
+                                <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Nº de série</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->numero_serie ?? '—' }}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Fabricante</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->fabricante ?? '—' }}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Instalação</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->data_instalacao?->translatedFormat('d M Y') ?? '—' }}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Fim de garantia</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->fim_garantia?->translatedFormat('d M Y') ?? '—' }}</dd></div>
+                            </div>
                         </dl>
                     </section>
 
@@ -310,23 +316,6 @@
 
                 {{-- Coluna lateral --}}
                 <div class="space-y-6">
-
-                    {{-- Especificações — na lateral (trocou com a Identificação). --}}
-                    <section class="cartao p-6">
-                        <h2 class="text-base font-semibold text-texto-forte">Especificações</h2>
-                        @if (count($especificacoes))
-                            <dl class="mt-3 space-y-3 text-sm">
-                                @foreach ($especificacoes as $spec)
-                                    <div class="flex justify-between gap-4">
-                                        <dt class="shrink-0 text-texto-medio">{{ $spec['rotulo'] }}</dt>
-                                        <dd class="text-right font-medium text-texto-forte">{{ $spec['valor'] }}</dd>
-                                    </div>
-                                @endforeach
-                            </dl>
-                        @else
-                            <p class="mt-3 text-sm text-texto-medio">Sem especificações registadas.</p>
-                        @endif
-                    </section>
 
                     {{-- Contrato(s) associado(s) via contrato_equipamentos --}}
                     <section class="cartao p-6">
