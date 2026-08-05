@@ -5,7 +5,6 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import ptLocale from '@fullcalendar/core/locales/pt';
-import Chart from 'chart.js/auto';
 
 // Ações que não devem mexer na posição da página (tirar/remover fotos): sem isto, o
 // re-render do Livewire — que remove do DOM o botão em foco — devolvia o técnico ao topo,
@@ -28,18 +27,6 @@ document.addEventListener('livewire:init', () => {
 // Componente Alpine da Agenda (FullCalendar). O $wire vem do componente Livewire
 // que envolve este DOM. Eventos e reagendamento passam pelo backend (fonte de verdade).
 document.addEventListener('alpine:init', () => {
-    // Gráfico Chart.js: recebe a configuração (type/data/options) já montada no servidor.
-    // O canvas vive dentro de um wrapper com wire:ignore para o Livewire não o morfar.
-    window.Alpine.data('grafico', (config) => ({
-        instancia: null,
-        init() {
-            this.instancia = new Chart(this.$refs.canvas, config);
-        },
-        destroy() {
-            this.instancia?.destroy();
-        },
-    }));
-
     // Fotos da intervenção: COMPRIME no telemóvel antes de enviar (CLAUDE.md §6). Uma foto
     // de telemóvel tem 3–6 MB; redimensionada a 1920px e recomprimida em JPEG fica em
     // ~300–600 KB — sobe depressa em 4G e deixa de esbarrar nos limites de upload do PHP.

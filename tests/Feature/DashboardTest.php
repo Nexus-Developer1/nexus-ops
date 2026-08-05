@@ -122,11 +122,12 @@ class DashboardTest extends TestCase
         $this->actingAs($admin)->get('/dashboard')
             ->assertOk()
             ->assertDontSee('Rentabilidade de visitas')            // (Fase 3) cartão removido
-            ->assertDontSee('Cumprimento de SLA')                  // cartão removido a pedido da equipa
+            ->assertDontSee('Cumprimento de SLA')                  // removidos a pedido da equipa:
+            ->assertDontSee('Equipamentos por tipo')               // gráficos e sem-visitas saíram,
+            ->assertDontSee('Equipamentos sem visitas recentes')   // as métricas ficam no serviço
             ->assertSee('Agenda — próximos 7 dias')
             ->assertSee('Próximos alertas')
-            ->assertSee('Equipamentos por tipo')
-            ->assertSee('Visitas de contrato');                    // gráfico mensal renomeado
+            ->assertSee('Renovações próximas');
     }
 
     // Dashboard: agenda dos próximos 7 dias e próximos alertas de equipamentos/contratos.

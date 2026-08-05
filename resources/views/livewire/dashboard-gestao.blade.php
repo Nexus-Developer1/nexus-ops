@@ -116,80 +116,30 @@
                 </section>
             </div>
 
-            {{-- O cartão "Cumprimento de SLA" saiu do dashboard a pedido da equipa (a taxa
-                 continua calculada no ServicoMetricas — relatórios de gestão usam-na). --}}
+            {{-- Saíram a pedido da equipa: cartão "Cumprimento de SLA", gráficos (visitas de
+                 contrato, equipamentos por tipo/estado) e "Equipamentos sem visitas recentes"
+                 — as métricas continuam no ServicoMetricas para os relatórios de gestão. --}}
 
-            {{-- Gráficos --}}
-            <div class="mt-6 cartao p-6">
-                <h2 class="text-lg font-semibold text-texto-forte">Visitas de contrato — planeadas vs. realizadas</h2>
-                <p class="mt-1 text-sm text-texto-medio">Por mês, em {{ now()->year }}.</p>
-                <div wire:ignore x-data="grafico(@js($graficoVisitas))" class="mt-4" style="position: relative; height: 260px;">
-                    <canvas x-ref="canvas"></canvas>
+            {{-- Renovações próximas --}}
+            <section class="cartao mt-6">
+                <div class="flex items-center justify-between px-6 py-5">
+                    <h2 class="text-lg font-semibold text-texto-forte">Renovações próximas</h2>
+                    <a href="{{ route('contratos') }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">Ver contratos</a>
                 </div>
-            </div>
-
-            <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div class="cartao p-6">
-                    <h2 class="text-lg font-semibold text-texto-forte">Equipamentos por tipo</h2>
-                    @if (array_sum($graficoTipos['data']['datasets'][0]['data']) > 0)
-                        <div wire:ignore x-data="grafico(@js($graficoTipos))" class="mt-4" style="position: relative; height: 260px;">
-                            <canvas x-ref="canvas"></canvas>
-                        </div>
-                    @else
-                        <p class="mt-4 text-sm text-texto-medio">Sem equipamentos registados.</p>
-                    @endif
-                </div>
-                <div class="cartao p-6">
-                    <h2 class="text-lg font-semibold text-texto-forte">Equipamentos por estado</h2>
-                    @if (array_sum($graficoEstados['data']['datasets'][0]['data']) > 0)
-                        <div wire:ignore x-data="grafico(@js($graficoEstados))" class="mt-4" style="position: relative; height: 260px;">
-                            <canvas x-ref="canvas"></canvas>
-                        </div>
-                    @else
-                        <p class="mt-4 text-sm text-texto-medio">Sem equipamentos registados.</p>
-                    @endif
-                </div>
-            </div>
-
-            {{-- Renovações + equipamentos sem visitas --}}
-            <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <section class="cartao">
-                    <div class="flex items-center justify-between px-6 py-5">
-                        <h2 class="text-lg font-semibold text-texto-forte">Renovações próximas</h2>
-                        <a href="{{ route('contratos') }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">Ver contratos</a>
-                    </div>
-                    <ul class="border-t border-borda">
-                        @forelse ($renovacoes as $c)
-                            <li class="flex items-center justify-between border-b border-borda px-6 py-3.5 last:border-0">
-                                <div>
-                                    <a href="{{ route('contratos.ficha', $c) }}" wire:navigate class="text-sm font-medium text-texto-forte hover:text-verde-600">{{ $c->numero }}</a>
-                                    <div class="text-xs text-texto-fraco">{{ $c->cliente->nome }}</div>
-                                </div>
-                                <span class="text-sm text-aviso-500">termina {{ $c->data_fim->translatedFormat('d M Y') }}</span>
-                            </li>
-                        @empty
-                            <li class="px-6 py-8 text-center text-sm text-texto-medio">Sem renovações próximas.</li>
-                        @endforelse
-                    </ul>
-                </section>
-
-                <section class="cartao">
-                    <div class="px-6 py-5"><h2 class="text-lg font-semibold text-texto-forte">Equipamentos sem visitas recentes</h2></div>
-                    <ul class="border-t border-borda">
-                        @forelse ($semVisitas as $e)
-                            <li class="flex items-center justify-between border-b border-borda px-6 py-3.5 last:border-0">
-                                <div>
-                                    <a href="{{ route('equipamentos.ficha', $e) }}" wire:navigate class="text-sm font-medium text-texto-forte hover:text-verde-600">{{ trim($e->fabricante . ' ' . $e->modelo) ?: ($e->numero_serie ?? '—') }}</a>
-                                    <div class="text-xs text-texto-fraco">{{ $e->local->cliente->nome ?? '—' }}</div>
-                                </div>
-                                <span class="etiqueta {{ $e->tipo->classesEtiqueta() }}">{{ $e->tipo->rotulo() }}</span>
-                            </li>
-                        @empty
-                            <li class="px-6 py-8 text-center text-sm text-texto-medio">Todos os equipamentos têm visitas recentes.</li>
-                        @endforelse
-                    </ul>
-                </section>
-            </div>
+                <ul class="border-t border-borda">
+                    @forelse ($renovacoes as $c)
+                        <li class="flex items-center justify-between border-b border-borda px-6 py-3.5 last:border-0">
+                            <div>
+                                <a href="{{ route('contratos.ficha', $c) }}" wire:navigate class="text-sm font-medium text-texto-forte hover:text-verde-600">{{ $c->numero }}</a>
+                                <div class="text-xs text-texto-fraco">{{ $c->cliente->nome }}</div>
+                            </div>
+                            <span class="text-sm text-aviso-500">termina {{ $c->data_fim->translatedFormat('d M Y') }}</span>
+                        </li>
+                    @empty
+                        <li class="px-6 py-8 text-center text-sm text-texto-medio">Sem renovações próximas.</li>
+                    @endforelse
+                </ul>
+            </section>
         </div>
     </main>
 </div>
