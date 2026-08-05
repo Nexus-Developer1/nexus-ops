@@ -122,9 +122,36 @@ class DashboardTest extends TestCase
         $this->actingAs($admin)->get('/dashboard')
             ->assertOk()
             ->assertDontSee('Rentabilidade de visitas')            // (Fase 3) cartão removido
-            ->assertSee('Cumprimento de SLA')
+            ->assertDontSee('Cumprimento de SLA')                  // cartão removido a pedido da equipa
+            ->assertSee('Agenda — próximos 7 dias')
+            ->assertSee('Próximos alertas')
             ->assertSee('Equipamentos por tipo')
             ->assertSee('Visitas de contrato');                    // gráfico mensal renomeado
+    }
+
+    // Dashboard: agenda dos próximos 7 dias e próximos alertas de equipamentos/contratos.
+    public function test_dashboard_mostra_agenda_da_semana_e_proximos_alertas(): void
+    {
+        $admin = User::create(['nome' => 'Admin', 'email' => 'ag@x.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
+        $equip = $this->equip();
+
+        // Evento dentro da janela de 7 dias, um fora dela e um cancelado (não aparecem).
+        EventoAgenda::create(['tipo' => 'visita_preventiva', 'titulo' => 'Preventiva BNP', 'estado' => 'planeado',
+            'inicio' => now()->addDay()->setTime(9, 0), 'fim' => now()->addDay()->setTime(12, 0), 'cliente_id' => $equip->local->cliente_id]);
+        EventoAgenda::create(['tipo' => 'visita_preventiva', 'titulo' => 'Preventiva distante', 'estado' => 'planeado',
+            'inicio' => now()->addDays(20)->setTime(9, 0), 'fim' => now()->addDays(20)->setTime(12, 0), 'cliente_id' => $equip->local->cliente_id]);
+        EventoAgenda::create(['tipo' => 'visita_preventiva', 'titulo' => 'Visita cancelada', 'estado' => 'cancelado',
+            'inicio' => now()->addDays(2)->setTime(9, 0), 'fim' => now()->addDays(2)->setTime(12, 0), 'cliente_id' => $equip->local->cliente_id]);
+
+        // Alerta de baterias: troca já vencida → aparece nos próximos alertas.
+        $equip->update(['proxima_troca_baterias' => now()->subDay()->toDateString()]);
+
+        $this->actingAs($admin)->get('/dashboard')
+            ->assertOk()
+            ->assertSee('Preventiva BNP')
+            ->assertDontSee('Preventiva distante')
+            ->assertDontSee('Visita cancelada')
+            ->assertSee('Baterias vencidas');
     }
 
     public function test_enviar_fecha_o_evento(): void

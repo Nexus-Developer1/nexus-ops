@@ -4,8 +4,10 @@ namespace App\Livewire;
 
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\EstadoEquipamento;
+use App\Enums\EstadoEvento;
 use App\Enums\TipoEquipamento;
 use App\Jobs\SincronizarErp;
+use App\Models\EventoAgenda;
 use App\Services\Alertas\ServicoAlertas;
 use App\Services\Gestao\ServicoMetricas;
 use Illuminate\Support\Facades\Cache;
@@ -93,12 +95,25 @@ class DashboardGestao extends Component
         $porTipo = $metricas->equipamentosPorTipo();
         $porEstado = $metricas->equipamentosPorEstado();
         $visitas = $metricas->visitasPorMes();
+        $listaAlertas = $alertas->recolher();
 
         return view('livewire.dashboard-gestao', [
             'resumo' => $metricas->resumo(),
             'renovacoes' => $metricas->renovacoesProximas(),
             'semVisitas' => $metricas->equipamentosSemVisitas(),
-            'numAlertas' => $alertas->recolher()->count(),
+            'numAlertas' => $listaAlertas->count(),
+            // Próximos alertas (baterias, renovações, visitas em atraso, SLA) — os mais graves primeiro.
+            'proximosAlertas' => $listaAlertas->take(6),
+            // Agenda dos próximos 7 dias (inclui hoje; cancelados fora; eventos multi-dia entram
+            // se o intervalo tocar a janela).
+            'agendaSemana' => EventoAgenda::query()
+                ->where('estado', '!=', EstadoEvento::Cancelado->value)
+                ->where('fim', '>=', now()->startOfDay())
+                ->where('inicio', '<', now()->startOfDay()->addDays(7))
+                ->with(['tecnico', 'cliente'])
+                ->orderBy('inicio')
+                ->limit(8)
+                ->get(),
 
             // Configurações Chart.js (montadas no servidor; o canvas só as recebe).
             'graficoTipos' => $this->donut(

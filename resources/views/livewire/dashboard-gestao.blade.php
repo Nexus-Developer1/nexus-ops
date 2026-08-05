@@ -70,22 +70,54 @@
                 </a>
             </div>
 
-            {{-- Cumprimento de SLA (largura total) --}}
-            <div class="mt-6 cartao p-6">
-                <h2 class="text-lg font-semibold text-texto-forte">Cumprimento de SLA</h2>
-                <p class="mt-1 text-sm text-texto-medio">Corretivas resolvidas dentro do prazo contratado.</p>
-                @if (is_null($resumo['cumprimento_sla']['taxa']))
-                    <div class="mt-5 text-sm text-texto-medio">Ainda sem corretivas concluídas com SLA.</div>
-                @else
-                    <div class="mt-5 flex items-end justify-between">
-                        <div class="text-3xl font-semibold text-texto-forte">{{ $resumo['cumprimento_sla']['taxa'] }}%</div>
-                        <div class="text-sm text-texto-medio">{{ $resumo['cumprimento_sla']['dentro'] }} / {{ $resumo['cumprimento_sla']['total'] }}</div>
+            {{-- Agenda dos próximos dias + próximos alertas (equipamentos/contratos) --}}
+            <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <section class="cartao">
+                    <div class="flex items-center justify-between px-6 py-5">
+                        <h2 class="text-lg font-semibold text-texto-forte">Agenda — próximos 7 dias</h2>
+                        <a href="{{ route('agenda') }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">Ver agenda</a>
                     </div>
-                    <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-fundo">
-                        <div class="h-full rounded-full {{ $resumo['cumprimento_sla']['taxa'] >= 90 ? 'bg-verde-500' : 'bg-aviso-500' }}" style="width: {{ $resumo['cumprimento_sla']['taxa'] }}%"></div>
+                    <ul class="border-t border-borda">
+                        @forelse ($agendaSemana as $ev)
+                            <li class="flex items-center justify-between gap-3 border-b border-borda px-6 py-3.5 last:border-0" wire:key="agenda-dash-{{ $ev->id }}">
+                                <div class="min-w-0">
+                                    <div class="truncate text-sm font-medium text-texto-forte">{{ $ev->titulo }}</div>
+                                    <div class="truncate text-xs text-texto-fraco">{{ $ev->cliente->nome ?? '—' }}{{ $ev->tecnico ? ' · ' . $ev->tecnico->nome : '' }} · {{ $ev->estado->rotulo() }}</div>
+                                </div>
+                                <div class="shrink-0 text-right">
+                                    <div class="text-sm font-medium {{ $ev->inicio->isToday() ? 'text-verde-600' : 'text-texto-forte' }}">{{ $ev->inicio->isToday() ? 'Hoje' : $ev->inicio->translatedFormat('D, d M') }}</div>
+                                    <div class="text-xs text-texto-fraco">{{ $ev->inicio->format('H:i') }}–{{ $ev->fim->format('H:i') }}</div>
+                                </div>
+                            </li>
+                        @empty
+                            <li class="px-6 py-8 text-center text-sm text-texto-medio">Sem eventos agendados para os próximos 7 dias.</li>
+                        @endforelse
+                    </ul>
+                </section>
+
+                <section class="cartao">
+                    <div class="flex items-center justify-between px-6 py-5">
+                        <h2 class="text-lg font-semibold text-texto-forte">Próximos alertas</h2>
+                        <a href="{{ route('alertas') }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">Ver alertas</a>
                     </div>
-                @endif
+                    <ul class="border-t border-borda">
+                        @forelse ($proximosAlertas as $a)
+                            <li class="flex items-center justify-between gap-3 border-b border-borda px-6 py-3.5 last:border-0">
+                                <div class="min-w-0">
+                                    <a href="{{ $a['url'] }}" wire:navigate class="block truncate text-sm font-medium text-texto-forte hover:text-verde-600">{{ $a['titulo'] }}</a>
+                                    <div class="truncate text-xs text-texto-fraco">{{ $a['descricao'] }}</div>
+                                </div>
+                                <span class="etiqueta shrink-0 {{ $a['severidade'] === 'alta' ? 'bg-perigo-100 text-perigo-600' : 'bg-aviso-100 text-aviso-500' }}">{{ $a['severidade'] === 'alta' ? 'Alta' : 'Média' }}</span>
+                            </li>
+                        @empty
+                            <li class="px-6 py-8 text-center text-sm text-texto-medio">Sem alertas em aberto — baterias, renovações e SLA em dia.</li>
+                        @endforelse
+                    </ul>
+                </section>
             </div>
+
+            {{-- O cartão "Cumprimento de SLA" saiu do dashboard a pedido da equipa (a taxa
+                 continua calculada no ServicoMetricas — relatórios de gestão usam-na). --}}
 
             {{-- Gráficos --}}
             <div class="mt-6 cartao p-6">
