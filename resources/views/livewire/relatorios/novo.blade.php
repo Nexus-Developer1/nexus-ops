@@ -74,12 +74,13 @@
                     <span class="mx-1 h-4 w-px bg-borda" aria-hidden="true"></span>
                     @if ($equipamentoPrincipal)
                         <button wire:key="tab-btn-{{ $equipamentoPrincipal->id }}" @click="tab='equip-{{ $equipamentoPrincipal->id }}'" :class="tab==='equip-{{ $equipamentoPrincipal->id }}' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">
-                            {{ $equipamentoPrincipal->numero_serie ?? '—' }}
+                            {{-- Marca + modelo em destaque (série só como fallback) — pedido da equipa. --}}
+                            {{ trim($equipamentoPrincipal->fabricante . ' ' . $equipamentoPrincipal->modelo) ?: ($equipamentoPrincipal->numero_serie ?? '—') }}
                         </button>
                     @endif
                     @foreach ($cobertosSelecionados as $e)
                         <button wire:key="tab-btn-{{ $e->id }}" @click="tab='equip-{{ $e->id }}'" :class="tab==='equip-{{ $e->id }}' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">
-                            {{ $e->numero_serie ?? '—' }}
+                            {{ trim($e->fabricante . ' ' . $e->modelo) ?: ($e->numero_serie ?? '—') }}
                         </button>
                     @endforeach
                 @endif
@@ -330,11 +331,11 @@
                                 <div class="flex min-w-0 items-center gap-3">
                                     <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
                                     <div class="min-w-0">
+                                        {{-- Marca + modelo em destaque, série no subtítulo (pedido da equipa; fallback pelo TIPO real). --}}
                                         <h2 class="flex items-center gap-2 text-lg font-semibold text-texto-forte">
-                                            <span class="truncate">{{ $e->numero_serie ?? '—' }}</span>
+                                            <span class="truncate">{{ trim($e->fabricante . ' ' . $e->modelo) ?: $e->tipo->rotulo() }}</span>
                                         </h2>
-                                        {{-- Fallback pelo TIPO real (era 'UPS' fixo — uma central de incêndio sem marca/modelo aparecia como UPS). --}}
-                                        <p class="truncate text-sm text-texto-medio">{{ trim($e->fabricante . ' ' . $e->modelo) ?: $e->tipo->rotulo() }}</p>
+                                        <p class="truncate text-sm text-texto-medio">{{ $e->numero_serie ?? '—' }}</p>
                                     </div>
                                 </div>
                                 {{-- Remove o equipamento do relatório e volta aos Dados Gerais. --}}
