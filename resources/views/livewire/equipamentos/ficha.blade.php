@@ -17,37 +17,34 @@
                 </div>
             @endif
 
-            {{-- Cabeçalho --}}
+            {{-- Cabeçalho: o MODELO é o título (trocou com o nº de série, que passa ao subtítulo). --}}
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ $equipamento->numero_serie ?? 'Equipamento' }}</h1>
+                <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ trim($equipamento->fabricante . ' ' . $equipamento->modelo) ?: ($equipamento->numero_serie ?? 'Equipamento') }}</h1>
                 <span class="etiqueta {{ $equipamento->tipo->classesEtiqueta() }}">{{ $equipamento->tipo->rotulo() }}</span>
                 <span class="etiqueta {{ $equipamento->estado->classesEtiqueta() }}">{{ $equipamento->estado->rotulo() }}</span>
             </div>
-            <p class="mt-2 text-sm text-texto-medio">{{ $equipamento->local->cliente->nome }} · {{ $equipamento->local->designacao }} · {{ $equipamento->fabricante }} {{ $equipamento->modelo }}</p>
+            <p class="mt-2 text-sm text-texto-medio">{{ $equipamento->local->cliente->nome }} · {{ $equipamento->local->designacao }} · {{ $equipamento->numero_serie ?? '—' }}</p>
 
             <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
 
                 {{-- Coluna principal --}}
                 <div class="space-y-6 lg:col-span-2">
 
-                    {{-- Especificações --}}
-                    <section class="cartao">
-                        <div class="flex items-center gap-3 px-6 py-5">
-                            <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
-                            <h2 class="text-lg font-semibold text-texto-forte">Especificações</h2>
-                        </div>
-                        @if (count($especificacoes))
-                            <div class="grid grid-cols-2 gap-x-8 gap-y-6 border-t border-borda px-6 py-6 sm:grid-cols-3">
-                                @foreach ($especificacoes as $spec)
-                                    <div>
-                                        <div class="text-xs uppercase tracking-wide text-texto-fraco">{{ $spec['rotulo'] }}</div>
-                                        <div class="mt-1 text-sm font-medium text-texto-forte">{{ $spec['valor'] }}</div>
-                                    </div>
-                                @endforeach
+                    {{-- Identificação + QR — em destaque na coluna principal (trocou com as Especificações). --}}
+                    <section class="cartao p-6">
+                        <div class="flex items-start justify-between">
+                            <h2 class="text-lg font-semibold text-texto-forte">Identificação</h2>
+                            <div class="flex h-16 w-16 items-center justify-center rounded-lg border border-borda bg-fundo text-texto-fraco">
+                                <svg class="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.4"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 3h3m0 0h3m-3 0v3m0-3v-3"/></svg>
                             </div>
-                        @else
-                            <div class="border-t border-borda px-6 py-6 text-sm text-texto-medio">Sem especificações registadas.</div>
-                        @endif
+                        </div>
+                        <dl class="mt-4 grid grid-cols-1 gap-x-10 gap-y-3 text-sm sm:grid-cols-2">
+                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Nº de série</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->numero_serie ?? '—' }}</dd></div>
+                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Fabricante</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->fabricante ?? '—' }}</dd></div>
+                            <div class="flex justify-between gap-4 sm:col-span-2"><dt class="shrink-0 text-texto-medio">Modelo</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->modelo ?? '—' }}</dd></div>
+                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Instalação</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->data_instalacao?->translatedFormat('d M Y') ?? '—' }}</dd></div>
+                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Fim de garantia</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->fim_garantia?->translatedFormat('d M Y') ?? '—' }}</dd></div>
+                        </dl>
                     </section>
 
                     {{-- Identificação: cliente do sistema + cliente final + localização. --}}
@@ -314,21 +311,21 @@
                 {{-- Coluna lateral --}}
                 <div class="space-y-6">
 
-                    {{-- Identificação + QR --}}
+                    {{-- Especificações — na lateral (trocou com a Identificação). --}}
                     <section class="cartao p-6">
-                        <div class="flex items-start justify-between">
-                            <h2 class="text-base font-semibold text-texto-forte">Identificação</h2>
-                            <div class="flex h-16 w-16 items-center justify-center rounded-lg border border-borda bg-fundo text-texto-fraco">
-                                <svg class="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.4"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 3h3m0 0h3m-3 0v3m0-3v-3"/></svg>
-                            </div>
-                        </div>
-                        <dl class="mt-4 space-y-3 text-sm">
-                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Nº de série</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->numero_serie ?? '—' }}</dd></div>
-                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Fabricante</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->fabricante ?? '—' }}</dd></div>
-                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Modelo</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->modelo ?? '—' }}</dd></div>
-                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Instalação</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->data_instalacao?->translatedFormat('d M Y') ?? '—' }}</dd></div>
-                            <div class="flex justify-between gap-4"><dt class="shrink-0 text-texto-medio">Fim de garantia</dt><dd class="text-right font-medium text-texto-forte">{{ $equipamento->fim_garantia?->translatedFormat('d M Y') ?? '—' }}</dd></div>
-                        </dl>
+                        <h2 class="text-base font-semibold text-texto-forte">Especificações</h2>
+                        @if (count($especificacoes))
+                            <dl class="mt-3 space-y-3 text-sm">
+                                @foreach ($especificacoes as $spec)
+                                    <div class="flex justify-between gap-4">
+                                        <dt class="shrink-0 text-texto-medio">{{ $spec['rotulo'] }}</dt>
+                                        <dd class="text-right font-medium text-texto-forte">{{ $spec['valor'] }}</dd>
+                                    </div>
+                                @endforeach
+                            </dl>
+                        @else
+                            <p class="mt-3 text-sm text-texto-medio">Sem especificações registadas.</p>
+                        @endif
                     </section>
 
                     {{-- Contrato(s) associado(s) via contrato_equipamentos --}}
