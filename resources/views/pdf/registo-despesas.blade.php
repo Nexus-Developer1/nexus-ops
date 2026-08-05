@@ -22,9 +22,9 @@
 </head>
 <body>
     @php($colunas = \App\Models\Despesa::CATEGORIAS)
-    @php($linhas = $registo->linhas())
+    @php($linhas = $registo->linhasOrdenadas())
     @php($totais = array_fill(0, count($colunas), 0.0))
-    @php(collect($linhas)->each(function ($l) use (&$totais) { foreach ($l['valores'] as $i => $v) { if (is_numeric($v)) { $totais[$i] += (float) $v; } } }))
+    @php($linhas->each(function ($d) use (&$totais, $colunas) { $i = array_search($d->categoria, $colunas, true); $totais[$i === false ? count($colunas) - 1 : $i] += (float) $d->valor; }))
     @php($total = array_sum($totais))
     @php($eur = fn ($v) => is_numeric($v) && (float) $v > 0 ? number_format((float) $v, 2, ',', ' ') . ' €' : '')
 
@@ -78,12 +78,15 @@
             <td class="sub">(cliente - localidade)</td>
             <td colspan="6"></td>
         </tr>
-        @foreach ($linhas as $linha)
+        @foreach ($linhas as $d)
+            @php($indiceCol = array_search($d->categoria, $colunas, true))
+            @php($indiceCol = $indiceCol === false ? count($colunas) - 1 : $indiceCol)
             <tr>
-                <td class="dia">{{ \Illuminate\Support\Carbon::parse($linha['data'])->format('d/m/Y') }}</td>
-                <td>{{ $linha['descricao'] }}</td>
+                <td class="dia">{{ $d->data->format('d/m/Y') }}</td>
+                {{-- Descrição (cliente - localidade) + "o que é" quando preenchido. --}}
+                <td>{{ $d->descricao }}{{ $d->detalhe ? ' — ' . $d->detalhe : '' }}</td>
                 @foreach ($colunas as $i => $c)
-                    <td class="num">{{ $eur($linha['valores'][$i] ?? '') }}{{ $c === 'Refeições' && ($linha['valores'][$i] ?? '') !== '' && $linha['refeicao_tipo'] !== '' ? ' (' . $linha['refeicao_tipo'] . ')' : '' }}</td>
+                    <td class="num">{{ $i === $indiceCol ? $eur($d->valor) . ($d->refeicao_tipo ? ' (' . $d->refeicao_tipo . ')' : '') : '' }}</td>
                 @endforeach
             </tr>
         @endforeach

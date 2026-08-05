@@ -41,35 +41,11 @@ class RegistoDespesa extends Model
         return (float) $this->despesas()->sum('valor');
     }
 
-    // Linhas da grelha reconstruídas das despesas: agrupadas por (data, descrição), com os
-    // valores nas colunas respetivas e o A/J das refeições. Ordem cronológica.
-    /** @return list<array{data: string, descricao: string, valores: array<int, string>, refeicao_tipo: string}> */
-    public function linhas(): array
+    // Linhas do registo: 1:1 com as despesas, por ordem cronológica (cada linha = dia,
+    // descrição, detalhe, tipo/categoria, valor, A/J e os recibos anexados à própria linha).
+    /** @return \Illuminate\Database\Eloquent\Collection<int, Despesa> */
+    public function linhasOrdenadas()
     {
-        return $this->despesas()->orderBy('data')->orderBy('id')->get()
-            ->groupBy(fn (Despesa $d) => $d->data->toDateString() . '|' . $d->descricao)
-            ->map(function ($grupo) {
-                $valores = array_fill(0, count(Despesa::CATEGORIAS), '');
-                $refeicaoTipo = '';
-                foreach ($grupo as $d) {
-                    $indice = array_search($d->categoria, Despesa::CATEGORIAS, true);
-                    $indice = $indice === false ? count(Despesa::CATEGORIAS) - 1 : $indice;
-                    // Duplicados na mesma célula somam (legado); normal é 1 despesa por célula.
-                    $atual = $valores[$indice] === '' ? 0 : (float) $valores[$indice];
-                    $valores[$indice] = number_format($atual + (float) $d->valor, 2, '.', '');
-                    if ($d->refeicao_tipo) {
-                        $refeicaoTipo = $d->refeicao_tipo;
-                    }
-                }
-
-                return [
-                    'data' => $grupo->first()->data->toDateString(),
-                    'descricao' => $grupo->first()->descricao,
-                    'valores' => $valores,
-                    'refeicao_tipo' => $refeicaoTipo,
-                ];
-            })
-            ->values()
-            ->all();
+        return $this->despesas()->with('anexos')->orderBy('data')->orderBy('id')->get();
     }
 }
