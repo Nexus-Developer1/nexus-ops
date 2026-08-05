@@ -26,8 +26,8 @@ class Editor extends Component
     public string $matricula = '';
     public string $departamento = '';
 
-    // Linhas: cada uma = uma despesa. 'dia' é texto escrito à mão ("5", "04/08" ou
-    // "04/08/2026"); 'despesa_id' liga à despesa existente (edição — preserva os recibos).
+    // Linhas: cada uma = uma despesa. 'dia' é escolhido no calendário (nasce VAZIO — nenhum
+    // dia pré-selecionado); 'despesa_id' liga à despesa existente (edição — preserva os recibos).
     /** @var array<int, array{despesa_id: ?int, dia: string, descricao: string, detalhe: string, categoria: string, refeicao_tipo: string, valor: string}> */
     public array $linhas = [];
 
@@ -65,7 +65,7 @@ class Editor extends Component
 
             $this->linhas = $registo->linhasOrdenadas()->map(fn (Despesa $d) => [
                 'despesa_id' => $d->id,
-                'dia' => $d->data->format('d/m/Y'),
+                'dia' => $d->data->toDateString(),
                 'descricao' => $d->descricao,
                 'detalhe' => $d->detalhe ?? '',
                 'categoria' => in_array($d->categoria, Despesa::CATEGORIAS, true) ? $d->categoria : 'Outras despesas',
@@ -94,38 +94,6 @@ class Editor extends Component
         unset($this->linhas[$indice], $this->recibosPendentes[$indice]);
         $this->linhas = array_values($this->linhas);
         $this->recibosPendentes = array_values($this->recibosPendentes + []);
-    }
-
-    // "Dia" escrito à mão: aceita "5" (dia do mês atual), "04/08" (ano atual), "04/08/2026",
-    // "04-08-2026" ou "2026-08-04". Devolve Y-m-d ou null se ilegível.
-    private function interpretarDia(string $texto): ?string
-    {
-        $texto = trim($texto);
-        if ($texto === '') {
-            return null;
-        }
-
-        if (preg_match('/^\d{1,2}$/', $texto)) {
-            $dia = (int) $texto;
-
-            return ($dia >= 1 && $dia <= now()->daysInMonth)
-                ? now()->setDay($dia)->toDateString()
-                : null;
-        }
-
-        $normalizado = str_replace('-', '/', $texto);
-        foreach (['d/m/Y', 'd/m/y', 'd/m', 'Y/m/d'] as $formato) {
-            try {
-                $data = Carbon::createFromFormat($formato, $normalizado);
-                if ($data !== false) {
-                    return $data->toDateString();
-                }
-            } catch (\Throwable) {
-                // tenta o formato seguinte
-            }
-        }
-
-        return null;
     }
 
     private const REGRAS_RECIBO = ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'];
@@ -182,7 +150,7 @@ class Editor extends Component
             'matricula' => ['nullable', 'string', 'max:50'],
             'departamento' => ['nullable', 'string', 'max:100'],
             'linhas' => ['array', 'max:31'],
-            'linhas.*.dia' => ['nullable', 'string', 'max:20'],
+            'linhas.*.dia' => ['nullable', 'date'],
             'linhas.*.descricao' => ['nullable', 'string', 'max:255'],
             'linhas.*.detalhe' => ['nullable', 'string', 'max:255'],
             'linhas.*.categoria' => ['nullable', \Illuminate\Validation\Rule::in(array_merge([''], Despesa::CATEGORIAS))],
@@ -205,12 +173,14 @@ class Editor extends Component
                 return;
             }
 
-            $data = $this->interpretarDia((string) ($linha['dia'] ?? ''));
-            if ($data === null) {
-                $this->addError("linhas.$n.dia", 'Dia ilegível na linha ' . ($n + 1) . ' — use por ex. "5", "04/08" ou "04/08/2026".');
+            // Dia OBRIGATÓRIO — escolhido no calendário (nasce vazio, sem pré-seleção).
+            $data = trim((string) ($linha['dia'] ?? ''));
+            if ($data === '') {
+                $this->addError("linhas.$n.dia", 'Escolha o dia no calendário (linha ' . ($n + 1) . ').');
 
                 return;
             }
+            $data = Carbon::parse($data)->toDateString();
 
             $descricao = trim((string) ($linha['descricao'] ?? ''));
             if ($descricao === '') {

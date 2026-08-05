@@ -36,13 +36,13 @@ class DespesaTest extends TestCase
 
         Livewire::actingAs($admin)->test(Editor::class)
             ->set('matricula', 'BD-71-VI')
-            ->set('linhas.0.dia', '04/08/2026')
+            ->set('linhas.0.dia', '2026-08-04')
             ->set('linhas.0.descricao', 'ACME - Porto')
             ->set('linhas.0.detalhe', 'Gasóleo A1')
             ->set('linhas.0.categoria', 'Combustíveis')
             ->set('linhas.0.valor', '20.50')
             ->call('adicionarLinha')
-            ->set('linhas.1.dia', '05/08/2026')
+            ->set('linhas.1.dia', '2026-08-05')
             ->set('linhas.1.descricao', 'Beta - Lisboa')
             ->set('linhas.1.detalhe', 'Almoço com cliente')
             ->set('linhas.1.categoria', 'Refeições')
@@ -64,35 +64,29 @@ class DespesaTest extends TestCase
             ->assertViewHas('registos', fn ($p) => $p->total() === 1);
     }
 
-    // Dia escrito à mão: "5" = dia 5 do mês atual; texto ilegível é recusado.
-    public function test_dia_escrito_a_mao(): void
+    // Dia: calendário SEM pré-seleção — nasce vazio e é obrigatório.
+    public function test_dia_nasce_vazio_e_e_obrigatorio(): void
     {
         $admin = $this->admin();
 
+        // Linha nova sem dia pré-selecionado.
         Livewire::actingAs($admin)->test(Editor::class)
-            ->set('linhas.0.dia', '5')
-            ->set('linhas.0.descricao', 'ACME - Porto')
-            ->set('linhas.0.categoria', 'Hotel')
-            ->set('linhas.0.valor', '80')
-            ->call('guardar')
-            ->assertHasNoErrors();
-
-        $this->assertDatabaseHas('despesas', ['data' => now()->setDay(5)->toDateString() . ' 00:00:00']);
-
-        Livewire::actingAs($admin)->test(Editor::class)
-            ->set('linhas.0.dia', 'ontem à noite')
+            ->assertSet('linhas.0.dia', '')
+            // Sem escolher o dia → recusado.
             ->set('linhas.0.descricao', 'X')
             ->set('linhas.0.categoria', 'Hotel')
             ->set('linhas.0.valor', '10')
             ->call('guardar')
             ->assertHasErrors('linhas.0.dia');
+
+        $this->assertSame(0, RegistoDespesa::count());
     }
 
     // Nota a) da folha: tipo Refeições exige A/J.
     public function test_refeicoes_exigem_a_ou_j(): void
     {
         Livewire::actingAs($this->admin())->test(Editor::class)
-            ->set('linhas.0.dia', '5')
+            ->set('linhas.0.dia', now()->toDateString())
             ->set('linhas.0.descricao', 'Almoço ACME')
             ->set('linhas.0.categoria', 'Refeições')
             ->set('linhas.0.valor', '12')
@@ -128,7 +122,7 @@ class DespesaTest extends TestCase
         $despesa = $registo->despesas()->create(['data' => '2026-08-03', 'categoria' => 'Hotel', 'descricao' => 'Estadia Beta', 'detalhe' => 'Hotel Mar', 'valor' => 80, 'faturavel' => false]);
 
         Livewire::actingAs($admin)->test(Editor::class, ['registo' => $registo])
-            ->assertSet('linhas.0.dia', '03/08/2026')
+            ->assertSet('linhas.0.dia', '2026-08-03')
             ->assertSet('linhas.0.detalhe', 'Hotel Mar')
             ->assertSet('linhas.0.categoria', 'Hotel')
             ->set('linhas.0.valor', '95')
@@ -149,7 +143,7 @@ class DespesaTest extends TestCase
         $admin = $this->admin();
 
         Livewire::actingAs($admin)->test(Editor::class)
-            ->set('linhas.0.dia', '5')
+            ->set('linhas.0.dia', now()->toDateString())
             ->set('linhas.0.descricao', 'Almoço ACME')
             ->set('linhas.0.categoria', 'Refeições')
             ->set('linhas.0.refeicao_tipo', 'A')

@@ -42,24 +42,21 @@
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="campo-label">Dia</label>
-                                    <input wire:model="linhas.{{ $n }}.dia" type="text" inputmode="numeric" class="campo-input" placeholder="Ex: 5">
+                                    <label class="campo-label">Dia <span class="text-perigo-500">*</span></label>
+                                    {{-- Calendário SEM dia pré-selecionado (nasce vazio). --}}
+                                    <input wire:model="linhas.{{ $n }}.dia" type="date" class="campo-input">
                                 </div>
                                 <div>
-                                    <label class="campo-label">Valor (€)</label>
+                                    <label class="campo-label">Valor (€) <span class="text-perigo-500">*</span></label>
                                     <input wire:model.live.debounce.500ms="linhas.{{ $n }}.valor" type="number" step="0.01" min="0" inputmode="decimal" class="campo-input text-right" placeholder="0,00">
                                 </div>
                                 <div class="col-span-2">
-                                    <label class="campo-label">Descrição <span class="text-xs font-normal normal-case text-texto-fraco">(cliente - localidade)</span></label>
+                                    <label class="campo-label">Descrição <span class="text-perigo-500">*</span> <span class="text-xs font-normal normal-case text-texto-fraco">(cliente - localidade)</span></label>
                                     <input wire:model="linhas.{{ $n }}.descricao" type="text" class="campo-input" placeholder="Ex: ACME - Porto">
-                                </div>
-                                <div class="col-span-2">
-                                    <label class="campo-label">O que é</label>
-                                    <input wire:model="linhas.{{ $n }}.detalhe" type="text" class="campo-input" placeholder="Ex: Portagem A1, almoço com cliente…">
                                 </div>
                                 <div class="col-span-2 grid grid-cols-2 gap-3">
                                     <div>
-                                        <label class="campo-label">Tipo</label>
+                                        <label class="campo-label">Tipo <span class="text-perigo-500">*</span></label>
                                         <select wire:model.live="linhas.{{ $n }}.categoria" class="campo-select">
                                             <option value="">— Tipo —</option>
                                             @foreach (\App\Models\Despesa::CATEGORIAS as $c)
@@ -69,7 +66,7 @@
                                     </div>
                                     @if (($linha['categoria'] ?? '') === 'Refeições')
                                         <div>
-                                            <label class="campo-label">Almoço / Jantar</label>
+                                            <label class="campo-label">Almoço / Jantar <span class="text-perigo-500">*</span></label>
                                             <select wire:model="linhas.{{ $n }}.refeicao_tipo" class="campo-select">
                                                 <option value="">A / J?</option>
                                                 <option value="A">A — almoço</option>
@@ -77,6 +74,10 @@
                                             </select>
                                         </div>
                                     @endif
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="campo-label">O que é <span class="text-xs font-normal normal-case text-texto-fraco">(opcional)</span></label>
+                                    <input wire:model="linhas.{{ $n }}.detalhe" type="text" class="campo-input" placeholder="Ex: Portagem A1, almoço com cliente…">
                                 </div>
                                 <div class="col-span-2">
                                     <label class="campo-label">Recibos</label>
@@ -96,11 +97,11 @@
                     <table class="w-full min-w-[1080px] text-sm">
                         <thead>
                             <tr class="bg-fundo text-xs uppercase tracking-wide text-texto-medio">
-                                <th class="w-28 border-b border-r border-borda px-3 py-2 text-left font-semibold">Dia</th>
-                                <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">Descrição<br><span class="font-normal normal-case text-texto-fraco">(cliente - localidade)</span></th>
-                                <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">O que é</th>
-                                <th class="w-44 border-b border-r border-borda px-3 py-2 text-left font-semibold">Tipo</th>
-                                <th class="w-28 border-b border-r border-borda px-3 py-2 text-right font-semibold">Valor (€)</th>
+                                <th class="w-36 border-b border-r border-borda px-3 py-2 text-left font-semibold">Dia <span class="text-perigo-500">*</span></th>
+                                <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">Descrição <span class="text-perigo-500">*</span><br><span class="font-normal normal-case text-texto-fraco">(cliente - localidade)</span></th>
+                                <th class="w-44 border-b border-r border-borda px-3 py-2 text-left font-semibold">Tipo <span class="text-perigo-500">*</span></th>
+                                <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">O que é<br><span class="font-normal normal-case text-texto-fraco">(opcional)</span></th>
+                                <th class="w-28 border-b border-r border-borda px-3 py-2 text-right font-semibold">Valor (€) <span class="text-perigo-500">*</span></th>
                                 <th class="w-56 border-b border-borda px-3 py-2 text-left font-semibold">Recibos</th>
                                 <th class="w-10 border-b border-borda"></th>
                             </tr>
@@ -109,13 +110,11 @@
                             @foreach ($linhas as $n => $linha)
                                 <tr wire:key="linha-d-{{ $n }}" class="border-b border-borda/60 align-top">
                                     <td class="border-r border-borda px-1.5 py-2">
-                                        <input wire:model="linhas.{{ $n }}.dia" type="text" inputmode="numeric" class="campo-input w-full px-2 py-1.5 text-sm" placeholder="Ex: 5">
+                                        {{-- Calendário SEM dia pré-selecionado (nasce vazio). --}}
+                                        <input wire:model="linhas.{{ $n }}.dia" type="date" class="campo-input w-full px-2 py-1.5 text-sm">
                                     </td>
                                     <td class="border-r border-borda px-1.5 py-2">
                                         <input wire:model="linhas.{{ $n }}.descricao" type="text" class="campo-input w-full min-w-[11rem] px-2 py-1.5 text-sm" placeholder="Ex: ACME - Porto">
-                                    </td>
-                                    <td class="border-r border-borda px-1.5 py-2">
-                                        <input wire:model="linhas.{{ $n }}.detalhe" type="text" class="campo-input w-full min-w-[11rem] px-2 py-1.5 text-sm" placeholder="Ex: Portagem A1, almoço com cliente…">
                                     </td>
                                     <td class="border-r border-borda px-1.5 py-2">
                                         <select wire:model.live="linhas.{{ $n }}.categoria" class="campo-select w-full px-2 py-1.5 text-sm">
@@ -131,6 +130,9 @@
                                                 <option value="J">J — jantar</option>
                                             </select>
                                         @endif
+                                    </td>
+                                    <td class="border-r border-borda px-1.5 py-2">
+                                        <input wire:model="linhas.{{ $n }}.detalhe" type="text" class="campo-input w-full min-w-[11rem] px-2 py-1.5 text-sm" placeholder="Ex: Portagem A1, almoço com cliente…">
                                     </td>
                                     <td class="border-r border-borda px-1.5 py-2">
                                         <input wire:model.live.debounce.500ms="linhas.{{ $n }}.valor" type="number" step="0.01" min="0" inputmode="decimal" class="campo-input w-full px-2 py-1.5 text-right text-sm" placeholder="0,00">
@@ -164,7 +166,7 @@
                         Linha
                     </button>
                     <p class="text-xs text-texto-fraco">
-                        Dia à mão: "5", "04/08" ou "04/08/2026" · a) Refeições: A - almoço / J - jantar (com colegas, indicar o nome em "O que é") · b) Outras: especificar em "O que é".
+                        Campos com <span class="text-perigo-500">*</span> são obrigatórios · a) Refeições: A - almoço / J - jantar (com colegas, indicar o nome em "O que é") · b) Outras: especificar em "O que é".
                     </p>
                 </div>
 
