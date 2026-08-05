@@ -40,31 +40,65 @@
                 </div>
             </div>
 
-            {{-- Filtros --}}
-            <div class="mt-6 flex flex-wrap items-center gap-3">
-                <select wire:model.live="periodo" class="campo-select w-40">
+            {{-- Filtros — largura total no telemóvel, lado a lado no desktop. --}}
+            <div class="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
+                <select wire:model.live="periodo" class="campo-select w-full sm:w-40">
                     <option value="mes">Este mês</option>
                     <option value="tudo">Todo o período</option>
                 </select>
-                <select wire:model.live="categoria" class="campo-select w-44">
+                <select wire:model.live="categoria" class="campo-select w-full sm:w-44">
                     <option value="">Todas as categorias</option>
                     @foreach ($categorias as $c)
                         <option value="{{ $c }}">{{ $c }}</option>
                     @endforeach
                 </select>
-                <select wire:model.live="faturavel" class="campo-select w-44">
+                <select wire:model.live="faturavel" class="campo-select col-span-2 w-full sm:col-span-1 sm:w-44">
                     <option value="">Faturável: todas</option>
                     <option value="sim">Faturável à parte</option>
                     <option value="nao">Incluído no contrato</option>
                 </select>
-                <div class="relative min-w-56 flex-1">
+                <div class="relative col-span-2 sm:col-span-1 sm:min-w-56 sm:flex-1">
                     <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 17a6 6 0 100-12 6 6 0 000 12z"/></svg>
                     <input wire:model.live.debounce.300ms="pesquisa" type="text" class="campo-input pl-10" placeholder="Pesquisar por descrição ou cliente...">
                 </div>
             </div>
 
-            {{-- Tabela de REGISTOS: uma entrada por documento (as linhas/categorias vivem dentro). --}}
-            <div class="cartao mt-5 overflow-x-auto">
+            {{-- MOBILE (< md): um cartão por registo. --}}
+            <div class="mt-5 space-y-3 md:hidden">
+                @forelse ($registos as $r)
+                    @php($datasM = $r->despesas->pluck('data')->sort())
+                    @php($descricoesM = $r->despesas->pluck('descricao')->unique()->values())
+                    <div class="cartao p-4" wire:key="reg-m-{{ $r->id }}">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-semibold text-texto-forte">
+                                    {{ \Illuminate\Support\Str::limit($descricoesM->first() ?? '—', 34) }}@if ($descricoesM->count() > 1) <span class="text-xs font-normal text-texto-fraco">+{{ $descricoesM->count() - 1 }}</span>@endif
+                                </p>
+                                <p class="mt-0.5 text-xs text-texto-medio">
+                                    {{ $datasM->first()?->translatedFormat('d M') ?? '—' }}@if ($datasM->count() > 1 && ! $datasM->first()->isSameDay($datasM->last()))–{{ $datasM->last()->translatedFormat('d M') }}@endif
+                                    · {{ $r->colaborador?->nome ?? '—' }} · {{ $r->despesas->count() }} {{ \Illuminate\Support\Str::plural('lançamento', $r->despesas->count()) }}
+                                </p>
+                            </div>
+                            <span class="shrink-0 text-base font-semibold text-texto-forte">{{ number_format((float) $r->despesas->sum('valor'), 2, ',', ' ') }} €</span>
+                        </div>
+                        <div class="mt-3 flex items-center gap-4 border-t border-borda pt-3">
+                            <a href="{{ route('despesas.registo.editar', $r) }}" wire:navigate class="text-sm font-medium text-verde-600">Editar</a>
+                            <a href="{{ route('despesas.registo.pdf', $r) }}" class="text-sm font-medium text-texto-medio">PDF</a>
+                            <button wire:click="eliminar({{ $r->id }})" wire:confirm="Eliminar este registo de despesas? Fica recuperável." class="ml-auto text-texto-fraco hover:text-perigo-600" title="Eliminar">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                @empty
+                    <div class="cartao p-8 text-center">
+                        <p class="text-sm text-texto-medio">Sem despesas no período/filtros selecionados.</p>
+                        <p class="mt-1 text-xs text-texto-fraco">Use "Nova despesa" para registar a primeira.</p>
+                    </div>
+                @endforelse
+            </div>
+
+            {{-- DESKTOP (md+): tabela de REGISTOS — uma entrada por documento. --}}
+            <div class="cartao mt-5 hidden overflow-x-auto md:block">
                 <table class="w-full min-w-[720px] text-sm">
                     <thead>
                         <tr class="border-b border-borda text-left text-xs uppercase tracking-wide text-texto-fraco">
