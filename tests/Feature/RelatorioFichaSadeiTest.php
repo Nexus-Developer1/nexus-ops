@@ -72,6 +72,36 @@ class RelatorioFichaSadeiTest extends TestCase
         $this->assertSame('incendio', $ficha->tipo_equipamento);
     }
 
+    // O tipo de manutenção preenche automaticamente com N\A as verificações que NÃO se aplicam:
+    // trimestral → semestral + anual; semestral → anual. Alargar o período limpa o que o
+    // automatismo pôs a N\A; escolhas manuais item a item nunca se perdem.
+    public function test_tipo_de_manutencao_preenche_na_as_verificacoes_nao_aplicaveis(): void
+    {
+        [$tecnico, $equip] = $this->cenario('incendio');
+
+        $c = Livewire::actingAs($tecnico)->test(Novo::class)
+            ->set('equipamento_id', $equip->id);
+
+        // Trimestral: semestral e anual ficam TODAS a N\A; a trimestral fica por preencher.
+        $c->set("fichas.{$equip->id}.sadei.tipo_manutencao", 'trimestral')
+            ->assertSet("fichas.{$equip->id}.sadei.semestral.mangueiras.estado", 'na')
+            ->assertSet("fichas.{$equip->id}.sadei.semestral.rotinas_trimestrais.estado", 'na')
+            ->assertSet("fichas.{$equip->id}.sadei.anual.baterias.estado", 'na')
+            ->assertSet("fichas.{$equip->id}.sadei.trimestral.acessos.estado", '');
+
+        // Alargar para anual: o que o automatismo pôs a N\A volta a ficar por preencher.
+        $c->set("fichas.{$equip->id}.sadei.tipo_manutencao", 'anual')
+            ->assertSet("fichas.{$equip->id}.sadei.semestral.mangueiras.estado", '')
+            ->assertSet("fichas.{$equip->id}.sadei.anual.baterias.estado", '');
+
+        // Semestral: só a anual fica a N\A — e uma escolha manual na semestral mantém-se.
+        $c->set("fichas.{$equip->id}.sadei.semestral.mangueiras.estado", 'ko')
+            ->set("fichas.{$equip->id}.sadei.tipo_manutencao", 'semestral')
+            ->assertSet("fichas.{$equip->id}.sadei.semestral.mangueiras.estado", 'ko')
+            ->assertSet("fichas.{$equip->id}.sadei.anual.baterias.estado", 'na')
+            ->assertSet("fichas.{$equip->id}.sadei.trimestral.acessos.estado", '');
+    }
+
     public function test_estado_forjado_fora_da_whitelist_e_descartado(): void
     {
         [$tecnico, $equip] = $this->cenario('incendio');

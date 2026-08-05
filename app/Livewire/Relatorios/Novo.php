@@ -592,6 +592,48 @@ class Novo extends Component
         ];
     }
 
+    // Tipo de manutenção da ficha SADEI (rádio live): escolher o período preenche automaticamente
+    // com N\A as verificações periódicas que NÃO se aplicam — trimestral → semestral + anual;
+    // semestral → anual; anual → nenhuma. Ao alargar o período (ex.: trimestral → anual), uma
+    // secção que volta a aplicar-se só é limpa se estiver TODA a N\A (foi este automatismo que a
+    // preencheu); escolhas manuais item a item nunca se perdem.
+    public function updatedFichas($value, $key): void
+    {
+        if (! str_ends_with((string) $key, '.sadei.tipo_manutencao')) {
+            return;
+        }
+
+        $equipId = (int) explode('.', (string) $key)[0];
+        $naoAplicaveis = match ($value) {
+            'trimestral' => ['semestral', 'anual'],
+            'semestral' => ['anual'],
+            default => [],
+        };
+
+        foreach (['trimestral', 'semestral', 'anual'] as $seccao) {
+            $itens = array_keys($this->fichas[$equipId]['sadei'][$seccao] ?? []);
+            if ($itens === []) {
+                continue;
+            }
+
+            if (in_array($seccao, $naoAplicaveis, true)) {
+                foreach ($itens as $item) {
+                    $this->fichas[$equipId]['sadei'][$seccao][$item]['estado'] = 'na';
+                }
+
+                continue;
+            }
+
+            // Secção aplicável: se está toda a N\A, foi o automatismo — limpa para preencher.
+            $estados = array_map(fn ($item) => $this->fichas[$equipId]['sadei'][$seccao][$item]['estado'] ?? '', $itens);
+            if (array_unique($estados) === ['na']) {
+                foreach ($itens as $item) {
+                    $this->fichas[$equipId]['sadei'][$seccao][$item]['estado'] = '';
+                }
+            }
+        }
+    }
+
     // ---- Fotos novas (por gravar), por equipamento ----
     // O upload chega via $wire.uploadMultiple('fotos.{equipId}', ...) (comprimido no cliente —
     // ver fotosUpload em app.js); ao aterrar, o Livewire chama este hook com $key = equipId.

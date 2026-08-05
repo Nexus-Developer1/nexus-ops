@@ -39,7 +39,8 @@
         <div class="flex flex-wrap gap-2">
             @foreach (['trimestral' => 'Trimestral', 'semestral' => 'Semestral', 'anual' => 'Anual'] as $valor => $rotulo)
                 <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-borda px-3 py-2 text-sm text-texto-medio transition hover:bg-fundo">
-                    <input type="radio" wire:model="{{ $prefixo }}.sadei.tipo_manutencao" value="{{ $valor }}" class="h-4 w-4 border-borda text-verde-600 focus:ring-verde-600">
+                    {{-- live: escolher o período preenche as verificações não aplicáveis com N\A (hook updatedFichas). --}}
+                    <input type="radio" wire:model.live="{{ $prefixo }}.sadei.tipo_manutencao" value="{{ $valor }}" class="h-4 w-4 border-borda text-verde-600 focus:ring-verde-600">
                     {{ $rotulo }}
                 </label>
             @endforeach
