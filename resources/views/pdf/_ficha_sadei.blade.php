@@ -126,12 +126,10 @@
         <tr><td><span class="ficha-rot">Notas</span><br>{{ $ficha->notas_finais }}</td></tr>
     </table>
 @endif
+{{-- Sem coluna de prioridade nesta ficha (o campo saiu do formulário a pedido da equipa). --}}
 @if (trim((string) $ficha->recomendacao) !== '')
     <div class="ficha-seccao">Recomendações e próximos passos</div>
     <table class="ficha-tab">
-        <tr>
-            <td style="width:78%;">{{ $ficha->recomendacao }}</td>
-            <td><span class="ficha-rot">Prioridade</span><br>{{ $ficha->prioridade ?: 'Normal' }}</td>
-        </tr>
+        <tr><td>{{ $ficha->recomendacao }}</td></tr>
     </table>
 @endif

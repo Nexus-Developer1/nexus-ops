@@ -157,19 +157,10 @@
     </div>
 
     {{-- Recomendações e próximos passos (igual à ficha UPS — alimenta o PDF e os alertas) --}}
-    <div class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
-        <div class="sm:col-span-2">
-            <label class="campo-label">Recomendações e próximos passos</label>
-            <textarea wire:model="{{ $prefixo }}.recomendacao" rows="3" class="campo-input"></textarea>
-        </div>
-        <div>
-            <label class="campo-label">Prioridade</label>
-            <select wire:model="{{ $prefixo }}.prioridade" class="campo-select">
-                <option value="Baixa">Baixa</option>
-                <option value="Normal">Normal</option>
-                <option value="Alta">Alta</option>
-            </select>
-        </div>
+    {{-- Sem campo de prioridade nesta ficha (pedido da equipa) — fica no defeito "Normal". --}}
+    <div>
+        <label class="campo-label">Recomendações e próximos passos</label>
+        <textarea wire:model="{{ $prefixo }}.recomendacao" rows="3" class="campo-input"></textarea>
     </div>
 
     {{-- Assinaturas no local (obrigatórias nesta folha): cliente e técnico. --}}
