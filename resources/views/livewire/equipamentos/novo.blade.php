@@ -198,13 +198,13 @@
             </section>
             @endif
 
-            {{-- Componentes do sistema (equipamentos compostos) — incêndio / sistema / monit. ambiental / diversos. --}}
+            {{-- Componentes do sistema (equipamentos compostos) — todos os tipos menos gerador (inclui UPS modulares). --}}
             @if ($this->tipoTemComponentes())
             <section class="cartao mt-8" wire:key="seccao-componentes">
                 <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
                     <div>
                         <h2 class="text-lg font-semibold text-texto-forte">Componentes do sistema</h2>
-                        <p class="mt-1 text-xs text-texto-fraco">Para equipamentos compostos (ex.: deteção/extinção de incêndio) — designação + quantidade.</p>
+                        <p class="mt-1 text-xs text-texto-fraco">Para equipamentos compostos (ex.: UPS modular, deteção/extinção de incêndio) — designação + quantidade.</p>
                     </div>
                     <button type="button" wire:click="adicionarComponente" class="botao-secundario">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>

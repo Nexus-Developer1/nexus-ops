@@ -188,19 +188,20 @@ class EquipamentoManualTest extends TestCase
         $this->assertArrayNotHasKey('componentes', $eq->atributos ?? []);
         $this->assertNull($eq->proxima_troca_baterias);
 
-        // UPS: bancos sim, componentes não.
+        // UPS: bancos E componentes (as modulares são compostas por chassis/módulos/gestão).
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('selecionarCliente', $cliente->id)
             ->set('modelo', 'UPS Z')
             ->set('tipo', 'ups')
             ->set('bancos', [['numero_serie' => 'BANK-U', 'modelo' => '', 'capacidade' => '', 'num_baterias' => '4', 'data_instalacao' => '', 'proxima_troca' => '']])
-            ->set('componentes', [['designacao' => 'Não devia gravar', 'quantidade' => 1]])
+            ->set('componentes', [['designacao' => 'Módulo de potência 25kVA MPX 25 PM', 'quantidade' => 3]])
             ->call('guardar')
             ->assertHasNoErrors();
 
         $ups = Equipamento::where('modelo', 'UPS Z')->firstOrFail();
         $this->assertSame('BANK-U', $ups->atributos['bancos'][0]['numero_serie']);
-        $this->assertArrayNotHasKey('componentes', $ups->atributos);
+        $this->assertSame('Módulo de potência 25kVA MPX 25 PM', $ups->atributos['componentes'][0]['designacao']);
+        $this->assertEquals(3, $ups->atributos['componentes'][0]['quantidade']);
     }
 
     // ---- Cliente final e localização da instalação ----

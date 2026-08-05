@@ -58,7 +58,8 @@ class Novo extends Component
     public array $componentes = [];
 
     // As secções extra do formulário dependem do tipo: bancos de baterias são de UPS;
-    // componentes do sistema são de equipamentos compostos (incêndio / sistema / ambiental / diversos).
+    // componentes do sistema são de equipamentos compostos (todos os tipos menos gerador —
+    // as UPS modulares também, ver tipoTemComponentes).
     // A view esconde as secções; a gravação re-verifica (o tipo pode mudar depois de preencher).
     public function tipoTemBancos(): bool
     {
@@ -67,7 +68,10 @@ class Novo extends Component
 
     public function tipoTemComponentes(): bool
     {
+        // UPS incluídas: as modulares são compostas por vários acessórios (chassis, módulos
+        // de potência, módulos de baterias, gestão TCP/IP…) que se registam como componentes.
         return in_array($this->tipo, [
+            TipoEquipamento::Ups->value,
             TipoEquipamento::Incendio->value,
             TipoEquipamento::Sistema->value,
             TipoEquipamento::Ambiental->value,
