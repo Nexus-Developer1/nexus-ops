@@ -102,6 +102,33 @@ class RelatorioFichaSadeiTest extends TestCase
             ->assertSet("fichas.{$equip->id}.sadei.trimestral.acessos.estado", '');
     }
 
+    // "Sistema de deteção": escolher o sistema em uso (Aspiração ou Detecção) preenche logo
+    // com N\A o que não está a ser utilizado — o outro item e a secção dele.
+    public function test_escolher_o_sistema_de_detecao_preenche_na_o_nao_utilizado(): void
+    {
+        [$tecnico, $equip] = $this->cenario('incendio');
+
+        $c = Livewire::actingAs($tecnico)->test(Novo::class)
+            ->set('equipamento_id', $equip->id);
+
+        // Detecção OK (sistema por sensores em uso) → Aspiração fica a N\A e a secção
+        // "Sistema de aspiração" preenche-se toda a N\A; a dos sensores fica por preencher.
+        $c->set("fichas.{$equip->id}.sadei.detecao.detecao.estado", 'ok')
+            ->assertSet("fichas.{$equip->id}.sadei.detecao.aspiracao.estado", 'na')
+            ->assertSet("fichas.{$equip->id}.sadei.aspiracao.filtro.estado", 'na')
+            ->assertSet("fichas.{$equip->id}.sadei.aspiracao.sem_avarias.estado", 'na')
+            ->assertSet("fichas.{$equip->id}.sadei.sensores.opticos_fumo.estado", '');
+
+        // Afinal também há aspiração: marcar Aspiração OK limpa a secção auto-preenchida.
+        $c->set("fichas.{$equip->id}.sadei.detecao.aspiracao.estado", 'ok')
+            ->assertSet("fichas.{$equip->id}.sadei.aspiracao.filtro.estado", '');
+
+        // Marcar Aspiração a N\A diretamente volta a preencher a secção — mas uma escolha
+        // manual já feita numa linha impede a limpeza automática ao reverter.
+        $c->set("fichas.{$equip->id}.sadei.detecao.aspiracao.estado", 'na')
+            ->assertSet("fichas.{$equip->id}.sadei.aspiracao.ligacoes.estado", 'na');
+    }
+
     public function test_estado_forjado_fora_da_whitelist_e_descartado(): void
     {
         [$tecnico, $equip] = $this->cenario('incendio');

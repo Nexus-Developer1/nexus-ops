@@ -58,7 +58,8 @@
                         <div class="flex items-center gap-3 sm:col-span-3">
                             @foreach (array_filter(['ok' => 'OK', 'ko' => 'KO', 'na' => $sec['na'] ? 'N/A' : null]) as $ev => $er)
                                 <label class="inline-flex cursor-pointer items-center gap-1 text-xs text-texto-medio">
-                                    <input type="radio" wire:model="{{ $prefixo }}.sadei.{{ $sec['chave'] }}.{{ $k }}.estado" value="{{ $ev }}" class="h-3.5 w-3.5 border-borda text-verde-600 focus:ring-verde-600">
+                                    {{-- "Sistema de deteção" é live: escolher Aspiração/Detecção preenche com N\A o sistema não utilizado (hook updatedFichas). --}}
+                                    <input type="radio" wire:model{{ $sec['chave'] === 'detecao' ? '.live' : '' }}="{{ $prefixo }}.sadei.{{ $sec['chave'] }}.{{ $k }}.estado" value="{{ $ev }}" class="h-3.5 w-3.5 border-borda text-verde-600 focus:ring-verde-600">
                                     {{ $er }}
                                 </label>
                             @endforeach

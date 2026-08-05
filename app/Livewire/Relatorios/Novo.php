@@ -599,37 +599,77 @@ class Novo extends Component
     // preencheu); escolhas manuais item a item nunca se perdem.
     public function updatedFichas($value, $key): void
     {
-        if (! str_ends_with((string) $key, '.sadei.tipo_manutencao')) {
+        $key = (string) $key;
+
+        if (str_ends_with($key, '.sadei.tipo_manutencao')) {
+            $equipId = (int) explode('.', $key)[0];
+            $naoAplicaveis = match ($value) {
+                'trimestral' => ['semestral', 'anual'],
+                'semestral' => ['anual'],
+                default => [],
+            };
+
+            foreach (['trimestral', 'semestral', 'anual'] as $seccao) {
+                in_array($seccao, $naoAplicaveis, true)
+                    ? $this->preencherSeccaoSadei($equipId, $seccao, 'na')
+                    : $this->limparSeccaoSadeiSeTodaNa($equipId, $seccao);
+            }
+
             return;
         }
 
-        $equipId = (int) explode('.', (string) $key)[0];
-        $naoAplicaveis = match ($value) {
-            'trimestral' => ['semestral', 'anual'],
-            'semestral' => ['anual'],
-            default => [],
-        };
-
-        foreach (['trimestral', 'semestral', 'anual'] as $seccao) {
-            $itens = array_keys($this->fichas[$equipId]['sadei'][$seccao] ?? []);
-            if ($itens === []) {
+        // "Sistema de deteção" — os itens Aspiração/Detecção dizem QUAL o sistema instalado:
+        // marcar um a N\A preenche a secção respetiva toda a N\A; marcar um EM USO (OK/KO)
+        // põe o outro a N\A se ainda estiver por preencher (e a secção dele em cascata).
+        $sistemas = [
+            'aspiracao' => 'aspiracao', // item do "Sistema de deteção" → secção "Sistema de aspiração"
+            'detecao' => 'sensores',    // → secção "Sistema por sensores"
+        ];
+        foreach ($sistemas as $item => $seccao) {
+            if (! str_ends_with($key, ".sadei.detecao.{$item}.estado")) {
                 continue;
             }
 
-            if (in_array($seccao, $naoAplicaveis, true)) {
-                foreach ($itens as $item) {
-                    $this->fichas[$equipId]['sadei'][$seccao][$item]['estado'] = 'na';
-                }
+            $equipId = (int) explode('.', $key)[0];
+            if ($value === 'na') {
+                $this->preencherSeccaoSadei($equipId, $seccao, 'na');
 
-                continue;
+                return;
             }
 
-            // Secção aplicável: se está toda a N\A, foi o automatismo — limpa para preencher.
-            $estados = array_map(fn ($item) => $this->fichas[$equipId]['sadei'][$seccao][$item]['estado'] ?? '', $itens);
-            if (array_unique($estados) === ['na']) {
-                foreach ($itens as $item) {
-                    $this->fichas[$equipId]['sadei'][$seccao][$item]['estado'] = '';
-                }
+            $this->limparSeccaoSadeiSeTodaNa($equipId, $seccao);
+
+            $outroItem = $item === 'aspiracao' ? 'detecao' : 'aspiracao';
+            if (($this->fichas[$equipId]['sadei']['detecao'][$outroItem]['estado'] ?? '') === '') {
+                $this->fichas[$equipId]['sadei']['detecao'][$outroItem]['estado'] = 'na';
+                $this->preencherSeccaoSadei($equipId, $sistemas[$outroItem], 'na');
+            }
+
+            return;
+        }
+    }
+
+    // Põe o estado de TODOS os itens de uma secção SADEI (as notas ficam intactas).
+    private function preencherSeccaoSadei(int $equipId, string $seccao, string $estado): void
+    {
+        foreach (array_keys($this->fichas[$equipId]['sadei'][$seccao] ?? []) as $item) {
+            $this->fichas[$equipId]['sadei'][$seccao][$item]['estado'] = $estado;
+        }
+    }
+
+    // Limpa uma secção SADEI apenas se estiver TODA a N\A (foi o automatismo que a preencheu) —
+    // escolhas manuais item a item nunca se perdem.
+    private function limparSeccaoSadeiSeTodaNa(int $equipId, string $seccao): void
+    {
+        $itens = array_keys($this->fichas[$equipId]['sadei'][$seccao] ?? []);
+        if ($itens === []) {
+            return;
+        }
+
+        $estados = array_map(fn ($item) => $this->fichas[$equipId]['sadei'][$seccao][$item]['estado'] ?? '', $itens);
+        if (array_unique($estados) === ['na']) {
+            foreach ($itens as $item) {
+                $this->fichas[$equipId]['sadei'][$seccao][$item]['estado'] = '';
             }
         }
     }
