@@ -59,9 +59,10 @@
                         <span class="text-sm text-texto-forte sm:col-span-4">{{ $rotulo }}</span>
                         <div class="flex items-center gap-3 sm:col-span-3">
                             @foreach (array_filter(['ok' => 'OK', 'ko' => 'KO', 'na' => $sec['na'] ? 'N/A' : null]) as $ev => $er)
-                                <label class="inline-flex cursor-pointer items-center gap-1 text-xs text-texto-medio">
+                                {{-- Alvo de toque maior no telemóvel (rádio 20px + padding); compacto a partir de sm. --}}
+                                <label class="inline-flex cursor-pointer items-center gap-1.5 py-1.5 text-xs text-texto-medio sm:gap-1 sm:py-0">
                                     {{-- "Sistema de deteção" é live: escolher Aspiração/Detecção preenche com N\A o sistema não utilizado (hook updatedFichas). --}}
-                                    <input type="radio" wire:model{{ $sec['chave'] === 'detecao' ? '.live' : '' }}="{{ $prefixo }}.sadei.{{ $sec['chave'] }}.{{ $k }}.estado" value="{{ $ev }}" class="h-3.5 w-3.5 border-borda text-verde-600 focus:ring-verde-600">
+                                    <input type="radio" wire:model{{ $sec['chave'] === 'detecao' ? '.live' : '' }}="{{ $prefixo }}.sadei.{{ $sec['chave'] }}.{{ $k }}.estado" value="{{ $ev }}" class="h-5 w-5 border-borda text-verde-600 focus:ring-verde-600 sm:h-3.5 sm:w-3.5">
                                     {{ $er }}
                                 </label>
                             @endforeach
@@ -93,8 +94,8 @@
                         <span class="text-sm text-texto-forte sm:col-span-9">{{ $rotulo }}</span>
                         <div class="flex items-center gap-3 sm:col-span-3">
                             @foreach (['ok' => 'OK', 'ko' => 'KO', 'na' => 'N/A'] as $ev => $er)
-                                <label class="inline-flex cursor-pointer items-center gap-1 text-xs text-texto-medio">
-                                    <input type="radio" wire:model="{{ $prefixo }}.sadei.{{ $sec['chave'] }}.{{ $k }}.estado" value="{{ $ev }}" class="h-3.5 w-3.5 border-borda text-verde-600 focus:ring-verde-600">
+                                <label class="inline-flex cursor-pointer items-center gap-1.5 py-1.5 text-xs text-texto-medio sm:gap-1 sm:py-0">
+                                    <input type="radio" wire:model="{{ $prefixo }}.sadei.{{ $sec['chave'] }}.{{ $k }}.estado" value="{{ $ev }}" class="h-5 w-5 border-borda text-verde-600 focus:ring-verde-600 sm:h-3.5 sm:w-3.5">
                                     {{ $er }}
                                 </label>
                             @endforeach
@@ -143,8 +144,8 @@
             <span class="text-sm text-texto-forte sm:col-span-9">Equipamento em modo automático, com a solenoide colocada, e a funcionar corretamente</span>
             <div class="flex items-center gap-3 sm:col-span-3">
                 @foreach (['ok' => 'OK', 'ko' => 'KO'] as $ev => $er)
-                    <label class="inline-flex cursor-pointer items-center gap-1 text-xs text-texto-medio">
-                        <input type="radio" wire:model="{{ $prefixo }}.sadei.final_automatico" value="{{ $ev }}" class="h-3.5 w-3.5 border-borda text-verde-600 focus:ring-verde-600">
+                    <label class="inline-flex cursor-pointer items-center gap-1.5 py-1.5 text-xs text-texto-medio sm:gap-1 sm:py-0">
+                        <input type="radio" wire:model="{{ $prefixo }}.sadei.final_automatico" value="{{ $ev }}" class="h-5 w-5 border-borda text-verde-600 focus:ring-verde-600 sm:h-3.5 sm:w-3.5">
                         {{ $er }}
                     </label>
                 @endforeach
