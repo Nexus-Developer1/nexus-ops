@@ -29,6 +29,9 @@
                                 <h2 class="text-lg font-semibold text-texto-forte">Identificação</h2>
                                 <span class="etiqueta {{ $equipamento->tipo->classesEtiqueta() }}">{{ $equipamento->tipo->rotulo() }}</span>
                                 <span class="etiqueta {{ $equipamento->estado->classesEtiqueta() }}">{{ $equipamento->estado->rotulo() }}</span>
+                                @if ($descricaoTipo = $equipamento->atributos['tipo_descricao'] ?? null)
+                                    <span class="text-sm text-texto-medio">{{ $descricaoTipo }}</span>
+                                @endif
                             </div>
                             <div class="flex h-16 w-16 items-center justify-center rounded-lg border border-borda bg-fundo text-texto-fraco">
                                 <svg class="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.4"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 3h3m0 0h3m-3 0v3m0-3v-3"/></svg>

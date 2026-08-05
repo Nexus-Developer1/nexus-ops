@@ -32,6 +32,9 @@ class Novo extends Component
 
     // Dados do equipamento.
     public string $tipo = 'ups';
+    // Só para o tipo "Diversos" (soluções pontuais): o tipo não diz nada, a descrição é
+    // obrigatória e é ela que identifica a solução. Guardada em atributos.tipo_descricao.
+    public string $tipo_descricao = '';
     public string $fabricante = '';
     public string $modelo = '';
     public string $numero_serie = '';
@@ -53,7 +56,7 @@ class Novo extends Component
     public array $componentes = [];
 
     // As secções extra do formulário dependem do tipo: bancos de baterias são de UPS;
-    // componentes do sistema são de equipamentos compostos (deteção de incêndio / sistema).
+    // componentes do sistema são de equipamentos compostos (incêndio / sistema / ambiental / diversos).
     // A view esconde as secções; a gravação re-verifica (o tipo pode mudar depois de preencher).
     public function tipoTemBancos(): bool
     {
@@ -62,7 +65,17 @@ class Novo extends Component
 
     public function tipoTemComponentes(): bool
     {
-        return in_array($this->tipo, [TipoEquipamento::Incendio->value, TipoEquipamento::Sistema->value], true);
+        return in_array($this->tipo, [
+            TipoEquipamento::Incendio->value,
+            TipoEquipamento::Sistema->value,
+            TipoEquipamento::Ambiental->value,
+            TipoEquipamento::Diversos->value,
+        ], true);
+    }
+
+    public function tipoTemDescricao(): bool
+    {
+        return $this->tipo === TipoEquipamento::Diversos->value;
     }
 
     public function adicionarBanco(): void
@@ -127,6 +140,8 @@ class Novo extends Component
             'local_id' => ['nullable', 'integer', Rule::exists('locais', 'id')->where('cliente_id', $this->cliente_id)],
             // Só os tipos do catálogo (sem PDU) — Rule::enum aceitaria o case legado.
             'tipo' => ['required', Rule::in(array_column(TipoEquipamento::selecionaveis(), 'value'))],
+            // Em "Diversos" a descrição é obrigatória (é ela que identifica a solução).
+            'tipo_descricao' => $this->tipoTemDescricao() ? ['required', 'string', 'max:255'] : [],
             'fabricante' => ['nullable', 'string', 'max:255'],
             'modelo' => ['nullable', 'string', 'max:255'],
             'numero_serie' => ['nullable', 'string', 'max:255'],
@@ -153,6 +168,8 @@ class Novo extends Component
                 'componentes.*.designacao' => ['nullable', 'string', 'max:255'],
                 'componentes.*.quantidade' => ['nullable', 'integer', 'min:0'],
             ] : []),
+        ], [
+            'tipo_descricao.required' => 'No tipo "Diversos", descreve a solução no campo ao lado.',
         ]);
 
         // Local: o escolhido ou a "Instalação principal" do cliente (criada se não existir — mesma
@@ -178,6 +195,11 @@ class Novo extends Component
         $componentes = $this->tipoTemComponentes() ? $this->componentesNormalizados() : [];
         if ($componentes !== []) {
             $atributos['componentes'] = $componentes;
+        }
+
+        // Descrição do tipo (só "Diversos") — mostrada na ficha junto à etiqueta do tipo.
+        if ($this->tipoTemDescricao() && trim($this->tipo_descricao) !== '') {
+            $atributos['tipo_descricao'] = trim($this->tipo_descricao);
         }
 
         $equipamento = Equipamento::create([

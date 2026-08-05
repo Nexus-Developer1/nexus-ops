@@ -440,6 +440,84 @@ class EquipamentoManualTest extends TestCase
         $this->assertEquals(8, $eq->atributos['componentes'][0]['quantidade']);
     }
 
+    // ---- Tipos novos: monitorização ambiental e diversos (soluções pontuais, com descrição) ----
+
+    public function test_novo_equipamento_monitorizacao_ambiental_com_componentes(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->set('tipo', 'ambiental')
+            ->set('modelo', 'Monit. sala técnica')
+            ->call('adicionarComponente')
+            ->set('componentes.0.designacao', 'Sonda de temperatura e humidade')
+            ->set('componentes.0.quantidade', '3')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $eq = Equipamento::where('modelo', 'Monit. sala técnica')->firstOrFail();
+        $this->assertSame('ambiental', $eq->tipo->value);
+        $this->assertSame('Monitorização ambiental', $eq->tipo->rotulo());
+        $this->assertCount(1, $eq->atributos['componentes']);
+        $this->assertEquals(3, $eq->atributos['componentes'][0]['quantidade']);
+    }
+
+    public function test_tipo_diversos_exige_descricao_e_mostra_a_na_ficha(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+
+        // Sem descrição não grava — em "Diversos" o tipo não diz nada, a descrição é obrigatória.
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->set('tipo', 'diversos')
+            ->set('modelo', 'Solução pontual')
+            ->call('guardar')
+            ->assertHasErrors('tipo_descricao');
+
+        // Com descrição grava (em atributos) e a ficha mostra-a junto à etiqueta do tipo.
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->set('tipo', 'diversos')
+            ->set('modelo', 'Solução pontual')
+            ->set('tipo_descricao', 'Controlo de acessos da portaria')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $eq = Equipamento::where('modelo', 'Solução pontual')->firstOrFail();
+        $this->assertSame('diversos', $eq->tipo->value);
+        $this->assertSame('Controlo de acessos da portaria', $eq->atributos['tipo_descricao']);
+
+        Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $eq])
+            ->assertSee('Diversos')
+            ->assertSee('Controlo de acessos da portaria');
+    }
+
+    public function test_descricao_de_diversos_nao_grava_noutros_tipos(): void
+    {
+        // Preencheu a descrição em "Diversos" e depois mudou o tipo: o campo escondeu-se,
+        // não pode gravar-se "às escondidas" nem bloquear a validação.
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->set('tipo', 'diversos')
+            ->set('tipo_descricao', 'Ficou para trás')
+            ->set('modelo', 'Gerador W')
+            ->set('tipo', 'gerador')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $eq = Equipamento::where('modelo', 'Gerador W')->firstOrFail();
+        $this->assertArrayNotHasKey('tipo_descricao', $eq->atributos ?? []);
+    }
+
     public function test_ficha_edita_componentes_do_sistema(): void
     {
         $admin = $this->admin();

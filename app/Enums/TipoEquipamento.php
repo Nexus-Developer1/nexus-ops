@@ -9,6 +9,8 @@ enum TipoEquipamento: string
     case Pdu = 'pdu';
     case Incendio = 'incendio';
     case Sistema = 'sistema';
+    case Ambiental = 'ambiental';
+    case Diversos = 'diversos';
 
     /**
      * Tipos oferecidos ao registar um equipamento (PDU saiu do catálogo a pedido da equipa).
@@ -30,6 +32,8 @@ enum TipoEquipamento: string
             self::Pdu => 'PDU',
             self::Incendio => 'Deteção de incêndio',
             self::Sistema => 'Sistema',
+            self::Ambiental => 'Monitorização ambiental',
+            self::Diversos => 'Diversos',
         };
     }
 
@@ -42,6 +46,8 @@ enum TipoEquipamento: string
             self::Pdu => 'bg-slate-100 text-texto-medio',
             self::Incendio => 'bg-perigo-100 text-perigo-600',
             self::Sistema => 'bg-verde-50 text-verde-700',
+            self::Ambiental => 'bg-verde-50 text-verde-700',
+            self::Diversos => 'bg-slate-100 text-texto-medio',
         };
     }
 }
