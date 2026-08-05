@@ -657,6 +657,21 @@ class Novo extends Component
         }
     }
 
+    // Grelhas de cilindros (agente extintor / piloto) da ficha SADEI: acrescenta uma linha
+    // vazia — a quantidade instalada varia por cliente, as linhas iniciais são só o arranque.
+    // Invocável do browser: whitelist da grelha + teto de linhas.
+    public function adicionarLinhaSadeiGrelha(int $equipId, string $grelha): void
+    {
+        if (! in_array($grelha, ['cilindros', 'piloto'], true) || ! isset($this->fichas[$equipId]['sadei'][$grelha])) {
+            return;
+        }
+        if (count($this->fichas[$equipId]['sadei'][$grelha]) >= FichaMedicao::SADEI_MAX_LINHAS_GRELHA) {
+            return;
+        }
+
+        $this->fichas[$equipId]['sadei'][$grelha][] = array_fill_keys([...array_keys(FichaMedicao::SADEI_COLS_CILINDRO), 'estado'], '');
+    }
+
     // Limpa uma secção SADEI apenas se estiver TODA a N\A (foi o automatismo que a preencheu) —
     // escolhas manuais item a item nunca se perdem.
     private function limparSeccaoSadeiSeTodaNa(int $equipId, string $seccao): void

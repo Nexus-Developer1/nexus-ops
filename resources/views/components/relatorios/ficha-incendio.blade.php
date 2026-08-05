@@ -1,5 +1,7 @@
 @props([
     'prefixo',              // caminho Livewire da ficha, ex.: "fichas.123"
+    'equipId',              // id do equipamento (ações das grelhas de cilindros)
+    'linhasGrelhas' => [],  // nº de linhas ATUAIS por grelha: ['cilindros' => n, 'piloto' => n]
     'assinaturas' => [],    // ['cliente' => url|null, 'tecnico' => url|null] das já gravadas
 ])
 
@@ -105,7 +107,8 @@
 
     {{-- Dados dos cilindros --}}
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        @foreach (['cilindros' => ['Cilindros — agente extintor', 'tipo_agente', 'Tipo de agente extintor', FichaMedicao::SADEI_CILINDROS_LINHAS], 'piloto' => ['Cilindros — piloto', 'tipo_piloto', 'Tipo de piloto', FichaMedicao::SADEI_PILOTO_LINHAS]] as $grelha => [$tituloGrelha, $campoTipo, $rotuloTipo, $numLinhas])
+        @foreach (['cilindros' => ['Cilindros — agente extintor', 'tipo_agente', 'Tipo de agente extintor', FichaMedicao::SADEI_CILINDROS_LINHAS], 'piloto' => ['Cilindros — piloto', 'tipo_piloto', 'Tipo de piloto', FichaMedicao::SADEI_PILOTO_LINHAS]] as $grelha => [$tituloGrelha, $campoTipo, $rotuloTipo, $numIniciais])
+            @php($numLinhas = max((int) ($linhasGrelhas[$grelha] ?? 0), $numIniciais))
             <div>
                 <p class="campo-label">{{ $tituloGrelha }}</p>
                 <input type="text" wire:model="{{ $prefixo }}.sadei.{{ $campoTipo }}" class="campo-input mb-2" placeholder="{{ $rotuloTipo }}">
@@ -123,6 +126,12 @@
                         </div>
                     @endfor
                 </div>
+                {{-- Sem nº fixo de linhas — acrescenta-se conforme a quantidade instalada no cliente
+                     (linhas vazias são descartadas ao gravar). --}}
+                @if ($numLinhas < FichaMedicao::SADEI_MAX_LINHAS_GRELHA)
+                    <button type="button" wire:click="adicionarLinhaSadeiGrelha({{ (int) $equipId }}, '{{ $grelha }}')"
+                        class="mt-2 text-xs font-medium text-verde-700 hover:underline">+ Cilindro</button>
+                @endif
             </div>
         @endforeach
     </div>

@@ -346,7 +346,9 @@
                             <div class="border-t border-borda px-6 py-6">
                                 {{-- Equipamentos de incêndio têm ficha técnica própria (SADEI); os restantes usam a de medições UPS. --}}
                                 @if ($e->tipo === \App\Enums\TipoEquipamento::Incendio)
-                                    <x-relatorios.ficha-incendio :prefixo="'fichas.' . $e->id" :assinaturas="$assinaturasGravadas[$e->id] ?? []" />
+                                    <x-relatorios.ficha-incendio :prefixo="'fichas.' . $e->id" :equip-id="$e->id"
+                                        :linhas-grelhas="['cilindros' => count($fichas[$e->id]['sadei']['cilindros'] ?? []), 'piloto' => count($fichas[$e->id]['sadei']['piloto'] ?? [])]"
+                                        :assinaturas="$assinaturasGravadas[$e->id] ?? []" />
                                 @else
                                     <x-relatorios.ficha-ups :prefixo="'fichas.' . $e->id" />
                                 @endif

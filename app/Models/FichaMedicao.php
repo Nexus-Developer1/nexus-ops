@@ -231,10 +231,13 @@ class FichaMedicao extends Model
         'pesagem_co2' => 'Sistemas de CO2 sem pesagem automática: pesagem manual efetuada',
     ];
 
-    /** Linhas das grelhas de cilindros (agente extintor) e piloto. */
+    /** Linhas INICIAIS das grelhas de cilindros (agente extintor) e piloto — o técnico pode
+     *  acrescentar conforme a quantidade instalada no cliente, até SADEI_MAX_LINHAS_GRELHA. */
     public const SADEI_CILINDROS_LINHAS = 4;
 
     public const SADEI_PILOTO_LINHAS = 2;
+
+    public const SADEI_MAX_LINHAS_GRELHA = 50;
 
     /** Colunas das grelhas de cilindros/piloto (chave => rótulo). */
     public const SADEI_COLS_CILINDRO = [
@@ -414,7 +417,10 @@ class FichaMedicao extends Model
             }
         }
         foreach (['cilindros' => self::SADEI_CILINDROS_LINHAS, 'piloto' => self::SADEI_PILOTO_LINHAS] as $grelha => $n) {
-            for ($i = 0; $i < $n; $i++) {
+            // Grelhas dinâmicas: mostra TODAS as linhas gravadas (no mínimo as iniciais), até ao teto.
+            $gravadas = is_array($g[$grelha] ?? null) ? count($g[$grelha]) : 0;
+            $total = min(self::SADEI_MAX_LINHAS_GRELHA, max($n, $gravadas));
+            for ($i = 0; $i < $total; $i++) {
                 foreach ([...array_keys(self::SADEI_COLS_CILINDRO), 'estado'] as $col) {
                     $base['sadei'][$grelha][$i][$col] = (string) ($g[$grelha][$i][$col] ?? '');
                 }
@@ -539,14 +545,17 @@ class FichaMedicao extends Model
                 $tem = $tem || $out[$sec][$k]['estado'] !== null;
             }
         }
-        foreach (['cilindros' => self::SADEI_CILINDROS_LINHAS, 'piloto' => self::SADEI_PILOTO_LINHAS] as $grelha => $n) {
+        foreach (['cilindros', 'piloto'] as $grelha) {
             $linhas = [];
-            for ($i = 0; $i < $n; $i++) {
+            // Grelhas dinâmicas: aceita as linhas que vierem (teto contra payloads forjados).
+            $entrada = array_slice(array_values(is_array($g[$grelha] ?? null) ? $g[$grelha] : []), 0, self::SADEI_MAX_LINHAS_GRELHA);
+            foreach ($entrada as $linhaIn) {
+                $linhaIn = is_array($linhaIn) ? $linhaIn : [];
                 $linha = [];
                 foreach (array_keys(self::SADEI_COLS_CILINDRO) as $col) {
-                    $linha[$col] = $limpar($g[$grelha][$i][$col] ?? null);
+                    $linha[$col] = $limpar($linhaIn[$col] ?? null);
                 }
-                $linha['estado'] = $estado($g[$grelha][$i]['estado'] ?? null, ['ok', 'ko']);
+                $linha['estado'] = $estado($linhaIn['estado'] ?? null, ['ok', 'ko']);
                 if ($temAlgum($linha)) {
                     $linhas[] = $linha;
                 }

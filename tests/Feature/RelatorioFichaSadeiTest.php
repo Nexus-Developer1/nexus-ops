@@ -129,6 +129,60 @@ class RelatorioFichaSadeiTest extends TestCase
             ->assertSet("fichas.{$equip->id}.sadei.aspiracao.ligacoes.estado", 'na');
     }
 
+    // As grelhas de cilindros não têm nº fixo de linhas: acrescenta-se conforme a instalação.
+    public function test_grelhas_de_cilindros_crescem_conforme_a_instalacao(): void
+    {
+        [$tecnico, $equip] = $this->cenario('incendio');
+
+        $c = Livewire::actingAs($tecnico)->test(Novo::class)
+            ->set('equipamento_id', $equip->id)
+            ->set('data', now()->toDateString());
+
+        // Arranca com as linhas iniciais (4 agente extintor + 2 piloto).
+        $this->assertCount(4, $c->get("fichas.{$equip->id}.sadei.cilindros"));
+        $this->assertCount(2, $c->get("fichas.{$equip->id}.sadei.piloto"));
+
+        // "+ Cilindro" acrescenta uma linha vazia a cada grelha.
+        $c->call('adicionarLinhaSadeiGrelha', $equip->id, 'cilindros');
+        $c->call('adicionarLinhaSadeiGrelha', $equip->id, 'piloto');
+        $this->assertCount(5, $c->get("fichas.{$equip->id}.sadei.cilindros"));
+        $this->assertCount(3, $c->get("fichas.{$equip->id}.sadei.piloto"));
+
+        // Grelha fora da whitelist é ignorada sem rebentar.
+        $c->call('adicionarLinhaSadeiGrelha', $equip->id, 'central');
+
+        // Preencher a 1.ª e a 5.ª → gravam SÓ as preenchidas, pela ordem.
+        $c->set("fichas.{$equip->id}.sadei.cilindros.0.identificacao", 'CIL-01')
+            ->set("fichas.{$equip->id}.sadei.cilindros.4.identificacao", 'CIL-05')
+            ->set("fichas.{$equip->id}.sadei.cilindros.4.estado", 'ok')
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $ficha = FichaMedicao::firstOrFail();
+        $this->assertCount(2, $ficha->sadei['cilindros']);
+        $this->assertSame('CIL-01', $ficha->sadei['cilindros'][0]['identificacao']);
+        $this->assertSame('CIL-05', $ficha->sadei['cilindros'][1]['identificacao']);
+        $this->assertSame('ok', $ficha->sadei['cilindros'][1]['estado']);
+    }
+
+    public function test_formulario_reabre_com_todas_as_linhas_gravadas(): void
+    {
+        // Ficha gravada com 6 cilindros (mais do que as 4 linhas iniciais): ao reabrir,
+        // o formulário mostra as 6 — nada fica escondido.
+        [$tecnico, $equip] = $this->cenario('incendio');
+        $linhas = [];
+        for ($i = 1; $i <= 6; $i++) {
+            $linhas[] = ['identificacao' => "CIL-0{$i}", 'pressao' => null, 'data_carga' => null, 'qt_agente' => null, 'peso_total' => null, 'estado' => 'ok'];
+        }
+        $ficha = new FichaMedicao(['sadei' => ['cilindros' => $linhas]]);
+
+        $form = $ficha->paraFormulario();
+
+        $this->assertCount(6, $form['sadei']['cilindros']);
+        $this->assertSame('CIL-06', $form['sadei']['cilindros'][5]['identificacao']);
+        $this->assertCount(2, $form['sadei']['piloto']); // piloto sem gravadas → linhas iniciais
+    }
+
     public function test_estado_forjado_fora_da_whitelist_e_descartado(): void
     {
         [$tecnico, $equip] = $this->cenario('incendio');
