@@ -35,6 +35,11 @@ class AgendamentoSyncErpTest extends TestCase
             {
                 throw new RuntimeException('SQLSTATE[HY000]: Unable to connect to server');
             }
+
+            public function obterArtigos(?int $limite = null): iterable
+            {
+                throw new RuntimeException('SQLSTATE[HY000]: Unable to connect to server');
+            }
         };
     }
 

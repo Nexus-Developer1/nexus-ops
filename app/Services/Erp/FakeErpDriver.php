@@ -58,6 +58,51 @@ class FakeErpDriver implements ErpSyncDriver
         }
     }
 
+    public function obterArtigos(?int $limite = null): iterable
+    {
+        $n = max(1, $limite ?? self::PADRAO);
+
+        // Simula o WHERE ref <> '' do PHC: geramos candidatos (alguns sem referência)
+        // mas só devolvemos os que TÊM referência — tal como a query real.
+        for ($i = 0; $i < $n; $i++) {
+            $artigo = $this->gerarArtigo($i);
+
+            if (blank($artigo->idErp)) {
+                continue; // sem referência → filtrado
+            }
+
+            yield $artigo;
+        }
+    }
+
+    private function gerarArtigo(int $i): ArtigoErp
+    {
+        // Determinístico por índice — o artigo i é sempre igual (mesma ref), tornando o
+        // upsert por id_erp reproduzível (2.ª corrida = atualizações, não duplicados).
+        mt_srand(self::SEMENTE + 12000 + $i);
+
+        // 1 em cada 5 candidatos sem referência (será filtrado, como o WHERE da query real).
+        if (($i % 5) === 4) {
+            return new ArtigoErp(idErp: '', designacao: 'Artigo sem referência');
+        }
+
+        $catalogo = [
+            ['DET-701P', 'Detetor ótico convencional 701P', '300', 'Deteção de incêndio'],
+            ['CIL-NOVEC-106', 'Cilindro Novec 1230 106L', '300', 'Deteção de incêndio'],
+            ['SONDA-TH', 'Sonda de temperatura e humidade', '400', 'Monitorização'],
+            ['AP-WIFI-AX', 'Access point WiFi 6', '500', 'Redes'],
+            ['BAT-12V-9AH', 'Bateria 12V 9Ah', '200', 'Baterias'],
+        ];
+        $a = $catalogo[$i % count($catalogo)];
+
+        return new ArtigoErp(
+            idErp: sprintf('%s-%03d', $a[0], $i), // ref única por i
+            designacao: $a[1],
+            familia: $a[2],
+            faminome: $a[3],
+        );
+    }
+
     private function gerarEquipamento(int $i): EquipamentoErp
     {
         // Determinístico por índice — o equipamento i é sempre igual (mesmo mastamp), tornando o

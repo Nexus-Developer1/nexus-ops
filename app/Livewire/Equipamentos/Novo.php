@@ -5,6 +5,7 @@ namespace App\Livewire\Equipamentos;
 use App\Enums\EstadoEquipamento;
 use App\Enums\TipoEquipamento;
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\ComponentesComArtigos;
 use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\Local;
@@ -20,6 +21,7 @@ use Livewire\Component;
 class Novo extends Component
 {
     use ApenasEquipa;
+    use ComponentesComArtigos;
 
     private const NOME_SEM_ACENTOS = "translate(lower(nome), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
 
@@ -258,6 +260,7 @@ class Novo extends Component
 
         return view('livewire.equipamentos.novo', [
             'clientesFiltrados' => $this->clientesFiltrados(),
+            'artigosFiltrados' => $this->artigosFiltrados(),
             'locais' => $locais,
             'tipos' => TipoEquipamento::selecionaveis(),
             'estados' => EstadoEquipamento::cases(),

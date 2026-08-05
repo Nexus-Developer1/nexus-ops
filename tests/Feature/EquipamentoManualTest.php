@@ -518,6 +518,51 @@ class EquipamentoManualTest extends TestCase
         $this->assertArrayNotHasKey('tipo_descricao', $eq->atributos ?? []);
     }
 
+    // Compor o sistema pesquisando por referência do PHC (catálogo local `artigos`, sincronizado).
+    public function test_componentes_adicionam_se_por_referencia_do_phc(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $artigo = \App\Models\Artigo::create(['id_erp' => 'DET-701P', 'designacao' => 'Detetor ótico convencional 701P', 'faminome' => 'Deteção de incêndio']);
+        \App\Models\Artigo::create(['id_erp' => 'BAT-12V', 'designacao' => 'Bateria 12V 9Ah']);
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('selecionarCliente', $cliente->id)
+            ->set('tipo', 'incendio')
+            ->set('modelo', 'SADI com artigos')
+            // Pesquisa por referência OU designação — só o detetor casa com "701".
+            ->set('artigoBusca', '701')
+            ->assertViewHas('artigosFiltrados', fn ($a) => $a->pluck('id')->contains($artigo->id) && $a->count() === 1)
+            ->call('adicionarComponenteArtigo', $artigo->id)
+            ->assertSet('artigoBusca', '')                       // pesquisa limpa após escolher
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $eq = Equipamento::where('modelo', 'SADI com artigos')->firstOrFail();
+        // A referência viaja na designação do componente (pesquisável e visível no PDF).
+        $this->assertSame('DET-701P — Detetor ótico convencional 701P', $eq->atributos['componentes'][0]['designacao']);
+        $this->assertEquals(1, $eq->atributos['componentes'][0]['quantidade']);
+    }
+
+    public function test_ficha_tambem_adiciona_componentes_por_referencia_do_phc(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $eq = Equipamento::create(['local_id' => $local->id, 'tipo' => 'incendio', 'estado' => 'operacional']);
+        $artigo = \App\Models\Artigo::create(['id_erp' => 'CIL-NOVEC-106', 'designacao' => 'Cilindro Novec 1230 106L']);
+
+        Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $eq])
+            ->set('artigoBusca', 'novec')
+            ->call('adicionarComponenteArtigo', $artigo->id)
+            ->call('guardarComponentes')
+            ->assertHasNoErrors();
+
+        $eq->refresh();
+        $this->assertSame('CIL-NOVEC-106 — Cilindro Novec 1230 106L', $eq->atributos['componentes'][0]['designacao']);
+    }
+
     public function test_ficha_edita_componentes_do_sistema(): void
     {
         $admin = $this->admin();

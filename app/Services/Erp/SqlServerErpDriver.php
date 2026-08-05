@@ -95,6 +95,34 @@ class SqlServerErpDriver implements ErpSyncDriver
         }
     }
 
+    public function obterArtigos(?int $limite = null): iterable
+    {
+        // Lê o catálogo de artigos da tabela st do PHC pela ligação 'erp' — a MESMA que os outros
+        // syncs usam. Correlação por st.ref → id_erp. Só artigos com referência preenchida.
+        //
+        // Opção A (sem view): lê direto de st porque ainda não há acesso de ESCRITA ao PHC para
+        // criar a view. §5 do CLAUDE.md: quando houver, envolver numa VIEW read-only dedicada
+        // (vw_artigos) e ler dessa view, nunca da tabela bruta. (Igual aos restantes syncs.)
+        //
+        // SQL Server: o limite usa TOP (não LIMIT). É um inteiro, interpolado em segurança.
+        $top = $limite !== null ? 'TOP ' . (int) $limite . ' ' : '';
+
+        $sql = "SELECT {$top}ref, design, familia, faminome
+                FROM st
+                WHERE ref IS NOT NULL AND LTRIM(RTRIM(ref)) <> ''";
+
+        foreach (DB::connection('erp')->select($sql) as $r) {
+            // TRIM obrigatório: as colunas char do PHC vêm com padding de espaços à direita
+            // (mesma lição do mastamp dos equipamentos — sem trim o id_erp não casava).
+            yield new ArtigoErp(
+                idErp: trim((string) $r->ref),
+                designacao: $r->design !== null ? trim((string) $r->design) : null,
+                familia: isset($r->familia) && trim((string) $r->familia) !== '' ? trim((string) $r->familia) : null,
+                faminome: isset($r->faminome) && trim((string) $r->faminome) !== '' ? trim((string) $r->faminome) : null,
+            );
+        }
+    }
+
     public function obterEquipamentos(?int $limite = null): iterable
     {
         // Lê os equipamentos da tabela ma do PHC pela ligação 'erp' (dblib/FreeTDS), a MESMA que

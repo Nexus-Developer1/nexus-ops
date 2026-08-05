@@ -245,6 +245,10 @@
                             </button>
                         </div>
                         <div class="border-t border-borda px-6 py-6">
+                            {{-- Adicionar por referência do PHC (catálogo local sincronizado) ou à mão ("+ Componente"). --}}
+                            <div class="mb-4">
+                                @include('livewire.equipamentos._pesquisa-artigo')
+                            </div>
                             @forelse ($componentes as $i => $comp)
                                 <div class="mb-3 flex items-start gap-3 last:mb-0" wire:key="fcomp-{{ $i }}">
                                     <input wire:model="componentes.{{ $i }}.designacao" type="text" class="campo-input flex-1" placeholder="Ex: Detetor ótico convencional 701P">

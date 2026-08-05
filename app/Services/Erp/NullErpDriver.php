@@ -20,4 +20,9 @@ class NullErpDriver implements ErpSyncDriver
     {
         return [];
     }
+
+    public function obterArtigos(?int $limite = null): iterable
+    {
+        return [];
+    }
 }

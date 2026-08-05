@@ -29,4 +29,12 @@ interface ErpSyncDriver
      * @return iterable<EquipamentoErp>
      */
     public function obterEquipamentos(?int $limite = null): iterable;
+
+    /**
+     * Devolve os artigos do catálogo do ERP (tabela st — referência + designação + família).
+     *
+     * @param  int|null  $limite  Nº máximo de artigos a devolver (null = decisão do driver).
+     * @return iterable<ArtigoErp>
+     */
+    public function obterArtigos(?int $limite = null): iterable;
 }

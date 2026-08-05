@@ -42,6 +42,7 @@ class SincronizarErp implements ShouldQueue
     private const ETAPAS = [
         'Clientes' => 'erp:sincronizar-clientes',
         'Equipamentos' => 'erp:sincronizar-equipamentos',
+        'Artigos' => 'erp:sincronizar-artigos',
         'Faturação' => 'erp:sincronizar-faturacao',
     ];
 

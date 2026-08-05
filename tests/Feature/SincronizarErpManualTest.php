@@ -43,6 +43,8 @@ class SincronizarErpManualTest extends TestCase
         Artisan::shouldReceive('output')->once()->ordered()->andReturn($clientes === 0 ? 'Sincronização concluída: 10 criados, 2 atualizados, 0 erros.' : 'Sync de clientes FALHOU: ligação recusada');
         Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-equipamentos')->andReturn($equipamentos);
         Artisan::shouldReceive('output')->once()->ordered()->andReturn('Sincronização concluída: 0 criados, 5 atualizados, 0 erros.');
+        Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-artigos')->andReturn(0);
+        Artisan::shouldReceive('output')->once()->ordered()->andReturn('Sincronização concluída: 3 criados, 0 atualizados, 0 erros.');
         Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-faturacao')->andReturn($faturacao);
         Artisan::shouldReceive('output')->once()->ordered()->andReturn('Sincronização concluída: 0 criadas, 9 atualizadas, 0 erros.');
     }
@@ -94,7 +96,7 @@ class SincronizarErpManualTest extends TestCase
         Mail::assertSent(ResultadoSincronizacaoErp::class, function (ResultadoSincronizacaoErp $mail) {
             return $mail->hasTo(config('erp.email_sync'))
                 && $mail->falhou === false
-                && array_keys($mail->resultados) === ['Clientes', 'Equipamentos', 'Faturação']
+                && array_keys($mail->resultados) === ['Clientes', 'Equipamentos', 'Artigos', 'Faturação']
                 && str_contains($mail->resultados['Clientes']['detalhe'], '10 criados');
         });
     }
@@ -221,6 +223,8 @@ class SincronizarErpManualTest extends TestCase
         Artisan::shouldReceive('output')->once()->ordered()->andReturn('Sincronização concluída: 0 criados, 0 atualizados, 0 erros.');
         Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-equipamentos', ['--completo' => true])->andReturn(0);
         Artisan::shouldReceive('output')->once()->ordered()->andReturn('Sincronização concluída: 0 criados.');
+        Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-artigos', ['--completo' => true])->andReturn(0);
+        Artisan::shouldReceive('output')->once()->ordered()->andReturn('Sincronização concluída: 0 criados.');
         Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-faturacao', ['--completo' => true])->andReturn(0);
         Artisan::shouldReceive('output')->once()->ordered()->andReturn('Sincronização concluída: 0 criadas.');
 
@@ -237,6 +241,8 @@ class SincronizarErpManualTest extends TestCase
         Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-clientes')
             ->andThrow(new \RuntimeException('SQLSTATE[08001] host 192.168.1.50:1433 SELECT * FROM cl'));
         Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-equipamentos')->andReturn(0);
+        Artisan::shouldReceive('output')->once()->andReturn('Sincronização concluída: ok.');
+        Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-artigos')->andReturn(0);
         Artisan::shouldReceive('output')->once()->andReturn('Sincronização concluída: ok.');
         Artisan::shouldReceive('call')->once()->ordered()->with('erp:sincronizar-faturacao')->andReturn(0);
         Artisan::shouldReceive('output')->once()->andReturn('Sincronização concluída: ok.');

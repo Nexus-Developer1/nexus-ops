@@ -5,6 +5,7 @@ namespace App\Livewire\Equipamentos;
 use App\Enums\EstadoIntervencao;
 use App\Enums\TipoIntervencao;
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\ComponentesComArtigos;
 use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
@@ -17,6 +18,7 @@ use Livewire\Component;
 class Ficha extends Component
 {
     use ApenasEquipa;
+    use ComponentesComArtigos;
 
     public Equipamento $equipamento;
 
@@ -353,6 +355,7 @@ class Ficha extends Component
             'equipamentoPai' => $this->equipamento->equipamentoPai()->with('local.cliente')->first(),
             'bancosFiltrados' => $this->bancosFiltrados(),
             'novosClientesFiltrados' => $this->novosClientesFiltrados(),
+            'artigosFiltrados' => $this->artigosFiltrados(),
         ]);
     }
 }
