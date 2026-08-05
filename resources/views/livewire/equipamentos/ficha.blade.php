@@ -17,15 +17,7 @@
                 </div>
             @endif
 
-            {{-- Cabeçalho: o MODELO é o título (trocou com o nº de série, que passa ao subtítulo). --}}
-            <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ trim($equipamento->fabricante . ' ' . $equipamento->modelo) ?: ($equipamento->numero_serie ?? 'Equipamento') }}</h1>
-                <span class="etiqueta {{ $equipamento->tipo->classesEtiqueta() }}">{{ $equipamento->tipo->rotulo() }}</span>
-                <span class="etiqueta {{ $equipamento->estado->classesEtiqueta() }}">{{ $equipamento->estado->rotulo() }}</span>
-            </div>
-            <p class="mt-2 text-sm text-texto-medio">{{ $equipamento->local->cliente->nome }} · {{ $equipamento->local->designacao }} · {{ $equipamento->numero_serie ?? '—' }}</p>
-
-            <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 
                 {{-- Coluna principal --}}
                 <div class="space-y-6 lg:col-span-2">
@@ -33,7 +25,11 @@
                     {{-- Identificação + QR — em destaque na coluna principal (trocou com as Especificações). --}}
                     <section class="cartao p-6">
                         <div class="flex items-start justify-between">
-                            <h2 class="text-lg font-semibold text-texto-forte">Identificação</h2>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <h2 class="text-lg font-semibold text-texto-forte">Identificação</h2>
+                                <span class="etiqueta {{ $equipamento->tipo->classesEtiqueta() }}">{{ $equipamento->tipo->rotulo() }}</span>
+                                <span class="etiqueta {{ $equipamento->estado->classesEtiqueta() }}">{{ $equipamento->estado->rotulo() }}</span>
+                            </div>
                             <div class="flex h-16 w-16 items-center justify-center rounded-lg border border-borda bg-fundo text-texto-fraco">
                                 <svg class="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.4"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 3h3m0 0h3m-3 0v3m0-3v-3"/></svg>
                             </div>
