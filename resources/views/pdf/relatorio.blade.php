@@ -311,7 +311,9 @@
                     ['Saída — Tensão L-L (V)', ['L1-L2' => 'vs_ll_l1l2', 'L1-L3' => 'vs_ll_l1l3', 'L2-L3' => 'vs_ll_l2l3']],
                     ['Saída — Corrente (A)', ['L1' => 'is_l1', 'L2' => 'is_l2', 'L3' => 'is_l3']],
                     ['Saída — Corrente de pico (A)', ['L1' => 'ispico_l1', 'L2' => 'ispico_l2', 'L3' => 'ispico_l3']],
-                    ['Baterias / Temperatura', ['Vbat +' => 'vbat_pos', 'Vbat −' => 'vbat_neg', 'Temp (°C)' => 'temperatura']],
+                    // Temperatura separada das baterias: é a temperatura NA UPS, não a das baterias.
+                    ['Baterias', ['Vbat +' => 'vbat_pos', 'Vbat −' => 'vbat_neg']],
+                    ['Temperatura UPS', ['Temp (°C)' => 'temperatura']],
                 ])
                 @foreach (array_chunk($gruposE, 3) as $linhaGrupos)
                     <table class="med-grid">

@@ -15,7 +15,9 @@
         'Saída — Tensão L-L (V)' => ['vs_ll_l1l2' => 'L1-L2', 'vs_ll_l1l3' => 'L1-L3', 'vs_ll_l2l3' => 'L2-L3'],
         'Saída — Corrente (A)' => ['is_l1' => 'L1', 'is_l2' => 'L2', 'is_l3' => 'L3'],
         'Saída — Corrente de pico (A)' => ['ispico_l1' => 'L1', 'ispico_l2' => 'L2', 'ispico_l3' => 'L3'],
-        'Baterias / Temperatura' => ['vbat_pos' => 'Vbat +', 'vbat_neg' => 'Vbat −', 'temperatura' => 'Temp (°C)'],
+        // Temperatura separada das baterias: é a temperatura NA UPS, não a das baterias.
+        'Baterias' => ['vbat_pos' => 'Vbat +', 'vbat_neg' => 'Vbat −'],
+        'Temperatura UPS' => ['temperatura' => 'Temp (°C)'],
     ];
 @endphp
 
