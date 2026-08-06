@@ -191,26 +191,34 @@ document.addEventListener('alpine:init', () => {
             bruta.height = video.videoHeight;
             bruta.getContext('2d').drawImage(video, 0, 0);
 
-            // Recorta automaticamente ao PAPEL (é suposto apanhar só o recibo) e aplica o
-            // filtro de documento adaptativo. Se a deteção falhar, fica o frame inteiro.
-            const zona = this.detetarPapel(bruta);
-            tela.width = zona.w;
-            tela.height = zona.h;
+            // Recorta automaticamente ao PAPEL: com os 4 cantos detetados, ENDIREITA a folha
+            // (correção de perspetiva — comportamento de scanner); senão, recorta à caixa
+            // aparada; falhando tudo, fica o frame inteiro. Filtro de documento no fim.
+            const det = this.detetarPapel(bruta);
             const ctx = tela.getContext('2d');
-            ctx.drawImage(bruta, zona.x, zona.y, zona.w, zona.h, 0, 0, zona.w, zona.h);
-            this.filtroDocumento(ctx, zona.w, zona.h);
+            if (det?.quad) {
+                const plano = this.corrigirPerspetiva(bruta, det.quad);
+                tela.width = plano.width;
+                tela.height = plano.height;
+                ctx.drawImage(plano, 0, 0);
+            } else {
+                const zona = det?.caixa ?? { x: 0, y: 0, w: bruta.width, h: bruta.height };
+                tela.width = zona.w;
+                tela.height = zona.h;
+                ctx.drawImage(bruta, zona.x, zona.y, zona.w, zona.h, 0, 0, zona.w, zona.h);
+            }
+            this.filtroDocumento(ctx, tela.width, tela.height);
 
             this.capturado = true;
             this.pararCamara(); // congela a captura; "Repetir" reabre
         },
 
-        // Encontra o papel: análise numa miniatura (cinzentos + limiar de Otsu) e ENCHENTE a
-        // partir do centro sobre os píxeis claros — o recibo aponta-se ao centro, e a mancha
-        // clara ligada ao centro é o papel; a caixa envolvente dela é o recorte. Mancha
-        // minúscula (não há papel) ou praticamente o frame todo (fundo também claro, sem
-        // fronteira útil) → devolve o frame inteiro, comportamento de antes.
+        // Encontra o papel: análise numa miniatura, ENCHENTE a partir do centro sobre os
+        // píxeis claros e, da mancha, tira os 4 CANTOS (para endireitar a perspetiva) e a
+        // caixa aparada (fallback). O limiar ancora no BRANCO do próprio papel (mediana da
+        // janela central) — um fundo cinzento-claro ou as argolas de um caderno ficam abaixo
+        // e já não se colam à mancha. Devolve { quad, caixa } ou null (usa o frame inteiro).
         detetarPapel(bruta) {
-            const inteiro = { x: 0, y: 0, w: bruta.width, h: bruta.height };
             const W = 200;
             const H = Math.max(1, Math.round(bruta.height * (W / bruta.width)));
             const mini = document.createElement('canvas');
@@ -227,10 +235,21 @@ document.addEventListener('alpine:init', () => {
                 cinza[p] = g;
                 hist[g]++;
             }
-            const limiar = this.limiarOtsu(hist, W * H);
+
+            // Branco de referência do papel: mediana da janela central (±10%) — o recibo
+            // aponta-se ao centro. O limiar é "perto desse branco", nunca abaixo do Otsu.
+            const cx = W >> 1, cy = H >> 1;
+            const janela = [];
+            for (let y = Math.max(0, cy - (H / 10 | 0)); y <= Math.min(H - 1, cy + (H / 10 | 0)); y++) {
+                for (let x = Math.max(0, cx - (W / 10 | 0)); x <= Math.min(W - 1, cx + (W / 10 | 0)); x++) {
+                    janela.push(cinza[y * W + x]);
+                }
+            }
+            janela.sort((a, b) => a - b);
+            const brancoPapel = janela[janela.length >> 1] ?? 255;
+            const limiar = Math.max(this.limiarOtsu(hist, W * H), brancoPapel - 45);
 
             // Semente: o píxel claro mais próximo do centro (anéis a crescer).
-            const cx = W >> 1, cy = H >> 1;
             let semente = -1;
             busca: for (let r = 0; r <= Math.min(W, H) >> 1; r += 2) {
                 for (let dy = -r; dy <= r; dy += 2) {
@@ -241,7 +260,7 @@ document.addEventListener('alpine:init', () => {
                     }
                 }
             }
-            if (semente < 0) return inteiro;
+            if (semente < 0) return null;
 
             // Enchente (4 vizinhos) sobre os claros, a acumular a caixa envolvente.
             const visto = new Uint8Array(W * H);
@@ -263,16 +282,28 @@ document.addEventListener('alpine:init', () => {
             }
 
             const fracao = area / (W * H);
-            if (fracao < 0.08) return inteiro;
+            if (fracao < 0.08) return null;
 
-            // Apara a caixa até às MARGENS da folha: a enchente pode arrastar nesgas de fundo
-            // claro (mesa clara, outra folha atrás) que esticam a caixa. Filas/colunas de borda
-            // que não sejam maioritariamente papel (densidade da mancha < 55%) são cortadas.
+            // 4 CANTOS da mancha (antes de aparar): extremos de x+y e x−y — é isto que
+            // permite endireitar folhas inclinadas/em perspetiva.
+            let tl = null, tr = null, br = null, bl = null;
+            let sMin = Infinity, sMax = -Infinity, dMin = Infinity, dMax = -Infinity;
             const porLinha = new Uint32Array(H);
             const porColuna = new Uint32Array(W);
             for (let p = 0; p < visto.length; p++) {
-                if (visto[p]) { porLinha[(p / W) | 0]++; porColuna[p % W]++; }
+                if (!visto[p]) continue;
+                const x = p % W, y = (p / W) | 0;
+                porLinha[y]++;
+                porColuna[x]++;
+                const s = x + y, dif = x - y;
+                if (s < sMin) { sMin = s; tl = { x, y }; }
+                if (s > sMax) { sMax = s; br = { x, y }; }
+                if (dif > dMax) { dMax = dif; tr = { x, y }; }
+                if (dif < dMin) { dMin = dif; bl = { x, y }; }
             }
+
+            // Apara a caixa até às MARGENS da folha: filas/colunas de borda que não sejam
+            // maioritariamente papel (densidade da mancha < 55%) são cortadas.
             let mudou = true;
             while (mudou && minX < maxX && minY < maxY) {
                 mudou = false;
@@ -285,17 +316,98 @@ document.addEventListener('alpine:init', () => {
             }
 
             // Caixa aparada demasiado pequena → deteção sem préstimo, fica o frame inteiro.
-            if (maxX - minX + 1 < 0.15 * W || maxY - minY + 1 < 0.15 * H) return inteiro;
+            if (maxX - minX + 1 < 0.15 * W || maxY - minY + 1 < 0.15 * H) return null;
 
-            // Caixa da miniatura → coordenadas reais, com 1% de margem à volta.
             const ex = bruta.width / W, ey = bruta.height / H;
+
+            // Caixa da miniatura → coordenadas reais, com 1% de margem à volta (fallback).
             const margem = Math.round(0.01 * bruta.width);
             const x0 = Math.max(0, Math.round(minX * ex) - margem);
             const y0 = Math.max(0, Math.round(minY * ey) - margem);
             const x1 = Math.min(bruta.width, Math.round((maxX + 1) * ex) + margem);
             const y1 = Math.min(bruta.height, Math.round((maxY + 1) * ey) + margem);
+            const caixa = { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
 
-            return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+            // Validação do quadrilátero: área (shoelace) coerente com a mancha (se a enchente
+            // arrastou uma nesga diagonal, os extremos disparam e a área rebenta) e lados
+            // mínimos. Falhando, fica o recorte pela caixa.
+            const areaQuad = Math.abs(
+                (tl.x * tr.y - tr.x * tl.y) + (tr.x * br.y - br.x * tr.y) +
+                (br.x * bl.y - bl.x * br.y) + (bl.x * tl.y - tl.x * bl.y)
+            ) / 2;
+            const lado = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+            const ladoMin = Math.min(lado(tl, tr), lado(tr, br), lado(br, bl), lado(bl, tl));
+            const quadOk = areaQuad >= 0.8 * area && areaQuad <= 1.5 * area && ladoMin >= 0.15 * Math.min(W, H);
+
+            let quad = null;
+            if (quadOk) {
+                // Cantos → coordenadas reais, empurrados 1,5% para fora do centróide (para a
+                // margem da folha não ser rapada) e presos ao frame.
+                const mx = (tl.x + tr.x + br.x + bl.x) / 4, my = (tl.y + tr.y + br.y + bl.y) / 4;
+                quad = [tl, tr, br, bl].map((c) => ({
+                    x: Math.max(0, Math.min(bruta.width - 1, (c.x + (c.x - mx) * 0.015 + 0.5) * ex)),
+                    y: Math.max(0, Math.min(bruta.height - 1, (c.y + (c.y - my) * 0.015 + 0.5) * ey)),
+                }));
+            }
+
+            return { quad, caixa };
+        },
+
+        // Endireita a folha: mapeamento projetivo (Heckbert, quadrado unitário → quadrilátero)
+        // com amostragem bilinear — a folha inclinada/em perspetiva sai plana e retangular.
+        corrigirPerspetiva(bruta, q) {
+            const [tl, tr, br, bl] = q;
+            const lado = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+            let w = Math.round(Math.max(lado(tl, tr), lado(bl, br)));
+            let h = Math.round(Math.max(lado(tl, bl), lado(tr, br)));
+            const esc = Math.min(1, 1600 / Math.max(w, h, 1));
+            w = Math.max(1, Math.round(w * esc));
+            h = Math.max(1, Math.round(h * esc));
+
+            const x0 = tl.x, x1 = tr.x, x2 = br.x, x3 = bl.x;
+            const y0 = tl.y, y1 = tr.y, y2 = br.y, y3 = bl.y;
+            const sx = x0 - x1 + x2 - x3, sy = y0 - y1 + y2 - y3;
+            const dx1 = x1 - x2, dx2 = x3 - x2, dy1 = y1 - y2, dy2 = y3 - y2;
+            const den = dx1 * dy2 - dy1 * dx2;
+            let g = 0, hh = 0;
+            if (Math.abs(den) > 1e-9 && (Math.abs(sx) > 1e-9 || Math.abs(sy) > 1e-9)) {
+                g = (sx * dy2 - sy * dx2) / den;
+                hh = (dx1 * sy - dy1 * sx) / den;
+            }
+            const a = x1 - x0 + g * x1, b = x3 - x0 + hh * x3, c = x0;
+            const dd = y1 - y0 + g * y1, e = y3 - y0 + hh * y3, f = y0;
+
+            const SW = bruta.width, SH = bruta.height;
+            const sd = bruta.getContext('2d').getImageData(0, 0, SW, SH).data;
+
+            const saida = document.createElement('canvas');
+            saida.width = w;
+            saida.height = h;
+            const sctx = saida.getContext('2d');
+            const out = sctx.createImageData(w, h);
+            const od = out.data;
+
+            for (let Y = 0, o = 0; Y < h; Y++) {
+                const v = Y / (h - 1 || 1);
+                for (let X = 0; X < w; X++, o += 4) {
+                    const u = X / (w - 1 || 1);
+                    const denom = g * u + hh * v + 1;
+                    const xs = Math.max(0, Math.min(SW - 1.001, (a * u + b * v + c) / denom));
+                    const ys = Math.max(0, Math.min(SH - 1.001, (dd * u + e * v + f) / denom));
+                    const xi = xs | 0, yi = ys | 0;
+                    const fx = xs - xi, fy = ys - yi;
+                    const p00 = (yi * SW + xi) * 4, p10 = p00 + 4, p01 = p00 + SW * 4, p11 = p01 + 4;
+                    for (let ch = 0; ch < 3; ch++) {
+                        od[o + ch] =
+                            sd[p00 + ch] * (1 - fx) * (1 - fy) + sd[p10 + ch] * fx * (1 - fy) +
+                            sd[p01 + ch] * (1 - fx) * fy + sd[p11 + ch] * fx * fy;
+                    }
+                    od[o + 3] = 255;
+                }
+            }
+            sctx.putImageData(out, 0, 0);
+
+            return saida;
         },
 
         // Limiar de Otsu: separa "papel claro" de "fundo escuro" pelo histograma.
