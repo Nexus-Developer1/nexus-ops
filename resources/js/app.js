@@ -263,11 +263,33 @@ document.addEventListener('alpine:init', () => {
             }
 
             const fracao = area / (W * H);
-            if (fracao < 0.08 || fracao > 0.97) return inteiro;
+            if (fracao < 0.08) return inteiro;
 
-            // Caixa da miniatura → coordenadas reais, com 2% de margem à volta.
+            // Apara a caixa até às MARGENS da folha: a enchente pode arrastar nesgas de fundo
+            // claro (mesa clara, outra folha atrás) que esticam a caixa. Filas/colunas de borda
+            // que não sejam maioritariamente papel (densidade da mancha < 55%) são cortadas.
+            const porLinha = new Uint32Array(H);
+            const porColuna = new Uint32Array(W);
+            for (let p = 0; p < visto.length; p++) {
+                if (visto[p]) { porLinha[(p / W) | 0]++; porColuna[p % W]++; }
+            }
+            let mudou = true;
+            while (mudou && minX < maxX && minY < maxY) {
+                mudou = false;
+                const largura = maxX - minX + 1;
+                const altura = maxY - minY + 1;
+                if (porLinha[minY] < 0.55 * largura) { minY++; mudou = true; continue; }
+                if (porLinha[maxY] < 0.55 * largura) { maxY--; mudou = true; continue; }
+                if (porColuna[minX] < 0.55 * altura) { minX++; mudou = true; continue; }
+                if (porColuna[maxX] < 0.55 * altura) { maxX--; mudou = true; }
+            }
+
+            // Caixa aparada demasiado pequena → deteção sem préstimo, fica o frame inteiro.
+            if (maxX - minX + 1 < 0.15 * W || maxY - minY + 1 < 0.15 * H) return inteiro;
+
+            // Caixa da miniatura → coordenadas reais, com 1% de margem à volta.
             const ex = bruta.width / W, ey = bruta.height / H;
-            const margem = Math.round(0.02 * bruta.width);
+            const margem = Math.round(0.01 * bruta.width);
             const x0 = Math.max(0, Math.round(minX * ex) - margem);
             const y0 = Math.max(0, Math.round(minY * ey) - margem);
             const x1 = Math.min(bruta.width, Math.round((maxX + 1) * ex) + margem);
