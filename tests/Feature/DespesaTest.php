@@ -24,6 +24,16 @@ class DespesaTest extends TestCase
         return User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
     }
 
+    // #[Locked]: o registo em edição define-se só na rota — um payload forjado a apontar o
+    // editor a OUTRO registo a meio da sessão é recusado (15.ª revisão de segurança).
+    public function test_registo_em_edicao_e_trancado_ao_browser(): void
+    {
+        $this->expectException(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
+
+        Livewire::actingAs($this->admin())->test(\App\Livewire\Despesas\Editor::class)
+            ->set('registoId', 999);
+    }
+
     private function tecnico(): User
     {
         return User::create(['nome' => 'Téc', 'email' => 't@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);

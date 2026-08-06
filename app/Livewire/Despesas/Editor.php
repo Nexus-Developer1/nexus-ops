@@ -20,6 +20,10 @@ class Editor extends Component
     use ApenasEquipa;
     use WithFileUploads;
 
+    // #[Locked]: definido apenas no mount (rota) — um payload forjado a apontar o editor a
+    // outro registo a meio da sessão é recusado (15.ª revisão de segurança; defesa em
+    // profundidade — a equipa já pode abrir qualquer registo pela rota, mas sempre às claras).
+    #[\Livewire\Attributes\Locked]
     public ?int $registoId = null;
 
     // Cabeçalho da folha (como na folha impressa da empresa).
