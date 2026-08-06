@@ -257,7 +257,8 @@ class DespesaTest extends TestCase
         $this->assertSame(1, $r3->despesas()->count());
     }
 
-    public function test_kpis_separam_faturavel_de_incluido(): void
+    // KPIs: só Total e Nº de despesas (o faturável/incluído saiu da página com o filtro).
+    public function test_kpis_mostram_total_e_numero_do_periodo(): void
     {
         $admin = $this->admin();
         Despesa::create(['data' => now(), 'categoria' => 'Outras despesas', 'descricao' => 'A', 'valor' => 100, 'faturavel' => true]);
@@ -267,9 +268,10 @@ class DespesaTest extends TestCase
 
         Livewire::actingAs($admin)->test(Listagem::class)
             ->assertViewHas('kpis', fn ($k) => $k['total'] === 150.0
-                && $k['faturavel'] === 100.0
-                && $k['incluido'] === 50.0
-                && $k['numero'] === 2);
+                && $k['numero'] === 2
+                && ! array_key_exists('faturavel', $k))
+            ->assertDontSee('Faturável à parte')
+            ->assertDontSee('Incluído no contrato');
     }
 
     public function test_admin_e_tecnico_acedem(): void

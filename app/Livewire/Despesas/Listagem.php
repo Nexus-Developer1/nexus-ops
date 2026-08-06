@@ -23,9 +23,6 @@ class Listagem extends Component
     public string $categoria = '';
 
     #[Url]
-    public string $faturavel = ''; // '' | sim | nao
-
-    #[Url]
     public string $periodo = 'mes'; // mes | tudo
 
     public function updatingPesquisa(): void
@@ -34,11 +31,6 @@ class Listagem extends Component
     }
 
     public function updatingCategoria(): void
-    {
-        $this->resetPage();
-    }
-
-    public function updatingFaturavel(): void
     {
         $this->resetPage();
     }
@@ -64,8 +56,6 @@ class Listagem extends Component
         return Despesa::query()
             ->when($this->periodo === 'mes', fn ($q) => $q->whereYear('data', now()->year)->whereMonth('data', now()->month))
             ->when($this->categoria, fn ($q) => $q->where('categoria', $this->categoria))
-            ->when($this->faturavel === 'sim', fn ($q) => $q->where('faturavel', true))
-            ->when($this->faturavel === 'nao', fn ($q) => $q->where('faturavel', false))
             ->when($this->pesquisa, function ($q) {
                 $termo = '%' . $this->pesquisa . '%';
                 $q->where(fn ($q) => $q->where('descricao', 'ilike', $termo)
@@ -86,12 +76,10 @@ class Listagem extends Component
             ->orderByDesc('id')
             ->paginate(12);
 
-        // KPIs sobre as LINHAS filtradas (cada base() devolve uma query nova) — por categoria
-        // continuam exatos, mesmo com o agrupamento em registos.
+        // KPIs sobre as LINHAS filtradas (cada base() devolve uma query nova). Os KPIs de
+        // faturável/incluído saíram a pedido da equipa, com o filtro respetivo.
         $kpis = [
             'total' => (float) $this->base()->sum('valor'),
-            'faturavel' => (float) $this->base()->where('faturavel', true)->sum('valor'),
-            'incluido' => (float) $this->base()->where('faturavel', false)->sum('valor'),
             'numero' => $this->base()->count(),
         ];
 

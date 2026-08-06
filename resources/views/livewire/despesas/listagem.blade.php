@@ -20,19 +20,12 @@
             <p class="mt-2 text-sm text-texto-medio">Custos da operação · {{ $periodo === 'mes' ? 'mês atual' : 'todo o período' }}.</p>
 
 
-            {{-- KPIs --}}
-            <div class="mt-8 grid grid-cols-2 gap-5 lg:grid-cols-4">
+            {{-- KPIs (o "faturável à parte" / "incluído no contrato" saiu a pedido da equipa —
+                 as despesas deixaram de se ligar a contratos no formulário). --}}
+            <div class="mt-8 grid grid-cols-2 gap-5">
                 <div class="cartao p-6">
                     <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Total</div>
                     <div class="mt-2 text-2xl font-semibold text-texto-forte">{{ number_format($kpis['total'], 2, ',', '.') }} €</div>
-                </div>
-                <div class="cartao p-6">
-                    <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Faturável à parte</div>
-                    <div class="mt-2 text-2xl font-semibold text-info-600">{{ number_format($kpis['faturavel'], 2, ',', '.') }} €</div>
-                </div>
-                <div class="cartao p-6">
-                    <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Incluído no contrato</div>
-                    <div class="mt-2 text-2xl font-semibold text-texto-forte">{{ number_format($kpis['incluido'], 2, ',', '.') }} €</div>
                 </div>
                 <div class="cartao p-6">
                     <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Nº de despesas</div>
@@ -51,11 +44,6 @@
                     @foreach ($categorias as $c)
                         <option value="{{ $c }}">{{ $c }}</option>
                     @endforeach
-                </select>
-                <select wire:model.live="faturavel" class="campo-select col-span-2 w-full sm:col-span-1 sm:w-44">
-                    <option value="">Faturável: todas</option>
-                    <option value="sim">Faturável à parte</option>
-                    <option value="nao">Incluído no contrato</option>
                 </select>
                 <div class="relative col-span-2 sm:col-span-1 sm:min-w-56 sm:flex-1">
                     <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 17a6 6 0 100-12 6 6 0 000 12z"/></svg>
