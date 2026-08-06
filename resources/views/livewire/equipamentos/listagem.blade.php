@@ -16,23 +16,23 @@
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Equipamentos</h1>
             <p class="mt-2 text-sm text-texto-medio">{{ $equipamentos->total() }} {{ \Illuminate\Support\Str::plural('equipamento', $equipamentos->total()) }} registado{{ $equipamentos->total() === 1 ? '' : 's' }}.</p>
 
-            {{-- Filtros: tipos em cima (linha própria), pesquisa + família por baixo. --}}
+            {{-- Filtros numa só linha, todos no mesmo estilo de campo (os chips de tipo
+                 passaram a select, a pedido da equipa). --}}
             <div class="mt-8 space-y-4">
-                {{-- Tipo de equipamento --}}
-                <div class="flex flex-wrap items-center gap-2">
-                    <button wire:click="filtrarTipo('')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $tipo === '' ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">Todos</button>
-                    @foreach ($tipos as $t)
-                        <button wire:click="filtrarTipo('{{ $t->value }}')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $tipo === $t->value ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">{{ $t->rotulo() }}</button>
-                    @endforeach
-                </div>
-
-                {{-- Pesquisa única (o combobox "1º filtrar por cliente" saiu a pedido da equipa):
-                     procura sempre em TODOS os clientes — série, modelo ou nome do cliente. --}}
+                {{-- Pesquisa única: procura sempre em TODOS os clientes — série, modelo ou nome. --}}
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <div class="relative w-full sm:max-w-sm">
                         <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         <input wire:model.live.debounce.400ms="pesquisa" type="text" class="campo-input pl-10" placeholder="Pesquisar por nº de série, modelo ou cliente...">
                     </div>
+
+                    {{-- Tipo de equipamento --}}
+                    <select wire:model.live="tipo" class="campo-select w-full sm:w-auto sm:min-w-[13rem]">
+                        <option value="">Todos os tipos</option>
+                        @foreach ($tipos as $t)
+                            <option value="{{ $t->value }}">{{ $t->rotulo() }}</option>
+                        @endforeach
+                    </select>
 
                     {{-- Filtro por família (nome, vindo do PHC) — só aparece quando há famílias sincronizadas. --}}
                     @if ($familias->isNotEmpty())

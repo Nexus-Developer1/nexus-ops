@@ -81,9 +81,8 @@ class Listagem extends Component
         $this->resetPage();
     }
 
-    public function filtrarTipo(string $tipo): void
+    public function updatingTipo(): void
     {
-        $this->tipo = $tipo;
         $this->resetPage();
     }
 
@@ -113,14 +112,18 @@ class Listagem extends Component
             })
             ;
 
-        // Whitelist (default = mais recentes). Desempate por id → paginação estável.
+        // Whitelist (default = mais recentes). "Recentes/antigos" seguem a ORDEM DO PHC
+        // (criado_erp_em = ma.ousrdata) e não a ordem de inserção na app — o backfill dos
+        // "sem cliente" inseriu equipamentos antigos do PHC por último e baralhava o topo.
+        // Manuais (sem PHC) ordenam pela data de registo na app (coalesce). Desempate por
+        // id → paginação estável.
         match ($this->ordenar) {
-            'antigos' => $equipamentos->orderBy('id'),
+            'antigos' => $equipamentos->orderByRaw('coalesce(criado_erp_em, created_at) asc')->orderBy('id'),
             'serie_asc' => $equipamentos->orderByRaw('numero_serie asc nulls last')->orderBy('id'),
             'serie_desc' => $equipamentos->orderByRaw('numero_serie desc nulls last')->orderBy('id'),
             'cliente_asc' => $equipamentos->orderBy($this->subNomeCliente())->orderByDesc('id'),
             'cliente_desc' => $equipamentos->orderByDesc($this->subNomeCliente())->orderByDesc('id'),
-            default => $equipamentos->orderByDesc('id'),
+            default => $equipamentos->orderByRaw('coalesce(criado_erp_em, created_at) desc nulls last')->orderByDesc('id'),
         };
 
         $equipamentos = $equipamentos->paginate(10);
