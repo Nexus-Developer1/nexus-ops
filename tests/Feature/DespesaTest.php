@@ -194,6 +194,35 @@ class DespesaTest extends TestCase
         $this->assertStringContainsString('attachment', $resp->headers->get('Content-Disposition'));
     }
 
+    // Os recibos anexados às linhas saem no PDF (imagens embebidas em base64, agrupadas por
+    // linha); um ficheiro em falta no storage é saltado sem rebentar a geração.
+    public function test_pdf_inclui_os_recibos_das_linhas(): void
+    {
+        $admin = $this->admin();
+        $registo = RegistoDespesa::create(['criado_por' => $admin->id]);
+        $despesa = $registo->despesas()->create(['data' => '2026-08-04', 'categoria' => 'Hotel', 'descricao' => 'BNP - Lisboa', 'valor' => 120, 'faturavel' => false]);
+
+        // Recibo real no storage + um com o ficheiro em falta (não pode rebentar).
+        $chave = 'anexos/despesas/' . $despesa->id . '/recibo-teste.jpg';
+        \Illuminate\Support\Facades\Storage::disk()->put($chave, 'conteudo-jpg-de-teste');
+        $despesa->anexos()->create(['nome_ficheiro' => 'recibo.jpg', 'storage_key' => $chave, 'mime' => 'image/jpeg', 'tamanho' => 21, 'criado_por' => $admin->id]);
+        $despesa->anexos()->create(['nome_ficheiro' => 'perdido.jpg', 'storage_key' => 'anexos/despesas/' . $despesa->id . '/nao-existe.jpg', 'mime' => 'image/jpeg', 'tamanho' => 1, 'criado_por' => $admin->id]);
+
+        $html = view('pdf.registo-despesas', ['registo' => $registo])->render();
+
+        $this->assertStringContainsString('Recibos', $html);
+        $this->assertStringContainsString('BNP - Lisboa', $html);
+        $this->assertStringContainsString(base64_encode('conteudo-jpg-de-teste'), $html); // imagem embebida
+
+        // Sem recibos, a secção nem aparece.
+        $registoVazio = RegistoDespesa::create(['criado_por' => $admin->id]);
+        $registoVazio->despesas()->create(['data' => '2026-08-04', 'categoria' => 'Hotel', 'descricao' => 'Sem recibos', 'valor' => 10, 'faturavel' => false]);
+        // (class="..." e não o nome solto — o seletor CSS vive sempre no <head>.)
+        $this->assertStringNotContainsString('class="recibos-titulo"', view('pdf.registo-despesas', ['registo' => $registoVazio])->render());
+
+        \Illuminate\Support\Facades\Storage::disk()->delete($chave); // limpeza best-effort
+    }
+
     // Eliminar o registo elimina as linhas (soft delete).
     public function test_eliminar_registo_elimina_as_linhas(): void
     {

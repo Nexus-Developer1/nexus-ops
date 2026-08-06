@@ -18,6 +18,13 @@
         .resumo td { border: 1px solid #111827; padding: 3px 6px; font-size: 9px; }
         .resumo .rot { font-weight: bold; text-transform: uppercase; }
         .suite { color: #9ca3af; font-size: 7px; letter-spacing: 2px; margin-top: 2px; }
+        /* Recibos digitalizados (4 por linha, imagem inteira visível). */
+        .recibos-titulo { font-size: 11px; font-weight: bold; text-transform: uppercase; margin: 0 0 6px; }
+        .recibo-grupo { margin-bottom: 10px; }
+        .recibo-rot { font-size: 8.5px; font-weight: bold; margin-bottom: 3px; }
+        .recibos-tab { width: 100%; border-collapse: collapse; }
+        .recibo-cel { width: 25%; padding: 0 6px 6px 0; }
+        .recibo-img { width: 100%; height: 190px; object-fit: contain; border: 1px solid #e5e7eb; }
     </style>
 </head>
 <body>
@@ -107,5 +114,34 @@
     <table class="resumo" style="width: 42%; margin-left: 58%; margin-top: 8px;">
         <tr><td class="rot">Total despesas</td><td class="num">{{ number_format($total, 2, ',', ' ') }} €</td></tr>
     </table>
+
+    {{-- Recibos digitalizados: as imagens anexadas a cada linha saem no PDF (embebidas em
+         base64 — o dompdf tem enable_remote=false). Ficheiro em falta no storage é saltado
+         sem rebentar a geração; linhas sem recibos não aparecem aqui. --}}
+    @php($comRecibos = $linhas->filter(fn ($d) => $d->anexos->isNotEmpty()))
+    @if ($comRecibos->isNotEmpty())
+        <div style="page-break-before: always;"></div>
+        <div class="recibos-titulo">Recibos</div>
+        @foreach ($comRecibos as $d)
+            <div class="recibo-grupo">
+                <div class="recibo-rot">{{ $d->data->format('d/m/Y') }} · {{ $d->descricao }}{{ $d->detalhe ? ' — ' . $d->detalhe : '' }} · {{ $d->categoria }} · {{ number_format((float) $d->valor, 2, ',', ' ') }} €</div>
+                <table class="recibos-tab">
+                    @foreach ($d->anexos->chunk(4) as $grupo)
+                        <tr>
+                            @foreach ($grupo as $anexo)
+                                <td class="recibo-cel">
+                                    @php($conteudo = \Illuminate\Support\Facades\Storage::disk()->get($anexo->storage_key))
+                                    @if ($conteudo !== null)
+                                        <img class="recibo-img" src="data:{{ $anexo->mime ?: 'image/jpeg' }};base64,{{ base64_encode($conteudo) }}">
+                                    @endif
+                                </td>
+                            @endforeach
+                            @for ($k = $grupo->count(); $k < 4; $k++)<td class="recibo-cel"></td>@endfor
+                        </tr>
+                    @endforeach
+                </table>
+            </div>
+        @endforeach
+    @endif
 </body>
 </html>
