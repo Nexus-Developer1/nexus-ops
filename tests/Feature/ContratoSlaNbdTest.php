@@ -30,7 +30,7 @@ class ContratoSlaNbdTest extends TestCase
             ->set('modelo_faturacao_id', ModeloFaturacao::query()->value('id'))
             // NBD marcado E horas preenchidas — o NBD tem de ganhar (exclusividade).
             ->set('slas', [[
-                'prioridade' => 'critica', 'tempo_resposta_horas' => 4,
+                'tempo_resposta_horas' => 4,
                 'resposta_nbd' => true, 'tempo_resolucao_horas' => 48, 'horario_cobertura' => '24x7',
             ]])
             ->call('guardar')
@@ -62,7 +62,7 @@ class ContratoSlaNbdTest extends TestCase
             ->set('tipo', 'preventiva')
             ->set('modelo_faturacao_id', ModeloFaturacao::query()->value('id'))
             ->set('slas', [[
-                'prioridade' => 'alta', 'tempo_resposta_horas' => 8,
+                'tempo_resposta_horas' => 8,
                 'resposta_nbd' => false, 'tempo_resolucao_horas' => 72, 'horario_cobertura' => '8x5',
             ]])
             ->call('guardar')

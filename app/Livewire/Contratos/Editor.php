@@ -3,7 +3,6 @@
 namespace App\Livewire\Contratos;
 
 use App\Enums\EstadoContrato;
-use App\Enums\PrioridadeSla;
 use App\Enums\TipoContrato;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Cliente;
@@ -113,7 +112,6 @@ class Editor extends Component
             $this->periodo_aviso_dias = $contrato->periodo_aviso_dias;
             $this->equipamentoIds = $contrato->equipamentos->pluck('id')->all();
             $this->slas = $contrato->slas->map(fn ($s) => [
-                'prioridade' => $s->prioridade->value,
                 'tempo_resposta_horas' => $s->tempo_resposta_horas,
                 'resposta_nbd' => $s->resposta_nbd,
                 'tempo_resolucao_horas' => $s->tempo_resolucao_horas,
@@ -141,7 +139,7 @@ class Editor extends Component
 
     public function adicionarSla(): void
     {
-        $this->slas[] = ['prioridade' => '', 'tempo_resposta_horas' => null, 'resposta_nbd' => false, 'tempo_resolucao_horas' => null, 'horario_cobertura' => '8x5'];
+        $this->slas[] = ['tempo_resposta_horas' => null, 'resposta_nbd' => false, 'tempo_resolucao_horas' => null, 'horario_cobertura' => '8x5'];
     }
 
     public function removerSla(int $i): void
@@ -213,7 +211,6 @@ class Editor extends Component
             'equipamentoIds' => ['array'],
             'equipamentoIds.*' => ['exists:equipamentos,id'],
             'slas' => ['array'],
-            'slas.*.prioridade' => ['required', Rule::enum(PrioridadeSla::class)],
             'slas.*.tempo_resposta_horas' => ['nullable', 'integer', 'min:0'],
             'slas.*.resposta_nbd' => ['boolean'],
             'slas.*.tempo_resolucao_horas' => ['nullable', 'integer', 'min:0'],
@@ -370,7 +367,6 @@ class Editor extends Component
             'tiposEquipamentos' => $tiposEquipamentos,
             'tiposContrato' => TipoContrato::cases(),
             'modelosFaturacao' => ModeloFaturacao::orderBy('nome')->get(),
-            'prioridades' => PrioridadeSla::cases(),
         ]);
     }
 }

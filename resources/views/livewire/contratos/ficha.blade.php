@@ -122,8 +122,8 @@
                 <div class="px-6 py-5"><h2 class="text-lg font-semibold text-texto-forte">SLAs</h2></div>
                 <div class="overflow-x-auto"><table class="w-full min-w-[640px] text-left text-sm">
                     <thead>
+                        {{-- (A coluna "Prioridade" saiu — os SLAs deixaram de ser por prioridade.) --}}
                         <tr class="border-y border-borda bg-fundo text-xs uppercase tracking-wide text-texto-medio">
-                            <th class="px-6 py-3 font-semibold">Prioridade</th>
                             <th class="px-6 py-3 font-semibold">Tempo de resposta</th>
                             <th class="px-6 py-3 font-semibold">Tempo de resolução</th>
                             <th class="px-6 py-3 font-semibold">Cobertura</th>
@@ -132,13 +132,12 @@
                     <tbody>
                         @forelse ($contrato->slas as $s)
                             <tr class="border-b border-borda last:border-0">
-                                <td class="px-6 py-3.5"><span class="etiqueta {{ $s->prioridade->classesEtiqueta() }}">{{ $s->prioridade->rotulo() }}</span></td>
                                 <td class="px-6 py-3.5 text-texto-medio">{{ $s->rotuloResposta() }}</td>
                                 <td class="px-6 py-3.5 text-texto-medio">{{ $s->tempo_resolucao_horas ? $s->tempo_resolucao_horas . ' h' : '—' }}</td>
                                 <td class="px-6 py-3.5 text-texto-medio">{{ $s->horario_cobertura }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="4" class="px-6 py-8 text-center text-sm text-texto-medio">Sem SLAs definidos.</td></tr>
+                            <tr><td colspan="3" class="px-6 py-8 text-center text-sm text-texto-medio">Sem SLAs definidos.</td></tr>
                         @endforelse
                     </tbody>
                 </table></div>

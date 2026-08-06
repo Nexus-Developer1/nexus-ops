@@ -238,23 +238,15 @@
                 <div class="flex items-center justify-between px-6 py-5">
                     <div>
                         <h2 class="text-lg font-semibold text-texto-forte">SLAs</h2>
-                        <p class="mt-1 text-xs text-texto-fraco">Opcionais; em cada linha adicionada, a <span class="text-perigo-500">*</span>prioridade e a cobertura (8x5/24x7) são obrigatórias.</p>
+                        <p class="mt-1 text-xs text-texto-fraco">Opcionais; em cada linha adicionada, a cobertura (8x5/24x7) é obrigatória.</p>
                     </div>
                     <button type="button" wire:click="adicionarSla" class="botao-secundario">+ SLA</button>
                 </div>
                 <div class="border-t border-borda px-6 py-6">
                     @forelse ($slas as $i => $sla)
                         <div class="mb-4 grid grid-cols-2 sm:grid-cols-12 items-start gap-3 border-b border-borda pb-4 last:mb-0 last:border-0 last:pb-0 sm:border-0 sm:pb-0" wire:key="sla-{{ $i }}">
-                            <div class="col-span-2 sm:col-span-3">
-                                <select wire:model="slas.{{ $i }}.prioridade" class="campo-select">
-                                    <option value="">Prioridade... *</option>
-                                    @foreach ($prioridades as $p)
-                                        <option value="{{ $p->value }}">{{ $p->rotulo() }}</option>
-                                    @endforeach
-                                </select>
-                                @error('slas.'.$i.'.prioridade') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            </div>
-                            <div class="sm:col-span-3">
+                            {{-- (A "Prioridade" saiu a pedido da equipa — linhas só com resposta/NBD + resolução + cobertura.) --}}
+                            <div class="col-span-2 sm:col-span-4">
                                 {{-- Resposta: em horas OU NBD (Next Business Day) — o NBD desativa as horas. --}}
                                 <input wire:model="slas.{{ $i }}.tempo_resposta_horas" type="number" class="campo-input disabled:bg-fundo disabled:text-texto-fraco" placeholder="Resposta (h)" @if (! empty($slas[$i]['resposta_nbd'])) disabled @endif>
                                 <label class="mt-1.5 inline-flex cursor-pointer items-center gap-1.5 text-xs text-texto-medio">
@@ -262,10 +254,10 @@
                                     NBD (next business day)
                                 </label>
                             </div>
-                            <div class="sm:col-span-3">
+                            <div class="sm:col-span-4">
                                 <input wire:model="slas.{{ $i }}.tempo_resolucao_horas" type="number" class="campo-input" placeholder="Resolução (h)">
                             </div>
-                            <div class="sm:col-span-2">
+                            <div class="sm:col-span-3">
                                 <select wire:model="slas.{{ $i }}.horario_cobertura" class="campo-select">
                                     <option value="8x5">8x5</option>
                                     <option value="24x7">24x7</option>

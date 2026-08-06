@@ -72,7 +72,7 @@ class ContratoTest extends TestCase
             ->set('tipo', 'full_service')
             ->set('modelo_faturacao_id', $this->modeloFaturacaoId())
             ->set('equipamentoIds', [$equip->id])
-            ->set('slas', [['prioridade' => 'critica', 'tempo_resposta_horas' => 4, 'tempo_resolucao_horas' => 24, 'horario_cobertura' => '24x7']])
+            ->set('slas', [['tempo_resposta_horas' => 4, 'tempo_resolucao_horas' => 24, 'horario_cobertura' => '24x7']])
             ->call('guardar')
             ->assertHasNoErrors()
             // Contrato novo (rascunho): abre o popup ativar/suspender em vez de sair já.

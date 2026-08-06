@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
-use App\Enums\PrioridadeSla;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-// SLA de um contrato, por prioridade — medido contra as intervenções corretivas (CLAUDE.md §4).
+// SLA de um contrato — medido contra as intervenções corretivas (CLAUDE.md §4).
+// (A "prioridade" saiu a pedido da equipa; a coluna fica na BD para o histórico.)
 class ContratoSla extends Model
 {
     protected $table = 'contrato_slas';
@@ -14,7 +14,6 @@ class ContratoSla extends Model
     /** @var list<string> */
     protected $fillable = [
         'contrato_id',
-        'prioridade',
         'tempo_resposta_horas',
         'resposta_nbd',
         'tempo_resolucao_horas',
@@ -25,7 +24,6 @@ class ContratoSla extends Model
     protected function casts(): array
     {
         return [
-            'prioridade' => PrioridadeSla::class,
             'resposta_nbd' => 'boolean',
         ];
     }

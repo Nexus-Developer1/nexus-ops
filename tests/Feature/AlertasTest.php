@@ -125,7 +125,7 @@ class AlertasTest extends TestCase
         $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
         $contrato = Contrato::create(['numero' => 'C-2', 'cliente_id' => $local->cliente_id, 'data_inicio' => now()->subYear(),
             'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'corretiva', 'modelo_faturacao_id' => \App\Models\ModeloFaturacao::query()->value('id')]);
-        $contrato->slas()->create(['prioridade' => 'critica', 'tempo_resposta_horas' => 2, 'tempo_resolucao_horas' => 4, 'horario_cobertura' => '24x7']);
+        $contrato->slas()->create(['tempo_resposta_horas' => 2, 'tempo_resolucao_horas' => 4, 'horario_cobertura' => '24x7']);
 
         Intervencao::create(['equipamento_id' => $equip->id, 'contrato_id' => $contrato->id, 'tipo' => 'corretiva',
             'estado' => 'em_curso', 'data_inicio' => now()->subHours(10)]); // 10h > 4h
