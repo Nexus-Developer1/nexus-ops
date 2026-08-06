@@ -129,8 +129,11 @@ class Listagem extends Component
         $equipamentos = Equipamento::query()
             ->with('local.cliente')
             ->withCount('equipamentosAssociados')
-            // 1º filtro: cliente escolhido no combobox — tudo o resto atua dentro dele.
-            ->when($this->clienteId, fn ($q) => $q->whereHas('local', fn ($q2) => $q2->where('cliente_id', $this->clienteId)))
+            // 1º filtro: cliente escolhido no combobox — MAS a pesquisa de texto IGNORA-O:
+            // quem escreve um nº de série quer encontrar o equipamento esteja onde estiver
+            // (no PHC há faturas sem a série associada ao cliente certo — dentro do cliente
+            // "esperado", o equipamento nunca aparecia).
+            ->when($this->clienteId && trim($this->pesquisa) === '', fn ($q) => $q->whereHas('local', fn ($q2) => $q2->where('cliente_id', $this->clienteId)))
             ->when($this->tipo, fn ($q) => $q->where('tipo', $this->tipo))
             ->when($this->familia, fn ($q) => $q->where('faminome', $this->familia))
             // 'com'/'sem' banco associado (exclui os próprios bancos); 'banco' = só bancos associados a um UPS.

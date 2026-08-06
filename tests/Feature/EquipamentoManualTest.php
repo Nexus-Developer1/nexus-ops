@@ -109,8 +109,10 @@ class EquipamentoManualTest extends TestCase
             ->assertViewHas('equipamentos', fn ($p) => $p->pluck('id')->contains($ups->id) && ! $p->pluck('id')->contains($peca->id));
     }
 
-    // Listagem: 1º filtra-se o CLIENTE (combobox), depois a pesquisa atua dentro dele.
-    public function test_listagem_filtra_primeiro_por_cliente_e_depois_pesquisa(): void
+    // Listagem: o filtro de cliente restringe a navegação, MAS a pesquisa de texto ignora-o —
+    // um nº de série encontra o equipamento esteja em que cliente estiver (no PHC há faturas
+    // sem a série associada ao cliente certo; dentro do cliente "esperado" nunca aparecia).
+    public function test_pesquisa_ignora_o_filtro_de_cliente(): void
     {
         $admin = $this->admin();
         $acme = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
@@ -124,19 +126,25 @@ class EquipamentoManualTest extends TestCase
         $c = Livewire::actingAs($admin)->test(Listagem::class)
             ->call('selecionarClienteFiltro', $acme->id);
 
-        // Só equipamentos do cliente escolhido.
+        // Sem pesquisa, o filtro de cliente aplica-se: só equipamentos da ACME.
         $c->assertViewHas('equipamentos', fn ($p) => $p->pluck('id')->contains($upsAcme->id)
             && $p->pluck('id')->contains($outroAcme->id)
             && ! $p->pluck('id')->contains($upsBeta->id));
 
-        // 2º filtro: a pesquisa (modelo) atua DENTRO do cliente — o NPW da BETA não entra.
+        // Com pesquisa, o cliente é IGNORADO: a série da BETA aparece mesmo com a ACME filtrada.
+        $c->set('pesquisa', 'SN-BETA-1')
+            ->assertViewHas('equipamentos', fn ($p) => $p->pluck('id')->contains($upsBeta->id));
+
+        // E a pesquisa por modelo devolve os NPW dos DOIS clientes.
         $c->set('pesquisa', 'NPW')
             ->assertViewHas('equipamentos', fn ($p) => $p->pluck('id')->contains($upsAcme->id)
-                && ! $p->pluck('id')->contains($outroAcme->id)
-                && ! $p->pluck('id')->contains($upsBeta->id));
+                && $p->pluck('id')->contains($upsBeta->id)
+                && ! $p->pluck('id')->contains($outroAcme->id));
 
-        // Limpar volta a mostrar todos.
-        $c->set('pesquisa', '')->call('limparClienteFiltro')
+        // Limpar o texto repõe o filtro de cliente; limpar o cliente mostra todos.
+        $c->set('pesquisa', '')
+            ->assertViewHas('equipamentos', fn ($p) => ! $p->pluck('id')->contains($upsBeta->id));
+        $c->call('limparClienteFiltro')
             ->assertViewHas('equipamentos', fn ($p) => $p->total() === 3);
     }
 
