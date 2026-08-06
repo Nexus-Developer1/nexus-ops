@@ -6,8 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-// Despesa da operação — área de gestão (admin). Liga-se opcionalmente a cliente,
-// equipamento, intervenção e contrato; faturavel distingue "à parte" de "incluído".
+// Despesa (linha de um RegistoDespesa) — área de gestão. As colunas de ligação a
+// equipamento/intervenção/contrato mantêm o histórico na BD, mas deixaram de se editar
+// e mostrar (saíram do formulário a pedido da equipa) — as relações órfãs foram removidas;
+// cliente_id continua vivo (filtros da listagem) e faturavel alimenta os KPIs.
 class Despesa extends Model
 {
     use SoftDeletes;
@@ -47,21 +49,6 @@ class Despesa extends Model
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
-    }
-
-    public function equipamento(): BelongsTo
-    {
-        return $this->belongsTo(Equipamento::class);
-    }
-
-    public function intervencao(): BelongsTo
-    {
-        return $this->belongsTo(Intervencao::class);
-    }
-
-    public function contrato(): BelongsTo
-    {
-        return $this->belongsTo(Contrato::class);
     }
 
     // Registo (documento) a que esta linha pertence.

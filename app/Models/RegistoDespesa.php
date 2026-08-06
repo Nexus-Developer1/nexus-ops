@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 // REGISTO de despesas — o documento (folha preenchida de uma vez): cabeçalho + linhas.
@@ -30,11 +29,8 @@ class RegistoDespesa extends Model
         return $this->hasMany(Despesa::class, 'registo_despesa_id');
     }
 
-    // Recibos digitalizados do registo.
-    public function anexos(): MorphMany
-    {
-        return $this->morphMany(Anexo::class, 'anexavel');
-    }
+    // (A relação anexos() saiu: desde a migração 2026_08_05_000004, os recibos anexam-se
+    // sempre às LINHAS — Despesa::anexos() — e nenhum código lê anexos do registo.)
 
     public function total(): float
     {

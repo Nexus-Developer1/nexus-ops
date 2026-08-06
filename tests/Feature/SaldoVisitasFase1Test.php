@@ -11,7 +11,6 @@ use App\Models\Contrato;
 use App\Models\EventoAgenda;
 use App\Models\ModeloFaturacao;
 use App\Models\User;
-use App\Services\Gestao\ServicoMetricas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -210,7 +209,7 @@ class SaldoVisitasFase1Test extends TestCase
 
     // ---- Coexistência ----
 
-    public function test_saldo_conta_manual_e_grafico_conta_ambas(): void
+    public function test_saldo_conta_manual_e_ignora_legado(): void
     {
         $c = $this->contratoAtivo(2);
 
@@ -220,11 +219,8 @@ class SaldoVisitasFase1Test extends TestCase
         $this->evento($c, null, 'concluido', 'visita_preventiva', now());
 
         // Saldo conta só a manual (a preventiva sem cobertura não desconta).
+        // (O gráfico mensal que contava ambas saiu do dashboard com o ServicoMetricas::visitasPorMes.)
         Livewire::actingAs($this->admin())->test(ContratoFicha::class, ['contrato' => $c])
             ->assertViewHas('saldo', fn ($s) => $s['usadas'] === 1);
-
-        // O gráfico mensal (Fase 3, adaptado) conta AMBAS como realizadas (manual + legado).
-        $realizadas = app(ServicoMetricas::class)->visitasPorMes()['realizadas'];
-        $this->assertSame(2, array_sum($realizadas));
     }
 }
