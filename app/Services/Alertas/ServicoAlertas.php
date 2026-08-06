@@ -21,9 +21,31 @@ class ServicoAlertas
         return collect([
             ...$this->baterias(),
             ...$this->renovacoes(),
+            ...$this->visitasProgramadas(),
             ...$this->visitasEmAtraso(),
             ...$this->slaEmRisco(),
         ])->sortByDesc(fn ($a) => $a['severidade'] === 'alta' ? 1 : 0)->values();
+    }
+
+    // Alertas de visita PROGRAMADOS no contrato (data + texto editável): aparecem a partir
+    // de 7 dias antes da data (média) e passam a ALTA quando a data chega/passa. Saem quando
+    // a linha é removida na edição do contrato (depois de a visita ficar agendada).
+    private function visitasProgramadas(): array
+    {
+        return \App\Models\ContratoAlertaVisita::query()
+            ->whereDate('data', '<=', now()->addDays(7))
+            ->with('contrato.cliente')
+            ->orderBy('data')
+            ->get()
+            ->map(fn (\App\Models\ContratoAlertaVisita $a) => [
+                'tipo' => 'visita_programada',
+                'severidade' => $a->data->isPast() || $a->data->isToday() ? 'alta' : 'media',
+                'titulo' => $a->texto . ' · ' . ($a->contrato->numero ?? '—'),
+                'descricao' => ($a->contrato->cliente->nome ?? '—') . ' · programado para ' . $a->data->translatedFormat('d M Y'),
+                'url' => route('contratos.editar', $a->contrato_id),
+                'data' => $a->data,
+            ])
+            ->all();
     }
 
     // UPS cuja próxima troca de baterias está a aproximar-se ou já passou.

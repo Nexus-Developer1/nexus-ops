@@ -87,6 +87,47 @@ class ContratoTest extends TestCase
         $this->assertCount(1, $contrato->slas);
     }
 
+    // Alertas de visita programados: linhas data + TEXTO EDITÁVEL, gravadas com o contrato;
+    // a edição reabre com as linhas e removê-las apaga-as.
+    public function test_programa_alertas_de_visita_com_texto_editavel(): void
+    {
+        [$cliente, $equip] = $this->clienteComEquipamento();
+        $admin = $this->admin();
+
+        Livewire::actingAs($admin)
+            ->test(Editor::class)
+            ->set('numero', '2026/0077')
+            ->set('cliente_id', $cliente->id)
+            ->set('data_inicio', now()->toDateString())
+            ->set('data_fim', now()->addYear()->toDateString())
+            ->set('tipo', 'preventiva')
+            ->set('modelo_faturacao_id', $this->modeloFaturacaoId())
+            ->set('equipamentoIds', [$equip->id])
+            ->call('adicionarAlertaVisita')
+            ->set('alertasVisita.0.data', now()->addMonths(3)->toDateString())
+            ->set('alertasVisita.0.texto', 'Agendar visita do 1.º trimestre')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $contrato = Contrato::where('numero', '2026/0077')->firstOrFail();
+        $this->assertCount(1, $contrato->alertasVisita);
+        $this->assertSame('Agendar visita do 1.º trimestre', $contrato->alertasVisita->first()->texto);
+
+        // Reabrir mostra a linha; sem data não grava; remover apaga.
+        Livewire::actingAs($admin)
+            ->test(Editor::class, ['contrato' => $contrato])
+            ->assertSet('alertasVisita.0.texto', 'Agendar visita do 1.º trimestre')
+            ->call('adicionarAlertaVisita')
+            ->call('guardar')
+            ->assertHasErrors('alertasVisita.1.data') // linha nova sem data → erro claro
+            ->call('removerAlertaVisita', 1)
+            ->call('removerAlertaVisita', 0)
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $this->assertCount(0, $contrato->fresh()->alertasVisita);
+    }
+
     public function test_nao_ativa_sem_equipamento(): void
     {
         [$cliente] = $this->clienteComEquipamento();

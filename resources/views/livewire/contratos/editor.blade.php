@@ -284,6 +284,40 @@
                 </div>
             </section>
 
+            {{-- Alertas de visita programados: data + texto editável do aviso. Entram no painel
+                 de alertas, no dashboard e no email diário a partir de 7 dias antes da data. --}}
+            <section class="cartao mt-8">
+                <div class="flex items-center justify-between px-6 py-5">
+                    <div>
+                        <h2 class="text-lg font-semibold text-texto-forte">Alertas de visita</h2>
+                        <p class="mt-1 text-xs text-texto-fraco">Programa avisos para agendar as visitas (as incluídas marcam-se à mão na agenda). O texto é editável e aparece no alerta a partir de 7 dias antes da data.</p>
+                    </div>
+                    <button type="button" wire:click="adicionarAlertaVisita" class="botao-secundario">+ Alerta</button>
+                </div>
+                <div class="border-t border-borda px-6 py-6">
+                    @forelse ($alertasVisita as $i => $alerta)
+                        <div class="mb-4 grid grid-cols-2 items-start gap-3 border-b border-borda pb-4 last:mb-0 last:border-0 last:pb-0 sm:grid-cols-12 sm:border-0 sm:pb-0" wire:key="alerta-visita-{{ $i }}">
+                            <div class="col-span-2 sm:col-span-3">
+                                <input wire:model="alertasVisita.{{ $i }}.data" type="date" class="campo-input">
+                                @error('alertasVisita.'.$i.'.data') <p class="mt-1.5 text-xs text-perigo-500">Escolha a data do aviso.</p> @enderror
+                            </div>
+                            <div class="col-span-2 sm:col-span-8">
+                                <input wire:model="alertasVisita.{{ $i }}.texto" type="text" class="campo-input" placeholder="Texto do aviso — ex.: Agendar 1.ª visita preventiva">
+                                @error('alertasVisita.'.$i.'.texto') <p class="mt-1.5 text-xs text-perigo-500">Escreva o texto do aviso.</p> @enderror
+                            </div>
+                            <div class="col-span-2 flex justify-end sm:col-span-1 sm:pt-2">
+                                <button type="button" wire:click="removerAlertaVisita({{ $i }})" class="inline-flex items-center gap-1.5 text-sm font-medium text-texto-fraco hover:text-perigo-600 sm:gap-0" title="Remover">
+                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    <span class="sm:hidden">Remover</span>
+                                </button>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-sm text-texto-medio">Sem alertas programados. Usa "+ Alerta" para marcar a data e o texto do aviso.</p>
+                    @endforelse
+                </div>
+            </section>
+
         </form>
 
         {{-- Popup pós-gravação (contrato em rascunho): ativar / suspender / manter rascunho.

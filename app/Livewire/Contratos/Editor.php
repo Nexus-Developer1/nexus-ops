@@ -51,6 +51,10 @@ class Editor extends Component
     /** @var array<int, array<string, mixed>> */
     public array $slas = [];
 
+    // Alertas de visita programados: linhas { data, texto } — o texto do aviso é editável.
+    /** @var list<array{data: ?string, texto: string}> */
+    public array $alertasVisita = [];
+
     // Popup pós-gravação (só contratos em RASCUNHO): ativar / suspender / manter rascunho.
     public bool $modalEstado = false;
 
@@ -91,7 +95,7 @@ class Editor extends Component
     public function mount(?Contrato $contrato = null): void
     {
         if ($contrato && $contrato->exists) {
-            $contrato->load(['equipamentos:id', 'slas']);
+            $contrato->load(['equipamentos:id', 'slas', 'alertasVisita']);
             $this->contrato = $contrato;
             $this->numero = $contrato->numero;
             $this->cliente_id = $contrato->cliente_id;
@@ -115,6 +119,10 @@ class Editor extends Component
                 'tempo_resolucao_horas' => $s->tempo_resolucao_horas,
                 'horario_cobertura' => $s->horario_cobertura,
             ])->all();
+            $this->alertasVisita = $contrato->alertasVisita
+                ->sortBy('data')->values()
+                ->map(fn ($a) => ['data' => $a->data->toDateString(), 'texto' => $a->texto])
+                ->all();
         } else {
             // Sugere o próximo número sequencial (ex.: 2026/0007).
             $this->numero = $this->proximoNumero();
@@ -140,6 +148,20 @@ class Editor extends Component
     {
         unset($this->slas[$i]);
         $this->slas = array_values($this->slas);
+    }
+
+    public function adicionarAlertaVisita(): void
+    {
+        if (count($this->alertasVisita) < 24) {
+            // Texto por defeito editável — o mais comum é lembrar de agendar a visita.
+            $this->alertasVisita[] = ['data' => '', 'texto' => 'Agendar visita preventiva'];
+        }
+    }
+
+    public function removerAlertaVisita(int $i): void
+    {
+        unset($this->alertasVisita[$i]);
+        $this->alertasVisita = array_values($this->alertasVisita);
     }
 
     // Cria um novo modelo de faturação (persistido) e seleciona-o. Rejeita duplicados
@@ -196,6 +218,9 @@ class Editor extends Component
             'slas.*.resposta_nbd' => ['boolean'],
             'slas.*.tempo_resolucao_horas' => ['nullable', 'integer', 'min:0'],
             'slas.*.horario_cobertura' => ['required', 'in:8x5,24x7'],
+            'alertasVisita' => ['array', 'max:24'],
+            'alertasVisita.*.data' => ['required', 'date'],
+            'alertasVisita.*.texto' => ['required', 'string', 'max:255'],
         ];
     }
 
@@ -237,6 +262,12 @@ class Editor extends Component
                 $s['tempo_resposta_horas'] = null;
             }
             $this->contrato->slas()->create($s);
+        }
+
+        // Alertas de visita programados: substitui o conjunto (mesma mecânica dos SLAs).
+        $this->contrato->alertasVisita()->delete();
+        foreach ($this->alertasVisita as $a) {
+            $this->contrato->alertasVisita()->create(['data' => $a['data'], 'texto' => trim($a['texto'])]);
         }
 
         // Contrato ainda em RASCUNHO → popup "ativar / suspender / deixar em rascunho" antes

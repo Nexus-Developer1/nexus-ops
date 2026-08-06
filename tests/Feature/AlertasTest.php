@@ -66,6 +66,29 @@ class AlertasTest extends TestCase
         $this->assertSame('alta', $alerta['severidade']); // 10 dias <= 15 (crítico)
     }
 
+    // Alertas de visita PROGRAMADOS no contrato (data + texto editável): entram a partir de
+    // 7 dias antes da data, com o TEXTO escrito pela equipa; alta quando a data chega/passa.
+    public function test_alerta_de_visita_programado_no_contrato(): void
+    {
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $contrato = Contrato::create(['numero' => 'C-9', 'cliente_id' => $cliente->id, 'data_inicio' => now()->subMonth(),
+            'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'preventiva',
+            'modelo_faturacao_id' => \App\Models\ModeloFaturacao::query()->value('id')]);
+
+        // Dentro da janela (amanhã) → média, com o texto editável no título.
+        $contrato->alertasVisita()->create(['data' => now()->addDay()->toDateString(), 'texto' => 'Agendar 2.ª visita preventiva']);
+        // Vencido (ontem) → alta.
+        $contrato->alertasVisita()->create(['data' => now()->subDay()->toDateString(), 'texto' => 'Visita do 1.º semestre por agendar']);
+        // Longe (2 meses) → não aparece.
+        $contrato->alertasVisita()->create(['data' => now()->addMonths(2)->toDateString(), 'texto' => 'Ainda longe']);
+
+        $alertas = $this->servico()->recolher()->where('tipo', 'visita_programada')->values();
+
+        $this->assertCount(2, $alertas);
+        $this->assertSame('alta', $alertas->firstWhere('titulo', 'Visita do 1.º semestre por agendar · C-9')['severidade']);
+        $this->assertSame('media', $alertas->firstWhere('titulo', 'Agendar 2.ª visita preventiva · C-9')['severidade']);
+    }
+
     public function test_alerta_de_visita_em_atraso(): void
     {
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);

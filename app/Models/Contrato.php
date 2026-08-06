@@ -79,6 +79,12 @@ class Contrato extends Model
         return $this->hasMany(ContratoSla::class);
     }
 
+    // Alertas de visita programados (data + texto editável) — geridos no editor do contrato.
+    public function alertasVisita(): HasMany
+    {
+        return $this->hasMany(ContratoAlertaVisita::class);
+    }
+
     public function eventos(): HasMany
     {
         return $this->hasMany(EventoAgenda::class);
