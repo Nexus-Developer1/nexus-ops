@@ -184,24 +184,146 @@ document.addEventListener('alpine:init', () => {
             const video = this.$refs.video;
             const tela = this.$refs.tela;
             if (!video.videoWidth) return;
-            tela.width = video.videoWidth;
-            tela.height = video.videoHeight;
-            const ctx = tela.getContext('2d');
-            ctx.drawImage(video, 0, 0);
 
-            // Filtro de documento: luminância + curva de contraste com deslocamento para o
-            // branco (papel fica claro, tinta fica escura — aspeto de digitalização).
-            const img = ctx.getImageData(0, 0, tela.width, tela.height);
-            const d = img.data;
-            for (let i = 0; i < d.length; i += 4) {
-                const cinza = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-                const valor = Math.max(0, Math.min(255, (cinza - 128) * 1.8 + 150));
-                d[i] = d[i + 1] = d[i + 2] = valor;
-            }
-            ctx.putImageData(img, 0, 0);
+            // Frame completo numa tela de trabalho (fora do ecrã).
+            const bruta = document.createElement('canvas');
+            bruta.width = video.videoWidth;
+            bruta.height = video.videoHeight;
+            bruta.getContext('2d').drawImage(video, 0, 0);
+
+            // Recorta automaticamente ao PAPEL (é suposto apanhar só o recibo) e aplica o
+            // filtro de documento adaptativo. Se a deteção falhar, fica o frame inteiro.
+            const zona = this.detetarPapel(bruta);
+            tela.width = zona.w;
+            tela.height = zona.h;
+            const ctx = tela.getContext('2d');
+            ctx.drawImage(bruta, zona.x, zona.y, zona.w, zona.h, 0, 0, zona.w, zona.h);
+            this.filtroDocumento(ctx, zona.w, zona.h);
 
             this.capturado = true;
             this.pararCamara(); // congela a captura; "Repetir" reabre
+        },
+
+        // Encontra o papel: análise numa miniatura (cinzentos + limiar de Otsu) e ENCHENTE a
+        // partir do centro sobre os píxeis claros — o recibo aponta-se ao centro, e a mancha
+        // clara ligada ao centro é o papel; a caixa envolvente dela é o recorte. Mancha
+        // minúscula (não há papel) ou praticamente o frame todo (fundo também claro, sem
+        // fronteira útil) → devolve o frame inteiro, comportamento de antes.
+        detetarPapel(bruta) {
+            const inteiro = { x: 0, y: 0, w: bruta.width, h: bruta.height };
+            const W = 200;
+            const H = Math.max(1, Math.round(bruta.height * (W / bruta.width)));
+            const mini = document.createElement('canvas');
+            mini.width = W;
+            mini.height = H;
+            const mctx = mini.getContext('2d');
+            mctx.drawImage(bruta, 0, 0, W, H);
+            const d = mctx.getImageData(0, 0, W, H).data;
+
+            const cinza = new Uint8Array(W * H);
+            const hist = new Uint32Array(256);
+            for (let p = 0, i = 0; p < cinza.length; p++, i += 4) {
+                const g = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) | 0;
+                cinza[p] = g;
+                hist[g]++;
+            }
+            const limiar = this.limiarOtsu(hist, W * H);
+
+            // Semente: o píxel claro mais próximo do centro (anéis a crescer).
+            const cx = W >> 1, cy = H >> 1;
+            let semente = -1;
+            busca: for (let r = 0; r <= Math.min(W, H) >> 1; r += 2) {
+                for (let dy = -r; dy <= r; dy += 2) {
+                    for (let dx = -r; dx <= r; dx += 2) {
+                        const x = cx + dx, y = cy + dy;
+                        if (x < 0 || y < 0 || x >= W || y >= H) continue;
+                        if (cinza[y * W + x] > limiar) { semente = y * W + x; break busca; }
+                    }
+                }
+            }
+            if (semente < 0) return inteiro;
+
+            // Enchente (4 vizinhos) sobre os claros, a acumular a caixa envolvente.
+            const visto = new Uint8Array(W * H);
+            const fila = [semente];
+            visto[semente] = 1;
+            let minX = W, maxX = 0, minY = H, maxY = 0, area = 0;
+            while (fila.length) {
+                const p = fila.pop();
+                const x = p % W, y = (p / W) | 0;
+                area++;
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+                if (x > 0 && !visto[p - 1] && cinza[p - 1] > limiar) { visto[p - 1] = 1; fila.push(p - 1); }
+                if (x < W - 1 && !visto[p + 1] && cinza[p + 1] > limiar) { visto[p + 1] = 1; fila.push(p + 1); }
+                if (y > 0 && !visto[p - W] && cinza[p - W] > limiar) { visto[p - W] = 1; fila.push(p - W); }
+                if (y < H - 1 && !visto[p + W] && cinza[p + W] > limiar) { visto[p + W] = 1; fila.push(p + W); }
+            }
+
+            const fracao = area / (W * H);
+            if (fracao < 0.08 || fracao > 0.97) return inteiro;
+
+            // Caixa da miniatura → coordenadas reais, com 2% de margem à volta.
+            const ex = bruta.width / W, ey = bruta.height / H;
+            const margem = Math.round(0.02 * bruta.width);
+            const x0 = Math.max(0, Math.round(minX * ex) - margem);
+            const y0 = Math.max(0, Math.round(minY * ey) - margem);
+            const x1 = Math.min(bruta.width, Math.round((maxX + 1) * ex) + margem);
+            const y1 = Math.min(bruta.height, Math.round((maxY + 1) * ey) + margem);
+
+            return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+        },
+
+        // Limiar de Otsu: separa "papel claro" de "fundo escuro" pelo histograma.
+        limiarOtsu(hist, total) {
+            let soma = 0;
+            for (let t = 0; t < 256; t++) soma += t * hist[t];
+            let somaFundo = 0, pesoFundo = 0, melhor = 127, maxVar = 0;
+            for (let t = 0; t < 256; t++) {
+                pesoFundo += hist[t];
+                if (!pesoFundo) continue;
+                const pesoFrente = total - pesoFundo;
+                if (!pesoFrente) break;
+                somaFundo += t * hist[t];
+                const mFundo = somaFundo / pesoFundo;
+                const mFrente = (soma - somaFundo) / pesoFrente;
+                const entre = pesoFundo * pesoFrente * (mFundo - mFrente) * (mFundo - mFrente);
+                if (entre > maxVar) { maxVar = entre; melhor = t; }
+            }
+            return melhor;
+        },
+
+        // Filtro de documento ADAPTATIVO: em vez da curva fixa de antes (rebentava com luz
+        // forte/fraca), estica os níveis entre os percentis 5 e 92 do próprio recorte — o
+        // papel fica branco seja qual for a iluminação — e dá um empurrão suave ao contraste
+        // para escurecer a tinta (aspeto de digitalização).
+        filtroDocumento(ctx, w, h) {
+            const img = ctx.getImageData(0, 0, w, h);
+            const d = img.data;
+            const total = w * h;
+            const cinza = new Uint8Array(total);
+            const hist = new Uint32Array(256);
+            for (let p = 0, i = 0; p < total; p++, i += 4) {
+                const g = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) | 0;
+                cinza[p] = g;
+                hist[g]++;
+            }
+            const percentil = (fr) => {
+                let acc = 0;
+                for (let t = 0; t < 256; t++) { acc += hist[t]; if (acc >= total * fr) return t; }
+                return 255;
+            };
+            const preto = percentil(0.05);
+            const branco = Math.max(preto + 30, percentil(0.92));
+            for (let p = 0, i = 0; p < total; p++, i += 4) {
+                let v = ((cinza[p] - preto) / (branco - preto)) * 255;
+                v = (v - 128) * 1.15 + 136;
+                v = Math.max(0, Math.min(255, v));
+                d[i] = d[i + 1] = d[i + 2] = v;
+            }
+            ctx.putImageData(img, 0, 0);
         },
 
         repetir() {
