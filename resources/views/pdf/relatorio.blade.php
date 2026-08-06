@@ -58,7 +58,8 @@
 <body>
     @php($i = $relatorio->intervencao)
     @php($e = $i->equipamento)
-    @php($c = $e->local->cliente)
+    {{-- local pode ser null (equipamento "por associar" do PHC) — o PDF não pode rebentar. --}}
+    @php($c = $e->local?->cliente)
 
     <div class="cabecalho">
         <table>
@@ -89,13 +90,13 @@
         <tr>
             <td>
                 <div class="campo-rotulo">Cliente</div>
-                <div class="campo-valor">{{ $c->nome }}</div>
+                <div class="campo-valor">{{ $c?->nome ?? '—' }}</div>
             </td>
             <td>
                 {{-- Local: o cliente final (equipamento instalado num cliente do cliente) ou a
                      sede da empresa (morada do ERP) — nunca o local da intervenção. --}}
                 @php($eCliFinal = trim((string) ($e->cliente_final ?? '')))
-                @php($sede = collect([trim((string) $c->morada), trim((string) $c->codpost)])->filter(fn ($s) => $s !== '')->implode(' · '))
+                @php($sede = collect([trim((string) $c?->morada), trim((string) $c?->codpost)])->filter(fn ($s) => $s !== '')->implode(' · '))
                 <div class="campo-rotulo">Local</div>
                 <div class="campo-valor">{{ $eCliFinal !== '' ? $eCliFinal : ($sede !== '' ? $sede : '—') }}</div>
             </td>

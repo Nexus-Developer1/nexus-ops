@@ -55,7 +55,7 @@ class SincronizarEquipamentosErp extends Command
             return self::FAILURE;
         }
 
-        $resumo = "{$criados} criados, {$atualizados} atualizados, {$iguais} iguais (saltados), {$semCliente} sem cliente (saltados), {$erros} erros.";
+        $resumo = "{$criados} criados, {$atualizados} atualizados, {$iguais} iguais (saltados), {$semCliente} sem cliente (por associar), {$erros} erros.";
         $this->info("Sincronização concluída: {$resumo}");
 
         // Auditoria do sync (CLAUDE.md §11).
@@ -73,10 +73,10 @@ class SincronizarEquipamentosErp extends Command
     }
 
     // Percorre o ERP e faz upsert INCREMENTAL: o hash dos dados do ERP da última corrida vive
-    // em equipamentos.hash_sync; hash igual → equipamento saltado sem nenhuma query. Nota: os
-    // "sem cliente" nunca chegam a gravar hash, por isso são re-tentados em todas as corridas
-    // — quando o cliente aparecer, entram. Erros por linha são contados (não param o sync);
-    // uma falha de ligação propaga para o handle() → FAILURE.
+    // em equipamentos.hash_sync; hash igual → equipamento saltado sem nenhuma query. Exceção:
+    // equipamentos ainda SEM LOCAL (sem cliente) são sempre reprocessados — quando o cliente
+    // aparecer na app (sync de clientes, correção no PHC), ficam associados. Erros por linha
+    // são contados (não param o sync); uma falha de ligação propaga para o handle() → FAILURE.
     private function sincronizar(ErpSyncDriver $erp, ?int $limite, int &$criados, int &$atualizados, int &$iguais, int &$semCliente, int &$erros): void
     {
         $forcarTudo = (bool) $this->option('completo');
@@ -86,6 +86,11 @@ class SincronizarEquipamentosErp extends Command
         $hashes = Equipamento::withTrashed()->whereNotNull('id_erp')->pluck('hash_sync', 'id_erp')
             ->mapWithKeys(fn ($h, $k) => [(string) $k => $h])
             ->all();
+
+        // id_erp dos equipamentos ainda sem local ("por associar"): furam o salto por hash,
+        // para apanharem o cliente assim que ele existir na app.
+        $semLocal = Equipamento::withTrashed()->whereNotNull('id_erp')->whereNull('local_id')
+            ->pluck('id_erp')->mapWithKeys(fn ($v) => [(string) $v => true])->all();
 
         // Mapa id_erp → cliente_id (uma leitura, em vez de uma query por equipamento).
         $clientePorErp = Cliente::whereNotNull('id_erp')->pluck('id', 'id_erp')
@@ -101,8 +106,9 @@ class SincronizarEquipamentosErp extends Command
                     $equipErp->clienteNo, $equipErp->marca, $equipErp->familia, $equipErp->faminome,
                 ], JSON_INVALID_UTF8_SUBSTITUTE));
 
-                // Nada mudou no ERP desde a última corrida → salta (zero queries).
-                if (! $forcarTudo && ($hashes[$equipErp->idErp] ?? null) === $hash) {
+                // Nada mudou no ERP desde a última corrida → salta (zero queries) — exceto os
+                // "por associar", que voltam a tentar encontrar o cliente.
+                if (! $forcarTudo && ($hashes[$equipErp->idErp] ?? null) === $hash && ! isset($semLocal[$equipErp->idErp])) {
                     $iguais++;
 
                     continue;
@@ -110,17 +116,18 @@ class SincronizarEquipamentosErp extends Command
 
                 $clienteId = $clientePorErp[$equipErp->clienteNo] ?? null;
 
-                if ($clienteId === null) {
-                    // Sem cliente correspondente na app → salta e conta (não inventa cliente).
+                // Sem cliente (fatura do PHC sem o nº associado, ou cliente ainda não sincronizado):
+                // o equipamento ENTRA na mesma, com local a null ("por associar") — a pesquisa por
+                // série encontra-o e a equipa associa o cliente na ficha quando souber de quem é.
+                $localId = null;
+                if ($clienteId !== null) {
+                    $localId = $localPorCliente[$clienteId]
+                        ??= Local::firstOrCreate(
+                            ['cliente_id' => $clienteId, 'designacao' => self::DESIGNACAO_LOCAL],
+                        )->id;
+                } else {
                     $semCliente++;
-
-                    continue;
                 }
-
-                $localId = $localPorCliente[$clienteId]
-                    ??= Local::firstOrCreate(
-                        ['cliente_id' => $clienteId, 'designacao' => self::DESIGNACAO_LOCAL],
-                    )->id;
 
                 $novo = $this->upsert($equipErp, $localId, $hash);
                 $novo ? $criados++ : $atualizados++;
@@ -137,7 +144,8 @@ class SincronizarEquipamentosErp extends Command
     // Upsert por id_erp (= mastamp). Devolve true se criou, false se atualizou.
     // withTrashed: correlaciona também com equipamentos apagados (o id_erp é único na BD, incluindo
     // apagados) — evita violação de chave e NÃO ressuscita o que o técnico apagou.
-    private function upsert(EquipamentoErp $equipErp, int $localId, string $hash): bool
+    // $localId null = sem cliente conhecido ("por associar").
+    private function upsert(EquipamentoErp $equipErp, ?int $localId, string $hash): bool
     {
         $equip = Equipamento::withTrashed()->firstOrNew(['id_erp' => $equipErp->idErp]);
         // Regista a impressão digital desta corrida — é o que permite saltar na próxima.
@@ -165,6 +173,11 @@ class SincronizarEquipamentosErp extends Command
         // ATUALIZAÇÃO — COALESCE PURO: só preenche o que está VAZIO; nunca sobrepõe.
         // local_id, atributos, proxima_troca_baterias, estado e notas são intocáveis (edições do
         // técnico) — só entram se, por algum motivo, estiverem vazios.
+        // Um "por associar" (local null) fica associado assim que o cliente existir na app —
+        // nunca sobrepõe um local escolhido pelo técnico.
+        if (blank($equip->local_id) && $localId !== null) {
+            $equip->local_id = $localId;
+        }
         if (blank($equip->modelo)) {
             $equip->modelo = $equipErp->modelo;
         }

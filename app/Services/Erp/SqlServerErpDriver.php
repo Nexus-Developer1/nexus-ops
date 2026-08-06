@@ -138,9 +138,11 @@ class SqlServerErpDriver implements ErpSyncDriver
         //   ma.marca   → só filtro (fabricante fixa em 'Riello')
         //   st.familia / st.faminome → família do artigo (LEFT JOIN st ON st.ref = ma.ref)
         //
-        // Filtro RIELLO server-side (só marca Riello atravessa a ligação), + guardas do carregamento
-        // original: série preenchida e nº de cliente válido. Leitura direta da ma (§5: envolver numa
-        // VIEW read-only quando houver acesso de escrita ao PHC para a criar). LEFT JOIN à st para a
+        // Filtro RIELLO server-side (só marca Riello atravessa a ligação) + série preenchida.
+        // O filtro por nº de cliente SAIU: no PHC há faturas sem o cliente associado (erro
+        // humano) e esses equipamentos nunca chegavam à app — agora vêm e ficam "por associar"
+        // (o sync cria-os com local a null). Leitura direta da ma (§5: envolver numa VIEW
+        // read-only quando houver acesso de escrita ao PHC para a criar). LEFT JOIN à st para a
         // família (a ligação ma.ref = st.ref é a mesma que o sync antigo em Python usava).
         //
         // SQL Server: o limite usa TOP (não LIMIT). É um inteiro, interpolado em segurança.
@@ -150,8 +152,7 @@ class SqlServerErpDriver implements ErpSyncDriver
                 FROM ma
                 LEFT JOIN st ON st.ref = ma.ref
                 WHERE ma.marca LIKE '%RIELLO%'
-                  AND ma.serie IS NOT NULL AND LTRIM(RTRIM(ma.serie)) <> ''
-                  AND ma.no IS NOT NULL AND ma.no <> 0";
+                  AND ma.serie IS NOT NULL AND LTRIM(RTRIM(ma.serie)) <> ''";
 
         foreach (DB::connection('erp')->select($sql) as $r) {
             // TRIM obrigatório nos campos de texto: as colunas char do PHC vêm com padding de

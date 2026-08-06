@@ -144,6 +144,31 @@ class EquipamentoManualTest extends TestCase
             ->assertViewHas('equipamentos', fn ($p) => $p->total() === 3);
     }
 
+    // Equipamentos "por associar" (vieram do PHC sem cliente na fatura): aparecem na listagem
+    // e na pesquisa por série, e a ficha permite associar o cliente.
+    public function test_equipamento_sem_cliente_aparece_e_associa_se_na_ficha(): void
+    {
+        $admin = $this->admin();
+        $e = Equipamento::create(['local_id' => null, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'AM34UT975400001']);
+
+        Livewire::actingAs($admin)->test(Listagem::class)
+            ->set('pesquisa', 'AM34UT9754')
+            ->assertViewHas('equipamentos', fn ($p) => $p->pluck('id')->contains($e->id))
+            ->assertSee('por associar');
+
+        // A ficha abre sem rebentar e mostra o estado "por associar".
+        Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $e])
+            ->assertSee('Sem cliente — por associar');
+
+        // Associar o cliente pela ficha aterra na "Instalação principal" dele.
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $e])
+            ->call('mudarCliente', $cliente->id)
+            ->assertHasNoErrors();
+
+        $this->assertSame($cliente->id, $e->fresh()->local->cliente_id);
+    }
+
     public function test_cliente_e_obrigatorio(): void
     {
         $admin = $this->admin();

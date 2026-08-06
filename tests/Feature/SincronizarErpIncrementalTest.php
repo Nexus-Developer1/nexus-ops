@@ -86,18 +86,22 @@ class SincronizarErpIncrementalTest extends TestCase
             ->assertSuccessful();
         $this->assertEquals($antes, Equipamento::orderBy('id')->pluck('updated_at', 'id')->all());
 
-        // Sem o cliente na app, o equipamento NÃO grava hash → é re-tentado (não fica esquecido).
+        // Sem o cliente na app, o equipamento entra "POR ASSOCIAR" (local null) — e fura o
+        // salto por hash em todas as corridas até o cliente aparecer.
         Cliente::query()->forceDelete();
         Equipamento::query()->forceDelete();
         $this->artisan('erp:sincronizar-equipamentos', ['--limit' => 4])
-            ->expectsOutputToContain('sem cliente (saltados)')
+            ->expectsOutputToContain('sem cliente (por associar)')
             ->assertSuccessful();
-        $this->assertSame(0, Equipamento::count()); // nada criado sem cliente
+        $criados = Equipamento::count();
+        $this->assertGreaterThan(0, $criados);
+        $this->assertSame($criados, Equipamento::whereNull('local_id')->count()); // todos por associar
 
-        // O cliente aparece → a corrida seguinte já os cria (prova que não ficaram "iguais").
+        // O cliente aparece → a corrida seguinte ASSOCIA os pendentes sem criar duplicados.
         $this->artisan('erp:sincronizar-clientes', ['--limit' => 10])->assertSuccessful();
         $this->artisan('erp:sincronizar-equipamentos', ['--limit' => 4])->assertSuccessful();
-        $this->assertGreaterThan(0, Equipamento::count());
+        $this->assertSame($criados, Equipamento::count());
+        $this->assertSame(0, Equipamento::whereNull('local_id')->count());
     }
 
     public function test_opcao_completo_reprocessa_ignorando_hashes(): void

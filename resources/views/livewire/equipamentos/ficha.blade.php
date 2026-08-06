@@ -62,19 +62,25 @@
                         <div class="border-t border-borda px-6 py-6">
                             <label class="campo-label">Cliente associado</label>
                             <div class="mt-1 flex flex-wrap items-center gap-3">
-                                <span class="font-medium text-texto-forte">{{ $equipamento->local->cliente->nome }}</span>
-                                <span class="text-xs text-texto-fraco">· {{ $equipamento->local->designacao }}</span>
+                                {{-- Sem local = veio do PHC sem cliente na fatura — está "por associar" (pesquisar abaixo). --}}
+                                @if ($equipamento->local)
+                                    <span class="font-medium text-texto-forte">{{ $equipamento->local->cliente->nome }}</span>
+                                    <span class="text-xs text-texto-fraco">· {{ $equipamento->local->designacao }}</span>
+                                @else
+                                    <span class="etiqueta bg-aviso-100 text-aviso-500">Sem cliente — por associar</span>
+                                    <span class="text-xs text-texto-fraco">A fatura no PHC não tem o cliente associado — pesquisa abaixo para o definir.</span>
+                                @endif
                             </div>
                             <div class="relative mt-3 max-w-md">
                                 <input wire:model.live.debounce.400ms="novoClienteBusca" type="text" class="campo-input"
-                                    placeholder="Mudar de cliente — pesquisar por nome ou NIF...">
+                                    placeholder="{{ $equipamento->local ? 'Mudar de cliente — pesquisar por nome ou NIF...' : 'Associar cliente — pesquisar por nome ou NIF...' }}">
                                 @if ($novosClientesFiltrados->isNotEmpty())
                                     <ul class="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-borda bg-white shadow-lg">
                                         @foreach ($novosClientesFiltrados as $nc)
                                             <li>
                                                 <button type="button" wire:key="novo-cli-{{ $nc->id }}"
                                                     wire:click="mudarCliente({{ $nc->id }})"
-                                                    wire:confirm="Atualizar a ficha do equipamento?&#10;&#10;O equipamento passa do cliente «{{ $equipamento->local->cliente->nome }}» para «{{ $nc->nome }}» (local: Instalação principal).&#10;&#10;Atenção: todo o histórico de intervenções e relatórios deste equipamento passa a estar visível no portal do cliente novo (e deixa de estar no do antigo).{{ $contratos->isNotEmpty() ? ' Está também ligado a ' . $contratos->count() . ' contrato(s) do cliente atual — reveja as coberturas.' : '' }}"
+                                                    wire:confirm="Atualizar a ficha do equipamento?&#10;&#10;O equipamento passa {{ $equipamento->local ? 'do cliente «' . $equipamento->local->cliente->nome . '»' : 'de «sem cliente»' }} para «{{ $nc->nome }}» (local: Instalação principal).&#10;&#10;Atenção: todo o histórico de intervenções e relatórios deste equipamento passa a estar visível no portal do cliente novo{{ $equipamento->local ? ' (e deixa de estar no do antigo)' : '' }}.{{ $contratos->isNotEmpty() ? ' Está também ligado a ' . $contratos->count() . ' contrato(s) do cliente atual — reveja as coberturas.' : '' }}"
                                                     class="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm transition hover:bg-verde-50">
                                                     <span class="truncate font-medium text-texto-forte">{{ $nc->nome }}</span>
                                                     <span class="shrink-0 text-xs text-texto-fraco">{{ $nc->nif ?? '—' }}</span>

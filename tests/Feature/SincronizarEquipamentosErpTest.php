@@ -61,18 +61,32 @@ class SincronizarEquipamentosErpTest extends TestCase
         $this->assertSame($idErpsAntes, Equipamento::orderBy('id')->pluck('id_erp', 'id')->all());
     }
 
-    public function test_salta_equipamento_sem_cliente_na_app(): void
+    // Sem cliente já NÃO salta: no PHC há faturas sem o nº de cliente associado (erro humano)
+    // e esses equipamentos nunca entravam. Agora entram "por associar" (local null) — a pesquisa
+    // por série encontra-os — e ficam associados assim que o cliente aparecer na app.
+    public function test_sem_cliente_entra_por_associar_e_associa_quando_o_cliente_aparece(): void
     {
         // Só clientes 1000, 1001, 1002 existem na app.
         $this->sincronizarClientes(limite: 3);
 
         // Riello em i=0,1,2,4,5,6 → clienteNo 1000,1001,1002,1004,1005,1006.
-        // Presentes: 1000/1001/1002 → 3 criados; 1004/1005/1006 → 3 saltados (sem cliente).
+        // 1000/1001/1002 ficam associados; 1004/1005/1006 entram SEM local ("por associar").
         $this->artisan('erp:sincronizar-equipamentos', ['--limit' => 8])
-            ->expectsOutputToContain('3 sem cliente')
+            ->expectsOutputToContain('6 criados, 0 atualizados, 0 iguais (saltados), 3 sem cliente (por associar)')
             ->assertSuccessful();
 
-        $this->assertSame(3, Equipamento::count());
+        $this->assertSame(6, Equipamento::count());
+        $this->assertSame(3, Equipamento::whereNull('local_id')->count());
+
+        // Os clientes em falta aparecem na app → a corrida seguinte ASSOCIA os pendentes
+        // (furam o salto por hash) sem criar duplicados.
+        $this->sincronizarClientes(limite: 10);
+        $this->artisan('erp:sincronizar-equipamentos', ['--limit' => 8])
+            ->expectsOutputToContain('0 criados')
+            ->assertSuccessful();
+
+        $this->assertSame(6, Equipamento::count());
+        $this->assertSame(0, Equipamento::whereNull('local_id')->count());
     }
 
     public function test_resync_nao_destroi_enriquecimento_do_tecnico(): void

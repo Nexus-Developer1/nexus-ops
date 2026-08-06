@@ -70,7 +70,7 @@
                             <tr class="border-b border-borda transition last:border-0 hover:bg-fundo" wire:key="rel-{{ $r->id }}">
                                 <td class="px-6 py-4 font-medium text-texto-forte">{{ $r->numero ?? '—' }}</td>
                                 <td class="px-6 py-4">
-                                    <div class="text-texto-forte">{{ $r->intervencao->equipamento->local->cliente->nome }}</div>
+                                    <div class="text-texto-forte">{{ $r->intervencao->equipamento->local?->cliente?->nome ?? '—' }}</div>
                                     <div class="text-xs text-texto-fraco">{{ $r->intervencao->equipamento->numero_serie }}</div>
                                 </td>
                                 <td class="px-6 py-4 text-texto-medio">{{ $r->intervencao->tipo->rotulo() }}</td>

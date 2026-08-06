@@ -91,8 +91,13 @@
                                 </td>
                                 <td class="px-6 py-4"><span class="etiqueta {{ $e->tipo->classesEtiqueta() }}">{{ $e->tipo->rotulo() }}</span></td>
                                 <td class="px-6 py-4">
-                                    <div class="text-texto-forte">{{ $e->local->cliente->nome }}</div>
-                                    <div class="text-xs text-texto-fraco">{{ $e->local->designacao }}</div>
+                                    {{-- Sem local = veio do PHC sem cliente associado (fatura sem o nº) — fica "por associar". --}}
+                                    @if ($e->local)
+                                        <div class="text-texto-forte">{{ $e->local->cliente->nome }}</div>
+                                        <div class="text-xs text-texto-fraco">{{ $e->local->designacao }}</div>
+                                    @else
+                                        <span class="etiqueta bg-aviso-100 text-aviso-500">Sem cliente — por associar</span>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4"><span class="etiqueta {{ $e->estado->classesEtiqueta() }}">{{ $e->estado->rotulo() }}</span></td>
                                 <td class="px-6 py-4 text-texto-medio">{{ $e->proxima_troca_baterias?->translatedFormat('d M Y') ?? '—' }}</td>

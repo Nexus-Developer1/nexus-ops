@@ -44,7 +44,7 @@ class ServicoAlertas
                     'tipo' => 'bateria',
                     'severidade' => $vencida ? 'alta' : 'media',
                     'titulo' => 'Baterias ' . ($vencida ? 'vencidas' : 'a vencer') . ' · ' . trim($e->fabricante . ' ' . $e->modelo),
-                    'descricao' => ($e->local->cliente->nome ?? '—') . ' · troca prevista ' . $e->proxima_troca_baterias->translatedFormat('d M Y'),
+                    'descricao' => ($e->local?->cliente?->nome ?? '—') . ' · troca prevista ' . $e->proxima_troca_baterias->translatedFormat('d M Y'),
                     'url' => route('equipamentos.ficha', $e),
                     'data' => $e->proxima_troca_baterias,
                 ];
@@ -123,7 +123,7 @@ class ServicoAlertas
                     'tipo' => 'sla',
                     'severidade' => 'alta',
                     'titulo' => 'SLA em risco · intervenção #' . $i->id,
-                    'descricao' => ($i->equipamento->local->cliente->nome ?? '—') . ' · prazo de resolução excedido (' . $horas . 'h)',
+                    'descricao' => ($i->equipamento->local?->cliente?->nome ?? '—') . ' · prazo de resolução excedido (' . $horas . 'h)',
                     'url' => route('intervencoes.formulario', $i),
                     'data' => $prazo,
                 ];

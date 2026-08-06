@@ -133,14 +133,15 @@ class Ficha extends Component
             return;
         }
 
-        if ($cliente->id === $this->equipamento->local->cliente_id) {
+        // local pode ser null: equipamento "por associar" (veio do PHC sem cliente na fatura).
+        if ($cliente->id === $this->equipamento->local?->cliente_id) {
             $this->novoClienteBusca = '';
             session()->flash('sucesso', 'O equipamento já pertence a este cliente.');
 
             return;
         }
 
-        $clienteAntigo = $this->equipamento->local->cliente;
+        $clienteAntigo = $this->equipamento->local?->cliente;
         $local = Local::firstOrCreate(['cliente_id' => $cliente->id, 'designacao' => 'Instalação principal']);
         $this->equipamento->update(['local_id' => $local->id]);
         $this->equipamento = $this->equipamento->fresh()->load('local.cliente');
@@ -151,7 +152,7 @@ class Ficha extends Component
         // quem fez a mudança e o de/para (11.ª revisão de segurança).
         \Illuminate\Support\Facades\Log::info('Equipamento mudou de cliente.', [
             'equipamento' => $this->equipamento->numero_serie ?? $this->equipamento->id,
-            'de' => $clienteAntigo->nome,
+            'de' => $clienteAntigo->nome ?? '(sem cliente — por associar)',
             'para' => $cliente->nome,
             'utilizador' => auth()->user()?->email,
         ]);
