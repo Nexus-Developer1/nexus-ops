@@ -22,9 +22,30 @@ class ServicoAlertas
             ...$this->baterias(),
             ...$this->renovacoes(),
             ...$this->visitasProgramadas(),
+            ...$this->manutencoesProgramadas(),
             ...$this->visitasEmAtraso(),
             ...$this->slaEmRisco(),
         ])->sortByDesc(fn ($a) => $a['severidade'] === 'alta' ? 1 : 0)->values();
+    }
+
+    // Alertas de manutenção PROGRAMADOS no equipamento (data + texto editável): mesma
+    // mecânica dos alertas de visita do contrato — 7 dias antes (média), alta ao vencer.
+    private function manutencoesProgramadas(): array
+    {
+        return \App\Models\EquipamentoAlertaManutencao::query()
+            ->whereDate('data', '<=', now()->addDays(7))
+            ->with('equipamento.local.cliente')
+            ->orderBy('data')
+            ->get()
+            ->map(fn (\App\Models\EquipamentoAlertaManutencao $a) => [
+                'tipo' => 'manutencao_programada',
+                'severidade' => $a->data->isPast() || $a->data->isToday() ? 'alta' : 'media',
+                'titulo' => $a->texto . ' · ' . (trim(($a->equipamento->fabricante ?? '') . ' ' . ($a->equipamento->modelo ?? '')) ?: ($a->equipamento->numero_serie ?? '—')),
+                'descricao' => ($a->equipamento->local?->cliente?->nome ?? '—') . ' · programado para ' . $a->data->translatedFormat('d M Y'),
+                'url' => route('equipamentos.ficha', $a->equipamento_id),
+                'data' => $a->data,
+            ])
+            ->all();
     }
 
     // Alertas de visita PROGRAMADOS no contrato (data + texto editável): aparecem a partir

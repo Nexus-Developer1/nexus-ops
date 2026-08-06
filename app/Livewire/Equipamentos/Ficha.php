@@ -43,6 +43,10 @@ class Ficha extends Component
     /** @var list<array{designacao: string, quantidade: string|int}> */
     public array $componentes = [];
 
+    // Alertas de manutenção programados: linhas { data, texto } — o texto do aviso é editável.
+    /** @var list<array{data: ?string, texto: string}> */
+    public array $alertasManutencao = [];
+
     public function mount(Equipamento $equipamento): void
     {
         $this->equipamento = $equipamento->load('local.cliente');
@@ -54,6 +58,43 @@ class Ficha extends Component
         // Bancos no formato do formulário (converte o formato antigo de um banco só, se existir).
         $this->bancos = $equipamento->bancosParaFormulario();
         $this->componentes = array_values($attrs['componentes'] ?? []);
+        $this->alertasManutencao = $equipamento->alertasManutencao()
+            ->orderBy('data')->get()
+            ->map(fn ($a) => ['data' => $a->data->toDateString(), 'texto' => $a->texto])
+            ->all();
+    }
+
+    public function adicionarAlertaManutencao(): void
+    {
+        if (count($this->alertasManutencao) < 24) {
+            // Texto por defeito editável — escreve-se o aviso que fizer sentido.
+            $this->alertasManutencao[] = ['data' => '', 'texto' => 'Manutenção preventiva'];
+        }
+    }
+
+    public function removerAlertaManutencao(int $indice): void
+    {
+        unset($this->alertasManutencao[$indice]);
+        $this->alertasManutencao = array_values($this->alertasManutencao);
+    }
+
+    // Guarda os alertas de manutenção (substitui o conjunto — mesma mecânica dos SLAs do contrato).
+    public function guardarAlertasManutencao(): void
+    {
+        abort_if(auth()->user()->ehCliente(), 403);
+
+        $this->validate([
+            'alertasManutencao' => ['array', 'max:24'],
+            'alertasManutencao.*.data' => ['required', 'date'],
+            'alertasManutencao.*.texto' => ['required', 'string', 'max:255'],
+        ]);
+
+        $this->equipamento->alertasManutencao()->delete();
+        foreach ($this->alertasManutencao as $a) {
+            $this->equipamento->alertasManutencao()->create(['data' => $a['data'], 'texto' => trim($a['texto'])]);
+        }
+
+        session()->flash('sucesso', 'Alertas de manutenção guardados.');
     }
 
     public function adicionarComponente(): void

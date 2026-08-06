@@ -89,6 +89,25 @@ class AlertasTest extends TestCase
         $this->assertSame('media', $alertas->firstWhere('titulo', 'Agendar 2.ª visita preventiva · C-9')['severidade']);
     }
 
+    // Alertas de manutenção PROGRAMADOS no equipamento: mesma mecânica dos do contrato —
+    // texto editável, 7 dias antes (média), alta ao vencer; fora da janela não aparece.
+    public function test_alerta_de_manutencao_programado_no_equipamento(): void
+    {
+        $local = $this->localDe('ACME');
+        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional',
+            'fabricante' => 'Riello', 'modelo' => 'NPW 2000']);
+
+        $equip->alertasManutencao()->create(['data' => now()->addDays(3)->toDateString(), 'texto' => 'Teste de autonomia anual']);
+        $equip->alertasManutencao()->create(['data' => now()->subDays(2)->toDateString(), 'texto' => 'Limpeza dos filtros']);
+        $equip->alertasManutencao()->create(['data' => now()->addMonths(3)->toDateString(), 'texto' => 'Ainda longe']);
+
+        $alertas = $this->servico()->recolher()->where('tipo', 'manutencao_programada')->values();
+
+        $this->assertCount(2, $alertas);
+        $this->assertSame('media', $alertas->firstWhere('titulo', 'Teste de autonomia anual · Riello NPW 2000')['severidade']);
+        $this->assertSame('alta', $alertas->firstWhere('titulo', 'Limpeza dos filtros · Riello NPW 2000')['severidade']);
+    }
+
     public function test_alerta_de_visita_em_atraso(): void
     {
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);

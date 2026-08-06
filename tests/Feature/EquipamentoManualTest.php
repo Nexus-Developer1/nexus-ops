@@ -593,6 +593,39 @@ class EquipamentoManualTest extends TestCase
         $this->assertSame('CIL-NOVEC-106 — Cilindro Novec 1230 106L', $eq->atributos['componentes'][0]['designacao']);
     }
 
+    // Alertas de manutenção na ficha: linhas data + TEXTO EDITÁVEL; gravar substitui o
+    // conjunto, reabrir mostra as linhas e sem data não grava.
+    public function test_ficha_programa_alertas_de_manutencao_com_texto_editavel(): void
+    {
+        $admin = $this->admin();
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $eq = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-AL']);
+
+        Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $eq])
+            ->call('adicionarAlertaManutencao')
+            ->set('alertasManutencao.0.data', now()->addMonth()->toDateString())
+            ->set('alertasManutencao.0.texto', 'Teste de autonomia anual')
+            ->call('guardarAlertasManutencao')
+            ->assertHasNoErrors();
+
+        $this->assertCount(1, $eq->fresh()->alertasManutencao);
+        $this->assertSame('Teste de autonomia anual', $eq->fresh()->alertasManutencao->first()->texto);
+
+        // Reabrir mostra a linha; linha nova sem data não grava; remover tudo apaga.
+        Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $eq->fresh()])
+            ->assertSet('alertasManutencao.0.texto', 'Teste de autonomia anual')
+            ->call('adicionarAlertaManutencao')
+            ->call('guardarAlertasManutencao')
+            ->assertHasErrors('alertasManutencao.1.data')
+            ->call('removerAlertaManutencao', 1)
+            ->call('removerAlertaManutencao', 0)
+            ->call('guardarAlertasManutencao')
+            ->assertHasNoErrors();
+
+        $this->assertCount(0, $eq->fresh()->alertasManutencao);
+    }
+
     public function test_ficha_edita_componentes_do_sistema(): void
     {
         $admin = $this->admin();

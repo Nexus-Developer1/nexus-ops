@@ -108,6 +108,12 @@ class Equipamento extends Model
         return $this->hasMany(Intervencao::class);
     }
 
+    // Alertas de manutenção programados (data + texto editável) — geridos na ficha.
+    public function alertasManutencao(): HasMany
+    {
+        return $this->hasMany(EquipamentoAlertaManutencao::class);
+    }
+
     public function contratos(): BelongsToMany
     {
         return $this->belongsToMany(Contrato::class, 'contrato_equipamentos')->withTimestamps();

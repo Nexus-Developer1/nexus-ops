@@ -272,6 +272,43 @@
                         </div>
                     </section>
 
+                    {{-- Alertas de manutenção programados: data + texto editável do aviso. Entram no
+                         painel de alertas, no dashboard e no email diário a partir de 7 dias antes. --}}
+                    <section class="cartao">
+                        <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
+                            <div class="flex items-center gap-3">
+                                <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg></span>
+                                <div>
+                                    <h2 class="text-lg font-semibold text-texto-forte">Alertas de manutenção</h2>
+                                    <p class="mt-1 text-xs text-texto-fraco">Programa avisos com o texto que quiseres — aparecem nos alertas a partir de 7 dias antes da data.</p>
+                                </div>
+                            </div>
+                            <button wire:click="adicionarAlertaManutencao" class="botao-secundario">+ Alerta</button>
+                        </div>
+                        <div class="border-t border-borda px-6 py-6">
+                            @forelse ($alertasManutencao as $i => $alerta)
+                                <div class="mb-3 flex flex-col gap-2 last:mb-0 sm:flex-row sm:items-start sm:gap-3" wire:key="alerta-manut-{{ $i }}">
+                                    <div class="sm:w-44">
+                                        <input wire:model="alertasManutencao.{{ $i }}.data" type="date" class="campo-input">
+                                        @error('alertasManutencao.'.$i.'.data') <p class="mt-1.5 text-xs text-perigo-500">Escolha a data do aviso.</p> @enderror
+                                    </div>
+                                    <div class="flex-1">
+                                        <input wire:model="alertasManutencao.{{ $i }}.texto" type="text" class="campo-input" placeholder="Texto do aviso — ex.: Manutenção anual, teste de autonomia">
+                                        @error('alertasManutencao.'.$i.'.texto') <p class="mt-1.5 text-xs text-perigo-500">Escreva o texto do aviso.</p> @enderror
+                                    </div>
+                                    <button wire:click="removerAlertaManutencao({{ $i }})" class="shrink-0 self-end text-texto-fraco hover:text-perigo-600 sm:mt-2 sm:self-auto" title="Remover">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    </button>
+                                </div>
+                            @empty
+                                <p class="text-sm text-texto-medio">Sem alertas programados. Usa "+ Alerta" para marcar a data e o texto do aviso (a troca de baterias já alerta sozinha pela data da ficha).</p>
+                            @endforelse
+                            <div class="mt-4 flex justify-end">
+                                <button wire:click="guardarAlertasManutencao" wire:loading.attr="disabled" wire:target="guardarAlertasManutencao" class="botao-primario">Guardar alertas</button>
+                            </div>
+                        </div>
+                    </section>
+
                     {{-- Notas --}}
                     <section class="cartao">
                         <div class="flex items-center gap-3 px-6 py-5">
