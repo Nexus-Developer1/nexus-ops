@@ -129,6 +129,8 @@ class FakeErpDriver implements ErpSyncDriver
             marca: $marca,
             familia: $familia,
             faminome: $faminome,
+            // Criação no PHC a crescer com i — a "ordem do PHC" é determinística e testável.
+            criadoEm: date('Y-m-d H:i:s', strtotime('2023-01-01 09:00:00') + $i * 86400),
         );
     }
 

@@ -36,6 +36,8 @@ class SqlServerErpDriverEquipamentosTest extends TestCase
             $t->string('marca')->nullable();
             $t->date('instal')->nullable();
             $t->integer('no')->nullable();
+            $t->date('ousrdata')->nullable();   // data de criação no PHC (ordem do PHC)
+            $t->string('ousrhora')->nullable(); // hora ('HH:MM:SS', char no PHC)
         });
 
         // Artigos (para a família, via LEFT JOIN st ON st.ref = ma.ref).
@@ -67,6 +69,8 @@ class SqlServerErpDriverEquipamentosTest extends TestCase
             'marca' => 'RIELLO  ',
             'instal' => '2023-05-10',
             'no' => 1000,
+            'ousrdata' => '2023-09-13',
+            'ousrhora' => '14:23  ', // char com padding e sem segundos — normaliza para HH:MM:SS
         ]);
 
         $equipamentos = iterator_to_array((new SqlServerErpDriver())->obterEquipamentos());
@@ -77,6 +81,8 @@ class SqlServerErpDriverEquipamentosTest extends TestCase
         $this->assertSame('Mic23091346621,906000001', $e->idErp);
         $this->assertSame('MH19VNPW0012345', $e->numeroSerie);
         $this->assertSame('UPS RIELLO NPW 2000VA', $e->modelo);
+        // Data de criação no PHC combinada com a hora (ordem do PHC nos "mais recentes").
+        $this->assertSame('2023-09-13 14:23:00', $e->criadoEm);
     }
 
     public function test_mastamp_com_espacos_casa_com_id_erp_existente_sem_espacos(): void

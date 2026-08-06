@@ -104,6 +104,7 @@ class SincronizarEquipamentosErp extends Command
                 $hash = md5((string) json_encode([
                     $equipErp->numeroSerie, $equipErp->modelo, $equipErp->dataInstalacao,
                     $equipErp->clienteNo, $equipErp->marca, $equipErp->familia, $equipErp->faminome,
+                    $equipErp->criadoEm,
                 ], JSON_INVALID_UTF8_SUBSTITUTE));
 
                 // Nada mudou no ERP desde a última corrida → salta (zero queries) — exceto os
@@ -164,6 +165,7 @@ class SincronizarEquipamentosErp extends Command
                 'familia' => $equipErp->familia,
                 'faminome' => $equipErp->faminome,
                 'qr_code' => $equipErp->idErp,
+                'criado_erp_em' => $equipErp->criadoEm,
             ]);
             $equip->save();
 
@@ -194,11 +196,12 @@ class SincronizarEquipamentosErp extends Command
             $equip->tipo = TipoEquipamento::Ups;
         }
 
-        // Família é do ERP (read-only na app, não editável pelo técnico) → mantém-se SEMPRE
-        // alinhada com o PHC (não é coalesce). É isto que preenche a família nos equipamentos
-        // que já existiam, na primeira corrida após a migração.
+        // Família e data de criação no PHC são do ERP (read-only na app) → mantêm-se SEMPRE
+        // alinhadas com o PHC (não é coalesce). É isto que as preenche nos equipamentos que
+        // já existiam, na primeira corrida após cada migração.
         $equip->familia = $equipErp->familia;
         $equip->faminome = $equipErp->faminome;
+        $equip->criado_erp_em = $equipErp->criadoEm;
 
         // Só grava se algum campo vazio foi preenchido (evita updated_at à toa).
         if ($equip->isDirty()) {

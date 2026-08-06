@@ -24,5 +24,6 @@ final readonly class EquipamentoErp
         public ?string $marca = null,
         public ?string $familia = null,            // PHC st.familia (via ma.ref = st.ref)
         public ?string $faminome = null,           // PHC st.faminome
+        public ?string $criadoEm = null,           // PHC ma.ousrdata+ousrhora ('Y-m-d H:i:s') — ordem do PHC
     ) {}
 }

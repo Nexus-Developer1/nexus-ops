@@ -24,28 +24,32 @@ class ListagensOrdenacaoDefeitoTest extends TestCase
         return $this->admin ??= User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
     }
 
-    public function test_equipamentos_abrem_pelos_mais_recentes_e_ordenam_por_serie(): void
+    public function test_equipamentos_abrem_pelos_mais_recentes_pela_ordem_do_phc(): void
     {
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
         foreach (['SN-A', 'SN-B', 'SN-C'] as $serie) {
             Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => $serie]);
         }
+        // Equipamento do PHC inserido POR ÚLTIMO na app (ex.: backfill), mas ANTIGO no PHC:
+        // "recentes" segue a ordem do PHC (criado_erp_em), não a ordem de inserção na app.
+        Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional',
+            'numero_serie' => 'SN-PHC-VELHO', 'criado_erp_em' => '2020-01-01 09:00:00']);
 
-        // Default: o último criado (SN-C) aparece primeiro.
+        // Default: manuais pela data de registo (empate → id desc), o antigo do PHC no fim.
         Livewire::actingAs($this->admin())->test(\App\Livewire\Equipamentos\Listagem::class)
             ->assertSet('ordenar', 'recentes')
-            ->assertSeeInOrder(['SN-C', 'SN-B', 'SN-A']);
+            ->assertSeeInOrder(['SN-C', 'SN-B', 'SN-A', 'SN-PHC-VELHO']);
 
-        // Mais antigos = ordem de inserção (o comportamento anterior, agora explícito).
+        // Mais antigos: o antigo do PHC primeiro.
         Livewire::actingAs($this->admin())->test(\App\Livewire\Equipamentos\Listagem::class)
             ->set('ordenar', 'antigos')
-            ->assertSeeInOrder(['SN-A', 'SN-B', 'SN-C']);
+            ->assertSeeInOrder(['SN-PHC-VELHO', 'SN-A', 'SN-B', 'SN-C']);
 
         // Por nº de série.
         Livewire::actingAs($this->admin())->test(\App\Livewire\Equipamentos\Listagem::class)
             ->set('ordenar', 'serie_desc')
-            ->assertSeeInOrder(['SN-C', 'SN-B', 'SN-A']);
+            ->assertSeeInOrder(['SN-PHC-VELHO', 'SN-C', 'SN-B', 'SN-A']);
     }
 
     public function test_equipamentos_ordenam_por_cliente_sem_acentos(): void

@@ -148,7 +148,7 @@ class SqlServerErpDriver implements ErpSyncDriver
         // SQL Server: o limite usa TOP (não LIMIT). É um inteiro, interpolado em segurança.
         $top = $limite !== null ? 'TOP ' . (int) $limite . ' ' : '';
 
-        $sql = "SELECT {$top}ma.mastamp, ma.serie, ma.design, ma.instal, ma.no, ma.marca, st.familia, st.faminome
+        $sql = "SELECT {$top}ma.mastamp, ma.serie, ma.design, ma.instal, ma.no, ma.marca, ma.ousrdata, ma.ousrhora, st.familia, st.faminome
                 FROM ma
                 LEFT JOIN st ON st.ref = ma.ref
                 WHERE ma.marca LIKE '%RIELLO%'
@@ -169,6 +169,14 @@ class SqlServerErpDriver implements ErpSyncDriver
                 marca: $r->marca !== null ? trim((string) $r->marca) : null,
                 familia: isset($r->familia) && trim((string) $r->familia) !== '' ? trim((string) $r->familia) : null,
                 faminome: isset($r->faminome) && trim((string) $r->faminome) !== '' ? trim((string) $r->faminome) : null,
+                // Data de criação no PHC (ousrdata) + hora (ousrhora, char 'HH:MM[:SS]') —
+                // é a "ordem do PHC" que a listagem usa nos "mais recentes".
+                criadoEm: $r->ousrdata
+                    ? \Illuminate\Support\Carbon::parse($r->ousrdata)->format('Y-m-d')
+                        . ' ' . (preg_match('/^\d{2}:\d{2}(:\d{2})?$/', trim((string) ($r->ousrhora ?? '')))
+                            ? str_pad(trim((string) $r->ousrhora), 8, ':00')
+                            : '00:00:00')
+                    : null,
             );
         }
     }

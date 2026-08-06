@@ -39,10 +39,12 @@ class SincronizarEquipamentosErpTest extends TestCase
         $this->artisan('erp:sincronizar-equipamentos', ['--limit' => 8])->assertSuccessful();
 
         $this->assertSame(6, Equipamento::count());
-        // Todos os importados são Riello/UPS/operacional — nada de outra marca entrou.
+        // Todos os importados são Riello/UPS/operacional — nada de outra marca entrou —
+        // e trazem a data de criação no PHC (ordena os "mais recentes" pela ordem do PHC).
         $this->assertTrue(Equipamento::get()->every(fn ($e) => $e->fabricante === 'Riello'
             && $e->tipo === TipoEquipamento::Ups
-            && $e->estado === EstadoEquipamento::Operacional));
+            && $e->estado === EstadoEquipamento::Operacional
+            && $e->criado_erp_em !== null));
     }
 
     public function test_idempotencia_por_mastamp_nao_duplica(): void

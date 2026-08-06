@@ -47,6 +47,7 @@ class Equipamento extends Model
         'atributos',
         'qr_code',
         'hash_sync',
+        'criado_erp_em', // data de criação no PHC (ma.ousrdata) — ordena os "mais recentes"
     ];
 
     /** @return array<string, string> */
@@ -57,6 +58,7 @@ class Equipamento extends Model
             'estado' => EstadoEquipamento::class,
             'data_instalacao' => 'date',
             'fim_garantia' => 'date',
+            'criado_erp_em' => 'datetime',
             'proxima_troca_baterias' => 'date',
             'atributos' => 'array',
         ];
