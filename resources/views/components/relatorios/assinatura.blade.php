@@ -18,8 +18,9 @@
             <span x-show="temTraco && !bloqueada" x-cloak class="text-xs text-verde-600">assinado</span>
             <span x-show="bloqueada" x-cloak class="text-xs text-verde-600">🔒 bloqueada</span>
             {{-- Bloqueio pós-assinatura (só aparece quando há algo a proteger): com o cadeado
-                 fechado, nem o traço nem o Limpar funcionam — anti-riscos acidentais. --}}
-            <button type="button" x-show="temTraco || @js((bool) $guardada)" x-cloak @click="bloqueada = !bloqueada"
+                 fechado, nem o traço nem o Limpar funcionam — anti-riscos acidentais. Bloquear
+                 um traço novo também GRAVA o rascunho (a assinatura sobrevive a um refresh). --}}
+            <button type="button" x-show="temTraco || @js((bool) $guardada)" x-cloak @click="alternarBloqueio()"
                 class="text-xs font-medium text-texto-medio hover:text-texto"
                 x-text="bloqueada ? 'Desbloquear' : 'Bloquear'"></button>
             <button type="button" x-show="!bloqueada" @click="limpar()" class="text-xs font-medium text-texto-medio hover:text-perigo-600">Limpar</button>

@@ -144,6 +144,18 @@ document.addEventListener('alpine:init', () => {
             pad.addEventListener('pointercancel', terminar);
         },
 
+        alternarBloqueio() {
+            this.bloqueada = !this.bloqueada;
+            // Bloquear é o "assinatura terminada": grava o rascunho no servidor no mesmo
+            // gesto — um refresh (ou o pull-to-refresh do iPad) deixa de poder levar a
+            // assinatura. Só quando há traço NOVO: uma já gravada não precisa (e gravar à
+            // toa mexia no estado de um relatório finalizado aberto para consulta).
+            if (this.bloqueada && this.temTraco) {
+                window.preservarScroll();
+                this.$wire.call('guardarRascunho');
+            }
+        },
+
         limpar() {
             if (this.bloqueada) return;
             const pad = this.$refs.pad;
