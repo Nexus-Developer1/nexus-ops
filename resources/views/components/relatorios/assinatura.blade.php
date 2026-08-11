@@ -27,12 +27,12 @@
         </div>
     </div>
 
-    {{-- Assinatura já gravada: mostra-a até se desenhar por cima. --}}
+    {{-- Assinatura já gravada: mostra-a até se desenhar por cima ou se carregar em Limpar. --}}
     @if ($guardada)
-        <img x-show="!temTraco" src="{{ $guardada }}" alt="{{ $rotulo }}" class="mb-2 h-28 w-full rounded border border-borda bg-white object-contain">
+        <img x-show="!temTraco && !apagada" src="{{ $guardada }}" alt="{{ $rotulo }}" class="mb-2 h-28 w-full rounded border border-borda bg-white object-contain">
     @endif
 
-    <canvas x-ref="pad" x-show="temTraco || !@js((bool) $guardada)"
+    <canvas x-ref="pad" x-show="temTraco || apagada || !@js((bool) $guardada)"
         :class="bloqueada ? 'border-solid' : 'border-dashed'"
         class="h-28 w-full touch-none rounded border border-borda bg-white"
         aria-label="{{ $rotulo }} — desenhe aqui"></canvas>

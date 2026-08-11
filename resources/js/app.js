@@ -88,6 +88,8 @@ document.addEventListener('alpine:init', () => {
         temTraco: false,
         desenhando: false,
         bloqueada: false, // bloqueio pós-assinatura: ignora traços e o Limpar (anti-riscos acidentais)
+        apagada: false,   // o Limpar escondeu a assinatura GRAVADA — reabre o retângulo para re-assinar
+        gravou: false,    // o Bloquear já gravou nesta sessão (o jaGravada do arranque ficou desatualizado)
         ctx: null,
 
         init() {
@@ -152,6 +154,7 @@ document.addEventListener('alpine:init', () => {
             // toa mexia no estado de um relatório finalizado aberto para consulta).
             if (this.bloqueada && this.temTraco) {
                 window.preservarScroll();
+                this.gravou = true;
                 this.$wire.call('guardarRascunho');
             }
         },
@@ -161,8 +164,13 @@ document.addEventListener('alpine:init', () => {
             const pad = this.$refs.pad;
             this.ctx?.clearRect(0, 0, pad.width, pad.height);
             this.temTraco = false;
-            // 'limpar' diz ao servidor para apagar a assinatura gravada (se existir).
-            this.$wire.set(campo, jaGravada ? 'limpar' : '', false);
+            // Com uma assinatura GRAVADA à vista: esconde-a e reabre o retângulo para
+            // assinar de novo (sem isto o Limpar parecia morto — a imagem ficava lá).
+            this.apagada = true;
+            // 'limpar' diz ao servidor para apagar a gravada na próxima gravação (se
+            // existir — sem nada gravado é um no-op). O 'gravou' cobre as gravadas pelo
+            // Bloquear nesta sessão. Enquanto não se gravar, um refresh recupera-a.
+            this.$wire.set(campo, (jaGravada || this.gravou) ? 'limpar' : '', false);
         },
     }));
 
