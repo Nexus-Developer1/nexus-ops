@@ -150,6 +150,27 @@ class AlertasTest extends TestCase
         Notification::assertSentTo($admin, ResumoAlertas::class);
     }
 
+    // O email diário é um mailable markdown: o HTML das linhas é escapado pelo vendor, mas a
+    // sintaxe markdown seria interpretada — "[label](url)" no texto editável de um alerta
+    // viraria um link clicável num email com remetente de confiança (phishing técnico→admin).
+    // O escape neutraliza-o: o texto sai literal, sem <a href> para o URL forjado.
+    public function test_email_de_resumo_nao_interpreta_markdown_do_texto_editavel(): void
+    {
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $contrato = Contrato::create(['numero' => 'C-7', 'cliente_id' => $cliente->id, 'data_inicio' => now()->subMonth(),
+            'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'preventiva',
+            'modelo_faturacao_id' => \App\Models\ModeloFaturacao::query()->value('id')]);
+        $contrato->alertasVisita()->create(['data' => now()->subDay()->toDateString(),
+            'texto' => '[Repor password de administrador](https://malicioso.example/login)']);
+
+        $admin = User::create(['nome' => 'Admin', 'email' => 'admin@x.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
+        $html = (string) (new ResumoAlertas($this->servico()->recolher()))->toMail($admin)->render();
+
+        // Sem link clicável para o URL do texto; o texto aparece literal (sem markdown ativo).
+        $this->assertStringNotContainsString('href="https://malicioso.example', $html);
+        $this->assertStringContainsString('[Repor password de administrador](https://malicioso.example/login)', $html);
+    }
+
     public function test_painel_visivel_para_admin_e_oculto_para_cliente(): void
     {
         $admin = User::create(['nome' => 'Admin', 'email' => 'admin@x.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
