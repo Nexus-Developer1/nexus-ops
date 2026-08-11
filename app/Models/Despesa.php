@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 // Despesa (linha de um RegistoDespesa) — área de gestão. As colunas de ligação a
 // equipamento/intervenção/contrato mantêm o histórico na BD, mas deixaram de se editar
 // e mostrar (saíram do formulário a pedido da equipa) — as relações órfãs foram removidas;
-// cliente_id continua vivo (filtros da listagem) e faturavel alimenta os KPIs.
+// cliente_id continua vivo (filtros da listagem); faturavel ficou só como histórico na BD
+// (os KPIs e o filtro de faturável saíram da listagem — o editor grava sempre false).
 class Despesa extends Model
 {
     use SoftDeletes;

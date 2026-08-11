@@ -49,7 +49,6 @@ class Listagem extends Component
         session()->flash('sucesso', 'Registo de despesas eliminado.');
     }
 
-
     // Query base com os filtros aplicados (reutilizada para KPIs e listagem).
     private function base()
     {
