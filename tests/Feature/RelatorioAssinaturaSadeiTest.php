@@ -66,6 +66,19 @@ class RelatorioAssinaturaSadeiTest extends TestCase
         $this->assertStringStartsWith('assinaturas/fichas/', $ficha->assinatura_cliente_key);
     }
 
+    // O bloqueio pós-assinatura é client-side (Alpine): o editor tem de renderizar o botão
+    // Bloquear/Desbloquear em cada pad — com o cadeado fechado nem o traço nem o Limpar
+    // funcionam (anti-riscos acidentais por cima de uma assinatura já feita).
+    public function test_editor_renderiza_o_botao_de_bloquear_assinatura(): void
+    {
+        [$tecnico, $equip] = $this->cenario();
+
+        Livewire::actingAs($tecnico)->test(Novo::class)
+            ->set('equipamento_id', $equip->id)
+            ->assertSee('Bloquear')
+            ->assertSee('Desbloquear');
+    }
+
     public function test_payload_invalido_e_recusado_com_erro_visivel(): void
     {
         [$tecnico, $equip] = $this->cenario();

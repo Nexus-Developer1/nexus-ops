@@ -87,6 +87,7 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.data('assinaturaPad', (campo, jaGravada) => ({
         temTraco: false,
         desenhando: false,
+        bloqueada: false, // bloqueio pós-assinatura: ignora traços e o Limpar (anti-riscos acidentais)
         ctx: null,
 
         init() {
@@ -113,6 +114,7 @@ document.addEventListener('alpine:init', () => {
             };
 
             pad.addEventListener('pointerdown', (e) => {
+                if (this.bloqueada) return;
                 if (!this.ctx) ajustar();
                 pad.setPointerCapture(e.pointerId);
                 this.desenhando = true;
@@ -143,6 +145,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         limpar() {
+            if (this.bloqueada) return;
             const pad = this.$refs.pad;
             this.ctx?.clearRect(0, 0, pad.width, pad.height);
             this.temTraco = false;

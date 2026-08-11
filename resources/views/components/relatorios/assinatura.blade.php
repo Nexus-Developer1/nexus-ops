@@ -15,8 +15,14 @@
     <div class="mb-2 flex items-center justify-between">
         <span class="campo-label mb-0">{{ $rotulo }}</span>
         <div class="flex items-center gap-3">
-            <span x-show="temTraco" x-cloak class="text-xs text-verde-600">assinado</span>
-            <button type="button" @click="limpar()" class="text-xs font-medium text-texto-medio hover:text-perigo-600">Limpar</button>
+            <span x-show="temTraco && !bloqueada" x-cloak class="text-xs text-verde-600">assinado</span>
+            <span x-show="bloqueada" x-cloak class="text-xs text-verde-600">🔒 bloqueada</span>
+            {{-- Bloqueio pós-assinatura (só aparece quando há algo a proteger): com o cadeado
+                 fechado, nem o traço nem o Limpar funcionam — anti-riscos acidentais. --}}
+            <button type="button" x-show="temTraco || @js((bool) $guardada)" x-cloak @click="bloqueada = !bloqueada"
+                class="text-xs font-medium text-texto-medio hover:text-texto"
+                x-text="bloqueada ? 'Desbloquear' : 'Bloquear'"></button>
+            <button type="button" x-show="!bloqueada" @click="limpar()" class="text-xs font-medium text-texto-medio hover:text-perigo-600">Limpar</button>
         </div>
     </div>
 
@@ -26,7 +32,8 @@
     @endif
 
     <canvas x-ref="pad" x-show="temTraco || !@js((bool) $guardada)"
-        class="h-28 w-full touch-none rounded border border-dashed border-borda bg-white"
+        :class="bloqueada ? 'border-solid' : 'border-dashed'"
+        class="h-28 w-full touch-none rounded border border-borda bg-white"
         aria-label="{{ $rotulo }} — desenhe aqui"></canvas>
 
     <input type="text" wire:model="{{ $prefixo }}.assinatura_{{ $quem }}_nome" class="campo-input mt-2 text-sm" placeholder="Nome de quem assina">
