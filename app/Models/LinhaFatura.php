@@ -21,6 +21,12 @@ class LinhaFatura extends Model
         'design',
         'series',
         'qtt',
+        'preco_unitario',
+        'desconto',
+        'total_linha',
+        'total_documento',
+        'total_documento_iva',
+        'anulada',
         'synced_at',
         'hash_sync',
     ];
@@ -31,6 +37,12 @@ class LinhaFatura extends Model
         return [
             'data' => 'date',
             'qtt' => 'decimal:3',
+            'preco_unitario' => 'decimal:3',
+            'desconto' => 'decimal:2',
+            'total_linha' => 'decimal:2',
+            'total_documento' => 'decimal:2',
+            'total_documento_iva' => 'decimal:2',
+            'anulada' => 'boolean',
             'synced_at' => 'datetime',
         ];
     }

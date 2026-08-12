@@ -48,6 +48,8 @@ class Fatura extends Component
 
         return view('livewire.clientes.fatura', [
             'linhas' => $linhas,
+            // Valores só para ADMIN (12/08) — técnicos veem o documento sem €.
+            'ehAdmin' => (bool) auth()->user()?->ehAdmin(),
         ]);
     }
 }

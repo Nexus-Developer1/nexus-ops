@@ -73,10 +73,15 @@ class SqlServerErpDriver implements ErpSyncDriver
         // SQL Server: o limite usa TOP (não LIMIT). É um inteiro, interpolado em segurança.
         $top = $limite !== null ? 'TOP ' . (int) $limite . ' ' : '';
 
+        // Valores (12/08): epv/desconto/etotal da linha + totais e anulado do DOCUMENTO
+        // (ft, via ftstamp) — ft.etotal sem IVA, ft.ettotal com IVA.
         $sql = "SELECT {$top}fistamp, nmdoc, fno,
                        (SELECT fdata FROM ft WHERE ftstamp = fi.ftstamp) AS data,
                        (SELECT no FROM ft WHERE ftstamp = fi.ftstamp) AS cliente_no,
-                       ref, design, series, qtt
+                       (SELECT etotal FROM ft WHERE ftstamp = fi.ftstamp) AS doc_total,
+                       (SELECT ettotal FROM ft WHERE ftstamp = fi.ftstamp) AS doc_total_iva,
+                       (SELECT anulado FROM ft WHERE ftstamp = fi.ftstamp) AS anulado,
+                       ref, design, series, qtt, epv, desconto, etotal
                 FROM fi
                 WHERE series NOT LIKE ''";
 
@@ -91,6 +96,12 @@ class SqlServerErpDriver implements ErpSyncDriver
                 design: $r->design,
                 series: $r->series,
                 qtt: $r->qtt !== null ? (float) $r->qtt : null,
+                precoUnitario: $r->epv !== null ? (float) $r->epv : null,
+                desconto: $r->desconto !== null ? (float) $r->desconto : null,
+                totalLinha: $r->etotal !== null ? (float) $r->etotal : null,
+                totalDocumento: $r->doc_total !== null ? (float) $r->doc_total : null,
+                totalDocumentoIva: $r->doc_total_iva !== null ? (float) $r->doc_total_iva : null,
+                anulada: (bool) $r->anulado,
             );
         }
     }

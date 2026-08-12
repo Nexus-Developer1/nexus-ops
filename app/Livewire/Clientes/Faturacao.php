@@ -49,8 +49,30 @@ class Faturacao extends Component
             ->orderByDesc('data')
             ->paginate(25);
 
+        // Valores só para ADMIN (12/08): total faturado nos últimos 12 meses, por DOCUMENTO
+        // (o total vem denormalizado em cada linha — agrupa por documento e soma um total
+        // por documento), excluindo anuladas. Técnicos veem o histórico sem €.
+        $ehAdmin = (bool) auth()->user()?->ehAdmin();
+        $totais = null;
+        if ($ehAdmin) {
+            $docs = LinhaFatura::query()
+                ->where('cliente_no', $this->cliente->id_erp)
+                ->where('anulada', false)
+                ->whereNotNull('total_documento_iva')
+                ->whereDate('data', '>=', now()->subMonths(12))
+                ->selectRaw('nmdoc, fno, data, max(total_documento_iva) as total')
+                ->groupBy('nmdoc', 'fno', 'data');
+
+            $totais = [
+                'ano' => (float) \Illuminate\Support\Facades\DB::query()->fromSub($docs, 'docs')->sum('total'),
+                'docs' => \Illuminate\Support\Facades\DB::query()->fromSub($docs, 'docs')->count(),
+            ];
+        }
+
         return view('livewire.clientes.faturacao', [
             'linhas' => $linhas,
+            'ehAdmin' => $ehAdmin,
+            'totais' => $totais,
         ]);
     }
 }
