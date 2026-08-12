@@ -398,6 +398,8 @@ class Ficha extends Component
             'bancosFiltrados' => $this->bancosFiltrados(),
             'novosClientesFiltrados' => $this->novosClientesFiltrados(),
             'artigosFiltrados' => $this->artigosFiltrados(),
+            // QR real com o URL desta ficha (substitui o placeholder decorativo).
+            'qrEtiqueta' => app(\App\Services\GeradorQrEquipamento::class)->svg($this->equipamento),
         ]);
     }
 }

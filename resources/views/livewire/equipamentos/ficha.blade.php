@@ -33,9 +33,15 @@
                                     <span class="text-sm text-texto-medio">{{ $descricaoTipo }}</span>
                                 @endif
                             </div>
-                            <div class="flex h-16 w-16 items-center justify-center rounded-lg border border-borda bg-fundo text-texto-fraco">
-                                <svg class="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.4"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 3h3m0 0h3m-3 0v3m0-3v-3"/></svg>
-                            </div>
+                            {{-- QR REAL (o URL desta ficha — qualquer câmara o abre); clicar
+                                 descarrega a etiqueta 90x50mm para imprimir e colar no equipamento.
+                                 O SVG vem do gerador da app (sem input de utilizador) — seguro em raw. --}}
+                            <a href="{{ route('equipamentos.etiqueta', $equipamento) }}" target="_blank" rel="noopener"
+                                title="Descarregar etiqueta QR (PDF, 90x50mm)"
+                                class="flex flex-col items-center gap-1 text-texto-fraco hover:text-texto-medio">
+                                <span class="flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg border border-borda bg-white p-1 [&_svg]:h-full [&_svg]:w-full">{!! $qrEtiqueta !!}</span>
+                                <span class="text-[10px] font-medium uppercase tracking-wide">Etiqueta</span>
+                            </a>
                         </div>
                         {{-- MODELO primeiro (em destaque, largura toda), depois o resto em 2 colunas. --}}
                         <dl class="mt-4 text-sm">

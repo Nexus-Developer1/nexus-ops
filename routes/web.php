@@ -123,6 +123,20 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
 
     // Ficha de equipamento (leitura em campo — ex.: QR code).
     Route::get('/ativos/{equipamento}', \App\Livewire\Equipamentos\Ficha::class)->name('equipamentos.ficha');
+    // Etiqueta QR (90x50mm) para imprimir e colar no equipamento — o QR contém o URL da
+    // ficha (qualquer câmara o abre; o login é pedido se a sessão tiver caducado).
+    Route::get('/ativos/{equipamento}/etiqueta', function (\App\Models\Equipamento $equipamento, \App\Services\GeradorQrEquipamento $qr) {
+        $html = view('pdf.etiqueta-equipamento', ['equipamento' => $equipamento, 'qrPng' => $qr->pngDataUri($equipamento)])->render();
+        $dompdf = new \Dompdf\Dompdf(['enable_remote' => false]);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper([0, 0, 255.12, 141.73]); // 90 x 50 mm em pontos
+        $dompdf->render();
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="etiqueta-equipamento-' . $equipamento->id . '.pdf"',
+        ]);
+    })->name('equipamentos.etiqueta');
 
     // "Abrir intervenção": o trabalho preenche-se no EDITOR DE RELATÓRIO (fonte única — abas
     // de equipamento, ficha de medições, etc.). Garante um rascunho ligado e redireciona.
