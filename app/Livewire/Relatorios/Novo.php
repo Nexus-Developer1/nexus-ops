@@ -799,7 +799,54 @@ class Novo extends Component
             throw $e;
         }
 
-        $relatorio = DB::transaction(function () use ($gerador, $sincronizador, $finalizar) {
+        $relatorio = $this->gravarTransacao($gerador, $sincronizador, $finalizar);
+
+        return $this->depoisDeGravar($relatorio, $finalizar, $eraNovo);
+    }
+
+    // Autosave de CAMPO (iPad): grava o rascunho em background sem nunca interromper o
+    // técnico — sem erros visíveis, sem navegação, sem toasts do caminho manual. NUNCA toca
+    // em relatórios finalizados/enviados (a gravação despromove-os a rascunho — isso é
+    // decisão consciente do guardar manual, com o aviso respetivo). Disparado pelo
+    // temporizador do editor apenas quando há alterações por gravar.
+    public function autoGravar(GeradorRelatorio $gerador, SincronizadorAgenda $sincronizador): void
+    {
+        if (! $this->equipamento_id) {
+            return; // formulário ainda vazio — nada que valha a pena gravar
+        }
+
+        // Relido da BD (não confia na prop): finalizado/enviado (ou entretanto apagado)
+        // ficam intocados pelo autosave.
+        if ($this->relatorioId !== null) {
+            $estado = Relatorio::whereKey($this->relatorioId)->value('estado');
+            if ($estado !== EstadoRelatorio::Rascunho->value) {
+                return;
+            }
+        }
+
+        $eraNovo = $this->relatorioId === null;
+
+        try {
+            $this->validarPara(false);
+        } catch (\Illuminate\Validation\ValidationException) {
+            // Meio-preenchido não é erro no autosave: limpa o error bag (senão os erros
+            // apareciam "do nada" a meio da escrita) e fica para a volta seguinte.
+            $this->resetErrorBag();
+
+            return;
+        }
+
+        $relatorio = $this->gravarTransacao($gerador, $sincronizador, finalizar: false);
+
+        // No 1.º autosave de um relatório novo, o editor troca o URL para a edição via
+        // history.replaceState (sem recarregar) — um F5 a seguir retoma este rascunho.
+        $this->dispatch('auto-gravado', url: $eraNovo ? route('relatorios.editar', $relatorio) : null);
+    }
+
+    // Núcleo transacional da gravação — partilhado pelo guardar manual e pelo autosave.
+    private function gravarTransacao(GeradorRelatorio $gerador, SincronizadorAgenda $sincronizador, bool $finalizar): Relatorio
+    {
+        return DB::transaction(function () use ($gerador, $sincronizador, $finalizar) {
             $dados = [
                 'equipamento_id' => $this->equipamento_id,
                 'contrato_id' => $this->modo === 'contrato' ? $this->contrato_id : null,
@@ -903,7 +950,11 @@ class Novo extends Component
 
             return $relatorio;
         });
+    }
 
+    // Pós-gravação do caminho MANUAL (redirects e toasts — o autosave não passa por aqui).
+    private function depoisDeGravar(Relatorio $relatorio, bool $finalizar, bool $eraNovo)
+    {
         if ($finalizar) {
             GerarRelatorioPdf::dispatch($relatorio);
             session()->flash('sucesso', "Relatório {$relatorio->numero} finalizado. O PDF está a ser gerado.");

@@ -1,6 +1,16 @@
 {{-- validacao-falhou: os campos validados vivem no separador "Dados Gerais" — salta para lá
-     e sobe ao topo, senão o erro ficava escondido e o botão parecia não fazer nada. --}}
-<div x-data="{ tab: 'gerais' }" x-on:validacao-falhou.window="tab = 'gerais'; window.scrollTo({ top: 0, behavior: 'smooth' })">
+     e sobe ao topo, senão o erro ficava escondido e o botão parecia não fazer nada.
+     Autosave de campo: qualquer alteração marca o formulário como "sujo"; a cada 2 minutos
+     (e ao sair da app — visibilitychange, o caso do iPad) grava-se o rascunho em silêncio.
+     O sinal 'suja' só limpa quando uma gravação (auto ou manual) confirma. No 1.º autosave
+     de um relatório novo, o URL troca para a edição sem recarregar (F5 retoma o rascunho). --}}
+<div x-data="{ tab: 'gerais', suja: false }"
+    x-on:validacao-falhou.window="tab = 'gerais'; window.scrollTo({ top: 0, behavior: 'smooth' })"
+    x-on:input="suja = true" x-on:change="suja = true"
+    x-on:auto-gravado.window="suja = false; if ($event.detail.url) history.replaceState(null, '', $event.detail.url)"
+    x-on:rascunho-guardado.window="suja = false"
+    x-init="setInterval(() => { if (suja && !document.hidden) $wire.autoGravar() }, 120000);
+        document.addEventListener('visibilitychange', () => { if (suja && document.hidden) $wire.autoGravar() })">
     <x-topbar :breadcrumb="['Relatórios', $relatorioId ? 'Rascunho' : 'Novo']">
         <a href="{{ route('relatorios') }}" class="botao-secundario">Cancelar</a>
         <button wire:click="guardarRascunho" wire:loading.attr="disabled" wire:target="guardarRascunho" class="botao-secundario">
@@ -13,13 +23,15 @@
         </button>
     </x-topbar>
 
-    {{-- Toast do save de prevenção ("Guardar rascunho" em edição fica na página). --}}
-    <div x-data="{ visivel: false }"
-        x-on:rascunho-guardado.window="visivel = true; setTimeout(() => visivel = false, 2500)"
+    {{-- Toast do save de prevenção ("Guardar rascunho" em edição fica na página) e do
+         autosave (texto próprio, para o técnico saber que está protegido sem fazer nada). --}}
+    <div x-data="{ visivel: false, texto: 'Rascunho guardado' }"
+        x-on:rascunho-guardado.window="texto = 'Rascunho guardado'; visivel = true; setTimeout(() => visivel = false, 2500)"
+        x-on:auto-gravado.window="texto = 'Rascunho gravado automaticamente'; visivel = true; setTimeout(() => visivel = false, 2500)"
         x-show="visivel" x-cloak x-transition.opacity
         class="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg bg-verde-600 px-4 py-3 text-sm font-medium text-white shadow-lg">
         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-        Rascunho guardado
+        <span x-text="texto"></span>
     </div>
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
