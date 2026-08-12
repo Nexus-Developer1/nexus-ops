@@ -73,15 +73,17 @@ class SqlServerErpDriver implements ErpSyncDriver
         // SQL Server: o limite usa TOP (não LIMIT). É um inteiro, interpolado em segurança.
         $top = $limite !== null ? 'TOP ' . (int) $limite . ' ' : '';
 
-        // Valores (12/08): epv/desconto/etotal da linha + totais e anulado do DOCUMENTO
-        // (ft, via ftstamp) — ft.etotal sem IVA, ft.ettotal com IVA.
+        // Valores (12/08), com os nomes REAIS deste PHC (confirmados na produção a 12/08):
+        // linha = fi.epv / fi.desconto / fi.etiliquido (total líquido da linha, em euros —
+        // NÃO existe fi.etotal); documento = ft.etotal (sem IVA) e ft.etotal + ft.ettiva
+        // (com IVA — não há coluna única "com IVA" em euros neste esquema); ft.anulado.
         $sql = "SELECT {$top}fistamp, nmdoc, fno,
                        (SELECT fdata FROM ft WHERE ftstamp = fi.ftstamp) AS data,
                        (SELECT no FROM ft WHERE ftstamp = fi.ftstamp) AS cliente_no,
                        (SELECT etotal FROM ft WHERE ftstamp = fi.ftstamp) AS doc_total,
-                       (SELECT ettotal FROM ft WHERE ftstamp = fi.ftstamp) AS doc_total_iva,
+                       (SELECT etotal + ettiva FROM ft WHERE ftstamp = fi.ftstamp) AS doc_total_iva,
                        (SELECT anulado FROM ft WHERE ftstamp = fi.ftstamp) AS anulado,
-                       ref, design, series, qtt, epv, desconto, etotal
+                       ref, design, series, qtt, epv, desconto, etiliquido
                 FROM fi
                 WHERE series NOT LIKE ''";
 
@@ -98,7 +100,7 @@ class SqlServerErpDriver implements ErpSyncDriver
                 qtt: $r->qtt !== null ? (float) $r->qtt : null,
                 precoUnitario: $r->epv !== null ? (float) $r->epv : null,
                 desconto: $r->desconto !== null ? (float) $r->desconto : null,
-                totalLinha: $r->etotal !== null ? (float) $r->etotal : null,
+                totalLinha: $r->etiliquido !== null ? (float) $r->etiliquido : null,
                 totalDocumento: $r->doc_total !== null ? (float) $r->doc_total : null,
                 totalDocumentoIva: $r->doc_total_iva !== null ? (float) $r->doc_total_iva : null,
                 anulada: (bool) $r->anulado,

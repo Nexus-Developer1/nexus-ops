@@ -32,17 +32,17 @@ class SqlServerErpDriverFaturacaoTest extends TestCase
             $t->string('design')->nullable();
             $t->string('series')->nullable();
             $t->decimal('qtt')->nullable();
-            $t->decimal('epv')->nullable();      // preço unitário (sem IVA)
-            $t->decimal('desconto')->nullable(); // percentagem
-            $t->decimal('etotal')->nullable();   // total da linha (sem IVA)
+            $t->decimal('epv')->nullable();        // preço unitário (sem IVA)
+            $t->decimal('desconto')->nullable();   // percentagem
+            $t->decimal('etiliquido')->nullable(); // total líquido da linha (euros) — o PHC real NÃO tem fi.etotal
         });
 
         Schema::connection('erp')->create('ft', function ($t) {
             $t->string('ftstamp');
             $t->date('fdata')->nullable();
             $t->integer('no')->nullable();
-            $t->decimal('etotal')->nullable();  // total do documento (sem IVA)
-            $t->decimal('ettotal')->nullable(); // total do documento (com IVA)
+            $t->decimal('etotal')->nullable(); // total do documento (sem IVA)
+            $t->decimal('ettiva')->nullable(); // valor do IVA (euros) — com IVA = etotal + ettiva
             $t->boolean('anulado')->default(false);
         });
     }
@@ -60,16 +60,16 @@ class SqlServerErpDriverFaturacaoTest extends TestCase
     {
         DB::connection('erp')->table('ft')->insert([
             'ftstamp' => 'FT-1', 'fdata' => '2026-05-10', 'no' => 148,
-            'etotal' => 800.00, 'ettotal' => 984.00, 'anulado' => false,
+            'etotal' => 800.00, 'ettiva' => 184.00, 'anulado' => false, // com IVA = 984.00
         ]);
         DB::connection('erp')->table('fi')->insert([
             ['fistamp' => 'FI-1', 'ftstamp' => 'FT-1', 'nmdoc' => 'Factura', 'fno' => 42,
                 'ref' => 'UPS-NPW', 'design' => 'UPS RIELLO NPW', 'series' => 'S1',
-                'qtt' => 2, 'epv' => 350.50, 'desconto' => 5, 'etotal' => 665.95],
+                'qtt' => 2, 'epv' => 350.50, 'desconto' => 5, 'etiliquido' => 665.95],
             // Sem série → filtrada pelo WHERE (linhas de serviço não entram).
             ['fistamp' => 'FI-2', 'ftstamp' => 'FT-1', 'nmdoc' => 'Factura', 'fno' => 42,
                 'ref' => 'MO', 'design' => 'Mão de obra', 'series' => '',
-                'qtt' => 1, 'epv' => 100, 'desconto' => 0, 'etotal' => 100],
+                'qtt' => 1, 'epv' => 100, 'desconto' => 0, 'etiliquido' => 100],
         ]);
 
         $linhas = iterator_to_array((new SqlServerErpDriver())->obterLinhasFatura());
@@ -91,12 +91,12 @@ class SqlServerErpDriverFaturacaoTest extends TestCase
     {
         DB::connection('erp')->table('ft')->insert([
             'ftstamp' => 'FT-2', 'fdata' => '2026-04-01', 'no' => 148,
-            'etotal' => 100, 'ettotal' => 123, 'anulado' => true,
+            'etotal' => 100, 'ettiva' => 23, 'anulado' => true,
         ]);
         DB::connection('erp')->table('fi')->insert([
             'fistamp' => 'FI-3', 'ftstamp' => 'FT-2', 'nmdoc' => 'Factura', 'fno' => 7,
             'ref' => 'X', 'design' => 'X', 'series' => 'SN-X', 'qtt' => 1,
-            'epv' => 100, 'desconto' => 0, 'etotal' => 100,
+            'epv' => 100, 'desconto' => 0, 'etiliquido' => 100,
         ]);
 
         $l = iterator_to_array((new SqlServerErpDriver())->obterLinhasFatura())[0];
