@@ -5,7 +5,7 @@ namespace App\Livewire\Despesas;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Despesa;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Url;
+use Livewire\Attributes\Session;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -16,13 +16,13 @@ class Listagem extends Component
 
     use WithPagination;
 
-    #[Url]
+    #[Session]
     public string $pesquisa = '';
 
-    #[Url]
+    #[Session]
     public string $categoria = '';
 
-    #[Url]
+    #[Session]
     public string $periodo = 'mes'; // mes | tudo
 
     public function updatingPesquisa(): void

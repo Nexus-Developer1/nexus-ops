@@ -6,7 +6,7 @@ use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\TipoEquipamento;
 use App\Models\Equipamento;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Url;
+use Livewire\Attributes\Session;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -17,24 +17,26 @@ class Listagem extends Component
 
     use WithPagination;
 
-    #[Url]
+    // Filtros e pesquisa vivem na SESSÃO (não no URL): entrar numa ficha e voltar à lista
+    // mantém o que se estava a pesquisar — pedido da equipa (12/08, como nos clientes).
+    #[Session]
     public string $pesquisa = '';
 
-    #[Url]
+    #[Session]
     public string $tipo = '';
 
     // Filtro por família do artigo (faminome, vem do PHC) — ex.: ver só UPS, esconder "Peças".
-    #[Url]
+    #[Session]
     public string $familia = '';
 
     // Filtro por banco de baterias associado: '' | 'com' | 'sem' | 'banco'.
-    #[Url]
+    #[Session]
     public string $banco = '';
 
     // Ordenação ativa (valor de uma whitelist — nunca interpolado em cru). Por defeito, os
     // MAIS RECENTES primeiro: era a ordem de inserção do ERP (id), que escondia lá no fim
     // os equipamentos acabados de sincronizar/registar.
-    #[Url]
+    #[Session]
     public string $ordenar = 'recentes';
 
     /** Opções de ordenação (valor => rótulo), no padrão da lista de clientes. */

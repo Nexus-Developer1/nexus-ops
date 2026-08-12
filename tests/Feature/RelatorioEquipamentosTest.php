@@ -490,8 +490,9 @@ class RelatorioEquipamentosTest extends TestCase
         Livewire::actingAs($admin)->test(RelatoriosListagem::class)->set('tipo', 'individual')
             ->assertViewHas('relatorios', fn ($p) => in_array($rI->id, $ids($p), true) && ! in_array($rC->id, $ids($p), true));
 
-        // tipo='' → ambos (sem filtro de tipo).
-        Livewire::actingAs($admin)->test(RelatoriosListagem::class)
+        // tipo='' → ambos (sem filtro de tipo). Limpo explicitamente: os filtros passaram
+        // a persistir na sessão entre visitas (#[Session]) — o 'individual' acima ficaria.
+        Livewire::actingAs($admin)->test(RelatoriosListagem::class)->set('tipo', '')
             ->assertViewHas('relatorios', fn ($p) => in_array($rC->id, $ids($p), true) && in_array($rI->id, $ids($p), true));
 
         // Combina com estado: de contrato + rascunho → nenhum (o de contrato é finalizado).

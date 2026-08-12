@@ -7,7 +7,7 @@ use App\Enums\EstadoRelatorio;
 use App\Models\Relatorio;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Url;
+use Livewire\Attributes\Session;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -22,19 +22,19 @@ class Listagem extends Component
     // (mesma da lista de clientes, qualificada porque entra numa subquery com joins).
     private const NOME_SEM_ACENTOS = "translate(lower(btrim(clientes.nome)), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
 
-    #[Url]
+    #[Session]
     public string $pesquisa = '';
 
-    #[Url]
+    #[Session]
     public string $estado = '';
 
     // Tipo de relatório: '' (todos) | 'contrato' | 'individual'. Distingue-se pelo
     // intervencao.contrato_id (preenchido = de contrato; null = individual).
-    #[Url]
+    #[Session]
     public string $tipo = '';
 
     // Ordenação ativa (valor de uma whitelist — nunca interpolado em cru).
-    #[Url]
+    #[Session]
     public string $ordenar = 'recentes';
 
     public function updatingPesquisa(): void

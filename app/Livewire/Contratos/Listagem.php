@@ -6,7 +6,7 @@ use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\EstadoContrato;
 use App\Models\Contrato;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Url;
+use Livewire\Attributes\Session;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -17,10 +17,10 @@ class Listagem extends Component
 
     use WithPagination;
 
-    #[Url]
+    #[Session]
     public string $pesquisa = '';
 
-    #[Url]
+    #[Session]
     public string $estado = '';
 
     public function updatingPesquisa(): void

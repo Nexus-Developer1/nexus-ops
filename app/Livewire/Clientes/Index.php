@@ -5,7 +5,7 @@ namespace App\Livewire\Clientes;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Cliente;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Url;
+use Livewire\Attributes\Session;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -21,13 +21,15 @@ class Index extends Component
     // Expressão pura (sem extensão) para ordenar por nome ignorando acentos, maiúsculas e espaços.
     private const NOME_SEM_ACENTOS = "translate(lower(btrim(nome)), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
 
-    #[Url]
+    // Pesquisa e ordenação vivem na SESSÃO (não no URL): entrar num cliente e voltar à
+    // lista mantém o que se estava a pesquisar — pedido da equipa (12/08).
+    #[Session]
     public string $pesquisa = '';
 
     // Ordenação ativa (valor de uma whitelist — nunca interpolado em cru). Por defeito, os
     // MAIS RECENTES primeiro (igual à lista de equipamentos): quem chega novo do PHC fica à
     // vista, em vez de enterrado no meio de 3 mil nomes.
-    #[Url]
+    #[Session]
     public string $ordenar = 'recentes';
 
     public function updatingPesquisa(): void
