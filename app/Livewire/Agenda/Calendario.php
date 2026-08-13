@@ -569,9 +569,16 @@ class Calendario extends Component
             ->orderBy('numero')
             ->get();
 
+        // Saldo do contrato escolhido no formulário (Vaga 1): marcar "incluída" era às
+        // cegas — o excesso só se descobria depois, na ficha do contrato.
+        $saldoContratoForm = $this->formContratoId
+            ? Contrato::find($this->formContratoId)?->saldoVisitas()
+            : null;
+
         return view('livewire.agenda.calendario', [
             'tecnicos' => $tecnicos,
             'nomesTecnicos' => $nomesTecnicos,
+            'saldoContratoForm' => $saldoContratoForm,
             'evento' => $evento,
             'eventoEditavel' => $evento && $evento->editavelPelaAgenda(),
             'assuntos' => AssuntoEvento::orderBy('nome')->get(),

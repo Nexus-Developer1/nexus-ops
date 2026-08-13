@@ -25,12 +25,10 @@ class Painel extends Component
     {
         $alertas = $servico->recolher();
 
-        $contagens = [
-            'bateria' => $alertas->where('tipo', 'bateria')->count(),
-            'renovacao' => $alertas->where('tipo', 'renovacao')->count(),
-            'visita_atraso' => $alertas->where('tipo', 'visita_atraso')->count(),
-            'sla' => $alertas->where('tipo', 'sla')->count(),
-        ];
+        // Contagens DINÂMICAS por tipo (Vaga 1): a lista fixa de 4 tipos fazia o cartão
+        // "Todos" não bater com a lista quando havia visitas/manutenções programadas ou
+        // alertas de backup — o gestor via "6" num painel com 10 linhas.
+        $contagens = $alertas->countBy('tipo')->all();
 
         if ($this->tipo) {
             $alertas = $alertas->where('tipo', $this->tipo)->values();

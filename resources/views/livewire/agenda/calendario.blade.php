@@ -304,6 +304,15 @@
                                         </button>
                                     </div>
                                     <p class="mt-1.5 text-xs text-texto-fraco">"Incluída" desconta do saldo do contrato; "Extra" é faturável à parte.</p>
+                                    {{-- Saldo em direto do contrato escolhido (Vaga 1) — deixa de se marcar às cegas. --}}
+                                    @if ($saldoContratoForm)
+                                        <p class="mt-1.5 text-xs {{ $saldoContratoForm['restantes'] === 0 ? 'font-medium text-aviso-500' : 'text-texto-medio' }}">
+                                            Saldo: {{ $saldoContratoForm['usadas'] }} de {{ $saldoContratoForm['incluidas'] }} incluídas usadas — restam {{ $saldoContratoForm['restantes'] }}.
+                                            @if ($saldoContratoForm['excedido'] > 0)
+                                                Já excedido em {{ $saldoContratoForm['excedido'] }} — esta visita será faturável à parte.
+                                            @endif
+                                        </p>
+                                    @endif
                                     @error('formCobertura') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                                 </div>
                             @endif

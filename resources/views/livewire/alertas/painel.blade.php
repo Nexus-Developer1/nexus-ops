@@ -6,17 +6,27 @@
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Alertas</h1>
             <p class="mt-2 text-sm text-texto-medio">Renovações, baterias, visitas em atraso e SLA em risco — o que precisa de atenção.</p>
 
-            {{-- Resumo por tipo (filtros) --}}
+            {{-- Resumo por tipo (filtros) — dinâmico: os 4 tipos base aparecem sempre; os
+                 restantes (visitas/manutenções programadas, backup) só quando têm alertas.
+                 Assim o "Todos" bate SEMPRE com a lista (Vaga 1). --}}
             @php
-                $cartoes = [
-                    ['tipo' => '', 'rotulo' => 'Todos', 'n' => array_sum($contagens)],
-                    ['tipo' => 'renovacao', 'rotulo' => 'Renovações', 'n' => $contagens['renovacao']],
-                    ['tipo' => 'bateria', 'rotulo' => 'Baterias', 'n' => $contagens['bateria']],
-                    ['tipo' => 'visita_atraso', 'rotulo' => 'Visitas em atraso', 'n' => $contagens['visita_atraso']],
-                    ['tipo' => 'sla', 'rotulo' => 'SLA em risco', 'n' => $contagens['sla']],
+                $rotulos = [
+                    'renovacao' => 'Renovações',
+                    'bateria' => 'Baterias',
+                    'visita_atraso' => 'Visitas em atraso',
+                    'sla' => 'SLA em risco',
+                    'visita_programada' => 'Visitas programadas',
+                    'manutencao_programada' => 'Manutenções programadas',
+                    'backup' => 'Backups',
                 ];
+                $cartoes = [['tipo' => '', 'rotulo' => 'Todos', 'n' => array_sum($contagens)]];
+                foreach ($rotulos as $t => $r) {
+                    if (($contagens[$t] ?? 0) > 0 || in_array($t, ['renovacao', 'bateria', 'visita_atraso', 'sla'], true)) {
+                        $cartoes[] = ['tipo' => $t, 'rotulo' => $r, 'n' => $contagens[$t] ?? 0];
+                    }
+                }
             @endphp
-            <div class="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-5">
+            <div class="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
                 @foreach ($cartoes as $c)
                     <button wire:click="filtrar('{{ $c['tipo'] }}')"
                         class="cartao p-4 text-left transition {{ $tipo === $c['tipo'] ? 'ring-2 ring-verde-500' : 'hover:bg-fundo' }}">

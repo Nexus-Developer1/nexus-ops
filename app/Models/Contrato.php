@@ -85,6 +85,38 @@ class Contrato extends Model
         return $this->hasMany(ContratoAlertaVisita::class);
     }
 
+    /**
+     * Saldo de visitas do contrato (CLAUDE.md §6): determinístico — conta eventos pela
+     * cobertura, não por periodicidade. Null = contrato sem controlo de saldo. Extraído da
+     * ficha (Vaga 1) para o modal da agenda mostrar o saldo ao marcar a cobertura.
+     *
+     * @return array{incluidas: int, usadas: int, extras: int, restantes: int, excedido: int}|null
+     */
+    public function saldoVisitas(): ?array
+    {
+        $incluidas = $this->visitas_incluidas;
+        if ($incluidas === null) {
+            return null;
+        }
+
+        $usadas = $this->eventos()
+            ->where('cobertura', 'incluida')
+            ->where('estado', '!=', \App\Enums\EstadoEvento::Cancelado->value)
+            ->count();
+        $extras = $this->eventos()
+            ->where('cobertura', 'extra')
+            ->where('estado', '!=', \App\Enums\EstadoEvento::Cancelado->value)
+            ->count();
+
+        return [
+            'incluidas' => $incluidas,
+            'usadas' => $usadas,
+            'extras' => $extras,
+            'restantes' => max(0, $incluidas - $usadas), // nunca negativo
+            'excedido' => max(0, $usadas - $incluidas),
+        ];
+    }
+
     public function eventos(): HasMany
     {
         return $this->hasMany(EventoAgenda::class);
