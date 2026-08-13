@@ -208,6 +208,15 @@ Route::middleware(['auth', 'papel:cliente'])->prefix('portal')->name('portal.')-
         // FILESYSTEM_DISK mudar (MinIO/S3), o portal deixava de encontrar os PDFs existentes.
         $disco = \Illuminate\Support\Facades\Storage::disk();
 
+        // Vaga 2: o portal serve SEMPRE a cópia CONGELADA do envio (o que o cliente recebeu
+        // por email) — nunca o documento de trabalho nem uma regeneração com template novo.
+        if ($relatorio->pdf_enviado_path && $disco->exists($relatorio->pdf_enviado_path)) {
+            return response($disco->get($relatorio->pdf_enviado_path))
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', 'inline; filename="' . str_replace('/', '-', $relatorio->numero) . '.pdf"');
+        }
+
+        // LEGADO: enviados antes da cópia congelada existir — comportamento antigo.
         if (! $relatorio->pdf_path || ! $disco->exists($relatorio->pdf_path)) {
             $gerador->gerarPdf($relatorio);
             $relatorio->refresh();

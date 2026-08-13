@@ -370,6 +370,7 @@ class Ficha extends Component
             'tipo' => TipoIntervencao::Corretiva,
             'estado' => EstadoIntervencao::EmCurso,
             'data_inicio' => now(),
+            'pedido_em' => now(), // melhor esforço: o relógio do SLA arranca já (editável no relatório)
         ]);
 
         return redirect()->route('intervencoes.formulario', $intervencao);

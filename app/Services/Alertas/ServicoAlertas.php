@@ -173,40 +173,72 @@ class ServicoAlertas
             ->all();
     }
 
-    // Intervenções corretivas abertas que excedem o tempo de resolução do SLA do contrato.
+    // Intervenções corretivas abertas medidas contra o SLA do contrato — RESPOSTA (relógio:
+    // pedido_em → início do trabalho) e RESOLUÇÃO (início → agora). Vaga 2: o alerta passa a
+    // ANTECIPAR — média a partir de 75% do prazo, alta quando estoura (antes só disparava
+    // depois de falhado, quando já não havia nada a fazer).
     private function slaEmRisco(): array
     {
         return Intervencao::query()
             ->where('tipo', 'corretiva')
             ->where('estado', '!=', 'concluida')
             ->whereNotNull('contrato_id')
-            ->whereNotNull('data_inicio')
             ->with(['contrato.slas', 'equipamento.local.cliente'])
             ->get()
             ->filter(fn (Intervencao $i) => $i->contrato && $i->contrato->slas->isNotEmpty())
-            ->map(function (Intervencao $i) {
-                // Usa o SLA mais exigente do contrato (menor tempo de resolução).
+            ->flatMap(function (Intervencao $i) {
+                $alertas = [];
+                $cliente = $i->equipamento->local?->cliente?->nome ?? '—';
+
+                // RESPOSTA: só enquanto o trabalho não começou (data_inicio marca a resposta).
+                // NBD medido como o fim do dia útil seguinte ao pedido.
+                $slaResposta = $i->contrato->slas
+                    ->first(fn ($s) => $s->tempo_resposta_horas !== null || $s->resposta_nbd);
+                if ($i->pedido_em && ! $i->data_inicio && $slaResposta) {
+                    $prazo = $slaResposta->resposta_nbd
+                        ? $i->pedido_em->copy()->addWeekday()->endOfDay()
+                        : $i->pedido_em->copy()->addHours((int) $slaResposta->tempo_resposta_horas);
+                    if ($a = $this->alertaDePrazo($i, 'resposta', $i->pedido_em, $prazo, $cliente)) {
+                        $alertas[] = $a;
+                    }
+                }
+
+                // RESOLUÇÃO: do início do trabalho até agora, contra o menor tempo do contrato.
                 $horas = $i->contrato->slas->whereNotNull('tempo_resolucao_horas')->min('tempo_resolucao_horas');
-                if (! $horas) {
-                    return null;
+                if ($i->data_inicio && $horas) {
+                    $prazo = $i->data_inicio->copy()->addHours((int) $horas);
+                    if ($a = $this->alertaDePrazo($i, 'resolução', $i->data_inicio, $prazo, $cliente)) {
+                        $alertas[] = $a;
+                    }
                 }
 
-                $prazo = $i->data_inicio->copy()->addHours($horas);
-                if ($prazo->isFuture()) {
-                    return null;
-                }
-
-                return [
-                    'tipo' => 'sla',
-                    'severidade' => 'alta',
-                    'titulo' => 'SLA em risco · intervenção #' . $i->id,
-                    'descricao' => ($i->equipamento->local?->cliente?->nome ?? '—') . ' · prazo de resolução excedido (' . $horas . 'h)',
-                    'url' => route('intervencoes.formulario', $i),
-                    'data' => $prazo,
-                ];
+                return $alertas;
             })
-            ->filter()
             ->values()
             ->all();
+    }
+
+    // Alerta de um prazo de SLA com antecipação: <75% decorrido → nada; 75-100% → média
+    // ("a esgotar-se"); >100% → alta ("excedido").
+    private function alertaDePrazo(Intervencao $i, string $fase, \Illuminate\Support\Carbon $inicio, \Illuminate\Support\Carbon $prazo, string $cliente): ?array
+    {
+        $total = max(1, $inicio->diffInSeconds($prazo));
+        $decorrido = $inicio->diffInSeconds(now());
+        $fracao = $decorrido / $total;
+
+        if ($fracao < 0.75) {
+            return null;
+        }
+
+        $estourou = $fracao >= 1;
+
+        return [
+            'tipo' => 'sla',
+            'severidade' => $estourou ? 'alta' : 'media',
+            'titulo' => 'SLA de ' . $fase . ($estourou ? ' excedido' : ' a esgotar-se') . ' · intervenção #' . $i->id,
+            'descricao' => $cliente . ' · prazo ' . $prazo->translatedFormat('d M H:i') . ($estourou ? ' (excedido)' : ' (' . (int) round($fracao * 100) . '% decorrido)'),
+            'url' => route('intervencoes.formulario', $i),
+            'data' => $prazo,
+        ];
     }
 }

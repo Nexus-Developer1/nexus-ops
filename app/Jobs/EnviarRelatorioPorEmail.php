@@ -42,12 +42,33 @@ class EnviarRelatorioPorEmail implements ShouldQueue
             $this->relatorio->refresh();
         }
 
+        // CÓPIA IMUTÁVEL (Vaga 2): o pdf_path é documento de trabalho — pode ser regenerado
+        // com o template atual numa reabertura. O que o cliente recebe fica CONGELADO numa
+        // cópia própria com hash sha256 (prova do que foi emitido); reenvio = versão nova,
+        // as anteriores nunca são tocadas. O portal serve sempre a última cópia congelada.
+        $disco = \Illuminate\Support\Facades\Storage::disk();
+        $conteudo = $disco->get($this->relatorio->pdf_path);
+        $versao = ($this->relatorio->enviado_versao ?? 0) + 1;
+        $caminho = 'relatorios/enviados/' . str_replace('/', '-', (string) $this->relatorio->numero) . "-v{$versao}.pdf";
+        $disco->put($caminho, $conteudo);
+        $sha256 = hash('sha256', $conteudo);
+
         Mail::to($this->para)->send(new RelatorioParaCliente($this->relatorio, $this->assunto, $this->mensagem));
 
         $this->relatorio->update([
             'estado' => EstadoRelatorio::Enviado,
             'enviado_em' => now(),
             'enviado_para' => $this->para,
+            'pdf_enviado_path' => $caminho,
+            'pdf_enviado_sha256' => $sha256,
+            'enviado_versao' => $versao,
+        ]);
+
+        // Auditoria da emissão: o hash prova, mais tarde, que o ficheiro não mudou.
+        \App\Services\Auditor::registar('relatorio_pdf_congelado', $this->relatorio, [
+            'numero' => $this->relatorio->numero,
+            'versao' => $versao,
+            'sha256' => $sha256,
         ]);
 
         // Fecha o evento de agenda associado (regra de ouro §6). A finalização já o fecha

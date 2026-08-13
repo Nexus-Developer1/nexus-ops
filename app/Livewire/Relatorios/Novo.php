@@ -85,6 +85,11 @@ class Novo extends Component
     /** @var list<int> Restantes equipamentos cobertos pelo mesmo relatório. */
     public array $equipamentosCobertos = [];
     public string $tipo = 'preventiva';
+
+    // Instante do PEDIDO do cliente (só corretivas) — o relógio real do SLA de resposta
+    // (Vaga 2). Preenchido por defeito na criação; editável para pedidos telefónicos
+    // registados mais tarde ('Y-m-d\TH:i' do input datetime-local).
+    public string $pedido_em = '';
     public string $data = '';
     public string $data_fim = '';   // término; vazio = mesmo dia do início
     public string $hora_inicio = '';
@@ -134,6 +139,7 @@ class Novo extends Component
 
             // Modo deduzido: se a intervenção tem contrato → "contrato", senão "individual".
             $this->contrato_id = $intervencao->contrato_id;
+            $this->pedido_em = $intervencao->pedido_em?->format('Y-m-d\TH:i') ?? '';
             $this->modo = $intervencao->contrato_id ? 'contrato' : 'individual';
             $this->contratoBusca = $intervencao->contrato
                 ? trim($intervencao->contrato->numero . ' · ' . ($intervencao->contrato->cliente?->nome ?? ''))
@@ -546,6 +552,7 @@ class Novo extends Component
         return [
             'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
             'tipo' => ['required', 'in:preventiva,corretiva,instalacao'],
+            'pedido_em' => ['nullable', 'date'],
             'data' => ['required', 'date'],
             'fotosNovas.*.*' => ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'], // 20 MB (o PHP em produção aceita até 20M por ficheiro; ver 99-nexus-uploads.ini)
             // Finalizar exige saber quem fez a intervenção (o PDF identifica os técnicos).
@@ -922,6 +929,11 @@ class Novo extends Component
                 'data_fim' => $this->dataFimReal($finalizar),
                 'hora_inicio' => $this->hora_inicio ?: null,
                 'hora_fim' => $this->hora_fim ?: null,
+                // Relógio do SLA de resposta (Vaga 2): só faz sentido em corretivas; numa
+                // intervenção nova sem valor escrito, arranca agora (melhor esforço).
+                'pedido_em' => $this->tipo === 'corretiva'
+                    ? ($this->pedido_em ?: ($this->intervencaoId ? null : now()))
+                    : null,
                 'trabalho_realizado' => $this->resumo ?: null,
                 // observacoes/diagnostico['prioridade'] eram a recomendação ÚNICA do relatório;
                 // agora a recomendação + prioridade são POR equipamento (na ficha). Não se tocam

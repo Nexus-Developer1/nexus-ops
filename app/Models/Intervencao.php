@@ -42,6 +42,7 @@ class Intervencao extends Model
         'data_fim',
         'hora_inicio',
         'hora_fim',
+        'pedido_em',
         'descricao_problema',
         'trabalho_realizado',
         // observacoes: legado — a recomendação única dos relatórios antigos; só o PDF a lê.
@@ -56,6 +57,7 @@ class Intervencao extends Model
             'estado' => EstadoIntervencao::class,
             'data_inicio' => 'datetime',
             'data_fim' => 'datetime',
+            'pedido_em' => 'datetime', // relógio real do SLA de resposta (Vaga 2)
         ];
     }
 

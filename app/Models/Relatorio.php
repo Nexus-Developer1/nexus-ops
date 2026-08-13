@@ -30,6 +30,9 @@ class Relatorio extends Model
         'data',
         'estado',
         'pdf_path',
+        'pdf_enviado_path',
+        'pdf_enviado_sha256',
+        'enviado_versao',
         'enviado_em',
         'enviado_para',
     ];
