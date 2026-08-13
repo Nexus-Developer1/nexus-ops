@@ -14,6 +14,7 @@ namespace App\Services\Erp;
 //   fi.design  → design    (descrição da linha)
 //   fi.series  → series    (nº(s) de série — chave de cruzamento com equipamentos)
 //   fi.qtt     → qtt       (quantidade)
+//   ft.anulado → anulada   (via ftstamp; documento anulado no PHC — Vaga 1)
 final readonly class LinhaFaturaErp
 {
     public function __construct(
@@ -26,5 +27,6 @@ final readonly class LinhaFaturaErp
         public ?string $design = null,
         public ?string $series = null,
         public ?float $qtt = null,
+        public bool $anulada = false,
     ) {}
 }

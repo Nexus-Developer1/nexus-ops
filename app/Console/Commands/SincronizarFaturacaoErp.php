@@ -83,6 +83,9 @@ class SincronizarFaturacaoErp extends Command
                     'design' => $linhaErp->design,
                     'series' => $linhaErp->series,
                     'qtt' => $linhaErp->qtt,
+                    // Vaga 1: flag de anulada no PHC (entra no hash — a 1.ª corrida após a
+                    // migração reprocessa as ~191k linhas, uma vez).
+                    'anulada' => $linhaErp->anulada,
                 ];
                 $hash = md5((string) json_encode($dados, JSON_INVALID_UTF8_SUBSTITUTE));
 

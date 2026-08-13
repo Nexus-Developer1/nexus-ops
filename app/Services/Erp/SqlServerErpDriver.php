@@ -73,9 +73,11 @@ class SqlServerErpDriver implements ErpSyncDriver
         // SQL Server: o limite usa TOP (não LIMIT). É um inteiro, interpolado em segurança.
         $top = $limite !== null ? 'TOP ' . (int) $limite . ' ' : '';
 
+        // ft.anulado (Vaga 1): uma fatura anulada no PHC aparecia na app como válida.
         $sql = "SELECT {$top}fistamp, nmdoc, fno,
                        (SELECT fdata FROM ft WHERE ftstamp = fi.ftstamp) AS data,
                        (SELECT no FROM ft WHERE ftstamp = fi.ftstamp) AS cliente_no,
+                       (SELECT anulado FROM ft WHERE ftstamp = fi.ftstamp) AS anulado,
                        ref, design, series, qtt
                 FROM fi
                 WHERE series NOT LIKE ''";
@@ -91,6 +93,7 @@ class SqlServerErpDriver implements ErpSyncDriver
                 design: $r->design,
                 series: $r->series,
                 qtt: $r->qtt !== null ? (float) $r->qtt : null,
+                anulada: (bool) $r->anulado,
             );
         }
     }

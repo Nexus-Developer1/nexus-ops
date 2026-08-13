@@ -21,6 +21,7 @@ class LinhaFatura extends Model
         'design',
         'series',
         'qtt',
+        'anulada',
         'synced_at',
         'hash_sync',
     ];
@@ -31,6 +32,7 @@ class LinhaFatura extends Model
         return [
             'data' => 'date',
             'qtt' => 'decimal:3',
+            'anulada' => 'boolean',
             'synced_at' => 'datetime',
         ];
     }

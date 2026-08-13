@@ -13,7 +13,12 @@
                 $totalSeries = $linhas->sum(fn ($l) => filled($l->series) ? substr_count($l->series, ',') + 1 : 0);
             @endphp
 
-            <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ trim($linha->nmdoc . ' ' . $linha->fno) ?: 'Fatura' }}</h1>
+            <h1 class="flex flex-wrap items-center gap-3 text-3xl font-semibold tracking-tight text-texto-forte">
+                {{ trim($linha->nmdoc . ' ' . $linha->fno) ?: 'Fatura' }}
+                @if ($linha->anulada)
+                    <span class="etiqueta bg-perigo-100 text-perigo-600">Anulada no PHC</span>
+                @endif
+            </h1>
             <p class="mt-2 text-sm text-texto-medio">{{ $cliente->nome }} · {{ $linhas->count() }} {{ \Illuminate\Support\Str::plural('artigo', $linhas->count()) }} · {{ $totalSeries }} {{ \Illuminate\Support\Str::plural('série', $totalSeries) }}</p>
 
             {{-- Cabeçalho do documento --}}

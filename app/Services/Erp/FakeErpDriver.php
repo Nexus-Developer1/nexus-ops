@@ -158,6 +158,7 @@ class FakeErpDriver implements ErpSyncDriver
             design: $designs[$idx],
             series: $temSerie ? sprintf('MH%02dVNPW%07d', mt_rand(10, 30), mt_rand(1, 9999999)) : '',
             qtt: (float) mt_rand(1, 5),
+            anulada: ($i % 7) === 0, // 1 em cada 7 documentos anulado (determinístico)
         );
     }
 

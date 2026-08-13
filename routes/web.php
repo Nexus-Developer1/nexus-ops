@@ -204,7 +204,9 @@ Route::middleware(['auth', 'papel:cliente'])->prefix('portal')->name('portal.')-
     Route::get('/relatorios/{relatorio}/pdf', function (\App\Models\Relatorio $relatorio, \App\Services\GeradorRelatorio $gerador) {
         abort_unless($relatorio->estado === \App\Enums\EstadoRelatorio::Enviado, 404);
 
-        $disco = \Illuminate\Support\Facades\Storage::disk('local');
+        // Disco DEFAULT como no resto do sistema (Vaga 1): estava fixo em 'local' — se o
+        // FILESYSTEM_DISK mudar (MinIO/S3), o portal deixava de encontrar os PDFs existentes.
+        $disco = \Illuminate\Support\Facades\Storage::disk();
 
         if (! $relatorio->pdf_path || ! $disco->exists($relatorio->pdf_path)) {
             $gerador->gerarPdf($relatorio);
