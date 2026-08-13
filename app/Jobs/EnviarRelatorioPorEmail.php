@@ -7,11 +7,13 @@ use App\Enums\EstadoRelatorio;
 use App\Mail\RelatorioParaCliente;
 use App\Models\EventoAgenda;
 use App\Models\Relatorio;
+use App\Services\Auditor;
 use App\Services\GeradorRelatorio;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 // Envio do relatório ao cliente por email — sempre em job assíncrono (CLAUDE.md §12).
 // Destinatário, assunto e mensagem são escritos à mão na página de composição
@@ -36,8 +38,11 @@ class EnviarRelatorioPorEmail implements ShouldQueue
             return;
         }
 
-        // Garante que o PDF existe no object storage antes de anexar.
-        if (blank($this->relatorio->pdf_path)) {
+        // Garante que o PDF existe no object storage antes de anexar — path em branco OU
+        // ficheiro em falta no disco (o get() de um caminho fantasma devolvia null e o
+        // congelamento rebentava com TypeError).
+        $disco = Storage::disk();
+        if (blank($this->relatorio->pdf_path) || ! $disco->exists($this->relatorio->pdf_path)) {
             $gerador->gerarPdf($this->relatorio);
             $this->relatorio->refresh();
         }
@@ -46,10 +51,9 @@ class EnviarRelatorioPorEmail implements ShouldQueue
         // com o template atual numa reabertura. O que o cliente recebe fica CONGELADO numa
         // cópia própria com hash sha256 (prova do que foi emitido); reenvio = versão nova,
         // as anteriores nunca são tocadas. O portal serve sempre a última cópia congelada.
-        $disco = \Illuminate\Support\Facades\Storage::disk();
-        $conteudo = $disco->get($this->relatorio->pdf_path);
+        $conteudo = (string) $disco->get($this->relatorio->pdf_path);
         $versao = ($this->relatorio->enviado_versao ?? 0) + 1;
-        $caminho = 'relatorios/enviados/' . str_replace('/', '-', (string) $this->relatorio->numero) . "-v{$versao}.pdf";
+        $caminho = 'relatorios/enviados/'.str_replace('/', '-', (string) $this->relatorio->numero)."-v{$versao}.pdf";
         $disco->put($caminho, $conteudo);
         $sha256 = hash('sha256', $conteudo);
 
@@ -65,7 +69,7 @@ class EnviarRelatorioPorEmail implements ShouldQueue
         ]);
 
         // Auditoria da emissão: o hash prova, mais tarde, que o ficheiro não mudou.
-        \App\Services\Auditor::registar('relatorio_pdf_congelado', $this->relatorio, [
+        Auditor::registar('relatorio_pdf_congelado', $this->relatorio, [
             'numero' => $this->relatorio->numero,
             'versao' => $versao,
             'sha256' => $sha256,

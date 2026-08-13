@@ -21,6 +21,7 @@ class Associar extends Component
     use ApenasEquipa;
 
     public ?int $equipamento_id = null;
+
     public ?int $local_id = null;
 
     // Veio da ficha de um equipamento → equipamento fixo, escolhe-se só o local.
@@ -28,15 +29,20 @@ class Associar extends Component
 
     // Pesquisa server-side (associação livre): texto do equipamento e do local.
     public string $equipamentoBusca = '';
+
     public string $localBusca = '';
 
     // Modo do local: 'existente' (escolher um da lista) | 'novo' (criar um para um cliente).
     // Permite mover um equipamento para um cliente que ainda não tem locais (ex.: mudança de
     // titularidade — equipamento passa de um parceiro para outro).
     public string $modoLocal = 'existente';
+
     public ?int $novoLocalClienteId = null;
+
     public string $novoLocalClienteBusca = '';
+
     public string $novoLocalDesignacao = 'Instalação principal';
+
     public string $novoLocalMorada = '';
 
     public function mount(?Equipamento $equipamento = null): void
@@ -141,13 +147,13 @@ class Associar extends Component
     // Rótulo de um equipamento (cliente · tipo modelo (nº série)) — para reconhecer o certo.
     private function rotuloEquipamento(Equipamento $e): string
     {
-        return ($e->local?->cliente?->nome ?? '—') . ' · ' . trim($e->tipo->rotulo() . ' ' . $e->modelo) . ' (' . ($e->numero_serie ?? '—') . ')';
+        return ($e->local?->cliente?->nome ?? '—').' · '.trim($e->tipo->rotulo().' '.$e->modelo).' ('.($e->numero_serie ?? '—').')';
     }
 
     // Rótulo de um local (cliente · designação).
     private function rotuloLocal(Local $l): string
     {
-        return ($l->cliente?->nome ?? '—') . ' · ' . $l->designacao;
+        return ($l->cliente?->nome ?? '—').' · '.$l->designacao;
     }
 
     // Dobra de acentos para pesquisa (igual aos outros comboboxes server-side).
@@ -168,15 +174,15 @@ class Associar extends Component
             return collect();
         }
 
-        $termo = '%' . $this->equipamentoBusca . '%';
-        $norm = '%' . $this->normalizarBusca($this->equipamentoBusca) . '%';
+        $termo = '%'.$this->equipamentoBusca.'%';
+        $norm = '%'.$this->normalizarBusca($this->equipamentoBusca).'%';
         $semAcentos = "translate(lower(coalesce(fabricante, '') || ' ' || coalesce(modelo, '')), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
 
         return Equipamento::query()
             ->with('local.cliente')
             ->where(function ($q) use ($termo, $norm, $semAcentos) {
                 $q->where('numero_serie', 'ilike', $termo)
-                    ->orWhereRaw($semAcentos . ' like ?', [$norm]);
+                    ->orWhereRaw($semAcentos.' like ?', [$norm]);
             })
             ->orderBy('numero_serie')
             ->limit(30)
@@ -191,14 +197,14 @@ class Associar extends Component
             return collect();
         }
 
-        $termo = '%' . $this->localBusca . '%';
-        $norm = '%' . $this->normalizarBusca($this->localBusca) . '%';
+        $termo = '%'.$this->localBusca.'%';
+        $norm = '%'.$this->normalizarBusca($this->localBusca).'%';
         $semAcentos = "translate(lower(designacao), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
 
         return Local::query()
             ->with('cliente')
             ->where(function ($q) use ($termo, $norm, $semAcentos) {
-                $q->whereRaw($semAcentos . ' like ?', [$norm])
+                $q->whereRaw($semAcentos.' like ?', [$norm])
                     ->orWhereHas('cliente', fn ($c) => $c->where('nome', 'ilike', $termo));
             })
             ->orderBy('designacao')
@@ -213,12 +219,12 @@ class Associar extends Component
             return collect();
         }
 
-        $termo = '%' . $this->novoLocalClienteBusca . '%';
-        $norm = '%' . $this->normalizarBusca($this->novoLocalClienteBusca) . '%';
+        $termo = '%'.$this->novoLocalClienteBusca.'%';
+        $norm = '%'.$this->normalizarBusca($this->novoLocalClienteBusca).'%';
         $semAcentos = "translate(lower(nome), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
 
         return Cliente::query()
-            ->where(fn ($q) => $q->whereRaw($semAcentos . ' like ?', [$norm])->orWhere('nif', 'ilike', $termo))
+            ->where(fn ($q) => $q->whereRaw($semAcentos.' like ?', [$norm])->orWhere('nif', 'ilike', $termo))
             ->orderBy('nome')
             ->limit(20)
             ->get(['id', 'nome', 'nif']);

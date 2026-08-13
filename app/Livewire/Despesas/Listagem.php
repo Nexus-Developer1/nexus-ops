@@ -4,6 +4,8 @@ namespace App\Livewire\Despesas;
 
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Despesa;
+use App\Models\RegistoDespesa;
+use App\Services\Auditor;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Session;
 use Livewire\Component;
@@ -13,7 +15,6 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use ApenasEquipa;
-
     use WithPagination;
 
     #[Session]
@@ -43,10 +44,10 @@ class Listagem extends Component
     // Elimina um REGISTO inteiro (documento + linhas) — soft delete (recuperável).
     public function eliminar(int $registo): void
     {
-        $registo = \App\Models\RegistoDespesa::findOrFail($registo);
+        $registo = RegistoDespesa::findOrFail($registo);
         $registo->despesas()->delete();
         $registo->delete();
-        \App\Services\Auditor::registar('registo_despesas_eliminado', $registo, ['linhas' => $registo->despesas()->withTrashed()->count()]);
+        Auditor::registar('registo_despesas_eliminado', $registo, ['linhas' => $registo->despesas()->withTrashed()->count()]);
         session()->flash('sucesso', 'Registo de despesas eliminado.');
     }
 
@@ -57,7 +58,7 @@ class Listagem extends Component
             ->when($this->periodo === 'mes', fn ($q) => $q->whereYear('data', now()->year)->whereMonth('data', now()->month))
             ->when($this->categoria, fn ($q) => $q->where('categoria', $this->categoria))
             ->when($this->pesquisa, function ($q) {
-                $termo = '%' . $this->pesquisa . '%';
+                $termo = '%'.$this->pesquisa.'%';
                 $q->where(fn ($q) => $q->where('descricao', 'ilike', $termo)
                     ->orWhereHas('cliente', fn ($q) => $q->where('nome', 'ilike', $termo)));
             });
@@ -67,7 +68,7 @@ class Listagem extends Component
     {
         // A listagem mostra REGISTOS (uma entrada por documento); os filtros aplicam-se às
         // linhas (despesas) — um registo aparece se alguma linha lhe corresponder.
-        $registos = \App\Models\RegistoDespesa::query()
+        $registos = RegistoDespesa::query()
             ->with(['colaborador', 'despesas'])
             ->whereHas('despesas', function ($q) {
                 $filtrada = $this->base();

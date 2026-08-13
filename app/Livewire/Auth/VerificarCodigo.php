@@ -3,6 +3,7 @@
 namespace App\Livewire\Auth;
 
 use App\Models\User;
+use App\Services\Auditor;
 use App\Services\Auth\ResultadoMfa;
 use App\Services\Auth\ServicoMfa;
 use Illuminate\Support\Facades\Auth;
@@ -52,7 +53,7 @@ class VerificarCodigo extends Component
         // Sucesso: completa a autenticação, respeitando o "manter sessão" da 1.ª etapa.
         $remember = (bool) session('mfa.remember', false);
         Auth::login($user, $remember);
-        \App\Services\Auditor::registar('login'); // auditoria: sessão iniciada (pós-MFA)
+        Auditor::registar('login'); // auditoria: sessão iniciada (pós-MFA)
 
         session()->forget(['mfa.user_id', 'mfa.remember', 'mfa.email']);
         session()->regenerate();

@@ -11,6 +11,7 @@ use App\Models\EventoAgenda;
 use App\Models\Intervencao;
 use App\Models\Local;
 use App\Models\ModeloFaturacao;
+use App\Models\Relatorio;
 use App\Models\User;
 use App\Services\Agenda\GeradorRascunhoDeEvento;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -208,6 +209,6 @@ class RascunhoContratoDeEventoTest extends TestCase
 
         $this->assertNull($segundo);                       // idempotente
         $this->assertSame(1, Intervencao::count());        // não duplicou
-        $this->assertSame(1, \App\Models\Relatorio::count());
+        $this->assertSame(1, Relatorio::count());
     }
 }

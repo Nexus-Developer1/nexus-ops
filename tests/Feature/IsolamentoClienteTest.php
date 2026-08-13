@@ -9,6 +9,7 @@ use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\Intervencao;
 use App\Models\Local;
+use App\Models\ModeloFaturacao;
 use App\Models\Relatorio;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -28,9 +29,9 @@ class IsolamentoClienteTest extends TestCase
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
         $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
         $interv = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'preventiva', 'estado' => 'concluida']);
-        Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/' . $cliente->id, 'data' => now(), 'estado' => 'finalizado']);
-        Contrato::create(['numero' => 'C-' . $cliente->id, 'cliente_id' => $cliente->id, 'data_inicio' => now(),
-            'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'preventiva', 'modelo_faturacao_id' => \App\Models\ModeloFaturacao::query()->value('id')]);
+        Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/'.$cliente->id, 'data' => now(), 'estado' => 'finalizado']);
+        Contrato::create(['numero' => 'C-'.$cliente->id, 'cliente_id' => $cliente->id, 'data_inicio' => now(),
+            'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'preventiva', 'modelo_faturacao_id' => ModeloFaturacao::query()->value('id')]);
         EventoAgenda::create(['tipo' => 'visita_preventiva', 'titulo' => 'V', 'estado' => 'planeado',
             'inicio' => Carbon::parse('2026-07-06 09:00'), 'fim' => Carbon::parse('2026-07-06 10:00'),
             'cliente_id' => $cliente->id, 'equipamento_id' => $equip->id]);
@@ -40,7 +41,7 @@ class IsolamentoClienteTest extends TestCase
 
     private function utilizadorCliente(Cliente $cliente): User
     {
-        return User::create(['nome' => 'Portal ' . $cliente->id, 'email' => 'c' . $cliente->id . '@x.pt',
+        return User::create(['nome' => 'Portal '.$cliente->id, 'email' => 'c'.$cliente->id.'@x.pt',
             'password' => 'x', 'papel' => PapelUtilizador::Cliente, 'cliente_id' => $cliente->id, 'ativo' => true]);
     }
 
@@ -62,7 +63,7 @@ class IsolamentoClienteTest extends TestCase
         $this->assertSame($a->id, EventoAgenda::first()->cliente_id);
 
         // E não consegue carregar diretamente um registo do cliente B (404 via find).
-        $relatorioB = Relatorio::withoutGlobalScopes()->where('numero', '2026/' . $b->id)->first();
+        $relatorioB = Relatorio::withoutGlobalScopes()->where('numero', '2026/'.$b->id)->first();
         $this->assertNull(Relatorio::find($relatorioB->id));
     }
 

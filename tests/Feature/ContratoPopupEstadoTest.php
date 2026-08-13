@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\EstadoContrato;
 use App\Enums\PapelUtilizador;
 use App\Livewire\Contratos\Editor;
+use App\Livewire\Contratos\Ficha;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
@@ -106,7 +107,7 @@ class ContratoPopupEstadoTest extends TestCase
         $this->assertSame(EstadoContrato::Suspenso, $contrato->estado);
 
         // ...reativar na ficha → BLOQUEADO (a invariante "ativo exige equipamentos" mantém-se).
-        Livewire::actingAs($admin)->test(\App\Livewire\Contratos\Ficha::class, ['contrato' => $contrato])
+        Livewire::actingAs($admin)->test(Ficha::class, ['contrato' => $contrato])
             ->call('reativar');
 
         $this->assertSame(EstadoContrato::Suspenso, $contrato->fresh()->estado);

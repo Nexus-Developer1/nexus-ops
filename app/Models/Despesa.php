@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 // Despesa (linha de um RegistoDespesa) — área de gestão. As colunas de ligação a
@@ -59,7 +60,7 @@ class Despesa extends Model
     }
 
     // Recibos digitalizados DESTA linha (anexos polimórficos).
-    public function anexos(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    public function anexos(): MorphMany
     {
         return $this->morphMany(Anexo::class, 'anexavel');
     }

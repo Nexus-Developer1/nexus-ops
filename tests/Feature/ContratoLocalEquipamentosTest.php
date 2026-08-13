@@ -4,9 +4,12 @@ namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
 use App\Livewire\Contratos\Editor;
+use App\Livewire\Contratos\Ficha;
 use App\Models\Cliente;
+use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\Local;
+use App\Models\ModeloFaturacao;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -54,13 +57,13 @@ class ContratoLocalEquipamentosTest extends TestCase
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Instalação principal', 'morada' => 'Rua do Local, 5']);
         $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-1']);
-        $contrato = \App\Models\Contrato::create(['numero' => '2026/0500', 'cliente_id' => $cliente->id,
+        $contrato = Contrato::create(['numero' => '2026/0500', 'cliente_id' => $cliente->id,
             'data_inicio' => now(), 'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'preventiva',
-            'modelo_faturacao_id' => \App\Models\ModeloFaturacao::query()->value('id'),
+            'modelo_faturacao_id' => ModeloFaturacao::query()->value('id'),
             'renovacao_automatica' => false, 'periodo_aviso_dias' => 30]);
         $contrato->equipamentos()->sync([$equip->id]);
 
-        Livewire::actingAs($admin)->test(\App\Livewire\Contratos\Ficha::class, ['contrato' => $contrato])
+        Livewire::actingAs($admin)->test(Ficha::class, ['contrato' => $contrato])
             ->assertSee('Rua do Local, 5')
             ->assertDontSee('Instalação principal');
     }

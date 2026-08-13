@@ -2,14 +2,15 @@
 
 namespace App\Livewire\Relatorios;
 
-use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\EstadoContrato;
 use App\Enums\EstadoEvento;
 use App\Enums\EstadoIntervencao;
 use App\Enums\EstadoRelatorio;
 use App\Enums\PapelUtilizador;
+use App\Enums\TipoEquipamento;
 use App\Enums\TipoIntervencao;
 use App\Jobs\GerarRelatorioPdf;
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Anexo;
 use App\Models\Cliente;
 use App\Models\Contrato;
@@ -20,6 +21,7 @@ use App\Models\Intervencao;
 use App\Models\Relatorio;
 use App\Models\User;
 use App\Services\Agenda\SincronizadorAgenda;
+use App\Services\Auditor;
 use App\Services\GeradorRelatorio;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -28,6 +30,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -40,7 +43,6 @@ use Livewire\WithFileUploads;
 class Novo extends Component
 {
     use ApenasEquipa;
-
     use WithFileUploads;
 
     // Edição/retomar (null = novo). IDENTIFICADORES definidos só no mount/servidor — nunca
@@ -50,6 +52,7 @@ class Novo extends Component
     // rascunho sem o registo de auditoria — 18.ª revisão de segurança).
     #[Locked]
     public ?int $relatorioId = null;
+
     #[Locked]
     public ?int $intervencaoId = null;
 
@@ -62,7 +65,9 @@ class Novo extends Component
     // Modo: 'individual' (escolhe o CLIENTE → anexa todos os equipamentos dele) ou
     // 'contrato' (equipamentos vêm do contrato).
     public string $modo = 'individual';
+
     public ?int $contrato_id = null;
+
     public string $contratoBusca = '';
 
     // Modo individual: 3 faixas por nº de equipamentos do cliente, para escolher os equipamentos
@@ -71,28 +76,39 @@ class Novo extends Component
     //   ≤ MAX_LISTA_CHECKBOXES ... lista de checkboxes (marca/desmarca em tempo real)
     //   acima .................... pesquisa server-side (anexa um a um) — o caminho que corrigiu o 500
     private const MAX_ANEXA_AUTO = 10;
+
     private const MAX_LISTA_CHECKBOXES = 50;
 
     // Modo individual: escolhe-se o cliente e anexam-se os equipamentos dele.
     public ?int $cliente_id = null;
+
     public string $clienteBusca = '';        // pesquisa server-side do cliente
+
     public string $serieBusca = '';          // atalho: pesquisa GLOBAL por nº de série → resolve o cliente
+
     // Faixa do fluxo de equipamentos: '' (sem cliente) | 'auto' | 'lista' | 'pesquisa'.
     public string $faixaEquipamentos = '';
+
     public string $equipamentoBusca = '';    // pesquisa server-side do equipamento (filtrada ao cliente)
 
     public ?int $equipamento_id = null;      // 1.º equipamento (principal da intervenção)
+
     /** @var list<int> Restantes equipamentos cobertos pelo mesmo relatório. */
     public array $equipamentosCobertos = [];
+
     public string $tipo = 'preventiva';
 
     // Instante do PEDIDO do cliente (só corretivas) — o relógio real do SLA de resposta
     // (Vaga 2). Preenchido por defeito na criação; editável para pedidos telefónicos
     // registados mais tarde ('Y-m-d\TH:i' do input datetime-local).
     public string $pedido_em = '';
+
     public string $data = '';
+
     public string $data_fim = '';   // término; vazio = mesmo dia do início
+
     public string $hora_inicio = '';
+
     public string $hora_fim = '';
 
     // ---- Técnicos ----
@@ -119,6 +135,7 @@ class Novo extends Component
     // $fotos = binding do seletor de cada ficha; o Livewire SUBSTITUI-o a cada seleção, por isso
     // acumulamos em $fotosNovas (via updatedFotos): cada seleção ACRESCENTA às já escolhidas.
     public array $fotos = [];
+
     /** @var array<int, array<int, mixed>> [equipId => fotos por gravar] — acumuladas entre seleções. */
     public array $fotosNovas = [];
 
@@ -148,7 +165,7 @@ class Novo extends Component
             $this->pedido_em = $intervencao->pedido_em?->format('Y-m-d\TH:i') ?? '';
             $this->modo = $intervencao->contrato_id ? 'contrato' : 'individual';
             $this->contratoBusca = $intervencao->contrato
-                ? trim($intervencao->contrato->numero . ' · ' . ($intervencao->contrato->cliente?->nome ?? ''))
+                ? trim($intervencao->contrato->numero.' · '.($intervencao->contrato->cliente?->nome ?? ''))
                 : '';
 
             // Modo individual: mostra no picker o cliente do equipamento principal. Carrega SÓ os
@@ -243,7 +260,7 @@ class Novo extends Component
 
         $this->modo = 'contrato';
         $this->contrato_id = $contrato->id;
-        $this->contratoBusca = trim($contrato->numero . ' · ' . ($contrato->cliente?->nome ?? ''));
+        $this->contratoBusca = trim($contrato->numero.' · '.($contrato->cliente?->nome ?? ''));
         $this->equipamentoBusca = '';
 
         $this->faixaEquipamentos = $this->faixaParaContrato($this->equipamentosCandidatos()->count());
@@ -472,13 +489,13 @@ class Novo extends Component
             return collect();
         }
 
-        $termo = '%' . $busca . '%';
-        $norm = '%' . $this->normalizarBusca($busca) . '%';
+        $termo = '%'.$busca.'%';
+        $norm = '%'.$this->normalizarBusca($busca).'%';
         $semAcentos = "translate(lower(nome), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
 
         return Cliente::query()
             ->where(function ($q) use ($termo, $norm, $semAcentos) {
-                $q->whereRaw($semAcentos . ' like ?', [$norm])
+                $q->whereRaw($semAcentos.' like ?', [$norm])
                     ->orWhere('nif', 'ilike', $termo);
             })
             ->orderBy('nome')
@@ -495,14 +512,14 @@ class Novo extends Component
             return collect();
         }
 
-        $termo = '%' . $busca . '%';
-        $norm = '%' . $this->normalizarBusca($busca) . '%';
+        $termo = '%'.$busca.'%';
+        $norm = '%'.$this->normalizarBusca($busca).'%';
         $semAcentos = "translate(lower(coalesce(modelo, '')), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
 
         return $this->equipamentosCandidatos()
             ->where(function ($q) use ($termo, $norm, $semAcentos) {
                 $q->where('numero_serie', 'ilike', $termo)
-                    ->orWhereRaw($semAcentos . ' like ?', [$norm]);
+                    ->orWhereRaw($semAcentos.' like ?', [$norm]);
             })
             ->with('local.cliente') // a lista mostra ONDE está instalado (localInstalacao())
             ->orderBy('numero_serie')
@@ -520,7 +537,7 @@ class Novo extends Component
         }
 
         return Equipamento::query()
-            ->where('numero_serie', 'ilike', '%' . trim($busca) . '%')
+            ->where('numero_serie', 'ilike', '%'.trim($busca).'%')
             ->whereHas('local.cliente')
             ->with('local.cliente:id,nome')
             ->orderBy('numero_serie')
@@ -795,7 +812,7 @@ class Novo extends Component
         $vazias = $this->equipamentosComFichaVazia();
         if ($vazias !== [] && ! $this->finalizarComFichasVazias) {
             $nomes = Equipamento::whereIn('id', $vazias)->orderBy('numero_serie')
-                ->get()->map(fn ($e) => $e->numero_serie ?: ('#' . $e->id))->all();
+                ->get()->map(fn ($e) => $e->numero_serie ?: ('#'.$e->id))->all();
             $this->dispatch('confirmar-fichas-vazias', equipamentos: $nomes);
 
             return null;
@@ -850,7 +867,7 @@ class Novo extends Component
                     'utilizador' => auth()->user()?->email,
                     'finalizar' => $finalizar,
                 ]);
-                \App\Services\Auditor::registar('relatorio_reaberto', $enviado, ['numero' => $enviado->numero, 'finalizar' => $finalizar]);
+                Auditor::registar('relatorio_reaberto', $enviado, ['numero' => $enviado->numero, 'finalizar' => $finalizar]);
             }
         }
 
@@ -859,7 +876,7 @@ class Novo extends Component
 
         try {
             $this->validarPara($finalizar);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             // Os campos validados vivem todos no separador "Dados Gerais"; se o utilizador
             // estiver noutro separador (ficha de um equipamento), o erro ficava invisível e
             // o botão parecia morto. Avisa o frontend para saltar para o separador certo.
@@ -903,7 +920,7 @@ class Novo extends Component
 
         try {
             $this->validarPara(false);
-        } catch (\Illuminate\Validation\ValidationException) {
+        } catch (ValidationException) {
             // Meio-preenchido não é erro no autosave: limpa o error bag (senão os erros
             // apareciam "do nada" a meio da escrita) e fica para a volta seguinte.
             $this->resetErrorBag();
@@ -933,7 +950,7 @@ class Novo extends Component
         try {
             $c = $meta['capturada_em'] ?? null;
             if (is_string($c) && $c !== '') {
-                $c = \Illuminate\Support\Carbon::parse($c);
+                $c = Carbon::parse($c);
                 if ($c->lte(now()->addDay()) && $c->gte(now()->subYears(2))) {
                     $capturada = $c;
                 }
@@ -1023,7 +1040,7 @@ class Novo extends Component
                 $equipId = in_array((int) $equipId, array_map('intval', $idsValidos), true) ? (int) $equipId : null;
 
                 foreach ($fotosDoEquipamento as $foto) {
-                    $storageKey = $foto->store('anexos/intervencoes/' . $intervencao->id);
+                    $storageKey = $foto->store('anexos/intervencoes/'.$intervencao->id);
                     $intervencao->anexos()->create([
                         'equipamento_id' => $equipId,
                         'nome_ficheiro' => $foto->getClientOriginalName(),
@@ -1119,7 +1136,7 @@ class Novo extends Component
                         return null;
                     }
 
-                    return 'data:image/png;base64,' . base64_encode(Storage::disk()->get($key));
+                    return 'data:image/png;base64,'.base64_encode(Storage::disk()->get($key));
                 };
 
                 return [$f->equipamento_id => array_filter([
@@ -1169,7 +1186,7 @@ class Novo extends Component
             }
 
             $antiga = $ficha->{$campoKey};
-            $key = "assinaturas/fichas/{$ficha->intervencao_id}/{$ficha->equipamento_id}-{$quem}-" . uniqid() . '.png';
+            $key = "assinaturas/fichas/{$ficha->intervencao_id}/{$ficha->equipamento_id}-{$quem}-".uniqid().'.png';
             Storage::disk()->put($key, $png);
             $ficha->{$campoKey} = $key;
             $mudou = true;
@@ -1209,7 +1226,7 @@ class Novo extends Component
             // O bloco SADEI só faz sentido em equipamentos de incêndio — noutros tipos, um
             // payload forjado não pode gravar SADEI "invisível" (mesma regra das secções
             // escondidas por tipo no registo de equipamentos).
-            if (($tipos[$equipId] ?? null) !== \App\Enums\TipoEquipamento::Incendio) {
+            if (($tipos[$equipId] ?? null) !== TipoEquipamento::Incendio) {
                 $attrs['sadei'] = null;
             }
 

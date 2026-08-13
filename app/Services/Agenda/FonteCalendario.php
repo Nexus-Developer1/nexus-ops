@@ -72,7 +72,7 @@ class FonteCalendario
                 // Multi-dia com horas por dia: um bloco POR DIA com as horas reais trabalhadas.
                 // Não arrastáveis (editable: false) — as horas de cada dia editam-se no formulário.
                 return collect($segmentos)->map(fn (array $s, int $i) => [
-                    'id' => $e->id . ':' . $i,
+                    'id' => $e->id.':'.$i,
                     'title' => $e->titulo,
                     'start' => $s[0]->format('Y-m-d\TH:i:s'),
                     'end' => $s[1]->format('Y-m-d\TH:i:s'),

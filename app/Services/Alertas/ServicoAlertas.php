@@ -6,9 +6,12 @@ use App\Enums\EstadoEvento;
 use App\Enums\TipoEquipamento;
 use App\Enums\TipoEvento;
 use App\Models\Contrato;
+use App\Models\ContratoAlertaVisita;
 use App\Models\Equipamento;
+use App\Models\EquipamentoAlertaManutencao;
 use App\Models\EventoAgenda;
 use App\Models\Intervencao;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 // Recolhe os alertas proativos da operação (CLAUDE.md §6/§9): baterias a vencer,
@@ -43,7 +46,7 @@ class ServicoAlertas
         // (createFromTimestamp → now(): positivo; o diffInHours do Carbon 3 é COM SINAL —
         // na ordem inversa a idade vinha negativa e a vigia nunca alertava.)
         $idade = is_file($marcador)
-            ? (int) \Illuminate\Support\Carbon::createFromTimestamp(filemtime($marcador))->diffInHours(now())
+            ? (int) Carbon::createFromTimestamp(filemtime($marcador))->diffInHours(now())
             : null;
 
         if ($idade !== null && $idade <= $maxHoras) {
@@ -66,16 +69,16 @@ class ServicoAlertas
     // mecânica dos alertas de visita do contrato — 7 dias antes (média), alta ao vencer.
     private function manutencoesProgramadas(): array
     {
-        return \App\Models\EquipamentoAlertaManutencao::query()
+        return EquipamentoAlertaManutencao::query()
             ->whereDate('data', '<=', now()->addDays(7))
             ->with('equipamento.local.cliente')
             ->orderBy('data')
             ->get()
-            ->map(fn (\App\Models\EquipamentoAlertaManutencao $a) => [
+            ->map(fn (EquipamentoAlertaManutencao $a) => [
                 'tipo' => 'manutencao_programada',
                 'severidade' => $a->data->isPast() || $a->data->isToday() ? 'alta' : 'media',
-                'titulo' => $a->texto . ' · ' . (trim(($a->equipamento->fabricante ?? '') . ' ' . ($a->equipamento->modelo ?? '')) ?: ($a->equipamento->numero_serie ?? '—')),
-                'descricao' => ($a->equipamento->local?->cliente?->nome ?? '—') . ' · programado para ' . $a->data->translatedFormat('d M Y'),
+                'titulo' => $a->texto.' · '.(trim(($a->equipamento->fabricante ?? '').' '.($a->equipamento->modelo ?? '')) ?: ($a->equipamento->numero_serie ?? '—')),
+                'descricao' => ($a->equipamento->local?->cliente?->nome ?? '—').' · programado para '.$a->data->translatedFormat('d M Y'),
                 'url' => route('equipamentos.ficha', $a->equipamento_id),
                 'data' => $a->data,
             ])
@@ -87,16 +90,16 @@ class ServicoAlertas
     // a linha é removida na edição do contrato (depois de a visita ficar agendada).
     private function visitasProgramadas(): array
     {
-        return \App\Models\ContratoAlertaVisita::query()
+        return ContratoAlertaVisita::query()
             ->whereDate('data', '<=', now()->addDays(7))
             ->with('contrato.cliente')
             ->orderBy('data')
             ->get()
-            ->map(fn (\App\Models\ContratoAlertaVisita $a) => [
+            ->map(fn (ContratoAlertaVisita $a) => [
                 'tipo' => 'visita_programada',
                 'severidade' => $a->data->isPast() || $a->data->isToday() ? 'alta' : 'media',
-                'titulo' => $a->texto . ' · ' . ($a->contrato->numero ?? '—'),
-                'descricao' => ($a->contrato->cliente->nome ?? '—') . ' · programado para ' . $a->data->translatedFormat('d M Y'),
+                'titulo' => $a->texto.' · '.($a->contrato->numero ?? '—'),
+                'descricao' => ($a->contrato->cliente->nome ?? '—').' · programado para '.$a->data->translatedFormat('d M Y'),
                 'url' => route('contratos.editar', $a->contrato_id),
                 'data' => $a->data,
             ])
@@ -120,8 +123,8 @@ class ServicoAlertas
                 return [
                     'tipo' => 'bateria',
                     'severidade' => $vencida ? 'alta' : 'media',
-                    'titulo' => 'Baterias ' . ($vencida ? 'vencidas' : 'a vencer') . ' · ' . trim($e->fabricante . ' ' . $e->modelo),
-                    'descricao' => ($e->local?->cliente?->nome ?? '—') . ' · troca prevista ' . $e->proxima_troca_baterias->translatedFormat('d M Y'),
+                    'titulo' => 'Baterias '.($vencida ? 'vencidas' : 'a vencer').' · '.trim($e->fabricante.' '.$e->modelo),
+                    'descricao' => ($e->local?->cliente?->nome ?? '—').' · troca prevista '.$e->proxima_troca_baterias->translatedFormat('d M Y'),
                     'url' => route('equipamentos.ficha', $e),
                     'data' => $e->proxima_troca_baterias,
                 ];
@@ -143,8 +146,8 @@ class ServicoAlertas
                 return [
                     'tipo' => 'renovacao',
                     'severidade' => $dias <= $criticoDias ? 'alta' : 'media',
-                    'titulo' => 'Contrato a expirar · ' . $c->numero,
-                    'descricao' => $c->cliente->nome . ' · termina ' . $c->data_fim->translatedFormat('d M Y') . " (em {$dias} dias)",
+                    'titulo' => 'Contrato a expirar · '.$c->numero,
+                    'descricao' => $c->cliente->nome.' · termina '.$c->data_fim->translatedFormat('d M Y')." (em {$dias} dias)",
                     'url' => route('contratos.ficha', $c),
                     'data' => $c->data_fim,
                 ];
@@ -165,8 +168,8 @@ class ServicoAlertas
             ->map(fn (EventoAgenda $e) => [
                 'tipo' => 'visita_atraso',
                 'severidade' => 'alta',
-                'titulo' => 'Visita em atraso · ' . $e->titulo,
-                'descricao' => ($e->cliente->nome ?? '—') . ' · planeada para ' . $e->inicio->translatedFormat('d M Y'),
+                'titulo' => 'Visita em atraso · '.$e->titulo,
+                'descricao' => ($e->cliente->nome ?? '—').' · planeada para '.$e->inicio->translatedFormat('d M Y'),
                 'url' => route('agenda'),
                 'data' => $e->inicio,
             ])
@@ -220,7 +223,7 @@ class ServicoAlertas
 
     // Alerta de um prazo de SLA com antecipação: <75% decorrido → nada; 75-100% → média
     // ("a esgotar-se"); >100% → alta ("excedido").
-    private function alertaDePrazo(Intervencao $i, string $fase, \Illuminate\Support\Carbon $inicio, \Illuminate\Support\Carbon $prazo, string $cliente): ?array
+    private function alertaDePrazo(Intervencao $i, string $fase, Carbon $inicio, Carbon $prazo, string $cliente): ?array
     {
         $total = max(1, $inicio->diffInSeconds($prazo));
         $decorrido = $inicio->diffInSeconds(now());
@@ -235,8 +238,8 @@ class ServicoAlertas
         return [
             'tipo' => 'sla',
             'severidade' => $estourou ? 'alta' : 'media',
-            'titulo' => 'SLA de ' . $fase . ($estourou ? ' excedido' : ' a esgotar-se') . ' · intervenção #' . $i->id,
-            'descricao' => $cliente . ' · prazo ' . $prazo->translatedFormat('d M H:i') . ($estourou ? ' (excedido)' : ' (' . (int) round($fracao * 100) . '% decorrido)'),
+            'titulo' => 'SLA de '.$fase.($estourou ? ' excedido' : ' a esgotar-se').' · intervenção #'.$i->id,
+            'descricao' => $cliente.' · prazo '.$prazo->translatedFormat('d M H:i').($estourou ? ' (excedido)' : ' ('.(int) round($fracao * 100).'% decorrido)'),
             'url' => route('intervencoes.formulario', $i),
             'data' => $prazo,
         ];

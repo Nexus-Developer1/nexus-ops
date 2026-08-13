@@ -54,6 +54,7 @@ class ServicoMfa
 
         if ($registo->tentativas > self::MAX_TENTATIVAS) {
             $registo->update(['usado_em' => now()]); // queimado
+
             return ResultadoMfa::DemasiadasTentativas;
         }
 

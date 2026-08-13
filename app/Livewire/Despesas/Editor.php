@@ -3,11 +3,15 @@
 namespace App\Livewire\Despesas;
 
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Models\Anexo;
 use App\Models\Despesa;
 use App\Models\RegistoDespesa;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 // REGISTO de despesas: cabeçalho (colaborador, matrícula, departamento) + linhas — cada
@@ -28,6 +32,7 @@ class Editor extends Component
 
     // Cabeçalho da folha (como na folha impressa da empresa).
     public string $matricula = '';
+
     public string $departamento = '';
 
     // Linhas: cada uma = uma despesa. 'dia' é escolhido no calendário (nasce VAZIO — nenhum
@@ -36,7 +41,7 @@ class Editor extends Component
     public array $linhas = [];
 
     // Recibos PENDENTES por linha (gravam-se com a despesa dessa linha ao guardar).
-    /** @var array<int, array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile>> */
+    /** @var array<int, array<int, TemporaryUploadedFile>> */
     public array $recibosPendentes = [];
 
     // Alvos de upload: por linha (câmara/galeria) e o do scanner (JS), com a linha ativa.
@@ -140,11 +145,11 @@ class Editor extends Component
         abort_unless($this->registoId !== null, 404);
         $registo = RegistoDespesa::findOrFail($this->registoId);
         // Só recibos de linhas DESTE registo.
-        $anexo = \App\Models\Anexo::whereKey($anexoId)
+        $anexo = Anexo::whereKey($anexoId)
             ->where('anexavel_type', Despesa::class)
             ->whereIn('anexavel_id', $registo->despesas()->pluck('id'))
             ->firstOrFail();
-        \Illuminate\Support\Facades\Storage::disk()->delete($anexo->storage_key);
+        Storage::disk()->delete($anexo->storage_key);
         $anexo->delete();
     }
 
@@ -157,7 +162,7 @@ class Editor extends Component
             'linhas.*.dia' => ['nullable', 'date'],
             'linhas.*.descricao' => ['nullable', 'string', 'max:255'],
             'linhas.*.detalhe' => ['nullable', 'string', 'max:255'],
-            'linhas.*.categoria' => ['nullable', \Illuminate\Validation\Rule::in(array_merge([''], Despesa::CATEGORIAS))],
+            'linhas.*.categoria' => ['nullable', Rule::in(array_merge([''], Despesa::CATEGORIAS))],
             'linhas.*.refeicao_tipo' => ['nullable', 'in:A,J'],
             'linhas.*.valor' => ['nullable', 'numeric', 'min:0'],
         ]);
@@ -172,7 +177,7 @@ class Editor extends Component
             }
 
             if ($valor === '' || (float) $valor <= 0) {
-                $this->addError("linhas.$n.valor", 'Indique o valor da despesa (linha ' . ($n + 1) . ').');
+                $this->addError("linhas.$n.valor", 'Indique o valor da despesa (linha '.($n + 1).').');
 
                 return;
             }
@@ -180,7 +185,7 @@ class Editor extends Component
             // Dia OBRIGATÓRIO — escolhido no calendário (nasce vazio, sem pré-seleção).
             $data = trim((string) ($linha['dia'] ?? ''));
             if ($data === '') {
-                $this->addError("linhas.$n.dia", 'Escolha o dia no calendário (linha ' . ($n + 1) . ').');
+                $this->addError("linhas.$n.dia", 'Escolha o dia no calendário (linha '.($n + 1).').');
 
                 return;
             }
@@ -188,14 +193,14 @@ class Editor extends Component
 
             $descricao = trim((string) ($linha['descricao'] ?? ''));
             if ($descricao === '') {
-                $this->addError("linhas.$n.descricao", 'Indique a descrição (cliente - localidade) na linha ' . ($n + 1) . '.');
+                $this->addError("linhas.$n.descricao", 'Indique a descrição (cliente - localidade) na linha '.($n + 1).'.');
 
                 return;
             }
 
             $categoria = (string) ($linha['categoria'] ?? '');
             if (! in_array($categoria, Despesa::CATEGORIAS, true)) {
-                $this->addError("linhas.$n.categoria", 'Escolha o tipo de despesa na linha ' . ($n + 1) . '.');
+                $this->addError("linhas.$n.categoria", 'Escolha o tipo de despesa na linha '.($n + 1).'.');
 
                 return;
             }
@@ -203,7 +208,7 @@ class Editor extends Component
             // Nota a) da folha: refeições exigem A (almoço) ou J (jantar).
             $refeicaoTipo = (string) ($linha['refeicao_tipo'] ?? '');
             if ($categoria === 'Refeições' && ! in_array($refeicaoTipo, ['A', 'J'], true)) {
-                $this->addError("linhas.$n.refeicao_tipo", 'Nas refeições, indique A (almoço) ou J (jantar) — linha ' . ($n + 1) . '.');
+                $this->addError("linhas.$n.refeicao_tipo", 'Nas refeições, indique A (almoço) ou J (jantar) — linha '.($n + 1).'.');
 
                 return;
             }
@@ -253,7 +258,7 @@ class Editor extends Component
 
             // Recibos pendentes desta linha → object storage + metadados na despesa da linha.
             foreach ($this->recibosPendentes[$n] ?? [] as $ficheiro) {
-                $key = $ficheiro->store('anexos/despesas/' . $despesa->id);
+                $key = $ficheiro->store('anexos/despesas/'.$despesa->id);
                 $despesa->anexos()->create([
                     'nome_ficheiro' => $ficheiro->getClientOriginalName() ?: 'recibo.jpg',
                     'storage_key' => $key,
@@ -279,7 +284,7 @@ class Editor extends Component
 
         // Recibos gravados por despesa_id (edição) — mostrados na linha respetiva.
         $recibosPorDespesa = $this->registoId
-            ? \App\Models\Anexo::where('anexavel_type', Despesa::class)
+            ? Anexo::where('anexavel_type', Despesa::class)
                 ->whereIn('anexavel_id', RegistoDespesa::findOrFail($this->registoId)->despesas()->pluck('id'))
                 ->orderBy('id')
                 ->get()

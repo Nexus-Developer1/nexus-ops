@@ -11,6 +11,7 @@ use App\Models\Cliente;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Livewire\Component;
 use Livewire\Livewire;
 use Symfony\Component\Finder\Finder;
 use Tests\TestCase;
@@ -46,14 +47,14 @@ class SegurancaHardeningTest extends TestCase
 
         foreach (Finder::create()->files()->in($dir)->name('*.php') as $ficheiro) {
             $rel = str_replace(['/', '\\'], '\\', Str::of($ficheiro->getRealPath())
-                ->after($dir . DIRECTORY_SEPARATOR)->beforeLast('.php')->toString());
+                ->after($dir.DIRECTORY_SEPARATOR)->beforeLast('.php')->toString());
 
             if (Str::startsWith($rel, ['Auth\\', 'Portal\\', 'Concerns\\'])) {
                 continue;
             }
 
-            $fqcn = 'App\\Livewire\\' . $rel;
-            if (class_exists($fqcn) && is_subclass_of($fqcn, \Livewire\Component::class)) {
+            $fqcn = 'App\\Livewire\\'.$rel;
+            if (class_exists($fqcn) && is_subclass_of($fqcn, Component::class)) {
                 $classes[] = $fqcn;
             }
         }
@@ -73,7 +74,7 @@ class SegurancaHardeningTest extends TestCase
         );
 
         $this->assertSame([], array_values($semTrait),
-            'Componentes de equipa sem ApenasEquipa: ' . implode(', ', $semTrait));
+            'Componentes de equipa sem ApenasEquipa: '.implode(', ', $semTrait));
     }
 
     // Invoca cada componente DIRETAMENTE (Livewire::test contorna o middleware da rota), por isso o

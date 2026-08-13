@@ -16,6 +16,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,10 +25,10 @@ class AppServiceProvider extends ServiceProvider
         // Resolve o driver do ERP conforme a configuração (config/erp.php).
         $this->app->bind(ErpSyncDriver::class, function () {
             return match (config('erp.driver')) {
-                'sqlsrv' => new SqlServerErpDriver(),
-                'fake' => new FakeErpDriver(),
+                'sqlsrv' => new SqlServerErpDriver,
+                'fake' => new FakeErpDriver,
                 // Default seguro (ERP_DRIVER vazio): não injeta dados fictícios.
-                default => new NullErpDriver(),
+                default => new NullErpDriver,
             };
         });
 
@@ -37,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
         // pdo_dblib está disponível; só falta mapear o NOME 'dblib' para essas classes:
         //   1) connector → cria o PDO (ligação) usando o DSN dblib;
         //   2) resolver → embrulha o PDO numa SqlServerConnection (gramática SQL Server).
-        $this->app->bind('db.connector.dblib', fn () => new SqlServerConnector());
+        $this->app->bind('db.connector.dblib', fn () => new SqlServerConnector);
 
         Connection::resolverFor('dblib', function ($connection, $database, $prefix, $config) {
             return new SqlServerConnection($connection, $database, $prefix, $config);
@@ -53,9 +54,9 @@ class AppServiceProvider extends ServiceProvider
         // Política de passwords (Vaga 1): min 10 + letras + números; em produção verifica
         // ainda contra fugas conhecidas (HIBP, k-anonymity — só sai um prefixo do hash).
         // Fora de produção fica sem a chamada de rede (testes determinísticos e offline).
-        \Illuminate\Validation\Rules\Password::defaults(fn () => app()->isProduction()
-            ? \Illuminate\Validation\Rules\Password::min(10)->letters()->numbers()->uncompromised()
-            : \Illuminate\Validation\Rules\Password::min(10)->letters()->numbers());
+        Password::defaults(fn () => app()->isProduction()
+            ? Password::min(10)->letters()->numbers()->uncompromised()
+            : Password::min(10)->letters()->numbers());
 
         // Transporte de email 'graph' (Microsoft Graph, app-only). Lazy: o closure só corre
         // quando o mailer 'graph' é resolvido. Credenciais em config/services.php (via env).
@@ -77,7 +78,7 @@ class AppServiceProvider extends ServiceProvider
                 ->greeting('Olá,')
                 ->line('Recebemos um pedido para redefinir a palavra-passe da sua conta.')
                 ->action('Redefinir palavra-passe', $url)
-                ->line('Este link expira em ' . config('auth.passwords.users.expire') . ' minutos.')
+                ->line('Este link expira em '.config('auth.passwords.users.expire').' minutos.')
                 ->line('Se não foi você que fez este pedido, ignore este email.')
                 ->salutation('Cumprimentos, equipa Nexus Infra');
         });

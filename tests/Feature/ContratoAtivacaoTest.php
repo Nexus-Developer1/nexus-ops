@@ -33,7 +33,7 @@ class ContratoAtivacaoTest extends TestCase
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC1']);
         $ids = [];
         for ($i = 0; $i < $nEquip; $i++) {
-            $ids[] = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'fabricante' => 'APC', 'modelo' => 'X' . $i])->id;
+            $ids[] = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'fabricante' => 'APC', 'modelo' => 'X'.$i])->id;
         }
         $contrato = Contrato::create([
             'numero' => $numero, 'cliente_id' => $cliente->id,

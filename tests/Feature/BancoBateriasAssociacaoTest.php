@@ -20,6 +20,7 @@ class BancoBateriasAssociacaoTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private Local $local;
 
     protected function setUp(): void

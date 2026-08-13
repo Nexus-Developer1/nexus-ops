@@ -7,6 +7,7 @@ use App\Livewire\Equipamentos\Ficha;
 use App\Livewire\Equipamentos\Listagem;
 use App\Livewire\Equipamentos\Novo;
 use App\Livewire\Relatorios\Novo as RelatorioNovo;
+use App\Models\Artigo;
 use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
@@ -330,7 +331,7 @@ class EquipamentoManualTest extends TestCase
         $this->assertEquals(16, $eq->atributos['num_baterias']); // total dos bancos
     }
 
-    public function test_novo_equipamento_guarda_VARIOS_bancos_com_total_e_proxima_troca_mais_proxima(): void
+    public function test_novo_equipamento_guarda_vario_s_bancos_com_total_e_proxima_troca_mais_proxima(): void
     {
         $admin = $this->admin();
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
@@ -554,8 +555,8 @@ class EquipamentoManualTest extends TestCase
         $admin = $this->admin();
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
-        $artigo = \App\Models\Artigo::create(['id_erp' => 'DET-701P', 'designacao' => 'Detetor ótico convencional 701P', 'faminome' => 'Deteção de incêndio']);
-        \App\Models\Artigo::create(['id_erp' => 'BAT-12V', 'designacao' => 'Bateria 12V 9Ah']);
+        $artigo = Artigo::create(['id_erp' => 'DET-701P', 'designacao' => 'Detetor ótico convencional 701P', 'faminome' => 'Deteção de incêndio']);
+        Artigo::create(['id_erp' => 'BAT-12V', 'designacao' => 'Bateria 12V 9Ah']);
 
         Livewire::actingAs($admin)->test(Novo::class)
             ->call('selecionarCliente', $cliente->id)
@@ -581,7 +582,7 @@ class EquipamentoManualTest extends TestCase
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
         $eq = Equipamento::create(['local_id' => $local->id, 'tipo' => 'incendio', 'estado' => 'operacional']);
-        $artigo = \App\Models\Artigo::create(['id_erp' => 'CIL-NOVEC-106', 'designacao' => 'Cilindro Novec 1230 106L']);
+        $artigo = Artigo::create(['id_erp' => 'CIL-NOVEC-106', 'designacao' => 'Cilindro Novec 1230 106L']);
 
         Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $eq])
             ->set('artigoBusca', 'novec')

@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\SincronizarErp;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -19,7 +20,7 @@ Artisan::command('inspire', function () {
 // Corre na fila (worker), não no processo do scheduler. Só com driver ERP configurado.
 // timezone Europe/Lisbon: o servidor/app estão em UTC — sem isto, as "8h/13h/19h" eram
 // UTC e, com a hora de verão, os syncs corriam às 9h/14h/20h portuguesas.
-Schedule::job(new App\Jobs\SincronizarErp(agendado: true))
+Schedule::job(new SincronizarErp(agendado: true))
     ->timezone('Europe/Lisbon')
     ->cron('0 8,13,19 * * *')
     ->onOneServer()
@@ -29,7 +30,7 @@ Schedule::job(new App\Jobs\SincronizarErp(agendado: true))
 // de manhã cedo — realinha qualquer drift local em campos do ERP (10.ª revisão de segurança:
 // sem isto, um registo adulterado na BD da app ou com hash "envenenado" ficava stale para
 // sempre; o incremental só reescreve quando o PHC muda). Demora ~20 min, ninguém a usar.
-Schedule::job(new App\Jobs\SincronizarErp(agendado: true, completo: true))
+Schedule::job(new SincronizarErp(agendado: true, completo: true))
     ->timezone('Europe/Lisbon')
     ->cron('0 6 * * 0')
     ->onOneServer()

@@ -7,10 +7,13 @@ use App\Jobs\SincronizarErp;
 use App\Livewire\DashboardGestao;
 use App\Mail\ResultadoSincronizacaoErp;
 use App\Models\User;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -28,8 +31,8 @@ class SincronizarErpManualTest extends TestCase
         // testes pode ser o Redis de dev, partilhado entre corridas. Sem esta limpeza, o
         // throttle de 10 min do botão sobrevive de uma corrida para a seguinte e o teste
         // fica intermitente (passa, e 5 minutos depois falha).
-        \Illuminate\Support\Facades\Cache::forget('erp-sync-manual-pedido');
-        \Illuminate\Support\Facades\Cache::forget('erp-sync:ultimo');
+        Cache::forget('erp-sync-manual-pedido');
+        Cache::forget('erp-sync:ultimo');
     }
 
     private function admin(): User
@@ -138,7 +141,7 @@ class SincronizarErpManualTest extends TestCase
         $this->assertNotNull($c->get('syncPedidoEm')); // entra em modo "à espera" (poll)
 
         // O job termina e deixa o resultado em cache (timestamp posterior ao pedido).
-        \Illuminate\Support\Facades\Cache::put('erp-sync:ultimo', [
+        Cache::put('erp-sync:ultimo', [
             'terminado_em' => now()->addSecond()->toIso8601String(),
             'falhou' => false,
             'resultados' => [
@@ -175,7 +178,7 @@ class SincronizarErpManualTest extends TestCase
 
         // #[Locked]: um payload forjado a definir o estado do poll (que rebentava no
         // Carbon::parse/render) é recusado pelo Livewire.
-        $this->expectException(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
+        $this->expectException(CannotUpdateLockedPropertyException::class);
 
         Livewire::actingAs($this->admin())->test(DashboardGestao::class)
             ->set('syncPedidoEm', 'lixo');
@@ -188,7 +191,7 @@ class SincronizarErpManualTest extends TestCase
 
         (new SincronizarErp)->handle();
 
-        $ultimo = \Illuminate\Support\Facades\Cache::get('erp-sync:ultimo');
+        $ultimo = Cache::get('erp-sync:ultimo');
         $this->assertNotNull($ultimo);
         $this->assertFalse($ultimo['falhou']);
         $this->assertArrayHasKey('Clientes', $ultimo['resultados']);
@@ -200,7 +203,7 @@ class SincronizarErpManualTest extends TestCase
         // O cron das 08h/13h/19h dispara UMA corrida encadeada via o mesmo job do botão
         // (e não os 3 comandos desfasados de antes) + a corrida COMPLETA semanal (domingo 06h,
         // rede de segurança contra drift/hash envenenado — 10.ª revisão de segurança).
-        $eventos = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events());
+        $eventos = collect(app(Schedule::class)->events());
 
         $doJob = $eventos->filter(fn ($e) => str_contains((string) $e->description, SincronizarErp::class));
         $this->assertCount(2, $doJob);

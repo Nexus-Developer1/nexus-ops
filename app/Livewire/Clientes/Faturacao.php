@@ -16,7 +16,6 @@ use Livewire\WithPagination;
 class Faturacao extends Component
 {
     use ApenasEquipa;
-
     use WithPagination;
 
     public Cliente $cliente;
@@ -39,7 +38,7 @@ class Faturacao extends Component
         $linhas = LinhaFatura::query()
             ->where('cliente_no', $this->cliente->id_erp)
             ->when($this->pesquisa, function ($q) {
-                $termo = '%' . $this->pesquisa . '%';
+                $termo = '%'.$this->pesquisa.'%';
                 $q->where(function ($q) use ($termo) {
                     $q->where('design', 'ilike', $termo)
                         ->orWhere('ref', 'ilike', $termo)

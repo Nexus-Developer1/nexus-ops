@@ -32,7 +32,7 @@ class RelatorioListagemOrdenacaoTest extends TestCase
     {
         $c = Cliente::create(['nome' => $cliente, 'ativo' => true]);
         $local = Local::create(['cliente_id' => $c->id, 'designacao' => 'Sede']);
-        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-' . $numero]);
+        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-'.$numero]);
         $interv = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'preventiva', 'estado' => 'concluida', 'data_inicio' => $data]);
 
         return Relatorio::create(['intervencao_id' => $interv->id, 'numero' => $numero, 'data' => $data, 'estado' => 'finalizado']);

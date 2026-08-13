@@ -7,6 +7,7 @@ use App\Enums\PapelUtilizador;
 use App\Livewire\Relatorios\Novo;
 use App\Models\Cliente;
 use App\Models\Equipamento;
+use App\Models\Intervencao;
 use App\Models\Local;
 use App\Models\Relatorio;
 use App\Models\User;
@@ -82,7 +83,7 @@ class RelatorioAutosaveTest extends TestCase
 
         // Um relatório ENVIADO de outra intervenção (o alvo do ataque).
         $outro = Equipamento::create(['local_id' => $equip->local_id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'ALVO-1']);
-        $intervencaoAlvo = \App\Models\Intervencao::create(['equipamento_id' => $outro->id, 'tipo' => 'corretiva', 'estado' => 'concluida']);
+        $intervencaoAlvo = Intervencao::create(['equipamento_id' => $outro->id, 'tipo' => 'corretiva', 'estado' => 'concluida']);
         $relatorioAlvo = Relatorio::create(['intervencao_id' => $intervencaoAlvo->id, 'numero' => '2026/9001', 'data' => now(), 'estado' => EstadoRelatorio::Enviado]);
 
         $comp = Livewire::actingAs($tecnico)->test(Novo::class)->set('equipamento_id', $equip->id);

@@ -18,7 +18,7 @@ class SincronizarArtigosErpTest extends TestCase
     {
         parent::setUp();
         // Força o driver Fake (independente do ERP_DRIVER do ambiente).
-        $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver());
+        $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver);
     }
 
     public function test_cria_artigos_e_filtra_os_sem_referencia(): void

@@ -3,9 +3,12 @@
 namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
+use App\Livewire\Clientes\Detalhe;
+use App\Livewire\Contratos\Ficha;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
+use App\Models\EventoAgenda;
 use App\Models\Intervencao;
 use App\Models\Local;
 use App\Models\ModeloFaturacao;
@@ -36,7 +39,7 @@ class Vaga2GestaoTest extends TestCase
         $contrato->eventos()->create(['tipo' => 'visita_preventiva', 'titulo' => 'Urgência fim-de-semana', 'estado' => 'concluido',
             'inicio' => now()->subDays(3), 'fim' => now()->subDays(3)->addHours(2), 'cliente_id' => $cliente->id, 'cobertura' => 'extra']);
 
-        Livewire::actingAs($this->admin())->test(\App\Livewire\Contratos\Ficha::class, ['contrato' => $contrato])
+        Livewire::actingAs($this->admin())->test(Ficha::class, ['contrato' => $contrato])
             ->assertSee('Visitas do contrato')
             ->assertSee('Visita Q1')
             ->assertSee('Urgência fim-de-semana')
@@ -51,12 +54,12 @@ class Vaga2GestaoTest extends TestCase
             'fabricante' => 'Riello', 'modelo' => 'NPW', 'numero_serie' => 'EXT-1']);
 
         // Visita extra + corretiva sem contrato → ambas aparecem; total = 2.
-        \App\Models\EventoAgenda::create(['tipo' => 'visita_preventiva', 'titulo' => 'Extra de sábado', 'estado' => 'concluido',
+        EventoAgenda::create(['tipo' => 'visita_preventiva', 'titulo' => 'Extra de sábado', 'estado' => 'concluido',
             'inicio' => now()->subDays(2), 'fim' => now()->subDays(2)->addHours(2), 'cliente_id' => $cliente->id, 'cobertura' => 'extra']);
         Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'corretiva', 'estado' => 'concluida',
             'data_inicio' => now()->subDay()]);
 
-        Livewire::actingAs($this->admin())->test(\App\Livewire\Clientes\Detalhe::class, ['cliente' => $cliente])
+        Livewire::actingAs($this->admin())->test(Detalhe::class, ['cliente' => $cliente])
             ->assertSee('Trabalho faturável à parte')
             ->assertSee('Extra de sábado')
             ->assertSee('Sem contrato')

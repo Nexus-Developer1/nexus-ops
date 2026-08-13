@@ -37,7 +37,7 @@ class TecnicoTest extends TestCase
             'tecnico_id' => $tecnico->id, 'cliente_id' => $cliente->id, 'equipamento_id' => $equip->id]);
         $interv = Intervencao::create(['equipamento_id' => $equip->id, 'tecnico_id' => $tecnico->id,
             'tipo' => 'preventiva', 'estado' => 'concluida']);
-        $rel = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/' . $tecnico->id, 'data' => now(), 'estado' => 'finalizado']);
+        $rel = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/'.$tecnico->id, 'data' => now(), 'estado' => 'finalizado']);
 
         return compact('evento', 'interv', 'rel');
     }

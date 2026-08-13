@@ -2,6 +2,7 @@
 
 namespace App\Services\Erp;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 // Driver real — lê os clientes das VIEWS dedicadas read-only do ERP.
@@ -38,7 +39,7 @@ class SqlServerErpDriver implements ErpSyncDriver
         // por isso sem este filtro os estabelecimentos escreviam por cima uns dos outros a
         // cada sync (o cliente ficava com o nome/morada do que calhasse por último — e o sync
         // incremental via 179 "alterados" eternos). A SEDE (estab 0) é o registo canónico.
-        $top = $limite !== null ? 'TOP ' . (int) $limite . ' ' : '';
+        $top = $limite !== null ? 'TOP '.(int) $limite.' ' : '';
 
         $sql = "SELECT {$top}no, nome, ncont, morada, codpost, email, telefone, tlmvl, vendedor, vendnm
                 FROM cl
@@ -71,7 +72,7 @@ class SqlServerErpDriver implements ErpSyncDriver
         // read-only dedicada (vw_linhas_fatura) e ler dessa view, nunca das tabelas brutas.
         //
         // SQL Server: o limite usa TOP (não LIMIT). É um inteiro, interpolado em segurança.
-        $top = $limite !== null ? 'TOP ' . (int) $limite . ' ' : '';
+        $top = $limite !== null ? 'TOP '.(int) $limite.' ' : '';
 
         // ft.anulado (Vaga 1): uma fatura anulada no PHC aparecia na app como válida.
         $sql = "SELECT {$top}fistamp, nmdoc, fno,
@@ -88,7 +89,7 @@ class SqlServerErpDriver implements ErpSyncDriver
                 clienteNo: $r->cliente_no !== null ? (string) $r->cliente_no : null,
                 nmdoc: $r->nmdoc,
                 fno: $r->fno !== null ? (int) $r->fno : null,
-                data: $r->data ? \Illuminate\Support\Carbon::parse($r->data)->format('Y-m-d') : null,
+                data: $r->data ? Carbon::parse($r->data)->format('Y-m-d') : null,
                 ref: $r->ref,
                 design: $r->design,
                 series: $r->series,
@@ -108,7 +109,7 @@ class SqlServerErpDriver implements ErpSyncDriver
         // (vw_artigos) e ler dessa view, nunca da tabela bruta. (Igual aos restantes syncs.)
         //
         // SQL Server: o limite usa TOP (não LIMIT). É um inteiro, interpolado em segurança.
-        $top = $limite !== null ? 'TOP ' . (int) $limite . ' ' : '';
+        $top = $limite !== null ? 'TOP '.(int) $limite.' ' : '';
 
         $sql = "SELECT {$top}ref, design, familia, faminome
                 FROM st
@@ -149,7 +150,7 @@ class SqlServerErpDriver implements ErpSyncDriver
         // família (a ligação ma.ref = st.ref é a mesma que o sync antigo em Python usava).
         //
         // SQL Server: o limite usa TOP (não LIMIT). É um inteiro, interpolado em segurança.
-        $top = $limite !== null ? 'TOP ' . (int) $limite . ' ' : '';
+        $top = $limite !== null ? 'TOP '.(int) $limite.' ' : '';
 
         $sql = "SELECT {$top}ma.mastamp, ma.serie, ma.design, ma.instal, ma.no, ma.marca, ma.ousrdata, ma.ousrhora, st.familia, st.faminome
                 FROM ma
@@ -166,7 +167,7 @@ class SqlServerErpDriver implements ErpSyncDriver
                 idErp: trim((string) $r->mastamp),
                 numeroSerie: $r->serie !== null ? trim((string) $r->serie) : null,
                 modelo: $r->design !== null ? trim((string) $r->design) : null,
-                dataInstalacao: $r->instal ? \Illuminate\Support\Carbon::parse($r->instal)->format('Y-m-d') : null,
+                dataInstalacao: $r->instal ? Carbon::parse($r->instal)->format('Y-m-d') : null,
                 // ma.no é numeric(10,0) → texto sem casas decimais, para casar com clientes.id_erp.
                 clienteNo: $r->no !== null ? (string) (int) $r->no : null,
                 marca: $r->marca !== null ? trim((string) $r->marca) : null,
@@ -175,8 +176,8 @@ class SqlServerErpDriver implements ErpSyncDriver
                 // Data de criação no PHC (ousrdata) + hora (ousrhora, char 'HH:MM[:SS]') —
                 // é a "ordem do PHC" que a listagem usa nos "mais recentes".
                 criadoEm: $r->ousrdata
-                    ? \Illuminate\Support\Carbon::parse($r->ousrdata)->format('Y-m-d')
-                        . ' ' . (preg_match('/^\d{2}:\d{2}(:\d{2})?$/', trim((string) ($r->ousrhora ?? '')))
+                    ? Carbon::parse($r->ousrdata)->format('Y-m-d')
+                        .' '.(preg_match('/^\d{2}:\d{2}(:\d{2})?$/', trim((string) ($r->ousrhora ?? '')))
                             ? str_pad(trim((string) $r->ousrhora), 8, ':00')
                             : '00:00:00')
                     : null,

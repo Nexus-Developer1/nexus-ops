@@ -29,22 +29,34 @@ class Novo extends Component
 
     // Cliente (existente, pesquisa server-side) + local.
     public ?int $cliente_id = null;
+
     public string $clienteBusca = '';
+
     public ?int $local_id = null;
 
     // Dados do equipamento.
     public string $tipo = 'ups';
+
     // Só para o tipo "Diversos" (soluções pontuais): o tipo não diz nada, a descrição é
     // obrigatória e é ela que identifica a solução. Guardada em atributos.tipo_descricao.
     public string $tipo_descricao = '';
+
     public string $fabricante = '';
+
     public string $modelo = '';
+
     public string $numero_serie = '';
+
     public string $cliente_final = '';
+
     public string $localizacao_instalacao = '';
+
     public string $estado = 'operacional';
+
     public string $data_instalacao = '';
+
     public string $fim_garantia = '';
+
     public string $notas = '';
 
     // Bancos de baterias (parte do mesmo equipamento) — um UPS pode ter VÁRIOS. Lista de linhas
@@ -245,11 +257,11 @@ class Novo extends Component
             return collect();
         }
 
-        $termo = '%' . $this->clienteBusca . '%';
-        $nomeNorm = '%' . $this->normalizarBusca($this->clienteBusca) . '%';
+        $termo = '%'.$this->clienteBusca.'%';
+        $nomeNorm = '%'.$this->normalizarBusca($this->clienteBusca).'%';
 
         return Cliente::query()
-            ->where(fn ($q) => $q->whereRaw(self::NOME_SEM_ACENTOS . ' like ?', [$nomeNorm])
+            ->where(fn ($q) => $q->whereRaw(self::NOME_SEM_ACENTOS.' like ?', [$nomeNorm])
                 ->orWhere('nif', 'ilike', $termo))
             ->orderBy('nome')
             ->limit(20)

@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
+use App\Livewire\Clientes\Index;
+use App\Livewire\Equipamentos\Listagem;
 use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\Local;
@@ -37,17 +39,17 @@ class ListagensOrdenacaoDefeitoTest extends TestCase
             'numero_serie' => 'SN-PHC-VELHO', 'criado_erp_em' => '2020-01-01 09:00:00']);
 
         // Default: manuais pela data de registo (empate → id desc), o antigo do PHC no fim.
-        Livewire::actingAs($this->admin())->test(\App\Livewire\Equipamentos\Listagem::class)
+        Livewire::actingAs($this->admin())->test(Listagem::class)
             ->assertSet('ordenar', 'recentes')
             ->assertSeeInOrder(['SN-C', 'SN-B', 'SN-A', 'SN-PHC-VELHO']);
 
         // Mais antigos: o antigo do PHC primeiro.
-        Livewire::actingAs($this->admin())->test(\App\Livewire\Equipamentos\Listagem::class)
+        Livewire::actingAs($this->admin())->test(Listagem::class)
             ->set('ordenar', 'antigos')
             ->assertSeeInOrder(['SN-PHC-VELHO', 'SN-A', 'SN-B', 'SN-C']);
 
         // Por nº de série.
-        Livewire::actingAs($this->admin())->test(\App\Livewire\Equipamentos\Listagem::class)
+        Livewire::actingAs($this->admin())->test(Listagem::class)
             ->set('ordenar', 'serie_desc')
             ->assertSeeInOrder(['SN-PHC-VELHO', 'SN-C', 'SN-B', 'SN-A']);
     }
@@ -57,10 +59,10 @@ class ListagensOrdenacaoDefeitoTest extends TestCase
         foreach (['Zebra Lda', 'Águia SA', 'Mar Alto'] as $nome) {
             $c = Cliente::create(['nome' => $nome, 'ativo' => true]);
             $l = Local::create(['cliente_id' => $c->id, 'designacao' => 'DC']);
-            Equipamento::create(['local_id' => $l->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-' . substr($nome, 0, 3)]);
+            Equipamento::create(['local_id' => $l->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-'.substr($nome, 0, 3)]);
         }
 
-        Livewire::actingAs($this->admin())->test(\App\Livewire\Equipamentos\Listagem::class)
+        Livewire::actingAs($this->admin())->test(Listagem::class)
             ->set('ordenar', 'cliente_asc')
             ->assertSeeInOrder(['guia SA', 'Mar Alto', 'Zebra Lda']); // 'Águia' sem o Á (JSON escapa acentos)
     }
@@ -72,12 +74,12 @@ class ListagensOrdenacaoDefeitoTest extends TestCase
         Cliente::create(['nome' => 'Zulu', 'id_erp' => '2', 'ativo' => true])->forceFill(['data_criacao_erp' => '2026-07-30'])->save();
 
         // Default passa a ser "recentes": o Zulu (criado agora no PHC) vem primeiro.
-        Livewire::actingAs($this->admin())->test(\App\Livewire\Clientes\Index::class)
+        Livewire::actingAs($this->admin())->test(Index::class)
             ->assertSet('ordenar', 'recentes')
             ->assertSeeInOrder(['Zulu', 'Alfa']);
 
         // A ordenação alfabética continua disponível.
-        Livewire::actingAs($this->admin())->test(\App\Livewire\Clientes\Index::class)
+        Livewire::actingAs($this->admin())->test(Index::class)
             ->set('ordenar', 'nome_asc')
             ->assertSeeInOrder(['Alfa', 'Zulu']);
     }

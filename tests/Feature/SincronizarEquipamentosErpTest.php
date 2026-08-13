@@ -22,7 +22,7 @@ class SincronizarEquipamentosErpTest extends TestCase
     {
         parent::setUp();
         // Força o driver Fake (independente do ERP_DRIVER do ambiente).
-        $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver());
+        $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver);
     }
 
     // Popula os clientes fake (id_erp 1000..) a que os equipamentos se ligam.

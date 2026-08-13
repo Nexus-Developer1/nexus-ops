@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Mail\ResultadoSincronizacaoErp;
+use App\Services\Auditor;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -106,7 +107,7 @@ class SincronizarErp implements ShouldQueue
                 'falhas' => array_keys(array_filter($resultados, fn ($r) => ! $r['ok'])),
             ]);
             // Auditoria: uma linha por corrida (quem = null → sistema; detalhe = resumo por etapa).
-            \App\Services\Auditor::registar('sync_erp', detalhe: [
+            Auditor::registar('sync_erp', detalhe: [
                 'agendado' => $this->agendado,
                 'falhou' => $falhou,
                 'resultados' => array_map(fn ($r) => $r['detalhe'], $resultados),

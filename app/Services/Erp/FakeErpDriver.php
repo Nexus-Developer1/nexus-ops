@@ -183,14 +183,14 @@ class FakeErpDriver implements ErpSyncDriver
         return new ClienteErp(
             idErp: (string) (1000 + $i),                                    // PHC cl.no
             nome: trim("{$tipo} {$cidade} {$sufixo}"),
-            nif: '5' . str_pad((string) mt_rand(0, 99999999), 8, '0', STR_PAD_LEFT),
-            email: 'geral@' . $this->slug($tipo . $cidade) . '.pt',
+            nif: '5'.str_pad((string) mt_rand(0, 99999999), 8, '0', STR_PAD_LEFT),
+            email: 'geral@'.$this->slug($tipo.$cidade).'.pt',
             telefone: sprintf('+351 2%d %03d %03d', mt_rand(1, 9), mt_rand(100, 999), mt_rand(100, 999)),
-            morada: $tiposRua[mt_rand(0, count($tiposRua) - 1)] . ' ' . $nomesRua[mt_rand(0, count($nomesRua) - 1)] . ', ' . mt_rand(1, 250) . ', ' . $cidade,
+            morada: $tiposRua[mt_rand(0, count($tiposRua) - 1)].' '.$nomesRua[mt_rand(0, count($nomesRua) - 1)].', '.mt_rand(1, 250).', '.$cidade,
             codpost: sprintf('%04d-%03d', mt_rand(1000, 9499), mt_rand(1, 999)),
             tlmvl: sprintf('+351 9%d %03d %03d', $moveis[mt_rand(0, 3)], mt_rand(100, 999), mt_rand(100, 999)),
             vendedor: mt_rand(1, 15),
-            vendnm: $primeiros[mt_rand(0, count($primeiros) - 1)] . ' ' . $apelidos[mt_rand(0, count($apelidos) - 1)],
+            vendnm: $primeiros[mt_rand(0, count($primeiros) - 1)].' '.$apelidos[mt_rand(0, count($apelidos) - 1)],
         );
     }
 

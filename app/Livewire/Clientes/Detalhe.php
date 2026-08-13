@@ -6,6 +6,8 @@ use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
+use App\Models\EventoAgenda;
+use App\Models\Intervencao;
 use App\Models\LinhaFatura;
 use App\Models\Relatorio;
 use Livewire\Attributes\Layout;
@@ -43,10 +45,10 @@ class Detalhe extends Component
 
         // Trabalho FATURÁVEL À PARTE (Vaga 2): visitas extra + intervenções sem contrato —
         // "quanto trabalho extra fizemos ao cliente X?" não tinha resposta em ecrã nenhum.
-        $visitasExtra = \App\Models\EventoAgenda::where('cliente_id', $id)
+        $visitasExtra = EventoAgenda::where('cliente_id', $id)
             ->where('cobertura', 'extra')
             ->where('estado', '!=', 'cancelado');
-        $semContrato = \App\Models\Intervencao::whereNull('contrato_id')
+        $semContrato = Intervencao::whereNull('contrato_id')
             ->whereHas('equipamento.local', fn ($q) => $q->where('cliente_id', $id));
 
         return view('livewire.clientes.detalhe', [

@@ -5,6 +5,7 @@ namespace App\Services\Agenda;
 use App\Enums\EstadoEvento;
 use App\Enums\TipoEvento;
 use App\Models\EventoAgenda;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -21,10 +22,10 @@ class AgendadorEvento
      * Cria (editandoId null) ou edita um evento próprio da agenda.
      *
      * @param  array<string, mixed>  $atributos  atributos do evento (titulo, inicio, fim, técnico, âmbito, cobertura)
-     * @param  Collection<int, \App\Models\User>  $tecnicos  contas escolhidas, ordenadas (1.ª = principal)
+     * @param  Collection<int, User>  $tecnicos  contas escolhidas, ordenadas (1.ª = principal)
      * @param  list<int>  $adicionaisIds  ids dos técnicos além do principal (pivot evento_tecnicos)
      * @return array{erro?: string, bloqueado?: bool, evento?: EventoAgenda}
-     *         erro = razão legível (horário/conflito); bloqueado = evento já não editável
+     *                                                                       erro = razão legível (horário/conflito); bloqueado = evento já não editável
      */
     public function gravar(array $atributos, Collection $tecnicos, array $adicionaisIds, ?int $editandoId): array
     {
@@ -41,8 +42,8 @@ class AgendadorEvento
         // efetivo de cada dia, não o intervalo contínuo (as noites pelo meio ficam livres).
         $segmentos = collect($atributos['horas_dias'] ?? [])
             ->map(fn (array $l) => [
-                Carbon::parse($l['dia'] . ' ' . $l['inicio']),
-                Carbon::parse($l['dia'] . ' ' . $l['fim']),
+                Carbon::parse($l['dia'].' '.$l['inicio']),
+                Carbon::parse($l['dia'].' '.$l['fim']),
             ])
             ->values()
             ->all() ?: null;

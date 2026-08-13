@@ -2,10 +2,11 @@
 
 namespace App\Livewire\Relatorios;
 
-use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\EstadoRelatorio;
 use App\Jobs\EnviarRelatorioPorEmail;
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Relatorio;
+use App\Services\Auditor;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -19,7 +20,9 @@ class Enviar extends Component
     public Relatorio $relatorio;
 
     public string $para = '';
+
     public string $assunto = '';
+
     public string $mensagem = '';
 
     public function mount(Relatorio $relatorio): void
@@ -39,12 +42,12 @@ class Enviar extends Component
 
         // Pré-preenche (tudo editável).
         $this->para = $cliente?->email ?? '';
-        $this->assunto = 'Relatório de intervenção ' . $this->relatorio->numero;
-        $this->mensagem = "Caro(a) " . ($cliente?->nome ?? 'Cliente') . ",\n\n"
-            . "Segue em anexo o relatório da intervenção técnica.\n\n"
-            . "Para qualquer esclarecimento, não hesite em contactar-nos.\n\n"
-            . "Com os melhores cumprimentos,\n"
-            . config('app.name');
+        $this->assunto = 'Relatório de intervenção '.$this->relatorio->numero;
+        $this->mensagem = 'Caro(a) '.($cliente?->nome ?? 'Cliente').",\n\n"
+            ."Segue em anexo o relatório da intervenção técnica.\n\n"
+            ."Para qualquer esclarecimento, não hesite em contactar-nos.\n\n"
+            ."Com os melhores cumprimentos,\n"
+            .config('app.name');
     }
 
     public function enviar()
@@ -65,7 +68,7 @@ class Enviar extends Component
         );
 
         // Auditoria: emissão de documento oficial ao cliente (CLAUDE.md §11).
-        \App\Services\Auditor::registar('relatorio_enviado', $this->relatorio, [
+        Auditor::registar('relatorio_enviado', $this->relatorio, [
             'numero' => $this->relatorio->numero,
             'para' => trim($this->para),
         ]);

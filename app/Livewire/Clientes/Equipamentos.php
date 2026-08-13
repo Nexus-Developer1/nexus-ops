@@ -15,7 +15,6 @@ use Livewire\WithPagination;
 class Equipamentos extends Component
 {
     use ApenasEquipa;
-
     use WithPagination;
 
     public Cliente $cliente;
@@ -39,7 +38,7 @@ class Equipamentos extends Component
             ->whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente->id))
             ->with('local')
             ->when($this->pesquisa, function ($q) {
-                $termo = '%' . $this->pesquisa . '%';
+                $termo = '%'.$this->pesquisa.'%';
                 $q->where(function ($q) use ($termo) {
                     $q->where('numero_serie', 'ilike', $termo)
                         ->orWhere('modelo', 'ilike', $termo)

@@ -32,10 +32,10 @@ class SaldoVisitasFase1Test extends TestCase
     private function contratoAtivo(?int $visitasIncluidas = null): Contrato
     {
         $this->seq++;
-        $cliente = Cliente::create(['nome' => 'ACME ' . $this->seq, 'ativo' => true]);
+        $cliente = Cliente::create(['nome' => 'ACME '.$this->seq, 'ativo' => true]);
 
         return Contrato::create([
-            'numero' => '2026/90' . $this->seq,
+            'numero' => '2026/90'.$this->seq,
             'cliente_id' => $cliente->id,
             'data_inicio' => now()->startOfYear(),
             'data_fim' => now()->endOfYear(),

@@ -14,7 +14,7 @@ return new class extends Migration
         $grupos = DB::table('despesas')
             ->whereNull('deleted_at')
             ->whereNotNull('registo_despesa_id')
-            ->selectRaw("coalesce(criado_por, 0) as dono, data, descricao, min(registo_despesa_id) as canonico, count(distinct registo_despesa_id) as n_registos")
+            ->selectRaw('coalesce(criado_por, 0) as dono, data, descricao, min(registo_despesa_id) as canonico, count(distinct registo_despesa_id) as n_registos')
             ->groupBy('dono', 'data', 'descricao')
             ->havingRaw('count(distinct registo_despesa_id) > 1')
             ->get();

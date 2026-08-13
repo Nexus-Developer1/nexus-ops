@@ -24,8 +24,8 @@ class PortalTest extends TestCase
         $interv = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'preventiva', 'estado' => 'concluida']);
         // ENVIADO: desde a 11.ª revisão o portal só mostra relatórios enviados (rascunhos e
         // finalizados são trabalho interno — podem estar a meio de uma reedição).
-        $rel = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/' . $cliente->id, 'data' => now(), 'estado' => 'enviado', 'enviado_em' => now()]);
-        $user = User::create(['nome' => 'C' . $cliente->id, 'email' => 'c' . $cliente->id . '@x.pt', 'password' => 'x',
+        $rel = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/'.$cliente->id, 'data' => now(), 'estado' => 'enviado', 'enviado_em' => now()]);
+        $user = User::create(['nome' => 'C'.$cliente->id, 'email' => 'c'.$cliente->id.'@x.pt', 'password' => 'x',
             'papel' => PapelUtilizador::Cliente, 'cliente_id' => $cliente->id, 'ativo' => true]);
 
         return [$cliente, $user, $rel, $equip];
@@ -56,7 +56,7 @@ class PortalTest extends TestCase
 
         $this->actingAs($user)->get('/portal')->assertOk()->assertSee('Central Norte');
         $this->actingAs($user)->get('/portal/equipamentos')->assertOk();
-        $this->actingAs($user)->get('/portal/relatorios')->assertOk()->assertSee('2026/' . $cliente->id);
+        $this->actingAs($user)->get('/portal/relatorios')->assertOk()->assertSee('2026/'.$cliente->id);
     }
 
     public function test_portal_so_mostra_relatorios_enviados(): void
@@ -70,7 +70,7 @@ class PortalTest extends TestCase
         // A listagem e o dashboard do portal só mostram o enviado.
         $this->actingAs($user)->get('/portal/relatorios')
             ->assertOk()
-            ->assertSee('2026/' . $cliente->id)
+            ->assertSee('2026/'.$cliente->id)
             ->assertDontSee('2026/9999');
         $this->actingAs($user)->get('/portal')
             ->assertOk()

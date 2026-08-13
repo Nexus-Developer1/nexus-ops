@@ -518,7 +518,7 @@ class RelatorioEquipamentosTest extends TestCase
         }
 
         $contrato = Contrato::create([
-            'numero' => '2026/' . (9000 + $nCobertos + $extraNaoCobertos), 'cliente_id' => $cliente->id,
+            'numero' => '2026/'.(9000 + $nCobertos + $extraNaoCobertos), 'cliente_id' => $cliente->id,
             'data_inicio' => now()->subMonth(), 'data_fim' => now()->addYear(),
             'estado' => 'ativo', 'tipo' => 'preventiva', 'modelo_faturacao_id' => ModeloFaturacao::query()->value('id'),
         ]);
@@ -616,7 +616,7 @@ class RelatorioEquipamentosTest extends TestCase
             ->call('adicionarEquipamento', $ids[0])
             ->assertSet('equipamento_id', $ids[0]); // 1.º = principal
 
-        $c->assertSeeHtml('wire:key="tab-ficha-' . $ids[0] . '"'); // a ficha desse equipamento é montada
+        $c->assertSeeHtml('wire:key="tab-ficha-'.$ids[0].'"'); // a ficha desse equipamento é montada
     }
 
     public function test_editar_relatorio_de_contrato_grande_carrega_so_os_cobertos(): void

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
+use App\Livewire\Equipamentos\Ficha;
 use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\Local;
@@ -33,7 +34,7 @@ class EquipamentoEtiquetaQrTest extends TestCase
         $admin = User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
         $equip = $this->equipamento();
 
-        Livewire::actingAs($admin)->test(\App\Livewire\Equipamentos\Ficha::class, ['equipamento' => $equip])
+        Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $equip])
             ->assertSeeHtml('<svg') // o QR é SVG inline gerado pela app (sem input de utilizador)
             ->assertSeeHtml(route('equipamentos.etiqueta', $equip));
     }

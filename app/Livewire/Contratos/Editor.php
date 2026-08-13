@@ -9,6 +9,7 @@ use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\ModeloFaturacao;
+use App\Services\Auditor;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -25,19 +26,32 @@ class Editor extends Component
 
     // Dados gerais.
     public string $numero = '';
+
     public ?int $cliente_id = null;
+
     // Texto do combobox de cliente (pesquisa server-side).
     public string $clienteBusca = '';
+
     public string $data_inicio = '';
+
     public string $data_fim = '';
+
     public ?int $visitas_incluidas = null; // total de visitas incluídas pela vida do contrato (vazio = sem cláusula)
+
     public string $tipo = '';
+
     public ?int $modelo_faturacao_id = null;
+
     public ?string $valor = null;
+
     public string $periodo_faturacao = '';
+
     public string $coberturas = '';
+
     public string $exclusoes = '';
+
     public bool $renovacao_automatica = false;
+
     public int $periodo_aviso_dias = 30;
 
     /** @var array<int, int> */
@@ -80,11 +94,11 @@ class Editor extends Component
                 return redirect()->route('contratos.ficha', $this->contrato);
             }
             $this->contrato->update(['estado' => EstadoContrato::Ativo]);
-            \App\Services\Auditor::registar('contrato_mudou_estado', $this->contrato, ['numero' => $this->contrato->numero, 'de' => 'rascunho', 'para' => 'ativo']);
+            Auditor::registar('contrato_mudou_estado', $this->contrato, ['numero' => $this->contrato->numero, 'de' => 'rascunho', 'para' => 'ativo']);
             session()->flash('sucesso', 'Contrato guardado e ativado.');
         } elseif ($decisao === 'suspender') {
             $this->contrato->update(['estado' => EstadoContrato::Suspenso]);
-            \App\Services\Auditor::registar('contrato_mudou_estado', $this->contrato, ['numero' => $this->contrato->numero, 'de' => 'rascunho', 'para' => 'suspenso']);
+            Auditor::registar('contrato_mudou_estado', $this->contrato, ['numero' => $this->contrato->numero, 'de' => 'rascunho', 'para' => 'suspenso']);
             session()->flash('sucesso', 'Contrato guardado e suspenso.');
         } else {
             session()->flash('sucesso', 'Contrato guardado (fica em rascunho).');
@@ -134,7 +148,7 @@ class Editor extends Component
     private function proximoNumero(): string
     {
         $ano = now()->year;
-        $contagem = Contrato::where('numero', 'like', $ano . '/%')->count();
+        $contagem = Contrato::where('numero', 'like', $ano.'/%')->count();
 
         return sprintf('%d/%04d', $ano, $contagem + 1);
     }
@@ -351,10 +365,10 @@ class Editor extends Component
         // Pesquisa de clientes server-side (nome sem acentos + NIF + nº ERP), limitada.
         $clientesFiltrados = Cliente::query()
             ->when($this->clienteBusca !== '', function ($q) {
-                $termo = '%' . $this->clienteBusca . '%';
-                $nomeNorm = '%' . $this->normalizarBusca($this->clienteBusca) . '%';
+                $termo = '%'.$this->clienteBusca.'%';
+                $nomeNorm = '%'.$this->normalizarBusca($this->clienteBusca).'%';
                 $q->where(function ($q) use ($termo, $nomeNorm) {
-                    $q->whereRaw(self::NOME_SEM_ACENTOS . ' like ?', [$nomeNorm])
+                    $q->whereRaw(self::NOME_SEM_ACENTOS.' like ?', [$nomeNorm])
                         ->orWhere('nif', 'ilike', $termo)
                         ->orWhere('id_erp', 'ilike', $termo);
                 });

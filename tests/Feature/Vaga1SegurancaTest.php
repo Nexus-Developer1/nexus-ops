@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
+use App\Livewire\Auditoria\Listagem;
 use App\Livewire\Auth\AceitarConvite;
+use App\Livewire\Utilizadores\Adicionar;
 use App\Models\Auditoria;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -66,14 +68,14 @@ class Vaga1SegurancaTest extends TestCase
         session(['autenticado_em' => now()->timestamp]);
 
         // Convidar + eliminar deixam rasto (a eliminação é permanente e era silenciosa).
-        Livewire::actingAs($admin)->test(\App\Livewire\Utilizadores\Adicionar::class)
+        Livewire::actingAs($admin)->test(Adicionar::class)
             ->set('nome', 'Técnico Novo')
             ->set('email', 'tn@nexus.pt')
             ->call('convidar');
         $this->assertTrue(Auditoria::where('acao', 'utilizador_convidado')->exists());
 
         $alvo = User::where('email', 'tn@nexus.pt')->firstOrFail();
-        Livewire::actingAs($admin)->test(\App\Livewire\Utilizadores\Adicionar::class)
+        Livewire::actingAs($admin)->test(Adicionar::class)
             ->call('eliminar', $alvo->id);
 
         $registo = Auditoria::where('acao', 'utilizador_eliminado')->firstOrFail();
@@ -87,7 +89,7 @@ class Vaga1SegurancaTest extends TestCase
         Auditoria::create(['acao' => 'contrato_mudou_estado', 'entidade_tipo' => 'Contrato', 'entidade_id' => 42, 'detalhe' => ['numero' => 'C-42']]);
         Auditoria::create(['acao' => 'contrato_mudou_estado', 'entidade_tipo' => 'Contrato', 'entidade_id' => 99, 'detalhe' => ['numero' => 'C-99']]);
 
-        Livewire::actingAs($admin)->test(\App\Livewire\Auditoria\Listagem::class)
+        Livewire::actingAs($admin)->test(Listagem::class)
             ->set('pesquisa', '#42')
             ->assertSee('Contrato #42')
             ->assertDontSee('Contrato #99');

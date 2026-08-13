@@ -3,7 +3,11 @@
 namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
+use App\Livewire\Contratos\Editor;
+use App\Livewire\Equipamentos\Novo;
 use App\Models\Cliente;
+use App\Models\Equipamento;
+use App\Models\Local;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -22,7 +26,7 @@ class CamposObrigatoriosTest extends TestCase
 
     public function test_novo_equipamento_marca_e_exige_os_obrigatorios(): void
     {
-        Livewire::actingAs($this->admin())->test(\App\Livewire\Equipamentos\Novo::class)
+        Livewire::actingAs($this->admin())->test(Novo::class)
             ->assertSee('são obrigatórios')
             ->call('guardar')
             ->assertHasErrors(['cliente_id']); // cliente é obrigatório (tipo/estado têm default)
@@ -30,7 +34,7 @@ class CamposObrigatoriosTest extends TestCase
 
     public function test_novo_contrato_marca_e_exige_os_obrigatorios(): void
     {
-        Livewire::actingAs($this->admin())->test(\App\Livewire\Contratos\Editor::class)
+        Livewire::actingAs($this->admin())->test(Editor::class)
             ->assertSee('são obrigatórios')
             ->set('numero', '')
             ->set('data_inicio', '')
@@ -43,8 +47,8 @@ class CamposObrigatoriosTest extends TestCase
     {
         $admin = $this->admin();
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
-        $local = \App\Models\Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
-        $equip = \App\Models\Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-1']);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-1']);
 
         // Finalizar sem data nem técnicos → erros nos campos marcados com *.
         Livewire::actingAs($admin)->test(\App\Livewire\Relatorios\Novo::class)

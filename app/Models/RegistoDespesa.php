@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -39,7 +40,7 @@ class RegistoDespesa extends Model
 
     // Linhas do registo: 1:1 com as despesas, por ordem cronológica (cada linha = dia,
     // descrição, detalhe, tipo/categoria, valor, A/J e os recibos anexados à própria linha).
-    /** @return \Illuminate\Database\Eloquent\Collection<int, Despesa> */
+    /** @return Collection<int, Despesa> */
     public function linhasOrdenadas()
     {
         return $this->despesas()->with('anexos')->orderBy('data')->orderBy('id')->get();

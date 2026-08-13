@@ -15,7 +15,6 @@ use Livewire\WithPagination;
 class Relatorios extends Component
 {
     use ApenasEquipa;
-
     use WithPagination;
 
     public Cliente $cliente;
@@ -39,7 +38,7 @@ class Relatorios extends Component
         $relatorios = Relatorio::query()
             ->whereHas('intervencao.equipamento.local', fn ($q) => $q->where('cliente_id', $this->cliente->id))
             ->with('intervencao.equipamento')
-            ->when($this->pesquisa, fn ($q) => $q->where('numero', 'ilike', '%' . $this->pesquisa . '%'))
+            ->when($this->pesquisa, fn ($q) => $q->where('numero', 'ilike', '%'.$this->pesquisa.'%'))
             ->orderByDesc('data')
             ->paginate(20);
 

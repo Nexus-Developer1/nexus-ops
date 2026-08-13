@@ -106,8 +106,8 @@ class EliminarRelatorioAgendaTest extends TestCase
 
         $html = Livewire::actingAs($this->admin())->test(Listagem::class)->html();
 
-        $this->assertStringNotContainsString('eliminar(' . $enviado->id . ')', $html);  // enviado → sem botão
-        $this->assertStringContainsString('eliminar(' . $rascunho->id . ')', $html);     // rascunho → com botão
+        $this->assertStringNotContainsString('eliminar('.$enviado->id.')', $html);  // enviado → sem botão
+        $this->assertStringContainsString('eliminar('.$rascunho->id.')', $html);     // rascunho → com botão
     }
 
     public function test_eliminar_individual_sem_evento_so_remove_relatorio(): void

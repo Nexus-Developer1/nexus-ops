@@ -2,9 +2,11 @@
 
 namespace App\Livewire\Equipamentos;
 
-use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\TipoEquipamento;
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Equipamento;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Session;
 use Livewire\Component;
@@ -14,7 +16,6 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use ApenasEquipa;
-
     use WithPagination;
 
     // Filtros e pesquisa vivem na SESSÃO (não no URL): entrar numa ficha e voltar à lista
@@ -59,9 +60,9 @@ class Listagem extends Component
 
     // Subquery com o nome do cliente (equipamento → local → cliente), sem acentos, para
     // ordenar sem carregar as relações linha a linha.
-    private function subNomeCliente(): \Illuminate\Database\Query\Builder
+    private function subNomeCliente(): Builder
     {
-        return \Illuminate\Support\Facades\DB::table('locais')
+        return DB::table('locais')
             ->join('clientes', 'clientes.id', '=', 'locais.cliente_id')
             ->whereColumn('locais.id', 'equipamentos.local_id')
             ->selectRaw("translate(lower(btrim(clientes.nome)), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')")
@@ -114,7 +115,7 @@ class Listagem extends Component
             ->when($this->banco === 'sem', fn ($q) => $q->whereNull('equipamento_pai_id')->whereDoesntHave('equipamentosAssociados'))
             ->when($this->banco === 'banco', fn ($q) => $q->whereNotNull('equipamento_pai_id'))
             ->when($this->pesquisa, function ($q) {
-                $termo = '%' . $this->pesquisa . '%';
+                $termo = '%'.$this->pesquisa.'%';
                 $q->where(function ($q) use ($termo) {
                     $q->where('numero_serie', 'ilike', $termo)
                         ->orWhere('modelo', 'ilike', $termo)
@@ -122,8 +123,7 @@ class Listagem extends Component
                         // Encontra o UPS pelo nº de série do banco de baterias associado.
                         ->orWhereHas('equipamentosAssociados', fn ($q) => $q->where('numero_serie', 'ilike', $termo));
                 });
-            })
-            ;
+            });
 
         // Whitelist (default = mais recentes). "Recentes/antigos" seguem a ORDEM DO PHC
         // (criado_erp_em = ma.ousrdata) e não a ordem de inserção na app — o backfill dos

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\EstadoRelatorio;
 use App\Enums\PapelUtilizador;
 use App\Livewire\Relatorios\Novo;
 use App\Models\Cliente;
@@ -14,7 +15,9 @@ use App\Models\ModeloFaturacao;
 use App\Models\Relatorio;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -303,7 +306,7 @@ class FichaMedicaoRelatorioTest extends TestCase
 
     public function test_finalizar_contrato_com_ficha_gera_relatorio_e_pdf(): void
     {
-        \Illuminate\Support\Facades\Storage::fake();
+        Storage::fake();
         [$admin, $contrato, $e1] = $this->cenarioContrato();
 
         $tec = User::create(['nome' => 'Téc', 'email' => 'tec@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
@@ -319,15 +322,15 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->call('finalizar')
             ->assertHasNoErrors();
 
-        $relatorio = \App\Models\Relatorio::firstOrFail();
-        $this->assertSame(\App\Enums\EstadoRelatorio::Finalizado, $relatorio->estado);
+        $relatorio = Relatorio::firstOrFail();
+        $this->assertSame(EstadoRelatorio::Finalizado, $relatorio->estado);
         $this->assertNotNull($relatorio->numero);         // número atribuído antes do PDF
         $this->assertNotNull($relatorio->fresh()->pdf_path); // PDF gerado (queue sync) sem 500
     }
 
     public function test_remover_foto_ja_carregada_apaga_o_anexo_e_o_ficheiro(): void
     {
-        \Illuminate\Support\Facades\Storage::fake();
+        Storage::fake();
         [$admin, , $e1] = $this->cenarioContrato();
 
         // Carrega uma foto NO EQUIPAMENTO e guarda o rascunho → cria o anexo ligado ao equipamento.
@@ -335,14 +338,14 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->call('definirModo', 'individual')
             ->set('equipamento_id', $e1->id)
             ->set('data', now()->toDateString())
-            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->image('foto.png', 800, 600)])
+            ->set('fotos.'.$e1->id, [UploadedFile::fake()->image('foto.png', 800, 600)])
             ->call('guardarRascunho')
             ->assertHasNoErrors();
 
         $interv = Intervencao::where('equipamento_id', $e1->id)->firstOrFail();
         $anexo = $interv->anexos()->firstOrFail();
         $this->assertSame($e1->id, $anexo->equipamento_id); // foto ligada ao equipamento
-        \Illuminate\Support\Facades\Storage::disk()->assertExists($anexo->storage_key);
+        Storage::disk()->assertExists($anexo->storage_key);
 
         // Reabre o relatório e remove a foto (o botão que no telemóvel estava invisível por ser só-hover).
         Livewire::actingAs($admin)->test(Novo::class, ['relatorio' => $interv->relatorio])
@@ -350,12 +353,12 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame(0, $interv->anexos()->count());
-        \Illuminate\Support\Facades\Storage::disk()->assertMissing($anexo->storage_key);
+        Storage::disk()->assertMissing($anexo->storage_key);
     }
 
     public function test_adicionar_fotos_em_seleccoes_separadas_acumula_nao_substitui(): void
     {
-        \Illuminate\Support\Facades\Storage::fake();
+        Storage::fake();
         [$admin, , $e1] = $this->cenarioContrato();
 
         $comp = Livewire::actingAs($admin)->test(Novo::class)
@@ -363,14 +366,14 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->set('equipamento_id', $e1->id)
             ->set('data', now()->toDateString())
             // 1.ª seleção no equipamento
-            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->image('a.png', 800, 600)])
-            ->assertCount('fotosNovas.' . $e1->id, 1)
+            ->set('fotos.'.$e1->id, [UploadedFile::fake()->image('a.png', 800, 600)])
+            ->assertCount('fotosNovas.'.$e1->id, 1)
             // 2.ª seleção: ACRESCENTA (antes substituía → a 1.ª desaparecia).
-            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->image('b.png', 800, 600)])
-            ->assertCount('fotosNovas.' . $e1->id, 2);
+            ->set('fotos.'.$e1->id, [UploadedFile::fake()->image('b.png', 800, 600)])
+            ->assertCount('fotosNovas.'.$e1->id, 2);
 
         // Remover uma da pré-visualização (por gravar) deixa 1.
-        $comp->call('removerFotoNova', $e1->id, 0)->assertCount('fotosNovas.' . $e1->id, 1);
+        $comp->call('removerFotoNova', $e1->id, 0)->assertCount('fotosNovas.'.$e1->id, 1);
 
         // Guardar grava exatamente a que sobrou.
         $comp->call('guardarRascunho')->assertHasNoErrors();
@@ -381,7 +384,7 @@ class FichaMedicaoRelatorioTest extends TestCase
 
     public function test_foto_por_equipamento_aparece_na_ficha_do_pdf(): void
     {
-        \Illuminate\Support\Facades\Storage::fake();
+        Storage::fake();
         [$admin, $contrato, $e1] = $this->cenarioContrato();
 
         // Relatório de contrato: medição + foto no e1 → ficha do e1 com a foto.
@@ -391,7 +394,7 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->call('selecionarContrato', $contrato->id)->call('selecionarTodosEquipamentos')
             ->set('data', now()->toDateString())
             ->set("fichas.{$e1->id}.ve_ln_l1", '230.00')
-            ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->image('up.png', 800, 600)])
+            ->set('fotos.'.$e1->id, [UploadedFile::fake()->image('up.png', 800, 600)])
             ->set('tecnicoIds', [$tec->id]) // finalizar exige quem fez a intervenção
             ->set('finalizarComFichasVazias', true) // confirma o aviso de fichas vazias (Vaga 1)
             ->call('finalizar')

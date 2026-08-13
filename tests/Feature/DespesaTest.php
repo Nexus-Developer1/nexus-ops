@@ -9,6 +9,9 @@ use App\Models\Despesa;
 use App\Models\RegistoDespesa;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -28,9 +31,9 @@ class DespesaTest extends TestCase
     // editor a OUTRO registo a meio da sessão é recusado (15.ª revisão de segurança).
     public function test_registo_em_edicao_e_trancado_ao_browser(): void
     {
-        $this->expectException(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
+        $this->expectException(CannotUpdateLockedPropertyException::class);
 
-        Livewire::actingAs($this->admin())->test(\App\Livewire\Despesas\Editor::class)
+        Livewire::actingAs($this->admin())->test(Editor::class)
             ->set('registoId', 999);
     }
 
@@ -158,7 +161,7 @@ class DespesaTest extends TestCase
             ->set('linhas.0.categoria', 'Refeições')
             ->set('linhas.0.refeicao_tipo', 'A')
             ->set('linhas.0.valor', '14.20')
-            ->set('recibosLinhaUpload.0', [\Illuminate\Http\UploadedFile::fake()->image('recibo.jpg', 800, 600)])
+            ->set('recibosLinhaUpload.0', [UploadedFile::fake()->image('recibo.jpg', 800, 600)])
             ->call('guardar')
             ->assertHasNoErrors();
 
@@ -170,7 +173,7 @@ class DespesaTest extends TestCase
             ->call('removerReciboGravado', $recibo->id);
 
         $this->assertSame(0, $despesa->anexos()->count());
-        \Illuminate\Support\Facades\Storage::disk()->delete($recibo->storage_key); // limpeza best-effort
+        Storage::disk()->delete($recibo->storage_key); // limpeza best-effort
     }
 
     // PDF do registo: transferível, no layout da folha (logótipo, detalhe e A/J).
@@ -203,10 +206,10 @@ class DespesaTest extends TestCase
         $despesa = $registo->despesas()->create(['data' => '2026-08-04', 'categoria' => 'Hotel', 'descricao' => 'BNP - Lisboa', 'valor' => 120, 'faturavel' => false]);
 
         // Recibo real no storage + um com o ficheiro em falta (não pode rebentar).
-        $chave = 'anexos/despesas/' . $despesa->id . '/recibo-teste.jpg';
-        \Illuminate\Support\Facades\Storage::disk()->put($chave, 'conteudo-jpg-de-teste');
+        $chave = 'anexos/despesas/'.$despesa->id.'/recibo-teste.jpg';
+        Storage::disk()->put($chave, 'conteudo-jpg-de-teste');
         $despesa->anexos()->create(['nome_ficheiro' => 'recibo.jpg', 'storage_key' => $chave, 'mime' => 'image/jpeg', 'tamanho' => 21, 'criado_por' => $admin->id]);
-        $despesa->anexos()->create(['nome_ficheiro' => 'perdido.jpg', 'storage_key' => 'anexos/despesas/' . $despesa->id . '/nao-existe.jpg', 'mime' => 'image/jpeg', 'tamanho' => 1, 'criado_por' => $admin->id]);
+        $despesa->anexos()->create(['nome_ficheiro' => 'perdido.jpg', 'storage_key' => 'anexos/despesas/'.$despesa->id.'/nao-existe.jpg', 'mime' => 'image/jpeg', 'tamanho' => 1, 'criado_por' => $admin->id]);
 
         $html = view('pdf.registo-despesas', ['registo' => $registo])->render();
 
@@ -220,7 +223,7 @@ class DespesaTest extends TestCase
         // (class="..." e não o nome solto — o seletor CSS vive sempre no <head>.)
         $this->assertStringNotContainsString('class="recibos-titulo"', view('pdf.registo-despesas', ['registo' => $registoVazio])->render());
 
-        \Illuminate\Support\Facades\Storage::disk()->delete($chave); // limpeza best-effort
+        Storage::disk()->delete($chave); // limpeza best-effort
     }
 
     // Eliminar o registo elimina as linhas (soft delete).

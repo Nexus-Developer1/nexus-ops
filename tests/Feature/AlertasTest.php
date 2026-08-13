@@ -9,6 +9,7 @@ use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\Intervencao;
 use App\Models\Local;
+use App\Models\ModeloFaturacao;
 use App\Models\User;
 use App\Notifications\ResumoAlertas;
 use App\Services\Alertas\ServicoAlertas;
@@ -59,7 +60,7 @@ class AlertasTest extends TestCase
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         Contrato::create(['numero' => 'C-1', 'cliente_id' => $cliente->id, 'data_inicio' => now()->subYear(),
             'data_fim' => now()->addDays(10), 'estado' => 'ativo', 'tipo' => 'preventiva',
-            'modelo_faturacao_id' => \App\Models\ModeloFaturacao::query()->value('id'), 'periodo_aviso_dias' => 30]);
+            'modelo_faturacao_id' => ModeloFaturacao::query()->value('id'), 'periodo_aviso_dias' => 30]);
 
         $alerta = $this->servico()->recolher()->firstWhere('tipo', 'renovacao');
         $this->assertNotNull($alerta);
@@ -73,7 +74,7 @@ class AlertasTest extends TestCase
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         $contrato = Contrato::create(['numero' => 'C-9', 'cliente_id' => $cliente->id, 'data_inicio' => now()->subMonth(),
             'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'preventiva',
-            'modelo_faturacao_id' => \App\Models\ModeloFaturacao::query()->value('id')]);
+            'modelo_faturacao_id' => ModeloFaturacao::query()->value('id')]);
 
         // Dentro da janela (amanhã) → média, com o texto editável no título.
         $contrato->alertasVisita()->create(['data' => now()->addDay()->toDateString(), 'texto' => 'Agendar 2.ª visita preventiva']);
@@ -124,7 +125,7 @@ class AlertasTest extends TestCase
         $local = $this->localDe('ACME');
         $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
         $contrato = Contrato::create(['numero' => 'C-2', 'cliente_id' => $local->cliente_id, 'data_inicio' => now()->subYear(),
-            'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'corretiva', 'modelo_faturacao_id' => \App\Models\ModeloFaturacao::query()->value('id')]);
+            'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'corretiva', 'modelo_faturacao_id' => ModeloFaturacao::query()->value('id')]);
         $contrato->slas()->create(['tempo_resposta_horas' => 2, 'tempo_resolucao_horas' => 4, 'horario_cobertura' => '24x7']);
 
         Intervencao::create(['equipamento_id' => $equip->id, 'contrato_id' => $contrato->id, 'tipo' => 'corretiva',
@@ -159,7 +160,7 @@ class AlertasTest extends TestCase
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         $contrato = Contrato::create(['numero' => 'C-7', 'cliente_id' => $cliente->id, 'data_inicio' => now()->subMonth(),
             'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'preventiva',
-            'modelo_faturacao_id' => \App\Models\ModeloFaturacao::query()->value('id')]);
+            'modelo_faturacao_id' => ModeloFaturacao::query()->value('id')]);
         $contrato->alertasVisita()->create(['data' => now()->subDay()->toDateString(),
             'texto' => '[Repor password de administrador](https://malicioso.example/login)']);
 

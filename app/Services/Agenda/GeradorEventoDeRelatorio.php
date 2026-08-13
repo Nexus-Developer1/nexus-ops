@@ -56,7 +56,7 @@ class GeradorEventoDeRelatorio
 
             $dados = [
                 'tipo' => TipoEvento::Intervencao,
-                'titulo' => 'Intervenção · ' . (trim($equipamento->fabricante . ' ' . $equipamento->modelo)
+                'titulo' => 'Intervenção · '.(trim($equipamento->fabricante.' '.$equipamento->modelo)
                     ?: ($equipamento->numero_serie ?? '—')),
                 'estado' => EstadoEvento::Planeado,
                 'inicio' => $inicio,

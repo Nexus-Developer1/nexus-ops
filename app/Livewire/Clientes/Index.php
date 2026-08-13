@@ -15,7 +15,6 @@ use Livewire\WithPagination;
 class Index extends Component
 {
     use ApenasEquipa;
-
     use WithPagination;
 
     // Expressão pura (sem extensão) para ordenar por nome ignorando acentos, maiúsculas e espaços.
@@ -59,12 +58,12 @@ class Index extends Component
     private function clausulaOrdenacao(): string
     {
         return match ($this->ordenar) {
-            'nome_desc' => self::NOME_SEM_ACENTOS . ' desc',
+            'nome_desc' => self::NOME_SEM_ACENTOS.' desc',
             'recentes' => 'data_criacao_erp desc nulls last',
             'antigos' => 'data_criacao_erp asc nulls last',
             'erp_asc' => 'id_erp::bigint asc nulls last',
             'erp_desc' => 'id_erp::bigint desc nulls last',
-            default => self::NOME_SEM_ACENTOS . ' asc', // nome_asc
+            default => self::NOME_SEM_ACENTOS.' asc', // nome_asc
         };
     }
 
@@ -72,7 +71,7 @@ class Index extends Component
     {
         $clientes = Cliente::query()
             ->when($this->pesquisa, function ($q) {
-                $termo = '%' . $this->pesquisa . '%';
+                $termo = '%'.$this->pesquisa.'%';
                 // Pesquisa parcial e case-insensitive por nome, NIF e email.
                 $q->where(function ($q) use ($termo) {
                     $q->where('nome', 'ilike', $termo)

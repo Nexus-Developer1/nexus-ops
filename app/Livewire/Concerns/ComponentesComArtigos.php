@@ -22,7 +22,7 @@ trait ComponentesComArtigos
         }
 
         $designacao = filled($artigo->designacao)
-            ? $artigo->id_erp . ' — ' . $artigo->designacao
+            ? $artigo->id_erp.' — '.$artigo->designacao
             : $artigo->id_erp;
         $this->componentes[] = ['designacao' => $designacao, 'quantidade' => 1];
         $this->artigoBusca = '';
@@ -35,7 +35,7 @@ trait ComponentesComArtigos
             return collect();
         }
 
-        $termo = '%' . trim($this->artigoBusca) . '%';
+        $termo = '%'.trim($this->artigoBusca).'%';
 
         return Artigo::query()
             ->where(fn ($q) => $q->where('id_erp', 'ilike', $termo)

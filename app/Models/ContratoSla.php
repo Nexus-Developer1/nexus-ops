@@ -35,7 +35,7 @@ class ContratoSla extends Model
             return 'NBD';
         }
 
-        return $this->tempo_resposta_horas ? $this->tempo_resposta_horas . ' h' : '—';
+        return $this->tempo_resposta_horas ? $this->tempo_resposta_horas.' h' : '—';
     }
 
     public function contrato(): BelongsTo

@@ -48,7 +48,7 @@ class SqlServerErpDriverEquipamentosTest extends TestCase
         });
 
         // Força o driver real (que lê da ligação 'erp' = SQLite acima).
-        $this->app->bind(ErpSyncDriver::class, fn () => new SqlServerErpDriver());
+        $this->app->bind(ErpSyncDriver::class, fn () => new SqlServerErpDriver);
     }
 
     protected function tearDown(): void
@@ -73,7 +73,7 @@ class SqlServerErpDriverEquipamentosTest extends TestCase
             'ousrhora' => '14:23  ', // char com padding e sem segundos — normaliza para HH:MM:SS
         ]);
 
-        $equipamentos = iterator_to_array((new SqlServerErpDriver())->obterEquipamentos());
+        $equipamentos = iterator_to_array((new SqlServerErpDriver)->obterEquipamentos());
 
         $this->assertCount(1, $equipamentos);
         $e = $equipamentos[0];
@@ -138,7 +138,7 @@ class SqlServerErpDriverEquipamentosTest extends TestCase
             'design' => 'UPS RIELLO', 'marca' => 'RIELLO', 'instal' => '2023-05-10', 'no' => 1000,
         ]);
 
-        $e = iterator_to_array((new SqlServerErpDriver())->obterEquipamentos())[0];
+        $e = iterator_to_array((new SqlServerErpDriver)->obterEquipamentos())[0];
         $this->assertSame('100', $e->familia);
         $this->assertSame('UPS', $e->faminome); // trimado
     }

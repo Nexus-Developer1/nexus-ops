@@ -2,9 +2,11 @@
 
 namespace App\Livewire\Relatorios;
 
-use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\EstadoRelatorio;
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Relatorio;
+use App\Services\Auditor;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Session;
@@ -15,7 +17,6 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use ApenasEquipa;
-
     use WithPagination;
 
     // Expressão pura para ordenar pelo nome do cliente ignorando acentos/maiúsculas/espaços
@@ -59,7 +60,6 @@ class Listagem extends Component
         $this->resetPage();
     }
 
-
     // Soft delete (marca deleted_at) — recuperável; nunca DELETE físico nem apaga o PDF.
     // Se o relatório está ligado a um evento de agenda, apaga-se a unidade toda
     // (relatório + intervenção + evento) — sai da agenda e não deixa intervenção órfã.
@@ -90,7 +90,7 @@ class Listagem extends Component
             }
         });
 
-        \App\Services\Auditor::registar('relatorio_eliminado', $relatorio, ['numero' => $rotulo]);
+        Auditor::registar('relatorio_eliminado', $relatorio, ['numero' => $rotulo]);
         session()->flash('sucesso', "Relatório {$rotulo} eliminado.");
     }
 
@@ -109,7 +109,7 @@ class Listagem extends Component
 
     // Subquery com o nome do cliente do relatório (relatório → intervenção → equipamento →
     // local → cliente), para ordenar sem carregar as relações linha a linha.
-    private function subNomeCliente(): \Illuminate\Database\Query\Builder
+    private function subNomeCliente(): Builder
     {
         return DB::table('intervencoes')
             ->join('equipamentos', 'equipamentos.id', '=', 'intervencoes.equipamento_id')
@@ -128,7 +128,7 @@ class Listagem extends Component
             ->when($this->tipo === 'contrato', fn ($q) => $q->whereHas('intervencao', fn ($q) => $q->whereNotNull('contrato_id')))
             ->when($this->tipo === 'individual', fn ($q) => $q->whereHas('intervencao', fn ($q) => $q->whereNull('contrato_id')))
             ->when($this->pesquisa, function ($q) {
-                $termo = '%' . $this->pesquisa . '%';
+                $termo = '%'.$this->pesquisa.'%';
                 $q->where(function ($q) use ($termo) {
                     $q->where('numero', 'ilike', $termo)
                         ->orWhereHas('intervencao.equipamento.local.cliente', fn ($q) => $q->where('nome', 'ilike', $termo))

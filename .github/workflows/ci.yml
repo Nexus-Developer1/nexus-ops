@@ -1,0 +1,68 @@
+# CI mínima (Vaga 2): formatação (Pint) + suite completa em cada push/PR.
+# O multiplicador de todas as outras melhorias — a disciplina deixa de depender de memória.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: nexus_testing
+          POSTGRES_USER: nexus
+          POSTGRES_PASSWORD: nexus
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U nexus"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pgsql, pdo_pgsql, gd, intl, zip
+          coverage: none
+
+      - name: Dependências PHP
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Formatação (Pint)
+        run: vendor/bin/pint --test
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Build de assets (o layout usa @vite — os testes HTTP precisam do manifest)
+        run: |
+          npm ci
+          npm run build
+
+      - name: Preparar ambiente
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Testes
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: '5432'
+          DB_USERNAME: nexus
+          DB_PASSWORD: nexus
+          SESSION_DRIVER: array
+          CACHE_STORE: array
+          QUEUE_CONNECTION: sync
+          REDIS_CLIENT: predis
+        run: php artisan test

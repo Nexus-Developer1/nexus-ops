@@ -9,7 +9,9 @@ use App\Models\Concerns\RestritoAoCliente;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 // Evento da agenda — visita preventiva, intervenção ou evento próprio.
 // Projeção temporal central da operação (CLAUDE.md §6).
@@ -60,7 +62,7 @@ class EventoAgenda extends Model
     // Multi-dia com horas por dia → um segmento por dia (só linhas válidas e dentro de
     // [inicio..fim] — imune a horas_dias tornado obsoleto por uma edição do intervalo);
     // caso contrário → o próprio [inicio, fim] (evento de um dia ou legado contínuo).
-    /** @return list<array{0: \Illuminate\Support\Carbon, 1: \Illuminate\Support\Carbon}> */
+    /** @return list<array{0: Carbon, 1: Carbon}> */
     public function segmentos(): array
     {
         $segmentos = collect($this->horas_dias ?? [])
@@ -73,8 +75,8 @@ class EventoAgenda extends Model
                 }
 
                 try {
-                    $de = \Illuminate\Support\Carbon::parse("$dia $ini");
-                    $ate = \Illuminate\Support\Carbon::parse("$dia $fim");
+                    $de = Carbon::parse("$dia $ini");
+                    $ate = Carbon::parse("$dia $fim");
                 } catch (\Throwable) {
                     return null;
                 }
@@ -107,7 +109,7 @@ class EventoAgenda extends Model
     }
 
     // Técnicos ADICIONAIS (além do principal em tecnico_id) — um evento pode ter vários.
-    public function tecnicosAdicionais(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function tecnicosAdicionais(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'evento_tecnicos', 'evento_agenda_id', 'user_id');
     }

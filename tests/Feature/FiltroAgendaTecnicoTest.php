@@ -26,7 +26,7 @@ class FiltroAgendaTecnicoTest extends TestCase
     {
         return EventoAgenda::create([
             'tipo' => 'outro', 'titulo' => $titulo, 'estado' => 'planeado',
-            'inicio' => Carbon::parse($dia . ' 10:00'), 'fim' => Carbon::parse($dia . ' 11:00'),
+            'inicio' => Carbon::parse($dia.' 10:00'), 'fim' => Carbon::parse($dia.' 11:00'),
             'tecnico_nome' => $nome,
         ]);
     }

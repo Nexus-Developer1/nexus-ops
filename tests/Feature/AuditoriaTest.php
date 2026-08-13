@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
+use App\Livewire\Auditoria\Listagem;
+use App\Livewire\Auth\Login;
+use App\Livewire\Equipamentos\Ficha;
 use App\Models\Auditoria;
 use App\Models\Cliente;
 use App\Models\Equipamento;
@@ -10,6 +13,7 @@ use App\Models\Local;
 use App\Models\User;
 use App\Services\Auditor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -26,7 +30,7 @@ class AuditoriaTest extends TestCase
 
     public function test_login_falhado_fica_registado(): void
     {
-        Livewire::test(\App\Livewire\Auth\Login::class)
+        Livewire::test(Login::class)
             ->set('email', 'atacante@x.pt')
             ->set('password', 'errada')
             ->call('autenticar');
@@ -44,7 +48,7 @@ class AuditoriaTest extends TestCase
         $local = Local::create(['cliente_id' => $c1->id, 'designacao' => 'Sede']);
         $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'AUD-1']);
 
-        Livewire::actingAs($admin)->test(\App\Livewire\Equipamentos\Ficha::class, ['equipamento' => $equip])
+        Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $equip])
             ->call('mudarCliente', $c2->id);
 
         $registo = Auditoria::where('acao', 'equipamento_mudou_cliente')->firstOrFail();
@@ -57,7 +61,7 @@ class AuditoriaTest extends TestCase
     public function test_falha_na_auditoria_nao_rebenta_a_acao(): void
     {
         // Sem a tabela (simula BD degradada), o registar loga e segue — a ação nunca parte.
-        \Illuminate\Support\Facades\Schema::drop('auditoria');
+        Schema::drop('auditoria');
 
         Auditor::registar('teste');
 
@@ -87,7 +91,7 @@ class AuditoriaTest extends TestCase
         $this->actingAs($admin); // as ações seguintes ficam com o email do admin
         Auditor::registar('relatorio_enviado', detalhe: ['numero' => '2026/0042', 'para' => 'cliente@acme.pt']);
 
-        Livewire::actingAs($admin)->test(\App\Livewire\Auditoria\Listagem::class)
+        Livewire::actingAs($admin)->test(Listagem::class)
             ->assertSee('login falhado')
             ->assertSee('relatorio enviado')
             ->set('acao', 'login_falhado')

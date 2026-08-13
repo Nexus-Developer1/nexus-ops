@@ -10,7 +10,10 @@ use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Models\Local;
+use App\Services\Auditor;
+use App\Services\GeradorQrEquipamento;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -26,6 +29,7 @@ class Ficha extends Component
 
     // Identificação editável: cliente final (texto livre) e localização física da instalação.
     public string $clienteFinal = '';
+
     public string $localizacaoInstalacao = '';
 
     // Pesquisa server-side de equipamentos para associar (banco de baterias → UPS).
@@ -191,13 +195,13 @@ class Ficha extends Component
         // Auditoria: mover um equipamento redesenha o perímetro do portal (o histórico de
         // intervenções/relatórios dele passa a resolver no cliente novo) — fica registado
         // quem fez a mudança e o de/para (11.ª revisão de segurança).
-        \Illuminate\Support\Facades\Log::info('Equipamento mudou de cliente.', [
+        Log::info('Equipamento mudou de cliente.', [
             'equipamento' => $this->equipamento->numero_serie ?? $this->equipamento->id,
             'de' => $clienteAntigo->nome ?? '(sem cliente — por associar)',
             'para' => $cliente->nome,
             'utilizador' => auth()->user()?->email,
         ]);
-        \App\Services\Auditor::registar('equipamento_mudou_cliente', $this->equipamento, [
+        Auditor::registar('equipamento_mudou_cliente', $this->equipamento, [
             'serie' => $this->equipamento->numero_serie,
             'de' => $clienteAntigo->nome ?? '(sem cliente — por associar)',
             'para' => $cliente->nome,
@@ -216,11 +220,11 @@ class Ficha extends Component
         $semAcentos = "translate(lower(nome), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
         $de = ['á', 'à', 'â', 'ã', 'ä', 'ç', 'é', 'è', 'ê', 'ë', 'í', 'ì', 'î', 'ï', 'ó', 'ò', 'ô', 'õ', 'ö', 'ú', 'ù', 'û', 'ü'];
         $para = ['a', 'a', 'a', 'a', 'a', 'c', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u'];
-        $nomeNorm = '%' . str_replace($de, $para, mb_strtolower(trim($this->novoClienteBusca))) . '%';
-        $termo = '%' . trim($this->novoClienteBusca) . '%';
+        $nomeNorm = '%'.str_replace($de, $para, mb_strtolower(trim($this->novoClienteBusca))).'%';
+        $termo = '%'.trim($this->novoClienteBusca).'%';
 
         return Cliente::query()
-            ->where(fn ($q) => $q->whereRaw($semAcentos . ' like ?', [$nomeNorm])
+            ->where(fn ($q) => $q->whereRaw($semAcentos.' like ?', [$nomeNorm])
                 ->orWhere('nif', 'ilike', $termo))
             ->orderBy('nome')
             ->limit(15)
@@ -348,7 +352,7 @@ class Ficha extends Component
                 ->get();
         }
 
-        $termo = '%' . trim($this->bancoBusca) . '%';
+        $termo = '%'.trim($this->bancoBusca).'%';
 
         return $base
             ->where(function ($q) use ($termo) {
@@ -405,7 +409,7 @@ class Ficha extends Component
             'novosClientesFiltrados' => $this->novosClientesFiltrados(),
             'artigosFiltrados' => $this->artigosFiltrados(),
             // QR real com o URL desta ficha (substitui o placeholder decorativo).
-            'qrEtiqueta' => app(\App\Services\GeradorQrEquipamento::class)->svg($this->equipamento),
+            'qrEtiqueta' => app(GeradorQrEquipamento::class)->svg($this->equipamento),
         ]);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Portal;
 
+use App\Enums\EstadoRelatorio;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\Relatorio;
@@ -24,7 +25,7 @@ class Dashboard extends Component
                 ->get(),
             // Só ENVIADOS — igual à listagem do portal (o cliente nunca vê trabalho interno).
             'relatoriosRecentes' => Relatorio::query()
-                ->where('estado', \App\Enums\EstadoRelatorio::Enviado)
+                ->where('estado', EstadoRelatorio::Enviado)
                 ->with('intervencao.equipamento')
                 ->orderByDesc('data')
                 ->limit(5)

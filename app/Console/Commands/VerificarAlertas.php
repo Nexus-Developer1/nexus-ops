@@ -21,7 +21,7 @@ class VerificarAlertas extends Command
     {
         $alertas = $servico->recolher();
 
-        $this->info($alertas->count() . ' alertas recolhidos.');
+        $this->info($alertas->count().' alertas recolhidos.');
 
         if ($alertas->isEmpty()) {
             return self::SUCCESS;
@@ -31,7 +31,7 @@ class VerificarAlertas extends Command
 
         if ($admins->isNotEmpty()) {
             Notification::send($admins, new ResumoAlertas($alertas));
-            $this->info('Resumo enviado a ' . $admins->count() . ' administrador(es).');
+            $this->info('Resumo enviado a '.$admins->count().' administrador(es).');
         }
 
         return self::SUCCESS;

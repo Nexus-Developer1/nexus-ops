@@ -2,12 +2,13 @@
 
 namespace App\Livewire;
 
-use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\EstadoEvento;
 use App\Jobs\SincronizarErp;
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\EventoAgenda;
 use App\Services\Alertas\ServicoAlertas;
 use App\Services\Gestao\ServicoMetricas;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -68,7 +69,7 @@ class DashboardGestao extends Component
         $ultimo = Cache::get('erp-sync:ultimo');
         // Comparação por Carbon (não lexicográfica): strings ISO-8601 com offsets diferentes
         // (mudança de hora) ordenavam mal na comparação de texto.
-        if ($ultimo && \Illuminate\Support\Carbon::parse($ultimo['terminado_em'])->gte(\Illuminate\Support\Carbon::parse($this->syncPedidoEm))) {
+        if ($ultimo && Carbon::parse($ultimo['terminado_em'])->gte(Carbon::parse($this->syncPedidoEm))) {
             $this->syncResultado = ['falhou' => (bool) $ultimo['falhou'], 'resultados' => $ultimo['resultados']];
             $this->syncPedidoEm = null;
 
@@ -77,7 +78,7 @@ class DashboardGestao extends Component
 
         // Corrida invulgarmente longa (ex.: completa, ~20 min) — larga o poll; o desfecho
         // fica no log e o utilizador pode voltar a olhar mais tarde.
-        if (\Illuminate\Support\Carbon::parse($this->syncPedidoEm)->lt(now()->subSeconds(180))) {
+        if (Carbon::parse($this->syncPedidoEm)->lt(now()->subSeconds(180))) {
             $this->syncPedidoEm = null;
             session()->flash('erro-sync', 'A sincronização continua em segundo plano (está a demorar mais do que o habitual). O resultado fica no log da aplicação.');
         }

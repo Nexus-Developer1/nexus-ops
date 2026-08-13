@@ -24,7 +24,7 @@ class RelatorioAssinaturaSadeiTest extends TestCase
     /** PNG 1x1 válido, como o que o canvas produz. */
     private function pngDataUri(): string
     {
-        return 'data:image/png;base64,' . base64_encode(base64_decode(
+        return 'data:image/png;base64,'.base64_encode(base64_decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
         ));
     }
@@ -87,7 +87,7 @@ class RelatorioAssinaturaSadeiTest extends TestCase
             ->set('equipamento_id', $equip->id)
             ->set('data', now()->toDateString())
             // Nem PNG, nem data URI de imagem: um SVG com script e um texto qualquer.
-            ->set("fichas.{$equip->id}.assinatura_cliente", 'data:image/svg+xml;base64,' . base64_encode('<svg onload=alert(1)>'))
+            ->set("fichas.{$equip->id}.assinatura_cliente", 'data:image/svg+xml;base64,'.base64_encode('<svg onload=alert(1)>'))
             ->set("fichas.{$equip->id}.assinatura_tecnico", 'data:image/png;base64,ISTO-NAO-E-BASE64')
             ->set("fichas.{$equip->id}.sadei.final_automatico", 'ok')
             ->call('guardarRascunho')
@@ -114,12 +114,12 @@ class RelatorioAssinaturaSadeiTest extends TestCase
 
         $this->assertLessThan(FichaMedicao::ASSINATURA_MAX_BYTES, strlen($png)); // passaria no limite de tamanho
         $this->assertSame([20000, 20000], array_slice(getimagesizefromstring($png), 0, 2));
-        $this->assertNull(FichaMedicao::pngDeAssinatura('data:image/png;base64,' . base64_encode($png)));
+        $this->assertNull(FichaMedicao::pngDeAssinatura('data:image/png;base64,'.base64_encode($png)));
 
         Livewire::actingAs($tecnico)->test(Novo::class)
             ->set('equipamento_id', $equip->id)
             ->set('data', now()->toDateString())
-            ->set("fichas.{$equip->id}.assinatura_cliente", 'data:image/png;base64,' . base64_encode($png))
+            ->set("fichas.{$equip->id}.assinatura_cliente", 'data:image/png;base64,'.base64_encode($png))
             ->call('guardarRascunho')
             ->assertHasErrors("fichas.{$equip->id}.assinatura_cliente");
     }

@@ -18,15 +18,15 @@ class CabecalhosSeguranca
     // 'unsafe-eval'/'unsafe-inline'; Google Fonts em style/font; imagens de data:/blob: (fotos e
     // ícones da PWA); nada de plugins nem de embutir o site noutro (anti-clickjacking).
     private const CSP = "default-src 'self'; "
-        . "script-src 'self' 'unsafe-eval' 'unsafe-inline'; "
-        . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        . "font-src 'self' https://fonts.gstatic.com data:; "
-        . "img-src 'self' data: blob:; "
-        . "connect-src 'self'; "
-        . "frame-ancestors 'self'; "
-        . "base-uri 'self'; "
-        . "form-action 'self'; "
-        . "object-src 'none'";
+        ."script-src 'self' 'unsafe-eval' 'unsafe-inline'; "
+        ."style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        ."font-src 'self' https://fonts.gstatic.com data:; "
+        ."img-src 'self' data: blob:; "
+        ."connect-src 'self'; "
+        ."frame-ancestors 'self'; "
+        ."base-uri 'self'; "
+        ."form-action 'self'; "
+        ."object-src 'none'";
 
     public function handle(Request $request, Closure $next): Response
     {

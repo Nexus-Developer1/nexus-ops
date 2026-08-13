@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Auth;
 
+use App\Services\Auditor;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -15,8 +16,11 @@ use Livewire\Component;
 class AceitarConvite extends Component
 {
     public string $token = '';
+
     public string $email = '';
+
     public string $password = '';
+
     public string $password_confirmation = '';
 
     public function mount(string $token): void
@@ -51,7 +55,7 @@ class AceitarConvite extends Component
                 ])->save();
 
                 event(new PasswordReset($user));
-                \App\Services\Auditor::registar('convite_aceite', $user, ['email' => $user->email]);
+                Auditor::registar('convite_aceite', $user, ['email' => $user->email]);
             },
         );
 

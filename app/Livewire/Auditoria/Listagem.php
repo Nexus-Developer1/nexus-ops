@@ -16,7 +16,6 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use ApenasEquipa;
-
     use WithPagination;
 
     #[Url]
@@ -49,7 +48,7 @@ class Listagem extends Component
             ->with('utilizador')
             ->when($this->acao, fn ($q) => $q->where('acao', $this->acao))
             ->when($this->pesquisa, function ($q) {
-                $termo = '%' . $this->pesquisa . '%';
+                $termo = '%'.$this->pesquisa.'%';
                 // Vaga 1: "quem mexeu no contrato #42?" — um nº (com ou sem '#') pesquisa
                 // também o id da entidade, não só texto.
                 $numero = ltrim(trim($this->pesquisa), '#');

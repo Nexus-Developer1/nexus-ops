@@ -35,8 +35,8 @@ class AgendaDiaEHorasTest extends TestCase
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->call('abrirCriacao', '2026-08-03', '2026-08-03')
             ->assertSet('modalCriar', true)
-            ->assertSet('formInicio', '2026-08-03T' . str_pad((string) config('agenda.hora_abertura'), 2, '0', STR_PAD_LEFT) . ':00')
-            ->assertSet('formFim', '2026-08-03T' . str_pad((string) (config('agenda.hora_abertura') + 1), 2, '0', STR_PAD_LEFT) . ':00');
+            ->assertSet('formInicio', '2026-08-03T'.str_pad((string) config('agenda.hora_abertura'), 2, '0', STR_PAD_LEFT).':00')
+            ->assertSet('formFim', '2026-08-03T'.str_pad((string) (config('agenda.hora_abertura') + 1), 2, '0', STR_PAD_LEFT).':00');
     }
 
     public function test_horas_com_hora_explicita_continuam_a_ser_respeitadas(): void

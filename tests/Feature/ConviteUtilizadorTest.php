@@ -5,6 +5,10 @@ namespace Tests\Feature;
 use App\Enums\PapelUtilizador;
 use App\Livewire\Auth\AceitarConvite;
 use App\Livewire\Utilizadores\Adicionar;
+use App\Models\Cliente;
+use App\Models\Equipamento;
+use App\Models\Intervencao;
+use App\Models\Local;
 use App\Models\User;
 use App\Notifications\ConviteDefinirPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -114,10 +118,10 @@ class ConviteUtilizadorTest extends TestCase
         $tecnico = User::create(['nome' => 'A Sair', 'email' => 'sair@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
 
         // Trabalho do técnico: ao eliminar, a intervenção mantém-se (tecnico_id → null).
-        $cliente = \App\Models\Cliente::create(['nome' => 'ACME', 'ativo' => true]);
-        $local = \App\Models\Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
-        $equipamento = \App\Models\Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
-        $intervencao = \App\Models\Intervencao::create([
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $equipamento = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
+        $intervencao = Intervencao::create([
             'equipamento_id' => $equipamento->id, 'tipo' => 'preventiva', 'estado' => 'concluida', 'tecnico_id' => $tecnico->id,
         ]);
 

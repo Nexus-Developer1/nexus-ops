@@ -21,6 +21,7 @@ class RelatorioGuardasTest extends TestCase
     use RefreshDatabase;
 
     private User $tecnico;
+
     private Equipamento $equip;
 
     protected function setUp(): void

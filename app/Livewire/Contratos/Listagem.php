@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Contratos;
 
-use App\Livewire\Concerns\ApenasEquipa;
 use App\Enums\EstadoContrato;
+use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Contrato;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Session;
@@ -14,7 +14,6 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use ApenasEquipa;
-
     use WithPagination;
 
     #[Session]
@@ -55,7 +54,7 @@ class Listagem extends Component
             ->when($this->estado === 'a_expirar', fn ($q) => $q->aExpirar())
             ->when($this->estado && $this->estado !== 'a_expirar', fn ($q) => $q->where('estado', $this->estado))
             ->when($this->pesquisa, function ($q) {
-                $termo = '%' . $this->pesquisa . '%';
+                $termo = '%'.$this->pesquisa.'%';
                 $q->where(function ($q) use ($termo) {
                     $q->where('numero', 'ilike', $termo)
                         ->orWhereHas('cliente', fn ($q) => $q->where('nome', 'ilike', $termo));

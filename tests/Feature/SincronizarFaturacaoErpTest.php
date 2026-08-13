@@ -18,7 +18,7 @@ class SincronizarFaturacaoErpTest extends TestCase
     {
         parent::setUp();
         // Força o driver Fake (independente do ERP_DRIVER do ambiente).
-        $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver());
+        $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver);
     }
 
     public function test_comando_popula_linhas_fatura_com_o_fake(): void

@@ -3,14 +3,16 @@
 namespace App\Models;
 
 use App\Enums\EstadoContrato;
+use App\Enums\EstadoEvento;
 use App\Enums\TipoContrato;
 use App\Models\Concerns\RestritoAoCliente;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
@@ -101,11 +103,11 @@ class Contrato extends Model
 
         $usadas = $this->eventos()
             ->where('cobertura', 'incluida')
-            ->where('estado', '!=', \App\Enums\EstadoEvento::Cancelado->value)
+            ->where('estado', '!=', EstadoEvento::Cancelado->value)
             ->count();
         $extras = $this->eventos()
             ->where('cobertura', 'extra')
-            ->where('estado', '!=', \App\Enums\EstadoEvento::Cancelado->value)
+            ->where('estado', '!=', EstadoEvento::Cancelado->value)
             ->count();
 
         return [
@@ -124,7 +126,7 @@ class Contrato extends Model
 
     // Relatórios das intervenções feitas no âmbito deste contrato (via intervencoes.contrato_id
     // — é este campo que decide "incluído no contrato" vs. faturável à parte, CLAUDE.md §6).
-    public function relatorios(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
+    public function relatorios(): HasManyThrough
     {
         return $this->hasManyThrough(Relatorio::class, Intervencao::class, 'contrato_id', 'intervencao_id');
     }

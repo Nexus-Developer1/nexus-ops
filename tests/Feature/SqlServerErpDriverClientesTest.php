@@ -60,7 +60,7 @@ class SqlServerErpDriverClientesTest extends TestCase
                 'telefone' => null, 'tlmvl' => null, 'vendedor' => 7, 'vendnm' => 'João'],
         ]);
 
-        $clientes = iterator_to_array((new SqlServerErpDriver())->obterClientes());
+        $clientes = iterator_to_array((new SqlServerErpDriver)->obterClientes());
 
         $this->assertCount(2, $clientes); // só as sedes — o estabelecimento ficou de fora
         $this->assertContainsOnlyInstancesOf(ClienteErp::class, $clientes);

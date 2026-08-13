@@ -79,7 +79,7 @@ class AgendamentoSyncErpTest extends TestCase
 
     public function test_sync_continua_idempotente_em_corrida_repetida(): void
     {
-        $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver());
+        $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver);
 
         $this->artisan('erp:sincronizar-clientes', ['--limit' => 10])->assertSuccessful();
         $primeiro = Cliente::count();

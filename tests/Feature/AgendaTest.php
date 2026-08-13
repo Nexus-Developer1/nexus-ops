@@ -4,19 +4,21 @@ namespace Tests\Feature;
 
 use App\Enums\EstadoContrato;
 use App\Enums\EstadoEvento;
+use App\Enums\EstadoIntervencao;
 use App\Enums\PapelUtilizador;
 use App\Enums\TipoEvento;
+use App\Enums\TipoIntervencao;
 use App\Livewire\Agenda\Calendario;
 use App\Livewire\Contratos\Ficha;
-use App\Enums\EstadoIntervencao;
-use App\Enums\TipoIntervencao;
 use App\Models\Cliente;
 use App\Models\Contrato;
-use App\Models\EventoAgenda;
 use App\Models\Equipamento;
+use App\Models\EventoAgenda;
 use App\Models\Intervencao;
 use App\Models\Local;
+use App\Models\ModeloFaturacao;
 use App\Models\User;
+use App\Services\Agenda\GeradorIcal;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
@@ -46,7 +48,7 @@ class AgendaTest extends TestCase
         $contrato = Contrato::create([
             'numero' => $numero, 'cliente_id' => $cliente->id,
             'data_inicio' => $inicio, 'data_fim' => $fim,
-            'estado' => EstadoContrato::Rascunho, 'tipo' => 'preventiva', 'modelo_faturacao_id' => \App\Models\ModeloFaturacao::query()->value('id'),
+            'estado' => EstadoContrato::Rascunho, 'tipo' => 'preventiva', 'modelo_faturacao_id' => ModeloFaturacao::query()->value('id'),
         ]);
         $contrato->equipamentos()->sync([$equip->id]);
 
@@ -206,7 +208,7 @@ class AgendaTest extends TestCase
         $this->assertStringContainsString('Téc', $e->fresh()->tecnico_label);
 
         // O feed iCal do técnico ADICIONAL também inclui o evento.
-        $ics = app(\App\Services\Agenda\GeradorIcal::class)->paraTecnico($tec);
+        $ics = app(GeradorIcal::class)->paraTecnico($tec);
         $this->assertStringContainsString('Instala', $ics);
     }
 

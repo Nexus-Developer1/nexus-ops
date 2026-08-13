@@ -3,6 +3,7 @@
 namespace App\Livewire\Auth;
 
 use App\Models\User;
+use App\Services\Auditor;
 use App\Services\Auth\ServicoMfa;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -61,7 +62,7 @@ class Login extends Component
             RateLimiter::hit($chave, self::JANELA_SEGUNDOS);
             // Auditoria: tentativa falhada (email tentado + IP) — deteta brute-force e
             // credenciais a circular. A mensagem ao utilizador continua neutra.
-            \App\Services\Auditor::registar('login_falhado', detalhe: ['email' => $email]);
+            Auditor::registar('login_falhado', detalhe: ['email' => $email]);
             throw ValidationException::withMessages([
                 'email' => 'As credenciais não correspondem aos nossos registos.',
             ]);

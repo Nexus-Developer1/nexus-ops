@@ -15,7 +15,6 @@ use Livewire\WithPagination;
 class Contratos extends Component
 {
     use ApenasEquipa;
-
     use WithPagination;
 
     public Cliente $cliente;
@@ -38,7 +37,7 @@ class Contratos extends Component
         $contratos = Contrato::query()
             ->where('cliente_id', $this->cliente->id)
             ->with('modeloFaturacao')
-            ->when($this->pesquisa, fn ($q) => $q->where('numero', 'ilike', '%' . $this->pesquisa . '%'))
+            ->when($this->pesquisa, fn ($q) => $q->where('numero', 'ilike', '%'.$this->pesquisa.'%'))
             ->orderByDesc('data_inicio')
             ->paginate(20);
 

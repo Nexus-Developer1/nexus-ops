@@ -8,6 +8,7 @@ use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\FichaMedicao;
 use App\Models\Local;
+use App\Models\Relatorio;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -267,7 +268,7 @@ class RelatorioFichaSadeiTest extends TestCase
             ->call('finalizar')
             ->assertHasNoErrors();
 
-        $relatorio = \App\Models\Relatorio::firstOrFail();
+        $relatorio = Relatorio::firstOrFail();
         $html = view('pdf.relatorio', ['relatorio' => $relatorio->load('intervencao.fichasMedicao'), 'fotos' => []])->render();
 
         $this->assertStringContainsString('Ficha de Verificações SADEI', $html);

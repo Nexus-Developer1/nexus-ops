@@ -49,7 +49,7 @@ class RelatorioParaCliente extends Mailable
         return [
             Attachment::fromData(
                 fn () => Storage::disk()->get($this->relatorio->pdf_path),
-                str_replace('/', '-', $this->relatorio->numero) . '.pdf',
+                str_replace('/', '-', $this->relatorio->numero).'.pdf',
             )->withMime('application/pdf'),
         ];
     }

@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
+use App\Livewire\Clientes\Index;
+use App\Livewire\Equipamentos\Listagem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -24,12 +26,12 @@ class ListagensPesquisaPersistenteTest extends TestCase
     {
         $admin = $this->admin();
 
-        Livewire::actingAs($admin)->test(\App\Livewire\Clientes\Index::class)
+        Livewire::actingAs($admin)->test(Index::class)
             ->set('pesquisa', 'VAZ MENDES')
             ->set('ordenar', 'nome_asc');
 
         // "Voltar à listagem" = novo pedido, componente novo: restaura da sessão.
-        Livewire::actingAs($admin)->test(\App\Livewire\Clientes\Index::class)
+        Livewire::actingAs($admin)->test(Index::class)
             ->assertSet('pesquisa', 'VAZ MENDES')
             ->assertSet('ordenar', 'nome_asc');
     }
@@ -38,11 +40,11 @@ class ListagensPesquisaPersistenteTest extends TestCase
     {
         $admin = $this->admin();
 
-        Livewire::actingAs($admin)->test(\App\Livewire\Equipamentos\Listagem::class)
+        Livewire::actingAs($admin)->test(Listagem::class)
             ->set('pesquisa', 'MH19VNPW')
             ->set('tipo', 'ups');
 
-        Livewire::actingAs($admin)->test(\App\Livewire\Equipamentos\Listagem::class)
+        Livewire::actingAs($admin)->test(Listagem::class)
             ->assertSet('pesquisa', 'MH19VNPW')
             ->assertSet('tipo', 'ups');
     }

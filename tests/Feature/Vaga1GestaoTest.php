@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
+use App\Livewire\Agenda\Calendario;
+use App\Livewire\Alertas\Painel;
+use App\Livewire\Equipamentos\Listagem;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
@@ -39,7 +42,7 @@ class Vaga1GestaoTest extends TestCase
         // Alerta de um tipo que ANTES ficava fora das contagens (visita programada vencida).
         $contrato->alertasVisita()->create(['data' => now()->subDay()->toDateString(), 'texto' => 'Agendar visita']);
 
-        Livewire::actingAs($this->admin())->test(\App\Livewire\Alertas\Painel::class)
+        Livewire::actingAs($this->admin())->test(Painel::class)
             ->assertSee('Visitas programadas')
             ->assertViewHas('contagens', fn ($c) => ($c['visita_programada'] ?? 0) === 1)
             // O "Todos" é a soma real das contagens — bate com a lista completa.
@@ -57,7 +60,7 @@ class Vaga1GestaoTest extends TestCase
                 'cliente_id' => $cliente->id, 'cobertura' => 'incluida']);
         }
 
-        Livewire::actingAs($this->admin())->test(\App\Livewire\Agenda\Calendario::class)
+        Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formContratoId', $contrato->id)
             ->assertViewHas('saldoContratoForm', fn ($s) => $s['usadas'] === 3 && $s['restantes'] === 1);
     }
@@ -69,7 +72,7 @@ class Vaga1GestaoTest extends TestCase
         Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'COM-CLIENTE']);
         Equipamento::create(['local_id' => null, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SEM-CLIENTE-1']);
 
-        Livewire::actingAs($this->admin())->test(\App\Livewire\Equipamentos\Listagem::class)
+        Livewire::actingAs($this->admin())->test(Listagem::class)
             ->assertSee('Por associar (1)')
             ->set('porAssociar', true)
             ->assertSee('SEM-CLIENTE-1')

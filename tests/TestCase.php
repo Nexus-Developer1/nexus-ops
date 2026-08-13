@@ -9,6 +9,7 @@ use App\Notifications\CodigoMfaNotification;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Notification;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
 abstract class TestCase extends BaseTestCase
@@ -40,7 +41,7 @@ abstract class TestCase extends BaseTestCase
     // código enviado por email e submete-o na 2.ª etapa. Devolve o componente
     // VerificarCodigo já depois de `verificar`, para o teste encadear as suas asserções
     // (ex.: ->assertRedirect(...)). Usa Notification::fake para ler o código em claro.
-    protected function loginComMfa(string $email, string $password): \Livewire\Features\SupportTesting\Testable
+    protected function loginComMfa(string $email, string $password): Testable
     {
         Notification::fake();
 

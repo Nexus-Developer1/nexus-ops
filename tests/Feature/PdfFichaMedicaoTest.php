@@ -11,8 +11,10 @@ use App\Models\Intervencao;
 use App\Models\Local;
 use App\Models\ModeloFaturacao;
 use App\Models\Relatorio;
+use App\Services\GeradorRelatorio;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 // O PDF de um relatório de CONTRATO inclui a ficha de medições (uma por equipamento);
@@ -267,7 +269,7 @@ class PdfFichaMedicaoTest extends TestCase
     // Smoke real: o dompdf gera o binário do PDF com a ficha (tabelas + CSS) sem rebentar.
     public function test_dompdf_gera_binario_com_ficha_de_contrato(): void
     {
-        \Illuminate\Support\Facades\Storage::fake();
+        Storage::fake();
         [$contrato, , $e1] = $this->contexto();
         $relatorio = $this->relatorioContrato($contrato, $e1);
 
@@ -280,11 +282,11 @@ class PdfFichaMedicaoTest extends TestCase
             'ups_modo_normal' => 'ok',
         ]);
 
-        app(\App\Services\GeradorRelatorio::class)->gerarPdf($relatorio);
+        app(GeradorRelatorio::class)->gerarPdf($relatorio);
 
         $relatorio->refresh();
         $this->assertNotNull($relatorio->pdf_path);
-        $this->assertTrue(\Illuminate\Support\Facades\Storage::disk()->exists($relatorio->pdf_path));
-        $this->assertStringStartsWith('%PDF', \Illuminate\Support\Facades\Storage::disk()->get($relatorio->pdf_path));
+        $this->assertTrue(Storage::disk()->exists($relatorio->pdf_path));
+        $this->assertStringStartsWith('%PDF', Storage::disk()->get($relatorio->pdf_path));
     }
 }

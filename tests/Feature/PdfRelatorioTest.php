@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\EstadoRelatorio;
 use App\Enums\PapelUtilizador;
+use App\Livewire\Relatorios\Novo;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
@@ -13,7 +14,9 @@ use App\Models\ModeloFaturacao;
 use App\Models\Relatorio;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 // Botão "PDF" da listagem -> rota relatorios.pdf: gera e serve o PDF no disco
@@ -204,14 +207,14 @@ class PdfRelatorioTest extends TestCase
 
     public function test_finalizar_grava_termino_real_e_nao_o_instante_da_redacao(): void
     {
-        \Illuminate\Support\Facades\Queue::fake();
+        Queue::fake();
         $admin = User::create(['nome' => 'Admin', 'email' => 'a2@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
         $tec = User::create(['nome' => 'Téc', 'email' => 't2@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
         $cliente = Cliente::create(['nome' => 'ACME2', 'ativo' => true]);
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sala']);
         $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional']);
 
-        \Livewire\Livewire::actingAs($admin)->test(\App\Livewire\Relatorios\Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)
             ->set('equipamento_id', $equip->id)
             ->set('tipo', 'corretiva')
             ->set('data', '2026-07-20')

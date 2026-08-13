@@ -23,13 +23,13 @@ class ResumoAlertas extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $mail = (new MailMessage)
-            ->subject('Nexus Infra · ' . $this->alertas->count() . ' alertas requerem atenção')
-            ->greeting('Olá ' . $notifiable->nome . ',')
-            ->line('Há ' . $this->alertas->count() . ' alertas em aberto na operação:');
+            ->subject('Nexus Infra · '.$this->alertas->count().' alertas requerem atenção')
+            ->greeting('Olá '.$notifiable->nome.',')
+            ->line('Há '.$this->alertas->count().' alertas em aberto na operação:');
 
         // Até 10 alertas no corpo do email.
         foreach ($this->alertas->take(10) as $alerta) {
-            $mail->line('• ' . $this->semMarkdown($alerta['titulo']) . ' — ' . $this->semMarkdown($alerta['descricao']));
+            $mail->line('• '.$this->semMarkdown($alerta['titulo']).' — '.$this->semMarkdown($alerta['descricao']));
         }
 
         return $mail->action('Ver alertas', route('alertas'));

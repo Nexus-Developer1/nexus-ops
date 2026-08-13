@@ -51,16 +51,22 @@ class Calendario extends Component
     // editandoConvertido = o evento já tem intervenção (rascunho): equipamento e contrato
     // pertencem ao relatório e ficam trancados no formulário; as datas propagam-se.
     public bool $modalCriar = false;
+
     public ?int $editandoId = null;
+
     public bool $editandoConvertido = false;
+
     public string $formTitulo = '';
+
     // Técnicos do evento: CONTAS de utilizador (mesma lista do relatório) — um evento pode ter
     // 1 ou mais. O 1.º (por ordem alfabética) fica como principal em tecnico_id (cor do evento);
     // os restantes vão para a pivot evento_tecnicos. Todos contam para conflitos,
     // feed iCal.
     /** @var list<int|string> */
     public array $formTecnicoIds = [];
+
     public string $formInicio = '';
+
     public string $formFim = '';
 
     // Horas trabalhadas POR DIA — só quando o intervalo atravessa vários dias. Linhas
@@ -71,10 +77,12 @@ class Calendario extends Component
 
     // Equipamento opcional do evento (pesquisa server-side; deriva local/cliente).
     public ?int $formEquipamentoId = null;
+
     public string $formEquipamentoBusca = '';
 
     // Contrato opcional a que a visita pertence; cobertura só conta se houver contrato.
     public ?int $formContratoId = null;
+
     public ?string $formCobertura = null; // 'incluida' | 'extra'
 
     // Ao mudar o filtro de técnico, manda o FullCalendar re-buscar os eventos (sem F5).
@@ -300,7 +308,7 @@ class Calendario extends Component
         $this->formEquipamentoId = $evento->equipamento_id;
         $this->formEquipamentoBusca = $evento->equipamento
             ? trim(($evento->equipamento->numero_serie ?? '—')
-                . ' · ' . trim($evento->equipamento->fabricante . ' ' . $evento->equipamento->modelo))
+                .' · '.trim($evento->equipamento->fabricante.' '.$evento->equipamento->modelo))
             : '';
         $this->formContratoId = $evento->contrato_id;
         $this->formCobertura = $evento->cobertura;
@@ -331,7 +339,7 @@ class Calendario extends Component
 
         $this->formEquipamentoId = $equipamento->id;
         $this->formEquipamentoBusca = trim(($equipamento->numero_serie ?? '—')
-            . ' · ' . trim($equipamento->fabricante . ' ' . $equipamento->modelo));
+            .' · '.trim($equipamento->fabricante.' '.$equipamento->modelo));
     }
 
     // Escrever na caixa desfaz a seleção (campo opcional: sem escolha => sem equipamento).
@@ -410,7 +418,7 @@ class Calendario extends Component
             // Teto de duração: sem ele (e sem o travão do horário de cobertura, que já não se
             // aplica a multi-dia) dava para gravar um evento de anos, que colidiria com tudo e
             // tornaria o técnico inagendável para sempre (14.ª revisão de segurança).
-            'formFim' => ['required', 'date', 'after:formInicio', 'before_or_equal:' . Carbon::parse($this->formInicio ?: 'now')->addDays(self::MAX_DIAS_EVENTO)->toDateTimeString()],
+            'formFim' => ['required', 'date', 'after:formInicio', 'before_or_equal:'.Carbon::parse($this->formInicio ?: 'now')->addDays(self::MAX_DIAS_EVENTO)->toDateTimeString()],
             'formContratoId' => ['nullable', 'exists:contratos,id'],
             'formCobertura' => ['nullable', 'required_with:formContratoId', 'in:incluida,extra'],
             'formHorasDias' => ['array', 'max:32'],
@@ -421,7 +429,7 @@ class Calendario extends Component
         // Cada dia tem de ter fim depois do início (as horas são dentro do próprio dia).
         foreach ($this->formHorasDias as $i => $linha) {
             if ($linha['fim'] <= $linha['inicio']) {
-                $this->addError("formHorasDias.$i.fim", 'O fim tem de ser depois do início (dia ' . Carbon::parse($linha['dia'])->format('d/m') . ').');
+                $this->addError("formHorasDias.$i.fim", 'O fim tem de ser depois do início (dia '.Carbon::parse($linha['dia'])->format('d/m').').');
 
                 return;
             }
@@ -435,8 +443,8 @@ class Calendario extends Component
         if ($horasDias) {
             $primeira = $horasDias[0];
             $ultima = $horasDias[count($horasDias) - 1];
-            $inicio = Carbon::parse($primeira['dia'] . ' ' . $primeira['inicio']);
-            $fim = Carbon::parse($ultima['dia'] . ' ' . $ultima['fim']);
+            $inicio = Carbon::parse($primeira['dia'].' '.$primeira['inicio']);
+            $fim = Carbon::parse($ultima['dia'].' '.$ultima['fim']);
         }
 
         // Contas escolhidas, por ordem alfabética (determinística): 1.º = principal, resto = adicionais.
@@ -546,10 +554,10 @@ class Calendario extends Component
             ? Equipamento::query()
                 ->with('local.cliente')
                 ->where(function ($q) {
-                    $termo = '%' . $this->formEquipamentoBusca . '%';
-                    $norm = '%' . $this->normalizarBusca($this->formEquipamentoBusca) . '%';
+                    $termo = '%'.$this->formEquipamentoBusca.'%';
+                    $norm = '%'.$this->normalizarBusca($this->formEquipamentoBusca).'%';
                     $semAcentos = "translate(lower(fabricante || ' ' || modelo), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
-                    $q->whereRaw($semAcentos . ' like ?', [$norm])
+                    $q->whereRaw($semAcentos.' like ?', [$norm])
                         ->orWhere('numero_serie', 'ilike', $termo);
                 })
                 ->orderBy('numero_serie')

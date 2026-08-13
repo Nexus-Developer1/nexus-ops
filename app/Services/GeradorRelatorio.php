@@ -43,7 +43,7 @@ class GeradorRelatorio
 
         $maxSufixo = (int) Relatorio::withoutGlobalScopes()
             ->withTrashed()
-            ->where('numero', 'like', $ano . '/%')
+            ->where('numero', 'like', $ano.'/%')
             ->max(DB::raw("cast(split_part(numero, '/', 2) as integer)"));
 
         return sprintf('%d/%04d', $ano, $maxSufixo + 1);
@@ -108,13 +108,13 @@ class GeradorRelatorio
         $imagens = $relatorio->intervencao->anexos
             ->filter(fn ($a) => str_starts_with((string) $a->mime, 'image/'));
 
-        $dataUri = fn ($a) => 'data:' . $a->mime . ';base64,' . base64_encode($a->conteudo());
+        $dataUri = fn ($a) => 'data:'.$a->mime.';base64,'.base64_encode($a->conteudo());
 
         $fotosPorEquipamento = $imagens->whereNotNull('equipamento_id')
             ->groupBy('equipamento_id')
             ->map(fn ($grupo) => [
                 'nome' => trim(($grupo->first()->equipamento?->numero_serie ?? '')
-                    . ' · ' . trim(($grupo->first()->equipamento?->fabricante ?? '') . ' ' . ($grupo->first()->equipamento?->modelo ?? ''))) ?: 'Equipamento',
+                    .' · '.trim(($grupo->first()->equipamento?->fabricante ?? '').' '.($grupo->first()->equipamento?->modelo ?? ''))) ?: 'Equipamento',
                 'fotos' => $grupo->map($dataUri)->values()->all(),
             ])
             ->all();
@@ -130,7 +130,7 @@ class GeradorRelatorio
                         return null;
                     }
 
-                    return 'data:image/png;base64,' . base64_encode(Storage::disk()->get($key));
+                    return 'data:image/png;base64,'.base64_encode(Storage::disk()->get($key));
                 };
 
                 return [$ficha->id => array_filter([
@@ -147,7 +147,7 @@ class GeradorRelatorio
             'assinaturasFichas' => $assinaturasFichas,
         ])->setPaper('a4');
 
-        $caminho = 'relatorios/' . str_replace('/', '-', $relatorio->numero) . '.pdf';
+        $caminho = 'relatorios/'.str_replace('/', '-', $relatorio->numero).'.pdf';
         Storage::disk()->put($caminho, $pdf->output());
 
         $relatorio->update(['pdf_path' => $caminho]);

@@ -27,7 +27,7 @@ class Equipamentos extends Component
         $equipamentos = Equipamento::query()
             ->with('local')
             ->when($this->pesquisa, function ($q) {
-                $termo = '%' . $this->pesquisa . '%';
+                $termo = '%'.$this->pesquisa.'%';
                 $q->where(fn ($q) => $q->where('numero_serie', 'ilike', $termo)->orWhere('modelo', 'ilike', $termo));
             })
             ->orderBy('id')

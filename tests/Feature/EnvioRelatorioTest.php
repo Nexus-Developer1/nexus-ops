@@ -13,6 +13,7 @@ use App\Models\Intervencao;
 use App\Models\Local;
 use App\Models\Relatorio;
 use App\Models\User;
+use App\Services\GeradorRelatorio;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
@@ -50,7 +51,7 @@ class EnvioRelatorioTest extends TestCase
         $relatorio = $this->relatorioPara('cliente@exemplo.pt');
 
         (new EnviarRelatorioPorEmail($relatorio, 'destinatario@escrito.pt', 'Assunto à mão', 'Mensagem à mão'))
-            ->handle(app(\App\Services\GeradorRelatorio::class));
+            ->handle(app(GeradorRelatorio::class));
 
         Mail::assertSent(RelatorioParaCliente::class, fn ($mail) => $mail->hasTo('destinatario@escrito.pt') && $mail->hasSubject('Assunto à mão'));
 
@@ -131,7 +132,7 @@ class EnvioRelatorioTest extends TestCase
         Mail::fake();
         $relatorio = $this->relatorioPara('cliente@exemplo.pt');
 
-        (new EnviarRelatorioPorEmail($relatorio, '', 'A', 'M'))->handle(app(\App\Services\GeradorRelatorio::class));
+        (new EnviarRelatorioPorEmail($relatorio, '', 'A', 'M'))->handle(app(GeradorRelatorio::class));
 
         Mail::assertNothingSent();
         $this->assertSame(EstadoRelatorio::Finalizado, $relatorio->fresh()->estado);

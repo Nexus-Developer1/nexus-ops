@@ -21,7 +21,7 @@ class SincronizarErpIncrementalTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver());
+        $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver);
     }
 
     public function test_faturacao_segunda_corrida_salta_tudo_sem_escrever(): void

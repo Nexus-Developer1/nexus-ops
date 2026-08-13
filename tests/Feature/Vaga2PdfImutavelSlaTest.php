@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
 use App\Jobs\EnviarRelatorioPorEmail;
+use App\Livewire\Relatorios\Novo;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
@@ -17,6 +18,7 @@ use App\Services\GeradorRelatorio;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 // Vaga 2: (1) o PDF ENVIADO fica congelado (cópia imutável + sha256; o portal serve sempre
@@ -119,7 +121,7 @@ class Vaga2PdfImutavelSlaTest extends TestCase
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sede']);
         $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SLA-ED']);
 
-        \Livewire\Livewire::actingAs($tecnico)->test(\App\Livewire\Relatorios\Novo::class)
+        Livewire::actingAs($tecnico)->test(Novo::class)
             ->set('equipamento_id', $equip->id)
             ->set('data', now()->toDateString())
             ->set('tipo', 'corretiva')
@@ -138,7 +140,7 @@ class Vaga2PdfImutavelSlaTest extends TestCase
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sede']);
         $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'META-1']);
 
-        \Livewire\Livewire::actingAs($tecnico)->test(\App\Livewire\Relatorios\Novo::class)
+        Livewire::actingAs($tecnico)->test(Novo::class)
             ->set('equipamento_id', $equip->id)
             ->set('data', now()->toDateString())
             ->set('fotosMeta', [$equip->id => [

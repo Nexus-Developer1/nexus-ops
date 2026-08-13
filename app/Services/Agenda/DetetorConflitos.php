@@ -5,6 +5,7 @@ namespace App\Services\Agenda;
 use App\Enums\EstadoEvento;
 use App\Models\EventoAgenda;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 // Deteta conflitos ao agendar/reagendar um evento (CLAUDE.md §6): fora de horário
@@ -23,7 +24,7 @@ class DetetorConflitos
         sort($chaves);
 
         foreach ($chaves as $chave) {
-            DB::select('SELECT pg_advisory_xact_lock(hashtext(?))', ['agenda:tecnico:' . $chave]);
+            DB::select('SELECT pg_advisory_xact_lock(hashtext(?))', ['agenda:tecnico:'.$chave]);
         }
     }
 
@@ -92,13 +93,13 @@ class DetetorConflitos
     // Compara os segmentos reais dos candidatos (span sobreposto, pré-filtrado em SQL) com os
     // segmentos do evento a gravar. Candidatos são poucos — a comparação fina é em PHP.
     /** @param list<array{0: Carbon, 1: Carbon}> $meus */
-    private function sobreposicaoPorSegmentos(\Illuminate\Support\Collection $candidatos, array $meus): ?string
+    private function sobreposicaoPorSegmentos(Collection $candidatos, array $meus): ?string
     {
         foreach ($candidatos as $outro) {
             foreach ($outro->segmentos() as [$outroIni, $outroFim]) {
                 foreach ($meus as [$meuIni, $meuFim]) {
                     if ($meuIni->lt($outroFim) && $meuFim->gt($outroIni)) {
-                        return 'O técnico já tem "' . $outro->titulo . '" neste horário.';
+                        return 'O técnico já tem "'.$outro->titulo.'" neste horário.';
                     }
                 }
             }
