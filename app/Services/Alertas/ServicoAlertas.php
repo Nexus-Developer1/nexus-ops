@@ -19,6 +19,7 @@ class ServicoAlertas
     public function recolher(): Collection
     {
         return collect([
+            ...$this->backupEmAtraso(),
             ...$this->baterias(),
             ...$this->renovacoes(),
             ...$this->visitasProgramadas(),
@@ -26,6 +27,39 @@ class ServicoAlertas
             ...$this->visitasEmAtraso(),
             ...$this->slaEmRisco(),
         ])->sortByDesc(fn ($a) => $a['severidade'] === 'alta' ? 1 : 0)->values();
+    }
+
+    // Vigia de backups (opt-in por config): o scripts/backup.sh toca um marcador no fim de
+    // cada backup BEM SUCEDIDO; marcador em falta ou velho = o backup deixou de correr — e
+    // um backup morto só se descobre no dia em que faz falta. Alerta sempre ALTA.
+    private function backupEmAtraso(): array
+    {
+        if (! config('alertas.backup_vigia')) {
+            return [];
+        }
+
+        $marcador = storage_path('app/backups/.ultimo-backup');
+        $maxHoras = (int) config('alertas.backup_max_horas');
+        // (createFromTimestamp → now(): positivo; o diffInHours do Carbon 3 é COM SINAL —
+        // na ordem inversa a idade vinha negativa e a vigia nunca alertava.)
+        $idade = is_file($marcador)
+            ? (int) \Illuminate\Support\Carbon::createFromTimestamp(filemtime($marcador))->diffInHours(now())
+            : null;
+
+        if ($idade !== null && $idade <= $maxHoras) {
+            return []; // backup em dia
+        }
+
+        return [[
+            'tipo' => 'backup',
+            'severidade' => 'alta',
+            'titulo' => 'Backup em atraso',
+            'descricao' => $idade === null
+                ? 'Nunca foi registado nenhum backup (marcador em falta) — verificar o cron do backup no servidor.'
+                : "O último backup bem sucedido foi há {$idade}h (máx. {$maxHoras}h) — verificar o cron do backup no servidor.",
+            'url' => route('alertas'),
+            'data' => now(),
+        ]];
     }
 
     // Alertas de manutenção PROGRAMADOS no equipamento (data + texto editável): mesma

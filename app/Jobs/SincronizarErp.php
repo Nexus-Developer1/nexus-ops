@@ -105,6 +105,12 @@ class SincronizarErp implements ShouldQueue
                 'agendado' => $this->agendado,
                 'falhas' => array_keys(array_filter($resultados, fn ($r) => ! $r['ok'])),
             ]);
+            // Auditoria: uma linha por corrida (quem = null → sistema; detalhe = resumo por etapa).
+            \App\Services\Auditor::registar('sync_erp', detalhe: [
+                'agendado' => $this->agendado,
+                'falhou' => $falhou,
+                'resultados' => array_map(fn ($r) => $r['detalhe'], $resultados),
+            ]);
         } finally {
             $lock->release();
         }

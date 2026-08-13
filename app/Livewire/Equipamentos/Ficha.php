@@ -197,6 +197,11 @@ class Ficha extends Component
             'para' => $cliente->nome,
             'utilizador' => auth()->user()?->email,
         ]);
+        \App\Services\Auditor::registar('equipamento_mudou_cliente', $this->equipamento, [
+            'serie' => $this->equipamento->numero_serie,
+            'de' => $clienteAntigo->nome ?? '(sem cliente — por associar)',
+            'para' => $cliente->nome,
+        ]);
 
         session()->flash('sucesso', "Equipamento movido para {$cliente->nome}.");
     }

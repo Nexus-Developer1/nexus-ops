@@ -68,6 +68,8 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
 
     // Alertas proativos (renovações, baterias, visitas em atraso, SLA).
     Route::get('/alertas', \App\Livewire\Alertas\Painel::class)->name('alertas');
+    // Auditoria: o componente barra os técnicos (abort_unless ehAdmin em mount+render).
+    Route::get('/auditoria', \App\Livewire\Auditoria\Listagem::class)->name('auditoria');
 
     // Despesas: REGISTOS (documento com linhas, como a folha da empresa). Rotas literais/
     // compostas ANTES de /{despesa} para não colidir.

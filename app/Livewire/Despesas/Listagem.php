@@ -46,6 +46,7 @@ class Listagem extends Component
         $registo = \App\Models\RegistoDespesa::findOrFail($registo);
         $registo->despesas()->delete();
         $registo->delete();
+        \App\Services\Auditor::registar('registo_despesas_eliminado', $registo, ['linhas' => $registo->despesas()->withTrashed()->count()]);
         session()->flash('sucesso', 'Registo de despesas eliminado.');
     }
 

@@ -790,6 +790,7 @@ class Novo extends Component
                     'utilizador' => auth()->user()?->email,
                     'finalizar' => $finalizar,
                 ]);
+                \App\Services\Auditor::registar('relatorio_reaberto', $enviado, ['numero' => $enviado->numero, 'finalizar' => $finalizar]);
             }
         }
 

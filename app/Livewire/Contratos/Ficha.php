@@ -40,6 +40,7 @@ class Ficha extends Component
         }
 
         $this->contrato->update(['estado' => EstadoContrato::Ativo]);
+        \App\Services\Auditor::registar('contrato_mudou_estado', $this->contrato, ['numero' => $this->contrato->numero, 'de' => 'rascunho', 'para' => 'ativo']);
         session()->flash('sucesso', 'Contrato ativado.');
     }
 
@@ -47,6 +48,7 @@ class Ficha extends Component
     {
         if ($this->contrato->estado === EstadoContrato::Ativo) {
             $this->contrato->update(['estado' => EstadoContrato::Suspenso]);
+            \App\Services\Auditor::registar('contrato_mudou_estado', $this->contrato, ['numero' => $this->contrato->numero, 'de' => 'ativo', 'para' => 'suspenso']);
             session()->flash('sucesso', 'Contrato suspenso.');
         }
     }
@@ -63,6 +65,7 @@ class Ficha extends Component
             }
 
             $this->contrato->update(['estado' => EstadoContrato::Ativo]);
+            \App\Services\Auditor::registar('contrato_mudou_estado', $this->contrato, ['numero' => $this->contrato->numero, 'de' => 'suspenso', 'para' => 'ativo']);
             session()->flash('sucesso', 'Contrato reativado.');
         }
     }

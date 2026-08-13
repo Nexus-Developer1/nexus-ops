@@ -171,6 +171,34 @@ class AlertasTest extends TestCase
         $this->assertStringContainsString('[Repor password de administrador](https://malicioso.example/login)', $html);
     }
 
+    // Vigia de backups (opt-in): marcador em falta ou velho → alerta ALTA; fresco → nada;
+    // desligada (default, dev/staging) → nunca alerta.
+    public function test_vigia_de_backups(): void
+    {
+        $marcador = storage_path('app/backups/.ultimo-backup');
+        @mkdir(dirname($marcador), 0777, true);
+        @unlink($marcador);
+
+        // Desligada (default): sem alerta mesmo sem marcador.
+        $this->assertNull($this->servico()->recolher()->firstWhere('tipo', 'backup'));
+
+        // Ligada + sem marcador: alerta ALTA ("nunca foi registado").
+        config()->set('alertas.backup_vigia', true);
+        $alerta = $this->servico()->recolher()->firstWhere('tipo', 'backup');
+        $this->assertNotNull($alerta);
+        $this->assertSame('alta', $alerta['severidade']);
+
+        // Marcador fresco: sem alerta.
+        touch($marcador);
+        $this->assertNull($this->servico()->recolher()->firstWhere('tipo', 'backup'));
+
+        // Marcador velho (2 dias): alerta outra vez.
+        touch($marcador, now()->subDays(2)->timestamp);
+        $this->assertNotNull($this->servico()->recolher()->firstWhere('tipo', 'backup'));
+
+        @unlink($marcador);
+    }
+
     public function test_painel_visivel_para_admin_e_oculto_para_cliente(): void
     {
         $admin = User::create(['nome' => 'Admin', 'email' => 'admin@x.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);

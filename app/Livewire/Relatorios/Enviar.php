@@ -64,6 +64,12 @@ class Enviar extends Component
             $this->mensagem,
         );
 
+        // Auditoria: emissão de documento oficial ao cliente (CLAUDE.md §11).
+        \App\Services\Auditor::registar('relatorio_enviado', $this->relatorio, [
+            'numero' => $this->relatorio->numero,
+            'para' => trim($this->para),
+        ]);
+
         session()->flash('sucesso', "Relatório {$this->relatorio->numero} em envio para {$this->para}.");
 
         return redirect()->route('relatorios');

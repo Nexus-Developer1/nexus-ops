@@ -80,9 +80,11 @@ class Editor extends Component
                 return redirect()->route('contratos.ficha', $this->contrato);
             }
             $this->contrato->update(['estado' => EstadoContrato::Ativo]);
+            \App\Services\Auditor::registar('contrato_mudou_estado', $this->contrato, ['numero' => $this->contrato->numero, 'de' => 'rascunho', 'para' => 'ativo']);
             session()->flash('sucesso', 'Contrato guardado e ativado.');
         } elseif ($decisao === 'suspender') {
             $this->contrato->update(['estado' => EstadoContrato::Suspenso]);
+            \App\Services\Auditor::registar('contrato_mudou_estado', $this->contrato, ['numero' => $this->contrato->numero, 'de' => 'rascunho', 'para' => 'suspenso']);
             session()->flash('sucesso', 'Contrato guardado e suspenso.');
         } else {
             session()->flash('sucesso', 'Contrato guardado (fica em rascunho).');
