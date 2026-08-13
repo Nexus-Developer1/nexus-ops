@@ -122,6 +122,12 @@ class Novo extends Component
     /** @var array<int, array<int, mixed>> [equipId => fotos por gravar] — acumuladas entre seleções. */
     public array $fotosNovas = [];
 
+    // Metadados de captura das fotos (Vaga 2): [equipId => [{nome, capturada_em, latitude,
+    // longitude}]] — o EXIF morre na compressão client-side, isto é o que sobra dele.
+    // Declarados pelo cliente (best-effort): sanitizados ao gravar, nunca confiados às cegas.
+    /** @var array<int, array<int, array<string, mixed>>> */
+    public array $fotosMeta = [];
+
     public function mount(?Relatorio $relatorio = null): void
     {
         if ($relatorio && $relatorio->exists) {
@@ -912,6 +918,41 @@ class Novo extends Component
         $this->dispatch('auto-gravado', url: $eraNovo ? route('relatorios.editar', $relatorio) : null);
     }
 
+    // Carimbo de captura de uma foto (Vaga 2), SANITIZADO — os metadados vêm do browser
+    // (best-effort, nunca confiados às cegas): data plausível (não futura, não >2 anos) e
+    // coordenadas dentro dos limites; fora disso, campo a null.
+    private function carimboDaFoto(?int $equipId, string $nome): array
+    {
+        $meta = collect($this->fotosMeta[$equipId] ?? [])
+            ->first(fn ($m) => is_array($m) && ($m['nome'] ?? null) === $nome);
+        if (! $meta) {
+            return [];
+        }
+
+        $capturada = null;
+        try {
+            $c = $meta['capturada_em'] ?? null;
+            if (is_string($c) && $c !== '') {
+                $c = \Illuminate\Support\Carbon::parse($c);
+                if ($c->lte(now()->addDay()) && $c->gte(now()->subYears(2))) {
+                    $capturada = $c;
+                }
+            }
+        } catch (\Throwable) {
+            // data ilegível → sem carimbo
+        }
+
+        $lat = $meta['latitude'] ?? null;
+        $lng = $meta['longitude'] ?? null;
+        $geoOk = is_numeric($lat) && is_numeric($lng) && abs((float) $lat) <= 90 && abs((float) $lng) <= 180;
+
+        return [
+            'capturada_em' => $capturada,
+            'latitude' => $geoOk ? round((float) $lat, 6) : null,
+            'longitude' => $geoOk ? round((float) $lng, 6) : null,
+        ];
+    }
+
     // Núcleo transacional da gravação — partilhado pelo guardar manual e pelo autosave.
     private function gravarTransacao(GeradorRelatorio $gerador, SincronizadorAgenda $sincronizador, bool $finalizar): Relatorio
     {
@@ -990,11 +1031,12 @@ class Novo extends Component
                         'mime' => $foto->getMimeType(),
                         'tamanho' => $foto->getSize(),
                         'criado_por' => auth()->id(),
-                    ]);
+                    ] + $this->carimboDaFoto($equipId, $foto->getClientOriginalName()));
                 }
             }
             $this->fotos = [];
             $this->fotosNovas = [];
+            $this->fotosMeta = [];
 
             // Relatório: garante o rascunho-base (ponto único, à prova de corrida) e ajusta.
             $relatorio = $intervencao->garantirRascunho();

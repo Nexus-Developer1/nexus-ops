@@ -1,17 +1,13 @@
 {{-- validacao-falhou: os campos validados vivem no separador "Dados Gerais" — salta para lá
      e sobe ao topo, senão o erro ficava escondido e o botão parecia não fazer nada.
-     Autosave de campo: qualquer alteração marca o formulário como "sujo"; a cada 2 minutos
-     (e ao sair da app — visibilitychange, o caso do iPad) grava-se o rascunho em silêncio.
-     O sinal 'suja' só limpa quando uma gravação (auto ou manual) confirma. No 1.º autosave
-     de um relatório novo, o URL troca para a edição sem recarregar (F5 retoma o rascunho). --}}
-<div x-data="{ tab: 'gerais', suja: false }"
+     Autosave, honestidade offline e espelho local vivem no componente Alpine
+     `editorRelatorio` (resources/js/app.js) — Vaga 2. --}}
+<div x-data="editorRelatorio()"
     x-on:validacao-falhou.window="tab = 'gerais'; window.scrollTo({ top: 0, behavior: 'smooth' })"
     x-on:confirmar-fichas-vazias.window="if (confirm('Sem medições nem assinaturas em: ' + $event.detail.equipamentos.join(', ') + '.\n\nEssas fichas não vão constar do relatório. Finalizar mesmo assim?')) { $wire.set('finalizarComFichasVazias', true, false); $wire.finalizar() }"
-    x-on:input="suja = true" x-on:change="suja = true"
-    x-on:auto-gravado.window="suja = false; if ($event.detail.url) history.replaceState(null, '', $event.detail.url)"
-    x-on:rascunho-guardado.window="suja = false"
-    x-init="setInterval(() => { if (suja && !document.hidden) $wire.autoGravar() }, 120000);
-        document.addEventListener('visibilitychange', () => { if (suja && document.hidden) $wire.autoGravar() })">
+    x-on:input="marcarSuja()" x-on:change="marcarSuja()"
+    x-on:auto-gravado.window="gravado($event.detail.url)"
+    x-on:rascunho-guardado.window="gravado(null)">
     <x-topbar :breadcrumb="['Relatórios', $relatorioId ? 'Rascunho' : 'Novo']">
         <a href="{{ route('relatorios') }}" class="botao-secundario">Cancelar</a>
         <button wire:click="guardarRascunho" wire:loading.attr="disabled" wire:target="guardarRascunho" class="botao-secundario">
@@ -23,6 +19,14 @@
             <span wire:loading wire:target="finalizar">A finalizar…</span>
         </button>
     </x-topbar>
+
+    {{-- Badge de honestidade offline (Vaga 2): sem rede, o técnico SABE que há alterações
+         por enviar (guardadas neste dispositivo) — antes o autosave falhava em silêncio. --}}
+    <div x-show="semRede" x-cloak
+        class="fixed bottom-6 left-6 z-50 flex items-center gap-2 rounded-lg bg-aviso-100 px-4 py-3 text-sm font-medium text-aviso-500 shadow-lg">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636a9 9 0 010 12.728m-12.728 0a9 9 0 010-12.728m2.829 2.829a5 5 0 000 7.07m7.07 0a5 5 0 000-7.07M12 12h.01"/></svg>
+        Sem ligação — alterações guardadas neste dispositivo, por enviar
+    </div>
 
     {{-- Toast do save de prevenção ("Guardar rascunho" em edição fica na página) e do
          autosave (texto próprio, para o técnico saber que está protegido sem fazer nada). --}}

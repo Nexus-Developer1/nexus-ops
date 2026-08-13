@@ -128,4 +128,26 @@ class Vaga2PdfImutavelSlaTest extends TestCase
 
         $this->assertSame('2026-08-10 09:30', Intervencao::firstOrFail()->pedido_em->format('Y-m-d H:i'));
     }
+
+    // Os metadados de captura das fotos vêm do browser — um payload forjado (datas
+    // absurdas, coordenadas impossíveis, tipos errados) não pode rebentar a gravação.
+    public function test_meta_de_fotos_forjada_nao_rebenta_a_gravacao(): void
+    {
+        $tecnico = User::create(['nome' => 'Téc', 'email' => 't2@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sede']);
+        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'META-1']);
+
+        \Livewire\Livewire::actingAs($tecnico)->test(\App\Livewire\Relatorios\Novo::class)
+            ->set('equipamento_id', $equip->id)
+            ->set('data', now()->toDateString())
+            ->set('fotosMeta', [$equip->id => [
+                ['nome' => 'x.jpg', 'capturada_em' => 'NADA-DE-DATA', 'latitude' => 999, 'longitude' => 'abc'],
+                'não-é-array',
+            ]])
+            ->call('autoGravar')
+            ->assertHasNoErrors();
+
+        $this->assertSame(1, Relatorio::count()); // gravou normalmente, meta descartada
+    }
 }

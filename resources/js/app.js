@@ -12,6 +12,23 @@ import ptLocale from '@fullcalendar/core/locales/pt';
 let scrollAPreservar = null;
 window.preservarScroll = () => { scrollAPreservar = window.scrollY; };
 
+// Geolocalização pedida UMA vez por página (prova de presença nas fotos — Vaga 2). O prompt
+// do browser é o consentimento; negado/indisponível/timeout → null e as fotos seguem sem geo.
+let geoPromessa = null;
+const obterGeoUmaVez = () => {
+    geoPromessa ??= new Promise((resolve) => {
+        if (!navigator.geolocation) return resolve(null);
+        const t = setTimeout(() => resolve(null), 4000);
+        navigator.geolocation.getCurrentPosition(
+            (p) => { clearTimeout(t); resolve({ lat: p.coords.latitude, lng: p.coords.longitude }); },
+            () => { clearTimeout(t); resolve(null); },
+            { maximumAge: 300000, timeout: 3500 },
+        );
+    });
+
+    return geoPromessa;
+};
+
 document.addEventListener('livewire:init', () => {
     window.Livewire.hook('commit', ({ succeed }) => {
         succeed(() => {
@@ -27,6 +44,69 @@ document.addEventListener('livewire:init', () => {
 // Componente Alpine da Agenda (FullCalendar). O $wire vem do componente Livewire
 // que envolve este DOM. Eventos e reagendamento passam pelo backend (fonte de verdade).
 document.addEventListener('alpine:init', () => {
+    // Editor de relatórios — autosave HONESTO com a rede (Vaga 2): o autoGravar falhava em
+    // silêncio numa cave sem cobertura e o técnico julgava-se protegido. Agora: falha →
+    // badge persistente "sem ligação"; volta a rede → tenta logo; e um ESPELHO do formulário
+    // vive em localStorage como rede de segurança contra descarte da tab (Safari/iPad).
+    window.Alpine.data('editorRelatorio', () => ({
+        tab: 'gerais',
+        suja: false,
+        semRede: false,
+
+        chave() { return 'nexus-rascunho:' + window.location.pathname; },
+
+        init() {
+            const tentar = () => this.$wire.autoGravar()
+                .then(() => { this.semRede = false; })
+                .catch(() => { this.semRede = true; });
+            this.tentar = tentar;
+
+            setInterval(() => { if (this.suja && !document.hidden) tentar(); }, 120000);
+            document.addEventListener('visibilitychange', () => { if (this.suja && document.hidden) tentar(); });
+            window.addEventListener('online', () => { if (this.suja) tentar(); });
+            window.addEventListener('offline', () => { this.semRede = true; });
+
+            // Espelho local de uma sessão anterior (tab descartada antes de gravar)?
+            try {
+                const bruto = localStorage.getItem(this.chave());
+                if (bruto) {
+                    const s = JSON.parse(bruto);
+                    const quando = new Date(s.ts).toLocaleString('pt-PT');
+                    if (confirm('Há alterações não gravadas neste dispositivo (' + quando + ').\n\nRestaurá-las para o formulário?')) {
+                        ['fichas', 'resumo', 'data', 'data_fim', 'hora_inicio', 'hora_fim'].forEach((c) => {
+                            if (s.dados && s.dados[c] !== undefined) this.$wire.set(c, s.dados[c], false);
+                        });
+                        this.suja = true;
+                        tentar();
+                    } else {
+                        localStorage.removeItem(this.chave());
+                    }
+                }
+            } catch (e) { /* localStorage indisponível — segue sem espelho */ }
+        },
+
+        marcarSuja() {
+            this.suja = true;
+            clearTimeout(this._espelhoT);
+            this._espelhoT = setTimeout(() => {
+                try {
+                    localStorage.setItem(this.chave(), JSON.stringify({ ts: Date.now(), dados: {
+                        fichas: this.$wire.fichas, resumo: this.$wire.resumo, data: this.$wire.data,
+                        data_fim: this.$wire.data_fim, hora_inicio: this.$wire.hora_inicio, hora_fim: this.$wire.hora_fim,
+                    } }));
+                } catch (e) { /* quota/privado — o autosave continua a ser a proteção principal */ }
+            }, 2000);
+        },
+
+        // Gravação confirmada (auto ou manual): limpa o sujo, o badge e o espelho.
+        gravado(url) {
+            this.suja = false;
+            this.semRede = false;
+            try { localStorage.removeItem(this.chave()); } catch (e) {}
+            if (url) history.replaceState(null, '', url);
+        },
+    }));
+
     // Fotos da intervenção: COMPRIME no telemóvel antes de enviar (CLAUDE.md §6). Uma foto
     // de telemóvel tem 3–6 MB; redimensionada a 1920px e recomprimida em JPEG fica em
     // ~300–600 KB — sobe depressa em 4G e deixa de esbarrar nos limites de upload do PHP.
@@ -43,9 +123,28 @@ document.addEventListener('alpine:init', () => {
 
             window.preservarScroll(); // fica onde está: dá para tirar várias seguidas
 
+            // Carimbo de captura (Vaga 2): a compressão destrói o EXIF — o instante original
+            // (lastModified) e a geolocalização (consentimento = o prompt nativo do browser;
+            // negado → segue sem) viajam como metadados ao lado do upload.
+            const geo = await obterGeoUmaVez();
+            const equipId = campo.split('.')[1] ?? null;
+
             const prontos = [];
+            const metas = [];
             for (const f of ficheiros) {
-                prontos.push(f.type.startsWith('image/') ? await this.comprimir(f) : f);
+                const pronto = f.type.startsWith('image/') ? await this.comprimir(f) : f;
+                prontos.push(pronto);
+                metas.push({
+                    nome: pronto.name,
+                    capturada_em: f.lastModified ? new Date(f.lastModified).toISOString() : null,
+                    latitude: geo?.lat ?? null,
+                    longitude: geo?.lng ?? null,
+                });
+            }
+
+            if (equipId) {
+                const atuais = (this.$wire.fotosMeta ?? {})[equipId] ?? [];
+                this.$wire.set('fotosMeta.' + equipId, [...atuais, ...metas], false);
             }
 
             this.$wire.uploadMultiple(campo, prontos);
@@ -70,7 +169,8 @@ document.addEventListener('alpine:init', () => {
                     canvas.toBlob((blob) => {
                         if (!blob || blob.size >= ficheiro.size) return resolve(ficheiro);
                         const nome = ficheiro.name.replace(/\.[^.]+$/, '') + '.jpg';
-                        resolve(new File([blob], nome, { type: 'image/jpeg', lastModified: Date.now() }));
+                        // lastModified ORIGINAL preservado (Vaga 2): é o carimbo de captura.
+                        resolve(new File([blob], nome, { type: 'image/jpeg', lastModified: ficheiro.lastModified }));
                     }, 'image/jpeg', this.QUALIDADE);
                 };
 
