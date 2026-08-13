@@ -72,6 +72,33 @@ class RelatorioAutosaveTest extends TestCase
         $this->assertSame(EstadoRelatorio::Finalizado, $relatorio->fresh()->estado);
     }
 
+    // 18.ª revisão de segurança: os identificadores relatorioId/intervencaoId são #[Locked]
+    // (definidos só no servidor). Uma tentativa de os forjar via payload é RECUSADA pelo
+    // Livewire — sem isto, pôr relatorioId=null + intervencaoId=<enviado> saltava o guard e
+    // despromovia um enviado a rascunho sem auditoria.
+    public function test_identificadores_sao_locked_contra_forja(): void
+    {
+        [$tecnico, $equip] = $this->cenario();
+
+        // Um relatório ENVIADO de outra intervenção (o alvo do ataque).
+        $outro = Equipamento::create(['local_id' => $equip->local_id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'ALVO-1']);
+        $intervencaoAlvo = \App\Models\Intervencao::create(['equipamento_id' => $outro->id, 'tipo' => 'corretiva', 'estado' => 'concluida']);
+        $relatorioAlvo = Relatorio::create(['intervencao_id' => $intervencaoAlvo->id, 'numero' => '2026/9001', 'data' => now(), 'estado' => EstadoRelatorio::Enviado]);
+
+        $comp = Livewire::actingAs($tecnico)->test(Novo::class)->set('equipamento_id', $equip->id);
+
+        // Forjar o intervencaoId (prop #[Locked]) rebenta — o Livewire recusa a atualização.
+        try {
+            $comp->set('intervencaoId', $intervencaoAlvo->id);
+            $this->fail('Esperava que #[Locked] recusasse a alteração de intervencaoId.');
+        } catch (\Exception $e) {
+            // esperado
+        }
+
+        // O enviado alvo continua ENVIADO — não foi despromovido.
+        $this->assertSame(EstadoRelatorio::Enviado, $relatorioAlvo->fresh()->estado);
+    }
+
     public function test_autosave_com_validacao_a_falhar_fica_em_silencio(): void
     {
         [$tecnico] = $this->cenario();

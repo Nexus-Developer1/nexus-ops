@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -42,12 +43,19 @@ class Novo extends Component
 
     use WithFileUploads;
 
-    // Edição/retomar (null = novo).
+    // Edição/retomar (null = novo). IDENTIFICADORES definidos só no mount/servidor — nunca
+    // pela UI. #[Locked]: sem isto, um payload forjado podia trocar o intervencaoId a meio da
+    // sessão e redirecionar a gravação para o relatório de outra intervenção (o autosave, que
+    // não tem o diálogo de confirmação do guardar manual, chegava a despromover um ENVIADO a
+    // rascunho sem o registo de auditoria — 18.ª revisão de segurança).
+    #[Locked]
     public ?int $relatorioId = null;
+    #[Locked]
     public ?int $intervencaoId = null;
 
     // Estado do relatório quando o editor abriu ('rascunho'|'finalizado'|'enviado'|null=novo).
     // Só informativo (etiqueta no topo + aviso ao editar um enviado) — a gravação relê da BD.
+    #[Locked]
     public ?string $estadoInicial = null;
 
     // ---- Dados gerais ----
@@ -815,13 +823,19 @@ class Novo extends Component
             return; // formulário ainda vazio — nada que valha a pena gravar
         }
 
-        // Relido da BD (não confia na prop): finalizado/enviado (ou entretanto apagado)
-        // ficam intocados pelo autosave.
+        // Relido da BD (não confia nas props): finalizado/enviado (ou entretanto apagado)
+        // ficam intocados pelo autosave. Testa-se pelo relatório E pela intervenção (a
+        // gravação escreve pela intervencaoId) — defesa em profundidade além do #[Locked]:
+        // o autosave, sem o diálogo do guardar manual, nunca despromove um não-rascunho.
+        $estado = null;
         if ($this->relatorioId !== null) {
-            $estado = Relatorio::whereKey($this->relatorioId)->value('estado');
-            if ($estado !== EstadoRelatorio::Rascunho->value) {
-                return;
-            }
+            $estado ??= Relatorio::whereKey($this->relatorioId)->value('estado');
+        }
+        if ($this->intervencaoId !== null) {
+            $estado ??= Relatorio::where('intervencao_id', $this->intervencaoId)->value('estado');
+        }
+        if ($estado !== null && $estado !== EstadoRelatorio::Rascunho->value) {
+            return;
         }
 
         $eraNovo = $this->relatorioId === null;
