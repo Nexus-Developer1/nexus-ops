@@ -102,6 +102,33 @@
                 </div>
             </section>
 
+            {{-- Trabalho faturável à parte (Vaga 2): visitas extra + intervenções sem contrato. --}}
+            @if ($visitasExtraTotal > 0 || $semContratoTotal > 0)
+                <section class="cartao mt-5 p-6">
+                    <h2 class="text-sm font-semibold text-texto-forte">Trabalho faturável à parte
+                        <span class="text-texto-fraco">({{ $visitasExtraTotal + $semContratoTotal }})</span>
+                    </h2>
+                    <p class="mt-1 text-xs text-texto-fraco">Visitas marcadas como "extra" e intervenções fora de contrato — o que há para faturar além das avenças.</p>
+                    <ul class="mt-4">
+                        @foreach ($visitasExtra as $v)
+                            <li class="flex items-center justify-between border-b border-borda py-2.5 last:border-0" wire:key="extra-v-{{ $v->id }}">
+                                <span class="text-sm text-texto-forte">{{ $v->inicio?->translatedFormat('d M Y') }} · {{ $v->titulo }}</span>
+                                <span class="etiqueta bg-aviso-100 text-aviso-500">Visita extra</span>
+                            </li>
+                        @endforeach
+                        @foreach ($semContrato as $i)
+                            <li class="flex items-center justify-between border-b border-borda py-2.5 last:border-0" wire:key="extra-i-{{ $i->id }}">
+                                <span class="text-sm text-texto-forte">
+                                    {{ $i->data_inicio?->translatedFormat('d M Y') ?? '—' }} · {{ $i->tipo->rotulo() }}
+                                    · {{ trim(($i->equipamento->fabricante ?? '') . ' ' . ($i->equipamento->modelo ?? '')) ?: ($i->equipamento->numero_serie ?? '—') }}
+                                </span>
+                                <span class="etiqueta bg-aviso-100 text-aviso-500">Sem contrato</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </section>
+            @endif
+
             {{-- Faturação (linhas do PHC ligadas por cliente_no = id_erp) --}}
             <section class="cartao mt-5 p-6">
                 <div class="flex items-center justify-between">

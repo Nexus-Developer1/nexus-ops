@@ -41,7 +41,19 @@ class Detalhe extends Component
         // Faturação — linhas do PHC ligadas por cliente_no = id_erp do cliente.
         $faturacao = LinhaFatura::where('cliente_no', $this->cliente->id_erp);
 
+        // Trabalho FATURÁVEL À PARTE (Vaga 2): visitas extra + intervenções sem contrato —
+        // "quanto trabalho extra fizemos ao cliente X?" não tinha resposta em ecrã nenhum.
+        $visitasExtra = \App\Models\EventoAgenda::where('cliente_id', $id)
+            ->where('cobertura', 'extra')
+            ->where('estado', '!=', 'cancelado');
+        $semContrato = \App\Models\Intervencao::whereNull('contrato_id')
+            ->whereHas('equipamento.local', fn ($q) => $q->where('cliente_id', $id));
+
         return view('livewire.clientes.detalhe', [
+            'visitasExtra' => (clone $visitasExtra)->orderByDesc('inicio')->limit(self::LIMITE)->get(),
+            'visitasExtraTotal' => (clone $visitasExtra)->count(),
+            'semContrato' => (clone $semContrato)->with('equipamento', 'relatorio')->orderByDesc('data_inicio')->limit(self::LIMITE)->get(),
+            'semContratoTotal' => (clone $semContrato)->count(),
             'contratos' => (clone $contratos)->with('modeloFaturacao')->orderByDesc('data_inicio')->limit(self::LIMITE)->get(),
             'contratosTotal' => (clone $contratos)->count(),
             'equipamentos' => (clone $equipamentos)->with('local')->orderByDesc('id')->limit(self::LIMITE)->get(),

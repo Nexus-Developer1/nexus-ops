@@ -91,6 +91,32 @@
                 </section>
             @endif
 
+            {{-- Visitas do contrato (Vaga 2): o saldo dizia "3 usadas" sem mostrar QUAIS —
+                 auditar/contestar o número obrigava a ir procurar na agenda à mão. --}}
+            @if ($visitas->isNotEmpty())
+                <section class="cartao mt-8">
+                    <div class="flex items-center justify-between px-6 py-5">
+                        <h2 class="text-lg font-semibold text-texto-forte">Visitas do contrato</h2>
+                        <span class="text-sm text-texto-fraco">{{ $visitas->count() }}</span>
+                    </div>
+                    <ul class="border-t border-borda">
+                        @foreach ($visitas as $v)
+                            <li class="flex flex-wrap items-center justify-between gap-2 border-b border-borda px-6 py-3.5 last:border-0" wire:key="visita-{{ $v->id }}">
+                                <div class="min-w-0">
+                                    <div class="text-sm font-medium text-texto-forte">{{ $v->inicio?->translatedFormat('d M Y H:i') ?? '—' }} · {{ $v->titulo }}</div>
+                                    <div class="text-xs text-texto-medio">{{ $v->tecnico->nome ?? 'Sem técnico' }} · {{ $v->estado->rotulo() }}</div>
+                                </div>
+                                @if ($v->cobertura === 'incluida')
+                                    <span class="etiqueta bg-verde-50 text-verde-700">Incluída</span>
+                                @elseif ($v->cobertura === 'extra')
+                                    <span class="etiqueta bg-aviso-100 text-aviso-500">Extra (faturável)</span>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                </section>
+            @endif
+
             {{-- Equipamentos cobertos --}}
             <section class="cartao mt-8">
                 <div class="flex items-center justify-between px-6 py-5">
