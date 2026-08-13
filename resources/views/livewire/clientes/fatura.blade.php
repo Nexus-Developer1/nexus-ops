@@ -13,12 +13,7 @@
                 $totalSeries = $linhas->sum(fn ($l) => filled($l->series) ? substr_count($l->series, ',') + 1 : 0);
             @endphp
 
-            <h1 class="flex flex-wrap items-center gap-3 text-3xl font-semibold tracking-tight text-texto-forte">
-                {{ trim($linha->nmdoc . ' ' . $linha->fno) ?: 'Fatura' }}
-                @if ($linha->anulada)
-                    <span class="etiqueta bg-perigo-100 text-perigo-600">Anulada no PHC</span>
-                @endif
-            </h1>
+            <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ trim($linha->nmdoc . ' ' . $linha->fno) ?: 'Fatura' }}</h1>
             <p class="mt-2 text-sm text-texto-medio">{{ $cliente->nome }} · {{ $linhas->count() }} {{ \Illuminate\Support\Str::plural('artigo', $linhas->count()) }} · {{ $totalSeries }} {{ \Illuminate\Support\Str::plural('série', $totalSeries) }}</p>
 
             {{-- Cabeçalho do documento --}}
@@ -41,11 +36,6 @@
                             <th class="px-6 py-3.5 font-semibold">Referência</th>
                             <th class="px-6 py-3.5 font-semibold">Série(s)</th>
                             <th class="px-6 py-3.5 font-semibold text-right">Qtd</th>
-                            @if ($ehAdmin)
-                                <th class="px-6 py-3.5 font-semibold text-right">Unit.</th>
-                                <th class="px-6 py-3.5 font-semibold text-right">Desc.</th>
-                                <th class="px-6 py-3.5 font-semibold text-right">Total (s/ IVA)</th>
-                            @endif
                         </tr>
                     </thead>
                     <tbody>
@@ -65,28 +55,11 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 text-right text-texto-medio whitespace-nowrap">{{ $l->qtt !== null ? rtrim(rtrim((string) $l->qtt, '0'), '.') : '—' }}</td>
-                                @if ($ehAdmin)
-                                    <td class="px-6 py-4 text-right text-texto-medio whitespace-nowrap">{{ $l->preco_unitario !== null ? number_format((float) $l->preco_unitario, 2, ',', ' ') . ' €' : '—' }}</td>
-                                    <td class="px-6 py-4 text-right text-texto-medio whitespace-nowrap">{{ $l->desconto > 0 ? rtrim(rtrim(number_format((float) $l->desconto, 2, ',', ''), '0'), ',') . '%' : '—' }}</td>
-                                    <td class="px-6 py-4 text-right font-medium text-texto-forte whitespace-nowrap">{{ $l->total_linha !== null ? number_format((float) $l->total_linha, 2, ',', ' ') . ' €' : '—' }}</td>
-                                @endif
                             </tr>
                         @endforeach
                     </tbody>
                 </table></div>
-
-                {{-- Totais do DOCUMENTO (do PHC, não somados aqui) — SÓ ADMIN. --}}
-                @if ($ehAdmin && ($linha->total_documento !== null || $linha->total_documento_iva !== null))
-                    <div class="flex flex-wrap justify-end gap-x-10 gap-y-2 border-t border-borda bg-fundo px-6 py-4 text-sm">
-                        <div class="text-texto-medio">Total s/ IVA <span class="ml-2 font-semibold text-texto-forte">{{ $linha->total_documento !== null ? number_format((float) $linha->total_documento, 2, ',', ' ') . ' €' : '—' }}</span></div>
-                        <div class="text-texto-medio">Total c/ IVA <span class="ml-2 font-semibold text-texto-forte">{{ $linha->total_documento_iva !== null ? number_format((float) $linha->total_documento_iva, 2, ',', ' ') . ' €' : '—' }}</span></div>
-                    </div>
-                @endif
             </div>
-
-            @if ($ehAdmin)
-                <p class="mt-3 text-xs text-texto-fraco">Nota: o PHC só nos dá as linhas com nº de série — serviços (mão de obra, deslocações) contam para o total do documento mas não aparecem aqui.</p>
-            @endif
 
         </div>
     </main>

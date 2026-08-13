@@ -14,12 +14,6 @@ namespace App\Services\Erp;
 //   fi.design  → design    (descrição da linha)
 //   fi.series  → series    (nº(s) de série — chave de cruzamento com equipamentos)
 //   fi.qtt     → qtt       (quantidade)
-//   fi.epv       → precoUnitario     (preço unitário, sem IVA)
-//   fi.desconto  → desconto          (percentagem)
-//   fi.etiliquido→ totalLinha        (total líquido da linha, sem IVA, em euros)
-//   ft.etotal    → totalDocumento    (via ftstamp; total do documento SEM IVA)
-//   ft.etotal+ettiva → totalDocumentoIva (via ftstamp; total COM IVA — soma calculada)
-//   ft.anulado   → anulada           (via ftstamp; documento anulado no PHC)
 final readonly class LinhaFaturaErp
 {
     public function __construct(
@@ -32,11 +26,5 @@ final readonly class LinhaFaturaErp
         public ?string $design = null,
         public ?string $series = null,
         public ?float $qtt = null,
-        public ?float $precoUnitario = null,
-        public ?float $desconto = null,
-        public ?float $totalLinha = null,
-        public ?float $totalDocumento = null,
-        public ?float $totalDocumentoIva = null,
-        public bool $anulada = false,
     ) {}
 }

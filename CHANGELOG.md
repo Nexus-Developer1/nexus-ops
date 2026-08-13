@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-08-13
+
+- 🧹 **Faturação: os valores das faturas SAEM outra vez (decisão da equipa)** — a funcionalidade de ontem (valores por linha + totais do documento, só admin) foi **cancelada antes de chegar a produzir dados**: o worker da fila nunca correu o código novo (as corridas de 12/08 19h e 13/08 08h mostram a assinatura do sync antigo — 0 atualizadas, ~191 mil saltadas — e 0 linhas com valores na BD). Revertido por completo ao estado anterior: query do driver, DTO, Fake, sync, modelo e as duas páginas da faturação do cliente voltam ao que eram; os 7 testes da vertical saem; migração nova **remove as colunas vazias** (o `down()` repõe-nas). O endurecimento da 18.ª revisão (identificadores `#[Locked]` no editor de relatórios) fica — não pertence a esta vertical. O separador Faturação volta a mostrar o que sempre mostrou: documentos, datas, artigos e séries. Requer migração + `queue:restart` (que de caminho também cura o worker velho detetado hoje). Sem build. 407 testes (405 + 2 de ambiente). `hash`
+
 ## 2026-08-12
 
 - 🧹 **Varredura de código morto (janela do dia: autosave, QR, filtros em sessão, valores da faturação)** — verificado tudo o que mudou hoje desde a última limpeza: **zero órfãos**. O swap `#[Url]` → `#[Session]` nos 5 componentes de listagem não deixou imports pendurados (nenhum mantém o `use ...\Url`; os componentes que ainda o importam — incluindo `Clientes\Faturacao`, sub-página por-cliente — usam-no de facto); o refactor do editor de relatórios (`persistir` → `gravarTransacao` + `depoisDeGravar`; `autoGravar`) tem todos os métodos chamados; os campos novos do `LinhaFaturaErp` são todos consumidos no sync e no Fake; o `GeradorQrEquipamento` tem os dois métodos usados (`svg` na ficha, `pngDataUri` na rota da etiqueta). Sem alterações de código — esta entrada é o registo da verificação. `bcdbcb9`

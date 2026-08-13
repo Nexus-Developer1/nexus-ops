@@ -148,13 +148,6 @@ class FakeErpDriver implements ErpSyncDriver
         $temSerie = ($i % 4) !== 3;
         $idx = mt_rand(0, count($refs) - 1);
 
-        // Valores determinísticos por índice: unitário/desconto/total da linha + totais do
-        // documento (sem/com IVA a 23%); 1 em cada 7 documentos anulado.
-        $qtt = (float) mt_rand(1, 5);
-        $precoUnitario = 100.0 + ($i % 10) * 25;
-        $desconto = ($i % 3 === 0) ? 5.0 : 0.0;
-        $totalLinha = round($qtt * $precoUnitario * (1 - $desconto / 100), 2);
-
         return new LinhaFaturaErp(
             idErp: sprintf('NV25%010d,%07d-%d', $i, mt_rand(1000000, 9999999), mt_rand(0, 9)), // fi.fistamp único por i
             clienteNo: (string) (1000 + ($i % 10)), // liga aos clientes fake (id_erp 1000..1009)
@@ -164,13 +157,7 @@ class FakeErpDriver implements ErpSyncDriver
             ref: $refs[$idx],
             design: $designs[$idx],
             series: $temSerie ? sprintf('MH%02dVNPW%07d', mt_rand(10, 30), mt_rand(1, 9999999)) : '',
-            qtt: $qtt,
-            precoUnitario: $precoUnitario,
-            desconto: $desconto,
-            totalLinha: $totalLinha,
-            totalDocumento: $totalLinha, // documentos fake de linha única
-            totalDocumentoIva: round($totalLinha * 1.23, 2),
-            anulada: ($i % 7) === 0,
+            qtt: (float) mt_rand(1, 5),
         );
     }
 

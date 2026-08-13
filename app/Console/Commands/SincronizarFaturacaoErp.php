@@ -83,14 +83,6 @@ class SincronizarFaturacaoErp extends Command
                     'design' => $linhaErp->design,
                     'series' => $linhaErp->series,
                     'qtt' => $linhaErp->qtt,
-                    // Valores (12/08) — ERP-owned, sempre alinhados com o PHC. Entram no
-                    // hash: a 1.ª corrida após a migração reprocessa as ~191k linhas (uma vez).
-                    'preco_unitario' => $linhaErp->precoUnitario,
-                    'desconto' => $linhaErp->desconto,
-                    'total_linha' => $linhaErp->totalLinha,
-                    'total_documento' => $linhaErp->totalDocumento,
-                    'total_documento_iva' => $linhaErp->totalDocumentoIva,
-                    'anulada' => $linhaErp->anulada,
                 ];
                 $hash = md5((string) json_encode($dados, JSON_INVALID_UTF8_SUBSTITUTE));
 
