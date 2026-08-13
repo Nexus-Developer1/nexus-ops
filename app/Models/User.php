@@ -42,6 +42,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'papel' => PapelUtilizador::class,
             'ativo' => 'boolean',
+            'password_alterada_em' => 'datetime', // invalidação de sessões antigas (Vaga 1)
         ];
     }
 

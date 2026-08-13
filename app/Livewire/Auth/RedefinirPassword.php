@@ -29,7 +29,7 @@ class RedefinirPassword extends Component
         $this->validate([
             'token' => ['required'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'confirmed', RegraPassword::min(8)],
+            'password' => ['required', 'confirmed', RegraPassword::defaults()],
         ]);
 
         $status = Password::reset(
@@ -44,10 +44,14 @@ class RedefinirPassword extends Component
                 // O cast 'password' => 'hashed' no modelo trata do hashing.
                 $user->forceFill([
                     'password' => $this->password,
+                    // Vaga 1: quem muda a password (ex.: suspeita de compromisso) expulsa as
+                    // sessões antigas — invalidação verificada no VerificaPapel a cada pedido.
+                    'password_alterada_em' => now(),
                     'remember_token' => Str::random(60),
                 ])->save();
 
                 event(new PasswordReset($user));
+                \App\Services\Auditor::registar('password_redefinida', $user, ['email' => $user->email]);
             },
         );
 

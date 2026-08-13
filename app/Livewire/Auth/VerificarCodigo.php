@@ -56,6 +56,9 @@ class VerificarCodigo extends Component
 
         session()->forget(['mfa.user_id', 'mfa.remember', 'mfa.email']);
         session()->regenerate();
+        // Marca o instante desta autenticação: sessões com marca ANTERIOR à última mudança
+        // de password do utilizador são invalidadas pelo VerificaPapel (Vaga 1).
+        session(['autenticado_em' => now()->timestamp]);
 
         // Cada papel aterra na sua área (CLAUDE.md §7).
         return redirect()->intended(route($user->rotaInicial()));

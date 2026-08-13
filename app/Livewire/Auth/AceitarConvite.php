@@ -30,7 +30,7 @@ class AceitarConvite extends Component
         $this->validate([
             'token' => ['required'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'confirmed', RegraPassword::min(8)],
+            'password' => ['required', 'confirmed', RegraPassword::defaults()],
         ]);
 
         $status = Password::broker('invites')->reset(
@@ -46,9 +46,12 @@ class AceitarConvite extends Component
                 $user->forceFill([
                     'password' => $this->password,
                     'remember_token' => Str::random(60),
+                    // Vaga 1: sessões abertas antes desta mudança são invalidadas (VerificaPapel).
+                    'password_alterada_em' => now(),
                 ])->save();
 
                 event(new PasswordReset($user));
+                \App\Services\Auditor::registar('convite_aceite', $user, ['email' => $user->email]);
             },
         );
 

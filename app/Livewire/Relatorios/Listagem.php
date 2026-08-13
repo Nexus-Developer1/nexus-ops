@@ -90,6 +90,7 @@ class Listagem extends Component
             }
         });
 
+        \App\Services\Auditor::registar('relatorio_eliminado', $relatorio, ['numero' => $rotulo]);
         session()->flash('sucesso', "Relatório {$rotulo} eliminado.");
     }
 

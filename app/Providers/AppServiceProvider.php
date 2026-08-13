@@ -50,6 +50,13 @@ class AppServiceProvider extends ServiceProvider
         // o resto (ver grupos de rotas). Usada no componente (abort_unless) e para esconder o link.
         Gate::define('gerir-utilizadores', fn (User $utilizador) => $utilizador->ehAdmin());
 
+        // Política de passwords (Vaga 1): min 10 + letras + números; em produção verifica
+        // ainda contra fugas conhecidas (HIBP, k-anonymity — só sai um prefixo do hash).
+        // Fora de produção fica sem a chamada de rede (testes determinísticos e offline).
+        \Illuminate\Validation\Rules\Password::defaults(fn () => app()->isProduction()
+            ? \Illuminate\Validation\Rules\Password::min(10)->letters()->numbers()->uncompromised()
+            : \Illuminate\Validation\Rules\Password::min(10)->letters()->numbers());
+
         // Transporte de email 'graph' (Microsoft Graph, app-only). Lazy: o closure só corre
         // quando o mailer 'graph' é resolvido. Credenciais em config/services.php (via env).
         Mail::extend('graph', function () {

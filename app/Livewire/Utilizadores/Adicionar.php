@@ -54,6 +54,7 @@ class Adicionar extends Component
         $token = Password::broker('invites')->createToken($user);
         $user->notify(new ConviteDefinirPassword($token));
 
+        \App\Services\Auditor::registar('utilizador_convidado', $user, ['email' => $user->email, 'nome' => $user->nome]);
         session()->flash('sucesso', "Convite enviado para {$user->email}.");
 
         return redirect()->route('utilizadores.adicionar');
@@ -77,6 +78,7 @@ class Adicionar extends Component
         $token = Password::broker('invites')->createToken($user);
         $user->notify(new ConviteDefinirPassword($token));
 
+        \App\Services\Auditor::registar('convite_reenviado', $user, ['email' => $user->email]);
         session()->flash('sucesso', "Convite reenviado para {$user->email}.");
     }
 
@@ -95,8 +97,12 @@ class Adicionar extends Component
         }
 
         $nome = $user->nome;
+        $email = $user->email;
         $user->delete();
 
+        // Auditoria ANTES do flash (Vaga 1): a eliminação é permanente e era silenciosa —
+        // o registo guarda o snapshot (o user_id do alvo já não existe, fica no detalhe).
+        \App\Services\Auditor::registar('utilizador_eliminado', detalhe: ['nome' => $nome, 'email' => $email]);
         session()->flash('sucesso', "Técnico {$nome} eliminado.");
     }
 
