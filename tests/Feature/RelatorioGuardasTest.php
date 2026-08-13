@@ -44,6 +44,7 @@ class RelatorioGuardasTest extends TestCase
         // histórico de envio (enviado_em/enviado_para) mantêm-se.
         Livewire::actingAs($this->tecnico)->test(Novo::class, ['relatorio' => $rel])
             ->set('tecnicoIds', [$this->tecnico->id])
+            ->set('finalizarComFichasVazias', true) // confirma o aviso de fichas vazias (Vaga 1)
             ->call('finalizar')
             ->assertHasNoErrors();
 

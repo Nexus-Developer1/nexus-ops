@@ -56,6 +56,7 @@ class RascunhoPrevencaoTest extends TestCase
             ->set('equipamento_id', $equip->id)
             ->set('tipo', 'corretiva')
             ->set('data', now()->toDateString())
+            ->set('finalizarComFichasVazias', true) // confirma o aviso de fichas vazias (Vaga 1)
             ->call('finalizar')
             ->assertHasErrors('tecnicoIds')
             ->assertDispatched('validacao-falhou')

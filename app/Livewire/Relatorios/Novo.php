@@ -770,9 +770,56 @@ class Novo extends Component
         return $this->persistir($gerador, $sincronizador, false);
     }
 
+    // Confirmação do aviso de fichas vazias (definida pelo diálogo do editor antes de
+    // reinvocar o finalizar — nunca pela UI diretamente).
+    public bool $finalizarComFichasVazias = false;
+
     public function finalizar(GeradorRelatorio $gerador, SincronizadorAgenda $sincronizador)
     {
+        // As fichas vazias são descartadas EM SILÊNCIO na gravação (regra correta para
+        // rascunhos) — mas ao FINALIZAR, silêncio esconde esquecimentos: uma preventiva
+        // podia sair sem uma única medição. Pede confirmação explícita com os nomes.
+        $vazias = $this->equipamentosComFichaVazia();
+        if ($vazias !== [] && ! $this->finalizarComFichasVazias) {
+            $nomes = Equipamento::whereIn('id', $vazias)->orderBy('numero_serie')
+                ->get()->map(fn ($e) => $e->numero_serie ?: ('#' . $e->id))->all();
+            $this->dispatch('confirmar-fichas-vazias', equipamentos: $nomes);
+
+            return null;
+        }
+        $this->finalizarComFichasVazias = false;
+
         return $this->persistir($gerador, $sincronizador, true);
+    }
+
+    // Equipamentos cobertos cuja ficha vai ser descartada por não ter medições nem
+    // assinaturas (nova ou já gravada) — espelha o critério do persistirFichas.
+    private function equipamentosComFichaVazia(): array
+    {
+        $ids = array_values(array_unique(array_filter(
+            array_merge([$this->equipamento_id], $this->equipamentosCobertos)
+        )));
+
+        $vazios = [];
+        foreach ($ids as $equipId) {
+            $dados = $this->fichas[$equipId] ?? [];
+            $dados = is_array($dados) ? $dados : [];
+            $attrs = FichaMedicao::atributosDeFormulario($dados);
+
+            $assinaturaNova = collect(['assinatura_cliente', 'assinatura_tecnico'])
+                ->contains(fn ($c) => is_string($dados[$c] ?? '') && ($dados[$c] ?? '') !== '' && ($dados[$c] ?? '') !== 'limpar');
+            $assinaturaGravada = $this->intervencaoId && FichaMedicao::query()
+                ->where('intervencao_id', $this->intervencaoId)
+                ->where('equipamento_id', $equipId)
+                ->where(fn ($q) => $q->whereNotNull('assinatura_cliente_key')->orWhereNotNull('assinatura_tecnico_key'))
+                ->exists();
+
+            if (! $assinaturaNova && ! $assinaturaGravada && ! FichaMedicao::temConteudo($attrs)) {
+                $vazios[] = $equipId;
+            }
+        }
+
+        return $vazios;
     }
 
     private function persistir(GeradorRelatorio $gerador, SincronizadorAgenda $sincronizador, bool $finalizar)
@@ -972,9 +1019,13 @@ class Novo extends Component
     {
         if ($finalizar) {
             GerarRelatorioPdf::dispatch($relatorio);
-            session()->flash('sucesso', "Relatório {$relatorio->numero} finalizado. O PDF está a ser gerado.");
+            // Vai direto ao ENVIO (Vaga 1): o momento natural de enviar é logo a seguir a
+            // finalizar, à frente do cliente — antes, o técnico era atirado para a listagem
+            // e tinha de reencontrar o relatório (3-4 toques). O "Cancelar" do envio volta
+            // à listagem para quem não quer enviar já.
+            session()->flash('sucesso', "Relatório {$relatorio->numero} finalizado. O PDF está a ser gerado — pode enviá-lo já ao cliente.");
 
-            return redirect()->route('relatorios');
+            return redirect()->route('relatorios.enviar', $relatorio);
         }
 
         // Guardar rascunho é um save de PREVENÇÃO: fica-se na página, a meio do trabalho.

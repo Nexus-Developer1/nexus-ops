@@ -162,6 +162,7 @@ class AgendaCorrecoesTest extends TestCase
         Livewire::actingAs($this->admin())->test(Novo::class, ['relatorio' => $relatorio])
             ->set('data', now()->addWeek()->toDateString())
             ->set('tecnicoIds', [$tec->id]) // finalizar exige quem fez a intervenção
+            ->set('finalizarComFichasVazias', true) // confirma o aviso de fichas vazias (Vaga 1)
             ->call('finalizar')
             ->assertHasNoErrors();
 

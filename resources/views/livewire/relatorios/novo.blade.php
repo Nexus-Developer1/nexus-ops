@@ -6,6 +6,7 @@
      de um relatório novo, o URL troca para a edição sem recarregar (F5 retoma o rascunho). --}}
 <div x-data="{ tab: 'gerais', suja: false }"
     x-on:validacao-falhou.window="tab = 'gerais'; window.scrollTo({ top: 0, behavior: 'smooth' })"
+    x-on:confirmar-fichas-vazias.window="if (confirm('Sem medições nem assinaturas em: ' + $event.detail.equipamentos.join(', ') + '.\n\nEssas fichas não vão constar do relatório. Finalizar mesmo assim?')) { $wire.set('finalizarComFichasVazias', true, false); $wire.finalizar() }"
     x-on:input="suja = true" x-on:change="suja = true"
     x-on:auto-gravado.window="suja = false; if ($event.detail.url) history.replaceState(null, '', $event.detail.url)"
     x-on:rascunho-guardado.window="suja = false"

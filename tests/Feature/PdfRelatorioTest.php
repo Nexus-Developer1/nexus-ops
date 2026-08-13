@@ -219,6 +219,7 @@ class PdfRelatorioTest extends TestCase
             ->set('hora_inicio', '22:00')
             ->set('hora_fim', '06:00') // fim "menor" que o início é válido porque termina noutro dia
             ->set('tecnicoIds', [$tec->id])
+            ->set('finalizarComFichasVazias', true) // confirma o aviso de fichas vazias (Vaga 1)
             ->call('finalizar')
             ->assertHasNoErrors();
 

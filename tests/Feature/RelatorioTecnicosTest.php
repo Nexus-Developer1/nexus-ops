@@ -110,6 +110,7 @@ class RelatorioTecnicosTest extends TestCase
         Livewire::actingAs($t1)->test(Novo::class)
             ->set('equipamento_id', $equip->id)
             ->set('data', now()->toDateString())
+            ->set('finalizarComFichasVazias', true) // confirma o aviso de fichas vazias (Vaga 1)
             ->call('finalizar')
             ->assertHasErrors('tecnicoIds');
 

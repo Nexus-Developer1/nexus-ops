@@ -98,6 +98,10 @@ document.addEventListener('alpine:init', () => {
             const ajustar = () => {
                 const r = pad.getBoundingClientRect();
                 if (!r.width) return;
+                // Redimensionar o canvas LIMPA-O: rodar o iPad a meio apagava o traço visível
+                // (a assinatura "desaparecia" sem explicação). Preserva-se o bitmap e
+                // redesenha-se à nova dimensão.
+                const copia = this.temTraco ? pad.toDataURL('image/png') : null;
                 pad.width = r.width * ratio;
                 pad.height = r.height * ratio;
                 this.ctx = pad.getContext('2d');
@@ -106,6 +110,11 @@ document.addEventListener('alpine:init', () => {
                 this.ctx.lineCap = 'round';
                 this.ctx.lineJoin = 'round';
                 this.ctx.strokeStyle = '#111827';
+                if (copia) {
+                    const img = new Image();
+                    img.onload = () => this.ctx.drawImage(img, 0, 0, r.width, r.height);
+                    img.src = copia;
+                }
             };
             ajustar();
             window.addEventListener('resize', ajustar);

@@ -51,6 +51,7 @@ class CamposObrigatoriosTest extends TestCase
             ->assertSee('obrigatórios para')
             ->set('equipamento_id', $equip->id)
             ->set('data', '')
+            ->set('finalizarComFichasVazias', true) // confirma o aviso de fichas vazias (Vaga 1)
             ->call('finalizar')
             ->assertHasErrors(['data', 'tecnicoIds']);
 

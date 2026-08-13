@@ -127,6 +127,7 @@ class DashboardTest extends TestCase
             ->test(Novo::class, ['relatorio' => $relatorio])
             ->set('data', now()->toDateString())
             ->set('tecnicoIds', [$tec->id]) // finalizar exige quem fez a intervenção
+            ->set('finalizarComFichasVazias', true) // confirma o aviso de fichas vazias (Vaga 1)
             ->call('finalizar')
             ->assertHasNoErrors();
 

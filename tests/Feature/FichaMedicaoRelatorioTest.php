@@ -315,6 +315,7 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->set('hora_fim', '11:00')
             ->set("fichas.{$e1->id}.ve_ln_l1", '230.00')
             ->set('tecnicoIds', [$tec->id]) // finalizar exige quem fez a intervenção
+            ->set('finalizarComFichasVazias', true) // confirma o aviso de fichas vazias (Vaga 1)
             ->call('finalizar')
             ->assertHasNoErrors();
 
@@ -392,6 +393,7 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->set("fichas.{$e1->id}.ve_ln_l1", '230.00')
             ->set('fotos.' . $e1->id, [\Illuminate\Http\UploadedFile::fake()->image('up.png', 800, 600)])
             ->set('tecnicoIds', [$tec->id]) // finalizar exige quem fez a intervenção
+            ->set('finalizarComFichasVazias', true) // confirma o aviso de fichas vazias (Vaga 1)
             ->call('finalizar')
             ->assertHasNoErrors();
 
