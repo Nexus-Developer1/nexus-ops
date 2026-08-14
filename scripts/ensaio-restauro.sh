@@ -97,16 +97,45 @@ conta fichas_medicao 0
 conta dossiers 1000
 conta auditoria 0
 
-# 3) O tar do storage abre e tem os anexos/assinaturas?
+# 3) O tar do storage abre e tem os ficheiros que a BD diz existirem?
+# O teste forte é CRUZAR com a base de dados restaurada: se a tabela `anexos` diz que há N
+# ficheiros, o arquivo tem de os ter. (Os caminhos dependem do disco configurado — em
+# Laravel 11+ o disco 'local' é storage/app/private — por isso procura-se pelo sufixo, não
+# por um caminho fixo: um grep pregado a 'app/anexos/' dava falso alarme.)
 echo
-echo "3. Verificação do storage (anexos e assinaturas):"
+echo "3. Verificação do storage (anexos, assinaturas e PDFs):"
 if tar -tzf "${PASTA}/storage-app.tar.gz" > "${TMP}/lista.txt" 2>/dev/null; then
     total=$(wc -l < "${TMP}/lista.txt")
-    anexos=$(grep -c 'app/anexos/' "${TMP}/lista.txt" || true)
-    assin=$(grep -c 'app/assinaturas/' "${TMP}/lista.txt" || true)
     ok "arquivo íntegro (${total} entradas)"
-    if [ "${anexos}" -gt 0 ]; then ok "anexos: ${anexos} ficheiros"; else falha "sem anexos no arquivo"; fi
-    if [ "${assin}" -gt 0 ]; then ok "assinaturas: ${assin} ficheiros"; else echo "  [ -- ]  sem assinaturas (normal se ainda não houver fichas assinadas)"; fi
+
+    ficheiros=$(grep -vc '/$' "${TMP}/lista.txt" || true)   # só ficheiros (sem diretórios)
+    anexos=$(grep -c 'anexos/' "${TMP}/lista.txt" || true)
+    assin=$(grep -c 'assinaturas/' "${TMP}/lista.txt" || true)
+    pdfs=$(grep -c '\.pdf$' "${TMP}/lista.txt" || true)
+
+    # Quantos anexos/assinaturas a BD restaurada diz que existem?
+    nBd=$(${PG} psql -d "${BD_ENSAIO}" -tAc 'select count(*) from anexos' 2>/dev/null | tr -d ' ')
+    nBd=${nBd:-0}
+    nAssinBd=$(${PG} psql -d "${BD_ENSAIO}" -tAc "select count(*) from fichas_medicao where assinatura_cliente_key is not null or assinatura_tecnico_key is not null" 2>/dev/null | tr -d ' ')
+    nAssinBd=${nAssinBd:-0}
+
+    if [ "${nBd}" -eq 0 ]; then
+        echo "  [ -- ]  a BD não regista anexos — nada a verificar (${ficheiros} ficheiros no arquivo)"
+    elif [ "${anexos}" -ge "${nBd}" ]; then
+        ok "anexos: ${anexos} ficheiros no arquivo para ${nBd} registos na BD"
+    else
+        falha "anexos: a BD tem ${nBd} registos mas o arquivo só traz ${anexos} ficheiros"
+    fi
+
+    if [ "${nAssinBd}" -eq 0 ]; then
+        echo "  [ -- ]  sem fichas assinadas na BD — nada a verificar"
+    elif [ "${assin}" -gt 0 ]; then
+        ok "assinaturas: ${assin} ficheiros (${nAssinBd} fichas assinadas na BD)"
+    else
+        falha "assinaturas: a BD tem ${nAssinBd} fichas assinadas mas o arquivo não traz nenhuma"
+    fi
+
+    [ "${pdfs}" -gt 0 ] && ok "PDFs de relatórios: ${pdfs}" || echo "  [ -- ]  sem PDFs no arquivo"
 else
     falha "o arquivo do storage não abre (corrompido?)"
 fi
