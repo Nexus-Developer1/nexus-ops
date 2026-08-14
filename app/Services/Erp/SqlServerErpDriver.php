@@ -173,18 +173,37 @@ class SqlServerErpDriver implements ErpSyncDriver
                 WHERE bostamp = ?
                 ORDER BY lordem';
 
+        // Trim + normaliza vazios a null (colunas char do PHC vêm com padding de espaços;
+        // '   ' depois do trim é vazio — tratado como ausente, não como texto).
+        $limpar = fn ($v) => $v !== null && trim((string) $v) !== '' ? trim((string) $v) : null;
+
         foreach (DB::connection('erp')->select($sql, [$bostamp]) as $r) {
+            $ref = $limpar($r->ref);
+            $descricao = $limpar($r->design);
+            $qtt = $r->qtt !== null ? (float) $r->qtt : null;
+            $unit = $r->edebito !== null ? (float) $r->edebito : null;
+            $total = $r->ettdeb !== null ? (float) $r->ettdeb : null;
+
+            // O PHC guarda no dossiê linhas em BRANCO (separadores) além das de artigo/texto.
+            // Salta as que não têm conteúdo nenhum — referência, descrição, quantidade e
+            // valor todos vazios — para não sujarem a ficha. (As de comentário, que têm texto
+            // na descrição, mantêm-se.)
+            if ($ref === null && $descricao === null && ($qtt === null || $qtt == 0.0)
+                && ($unit === null || $unit == 0.0) && ($total === null || $total == 0.0)) {
+                continue;
+            }
+
             yield new LinhaDossierErp(
-                ref: $r->ref !== null ? trim((string) $r->ref) : null,
-                pn: $r->usr6 !== null ? trim((string) $r->usr6) : null,
-                marca: $r->usr1 !== null ? trim((string) $r->usr1) : null,
-                descricao: $r->design !== null ? trim((string) $r->design) : null,
+                ref: $ref,
+                pn: $limpar($r->usr6),
+                marca: $limpar($r->usr1),
+                descricao: $descricao,
                 faltas: $r->binum1 !== null ? (float) $r->binum1 : null,
-                qtt: $r->qtt !== null ? (float) $r->qtt : null,
+                qtt: $qtt,
                 movimentado: $r->qtt2 !== null ? (float) $r->qtt2 : null,
-                series: $r->series !== null ? trim((string) $r->series) : null,
-                valorUnitario: $r->edebito !== null ? (float) $r->edebito : null,
-                total: $r->ettdeb !== null ? (float) $r->ettdeb : null,
+                series: $limpar($r->series),
+                valorUnitario: $unit,
+                total: $total,
             );
         }
     }
