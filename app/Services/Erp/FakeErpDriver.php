@@ -86,6 +86,37 @@ class FakeErpDriver implements ErpSyncDriver
         }
     }
 
+    public function obterLinhasDossier(string $bostamp): iterable
+    {
+        // Linhas determinísticas a partir do bostamp — para a ficha do dossiê funcionar em
+        // dev/testes sem ligação ao PHC. Nº de linhas e valores estáveis por dossiê.
+        mt_srand(self::SEMENTE + crc32($bostamp));
+        $catalogo = [
+            ['UPS-RIELLO-NPW', 'PN-8842', 'RIELLO', 'UPS Riello NPW 2000VA'],
+            ['BAT-12V-9AH', 'PN-1290', 'YUASA', 'Bateria 12V 9Ah'],
+            ['CARD-SNMP', 'PN-5510', 'RIELLO', 'Placa de comunicação SNMP'],
+        ];
+        $n = 1 + (crc32($bostamp) % 3);
+
+        for ($k = 0; $k < $n; $k++) {
+            $a = $catalogo[$k % count($catalogo)];
+            $qtt = (float) mt_rand(1, 6);
+            $unit = round(mt_rand(2000, 90000) / 100, 2);
+            yield new LinhaDossierErp(
+                ref: $a[0].'-'.$k,
+                pn: $a[1],
+                marca: $a[2],
+                descricao: $a[3],
+                faltas: (float) mt_rand(0, 2),
+                qtt: $qtt,
+                movimentado: (float) mt_rand(0, (int) $qtt),
+                series: $k === 0 ? sprintf('MH%02dVNPW%07d', mt_rand(10, 30), mt_rand(1, 9999999)) : null,
+                valorUnitario: $unit,
+                total: round($qtt * $unit, 2),
+            );
+        }
+    }
+
     private function gerarDossier(int $i): DossierErp
     {
         // Determinístico por índice — o dossiê i é sempre igual (mesmo bostamp), tornando o

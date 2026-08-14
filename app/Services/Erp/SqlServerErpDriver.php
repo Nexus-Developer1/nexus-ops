@@ -163,6 +163,32 @@ class SqlServerErpDriver implements ErpSyncDriver
         }
     }
 
+    public function obterLinhasDossier(string $bostamp): iterable
+    {
+        // Linhas de UM dossiê (tabela bi), lidas AO VIVO por bostamp — não sincronizadas.
+        // O bostamp é PARAMETRIZADO (binding), nunca interpolado. Query leve (um só dossiê),
+        // ordenada pela ordem original das linhas (lordem).
+        $sql = 'SELECT ref, usr6, usr1, design, binum1, qtt, qtt2, series, edebito, ettdeb
+                FROM bi
+                WHERE bostamp = ?
+                ORDER BY lordem';
+
+        foreach (DB::connection('erp')->select($sql, [$bostamp]) as $r) {
+            yield new LinhaDossierErp(
+                ref: $r->ref !== null ? trim((string) $r->ref) : null,
+                pn: $r->usr6 !== null ? trim((string) $r->usr6) : null,
+                marca: $r->usr1 !== null ? trim((string) $r->usr1) : null,
+                descricao: $r->design !== null ? trim((string) $r->design) : null,
+                faltas: $r->binum1 !== null ? (float) $r->binum1 : null,
+                qtt: $r->qtt !== null ? (float) $r->qtt : null,
+                movimentado: $r->qtt2 !== null ? (float) $r->qtt2 : null,
+                series: $r->series !== null ? trim((string) $r->series) : null,
+                valorUnitario: $r->edebito !== null ? (float) $r->edebito : null,
+                total: $r->ettdeb !== null ? (float) $r->ettdeb : null,
+            );
+        }
+    }
+
     public function obterEquipamentos(?int $limite = null): iterable
     {
         // Lê os equipamentos da tabela ma do PHC pela ligação 'erp' (dblib/FreeTDS), a MESMA que

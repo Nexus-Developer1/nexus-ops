@@ -45,4 +45,13 @@ interface ErpSyncDriver
      * @return iterable<DossierErp>
      */
     public function obterDossiers(?int $limite = null): iterable;
+
+    /**
+     * Devolve as LINHAS de um dossiê (tabela bi), lidas AO VIVO por bostamp. Ao contrário
+     * dos cabeçalhos, as linhas não se sincronizam — buscam-se ao abrir o dossiê.
+     *
+     * @param  string  $bostamp  A chave do dossiê (dossiers.id_erp = bo.bostamp).
+     * @return iterable<LinhaDossierErp>
+     */
+    public function obterLinhasDossier(string $bostamp): iterable;
 }

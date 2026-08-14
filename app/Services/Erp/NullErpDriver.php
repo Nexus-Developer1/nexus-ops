@@ -30,4 +30,9 @@ class NullErpDriver implements ErpSyncDriver
     {
         return [];
     }
+
+    public function obterLinhasDossier(string $bostamp): iterable
+    {
+        return [];
+    }
 }

@@ -35,7 +35,8 @@
             {{-- MOBILE (< md): um cartão por dossiê. --}}
             <div class="mt-5 space-y-3 md:hidden" wire:loading.class="opacity-60">
                 @forelse ($dossiers as $d)
-                    <div class="cartao p-4" wire:key="dos-m-{{ $d->id }}">
+                    <div class="cartao cursor-pointer p-4" wire:key="dos-m-{{ $d->id }}"
+                        x-on:click="Livewire.navigate(@js(route('encomendas.ficha', $d)))">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <p class="truncate text-sm font-semibold text-texto-forte">{{ $d->nome ?: '—' }}</p>
@@ -69,7 +70,8 @@
                     </thead>
                     <tbody>
                         @forelse ($dossiers as $d)
-                            <tr class="border-b border-borda last:border-0 hover:bg-fundo" wire:key="dos-{{ $d->id }}">
+                            <tr class="cursor-pointer border-b border-borda last:border-0 hover:bg-fundo" wire:key="dos-{{ $d->id }}"
+                                x-on:click="Livewire.navigate(@js(route('encomendas.ficha', $d)))">
                                 <td class="whitespace-nowrap px-6 py-3.5 text-texto-medio">{{ $d->tipoRotulo() }}</td>
                                 <td class="whitespace-nowrap px-6 py-3.5 font-medium text-texto-forte">{{ $d->obrano }}/{{ $d->ano }}</td>
                                 <td class="px-6 py-3.5 text-texto-forte">{{ $d->nome ?: '—' }}</td>
