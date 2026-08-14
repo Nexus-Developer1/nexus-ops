@@ -101,6 +101,9 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
     Route::get('/contratos/{contrato}/editar', Editor::class)->name('contratos.editar');
     Route::get('/contratos/{contrato}', Ficha::class)->name('contratos.ficha');
 
+    // Encomendas (dossiês do PHC: propostas e encomendas) — só leitura.
+    Route::get('/encomendas', App\Livewire\Encomendas\Listagem::class)->name('encomendas');
+
     // Alertas proativos (renovações, baterias, visitas em atraso, SLA).
     Route::get('/alertas', Painel::class)->name('alertas');
     // Auditoria: o componente barra os técnicos (abort_unless ehAdmin em mount+render).
