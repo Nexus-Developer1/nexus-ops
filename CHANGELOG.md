@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-08-14
+
+- 🔒 **Revisão de segurança (19.ª) + endurecimento** — auditoria a todo o diff desde a 18.ª (reversão dos valores, auditoria+backups, Vaga 1 e Vaga 2 completas, Pint/CI): **sem falhas críticas ou altas**. Confirmado limpo: ecrã de auditoria admin-only em todos os pedidos e sem update/delete; `pdf_enviado_path` só escrito pela app (sem mass-assignment abusável) e portal a servir a cópia congelada; sanitização das fotos e do carimbo sólida; espelho offline sem privilégios; CI sem segredos; reversão dos valores sem restos. Fechado **1 médio + 3 baixos**: (1) **médio** — a invalidação de sessão à mudança de password (Vaga 1) só corria nos GET de página, **não nas ações Livewire** (`/livewire/update`): uma sessão roubada sobrevivia ao reset para tudo o que interessa (guardar, eliminar, enviar); extraída para o middleware **`SessaoValida`** no grupo `web` (cobre o endpoint do Livewire; 403 nas ações XHR, redirect nas páginas); (2) o `scripts/backup.sh` (root, via cron) escrevia o dump e o tar **world-readable** — `umask 077` + diretórios `install -m 700` (o dump tem hashes de password e todos os dados); (3) o relógio do SLA (`pedido_em`) podia mover-se/apagar-se sem rasto — passa a ficar **auditado** (de/para) e validado `before_or_equal:now`; (4) o espelho offline do editor guardava as **assinaturas** (data URIs) no localStorage — excluídas do espelho e o espelho limpa-se no logout. +4 testes (438 no total). `hash`
+
 ## 2026-08-13
 
 - 🛠️ **CI verde: as 2 falhas eternas de fixture passam a skipped** — a primeira corrida da CI provou que as 2 falhas do FichaMedicaoRelatorioTest **não eram do Windows local**: falham igual no runner Linux — é a fixture (uploads temporários do Livewire vs `Storage::fake`), não a app (o fluxo real de fotos está em produção e coberto pelos restantes testes). Marcadas `skipped` com razão explícita e dívida de investigação anotada — a suite passa a **exit 0** (432 verdes + 2 skipped) e o vermelho da CI volta a significar "problema real". `373bc9a`

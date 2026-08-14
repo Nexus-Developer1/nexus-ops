@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CabecalhosSeguranca;
+use App\Http\Middleware\SessaoValida;
 use App\Http\Middleware\VerificaPapel;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -20,6 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // Cabeçalhos de segurança em todas as respostas web (CSP, nosniff, X-Frame, Referrer).
         // Versionado e testado — antes vivia só na config do Apache. Ver CabecalhosSeguranca.
         $middleware->web(append: CabecalhosSeguranca::class);
+
+        // Invalidação de sessão à mudança de password — no grupo `web` para cobrir também as
+        // ações Livewire (/livewire/update), não só os GET de página (19.ª revisão).
+        $middleware->web(append: SessaoValida::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

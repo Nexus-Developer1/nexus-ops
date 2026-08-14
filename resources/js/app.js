@@ -85,13 +85,21 @@ document.addEventListener('alpine:init', () => {
             } catch (e) { /* localStorage indisponível — segue sem espelho */ }
         },
 
+        // Espelho local do formulário — SEM as assinaturas (data URIs pesados e sensíveis:
+        // prova de conclusão que não deve ficar no localStorage de um tablet partilhado; já
+        // são gravadas depressa no servidor pelo Bloquear). 19.ª revisão de segurança.
         marcarSuja() {
             this.suja = true;
             clearTimeout(this._espelhoT);
             this._espelhoT = setTimeout(() => {
                 try {
+                    const fichasSemAssinatura = {};
+                    for (const [id, f] of Object.entries(this.$wire.fichas ?? {})) {
+                        const { assinatura_cliente, assinatura_tecnico, ...resto } = f ?? {};
+                        fichasSemAssinatura[id] = resto;
+                    }
                     localStorage.setItem(this.chave(), JSON.stringify({ ts: Date.now(), dados: {
-                        fichas: this.$wire.fichas, resumo: this.$wire.resumo, data: this.$wire.data,
+                        fichas: fichasSemAssinatura, resumo: this.$wire.resumo, data: this.$wire.data,
                         data_fim: this.$wire.data_fim, hora_inicio: this.$wire.hora_inicio, hora_fim: this.$wire.hora_fim,
                     } }));
                 } catch (e) { /* quota/privado — o autosave continua a ser a proteção principal */ }

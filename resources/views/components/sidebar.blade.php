@@ -79,7 +79,10 @@
             <div class="truncate text-sm font-semibold text-white">{{ $u?->nome }}</div>
             <div class="truncate text-xs text-white/45">{{ $u?->email }}</div>
         </div>
-        <form method="POST" action="{{ route('logout') }}">
+        {{-- Ao sair, limpa os espelhos locais de rascunhos de relatório (assinaturas já não
+             lá estão, mas as medições/notas sim) — tablet partilhado (19.ª revisão). --}}
+        <form method="POST" action="{{ route('logout') }}"
+            x-on:submit="Object.keys(localStorage).filter(k => k.startsWith('nexus-rascunho:')).forEach(k => localStorage.removeItem(k))">
             @csrf
             <button type="submit" title="Sair" class="flex h-8 w-8 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/5 hover:text-white">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>

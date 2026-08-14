@@ -8,6 +8,10 @@
 #           a vigia da app (ALERTAS_BACKUP_VIGIA=true) alerta se ele faltar/envelhecer.
 set -euo pipefail
 
+# Ficheiros do backup só para o dono (root): o dump da BD tem hashes de password, códigos
+# MFA e todos os dados dos clientes — nunca world-readable (19.ª revisão de segurança).
+umask 077
+
 APP_DIR="${APP_DIR:-/var/www/nexus-ops}"
 DEST="${BACKUP_DIR:-/var/backups/nexus-ops}"
 OFFSITE="${BACKUP_OFFSITE_DIR:-}"          # opcional: segundo destino (NAS/disco/rclone)
@@ -20,7 +24,7 @@ env_val() { grep -E "^$1=" "${APP_DIR}/.env" | head -1 | cut -d= -f2- | tr -d '"
 DB_HOST="$(env_val DB_HOST)"; DB_PORT="$(env_val DB_PORT)"; DB_NAME="$(env_val DB_DATABASE)"
 DB_USER="$(env_val DB_USERNAME)"; export PGPASSWORD="$(env_val DB_PASSWORD)"
 
-mkdir -p "${PASTA}"
+install -d -m 700 "${DEST}" "${PASTA}"
 
 # 1) Base de dados — formato custom (permite pg_restore seletivo), comprimido.
 pg_dump -h "${DB_HOST:-127.0.0.1}" -p "${DB_PORT:-5432}" -U "${DB_USER}" -Fc \
@@ -40,7 +44,7 @@ tar -tzf "${PASTA}/storage-app.tar.gz" > /dev/null
 
 # 5) Cópia offsite (se configurada) — a única defesa real contra ransomware na VM.
 if [ -n "${OFFSITE}" ]; then
-    mkdir -p "${OFFSITE}/${CARIMBO}"
+    install -d -m 700 "${OFFSITE}/${CARIMBO}"
     cp "${PASTA}/bd.dump" "${PASTA}/storage-app.tar.gz" "${PASTA}/env" "${OFFSITE}/${CARIMBO}/"
 fi
 

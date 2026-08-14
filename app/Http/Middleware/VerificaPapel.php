@@ -14,17 +14,8 @@ class VerificaPapel
     {
         $utilizador = $request->user();
 
-        // Vaga 1: mudar a password invalida as sessões ANTERIORES à mudança — sem isto, uma
-        // sessão roubada sobrevivia ao reset (que é exatamente quando se quer expulsá-la).
-        // Sessões de antes do deploy (sem marca) só caem se a password mudar depois disto.
-        if ($utilizador && $utilizador->password_alterada_em
-            && (int) session('autenticado_em', 0) < $utilizador->password_alterada_em->timestamp) {
-            auth()->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return redirect()->route('login');
-        }
+        // A invalidação de sessão à mudança de password vive agora no middleware SessaoValida
+        // (grupo `web` — cobre também as ações Livewire, que esta rota-middleware não vê).
 
         if ($utilizador && in_array($utilizador->papel->value, $papeis, true)) {
             return $next($request);

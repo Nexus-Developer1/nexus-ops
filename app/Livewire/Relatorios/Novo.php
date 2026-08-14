@@ -575,7 +575,7 @@ class Novo extends Component
         return [
             'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
             'tipo' => ['required', 'in:preventiva,corretiva,instalacao'],
-            'pedido_em' => ['nullable', 'date'],
+            'pedido_em' => ['nullable', 'date', 'before_or_equal:now'],
             'data' => ['required', 'date'],
             'fotosNovas.*.*' => ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'], // 20 MB (o PHP em produção aceita até 20M por ficheiro; ver 99-nexus-uploads.ini)
             // Finalizar exige saber quem fez a intervenção (o PDF identifica os técnicos).
@@ -1012,6 +1012,18 @@ class Novo extends Component
 
             if ($this->intervencaoId) {
                 $intervencao = Intervencao::findOrFail($this->intervencaoId);
+                // Auditoria da mudança do relógio do SLA (19.ª revisão): o pedido_em é o que
+                // as métricas de SLA medem — mover/apagar uma quebra tem de deixar rasto.
+                $pedidoAntes = $intervencao->pedido_em;
+                $pedidoDepois = $dados['pedido_em'] instanceof Carbon
+                    ? $dados['pedido_em']
+                    : ($dados['pedido_em'] ? Carbon::parse($dados['pedido_em']) : null);
+                if ((string) $pedidoAntes?->toIso8601String() !== (string) $pedidoDepois?->toIso8601String()) {
+                    Auditor::registar('sla_pedido_em_alterado', $intervencao, [
+                        'de' => $pedidoAntes?->toDateTimeString(),
+                        'para' => $pedidoDepois?->toDateTimeString(),
+                    ]);
+                }
                 $intervencao->update($dados);
             } else {
                 $intervencao = Intervencao::create($dados);
