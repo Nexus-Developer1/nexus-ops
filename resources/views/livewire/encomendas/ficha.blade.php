@@ -34,9 +34,13 @@
             </section>
 
             {{-- Linhas do dossiê — LIDAS AO VIVO do PHC (não sincronizadas). --}}
-            <div class="mt-6 flex items-center justify-between">
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-2">
                 <h2 class="text-lg font-semibold text-texto-forte">Linhas</h2>
-                <span class="text-xs text-texto-fraco">em direto do PHC</span>
+                <div class="flex items-center gap-3">
+                    <span class="hidden text-xs text-texto-fraco md:inline">Arraste os títulos para trocar a ordem das colunas</span>
+                    <button type="button" wire:click="reporColunas" class="hidden text-xs font-medium text-texto-medio hover:text-verde-700 md:inline">Repor</button>
+                    <span class="text-xs text-texto-fraco">em direto do PHC</span>
+                </div>
             </div>
 
             @if ($erroLinhas)
@@ -45,46 +49,73 @@
                     Não foi possível obter as linhas do PHC neste momento. Tente novamente daqui a pouco.
                 </div>
             @else
-                <div class="cartao mt-3 overflow-x-auto">
+                {{-- Colunas REORDENÁVEIS: arrastar o título troca a ordem (guardada por
+                     utilizador na sessão; a whitelist é revalidada no servidor). --}}
+                <div class="cartao mt-3 overflow-x-auto" x-data="{ arrastado: null }">
                     <table class="w-full min-w-[900px] text-sm">
                         <thead>
                             <tr class="border-b border-borda text-left text-xs uppercase tracking-wide text-texto-fraco">
-                                <th class="px-4 py-3 font-semibold">Referência</th>
-                                <th class="px-4 py-3 font-semibold">PN</th>
-                                <th class="px-4 py-3 font-semibold">Marca</th>
-                                <th class="px-4 py-3 font-semibold">Descrição</th>
-                                <th class="px-4 py-3 text-right font-semibold">Faltas</th>
-                                <th class="px-4 py-3 text-right font-semibold">Qtd</th>
-                                <th class="px-4 py-3 text-right font-semibold">Movim.</th>
-                                <th class="px-4 py-3 font-semibold">Série(s)</th>
-                                <th class="px-4 py-3 text-right font-semibold">Unitário</th>
-                                <th class="px-4 py-3 text-right font-semibold">Total</th>
+                                @foreach ($ordemColunas as $col)
+                                    <th draggable="true"
+                                        x-on:dragstart="arrastado = '{{ $col }}'"
+                                        x-on:dragover.prevent
+                                        x-on:drop.prevent="if (arrastado && arrastado !== '{{ $col }}') { $wire.reordenarColunas(window.reordenar($wire.ordemColunas, arrastado, '{{ $col }}')) } arrastado = null"
+                                        class="cursor-move select-none px-4 py-3 font-semibold hover:text-texto-forte {{ in_array($col, $numericas, true) ? 'text-right' : '' }}">
+                                        {{ $colunas[$col] }}
+                                    </th>
+                                @endforeach
                             </tr>
                         </thead>
                         <tbody>
                             @forelse ($linhas as $l)
                                 @php($num = fn ($v) => $v !== null ? rtrim(rtrim(number_format((float) $v, 2, ',', ' '), '0'), ',') : '—')
+                                @php($eur = fn ($v) => $v !== null ? number_format((float) $v, 2, ',', ' ').' €' : '—')
                                 <tr class="border-b border-borda align-top last:border-0" wire:key="linha-{{ $loop->index }}">
-                                    <td class="px-4 py-3 font-medium text-texto-forte whitespace-nowrap">{{ $l->ref ?: '—' }}</td>
-                                    <td class="px-4 py-3 text-texto-medio whitespace-nowrap">{{ $l->pn ?: '—' }}</td>
-                                    <td class="px-4 py-3 text-texto-medio whitespace-nowrap">{{ $l->marca ?: '—' }}</td>
-                                    <td class="px-4 py-3 text-texto-forte">{{ $l->descricao ?: '—' }}</td>
-                                    <td class="px-4 py-3 text-right text-texto-medio">{{ $num($l->faltas) }}</td>
-                                    <td class="px-4 py-3 text-right text-texto-medio">{{ $num($l->qtt) }}</td>
-                                    <td class="px-4 py-3 text-right text-texto-medio">{{ $num($l->movimentado) }}</td>
-                                    <td class="px-4 py-3 text-texto-medio">{{ $l->series ?: '—' }}</td>
-                                    <td class="px-4 py-3 text-right text-texto-medio whitespace-nowrap">{{ $l->valorUnitario !== null ? number_format((float) $l->valorUnitario, 2, ',', ' ').' €' : '—' }}</td>
-                                    <td class="px-4 py-3 text-right font-medium text-texto-forte whitespace-nowrap">{{ $l->total !== null ? number_format((float) $l->total, 2, ',', ' ').' €' : '—' }}</td>
+                                    @foreach ($ordemColunas as $col)
+                                        @switch($col)
+                                            @case('ref')
+                                                <td class="whitespace-nowrap px-4 py-3 font-medium text-texto-forte">{{ $l->ref ?: '—' }}</td>
+                                                @break
+                                            @case('pn')
+                                                <td class="whitespace-nowrap px-4 py-3 text-texto-medio">{{ $l->pn ?: '—' }}</td>
+                                                @break
+                                            @case('marca')
+                                                <td class="whitespace-nowrap px-4 py-3 text-texto-medio">{{ $l->marca ?: '—' }}</td>
+                                                @break
+                                            @case('descricao')
+                                                <td class="px-4 py-3 text-texto-forte">{{ $l->descricao ?: '—' }}</td>
+                                                @break
+                                            @case('faltas')
+                                                <td class="px-4 py-3 text-right text-texto-medio">{{ $num($l->faltas) }}</td>
+                                                @break
+                                            @case('qtt')
+                                                <td class="px-4 py-3 text-right text-texto-medio">{{ $num($l->qtt) }}</td>
+                                                @break
+                                            @case('movimentado')
+                                                <td class="px-4 py-3 text-right text-texto-medio">{{ $num($l->movimentado) }}</td>
+                                                @break
+                                            @case('series')
+                                                <td class="px-4 py-3 text-texto-medio">{{ $l->series ?: '—' }}</td>
+                                                @break
+                                            @case('unitario')
+                                                <td class="whitespace-nowrap px-4 py-3 text-right text-texto-medio">{{ $eur($l->valorUnitario) }}</td>
+                                                @break
+                                            @case('total')
+                                                <td class="whitespace-nowrap px-4 py-3 text-right font-medium text-texto-forte">{{ $eur($l->total) }}</td>
+                                                @break
+                                        @endswitch
+                                    @endforeach
                                 </tr>
                             @empty
-                                <tr><td colspan="10" class="px-4 py-10 text-center text-sm text-texto-medio">Este dossiê não tem linhas no PHC.</td></tr>
+                                <tr><td colspan="{{ count($ordemColunas) }}" class="px-4 py-10 text-center text-sm text-texto-medio">Este dossiê não tem linhas no PHC.</td></tr>
                             @endforelse
                         </tbody>
                         @if (! empty($linhas))
                             <tfoot>
                                 <tr class="border-t border-borda bg-fundo">
-                                    <td colspan="9" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-texto-medio">Total das linhas</td>
-                                    <td class="px-4 py-3 text-right font-semibold text-texto-forte whitespace-nowrap">{{ number_format((float) $totalLinhas, 2, ',', ' ') }} €</td>
+                                    <td colspan="{{ count($ordemColunas) }}" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-texto-medio">
+                                        Total das linhas <span class="ml-3 text-sm font-semibold normal-case text-texto-forte">{{ number_format((float) $totalLinhas, 2, ',', ' ') }} €</span>
+                                    </td>
                                 </tr>
                             </tfoot>
                         @endif

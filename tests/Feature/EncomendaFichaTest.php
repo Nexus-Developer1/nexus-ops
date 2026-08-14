@@ -90,6 +90,22 @@ class EncomendaFichaTest extends TestCase
             ->assertSee('Encomenda Produção 55/2025');
     }
 
+    // As colunas das LINHAS reordenam-se a arrastar; a ordem guarda-se na sessão e é
+    // revalidada no servidor (chave forjada é descartada; as que faltem entram no fim).
+    public function test_reordenar_colunas_das_linhas(): void
+    {
+        $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver);
+        $ordemFabrica = ['ref', 'pn', 'marca', 'descricao', 'faltas', 'qtt', 'movimentado', 'series', 'unitario', 'total'];
+
+        Livewire::actingAs($this->admin())->test(Ficha::class, ['dossier' => $this->dossier()])
+            ->assertSet('ordemColunas', $ordemFabrica)
+            // Põe o total e a descrição à frente; 'rm -rf' é descartada.
+            ->call('reordenarColunas', ['total', 'descricao', 'rm -rf'])
+            ->assertSet('ordemColunas', ['total', 'descricao', 'ref', 'pn', 'marca', 'faltas', 'qtt', 'movimentado', 'series', 'unitario'])
+            ->call('reporColunas')
+            ->assertSet('ordemColunas', $ordemFabrica);
+    }
+
     public function test_ficha_barrada_ao_cliente_do_portal(): void
     {
         $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver);

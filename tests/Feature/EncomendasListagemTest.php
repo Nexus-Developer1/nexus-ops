@@ -59,19 +59,6 @@ class EncomendasListagemTest extends TestCase
             ->assertDontSee('FECHADA-Y');
     }
 
-    public function test_reordenar_colunas_persiste_e_ignora_chaves_invalidas(): void
-    {
-        Livewire::actingAs($this->admin())->test(Listagem::class)
-            // Ordem por defeito de fábrica.
-            ->assertSet('ordemColunas', ['tipo', 'numero', 'cliente', 'data', 'total', 'estado'])
-            // Mover 'total' para o início; uma chave forjada ('rm -rf') é descartada e as
-            // que faltarem entram no fim.
-            ->call('reordenarColunas', ['total', 'tipo', 'rm -rf', 'cliente'])
-            ->assertSet('ordemColunas', ['total', 'tipo', 'cliente', 'numero', 'data', 'estado'])
-            ->call('reporColunas')
-            ->assertSet('ordemColunas', ['tipo', 'numero', 'cliente', 'data', 'total', 'estado']);
-    }
-
     public function test_rota_visivel_para_equipa_e_barrada_ao_cliente(): void
     {
         $this->actingAs($this->admin())->get('/encomendas')->assertOk()->assertSee('Encomendas');

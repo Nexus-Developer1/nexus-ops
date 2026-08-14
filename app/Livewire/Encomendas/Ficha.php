@@ -7,6 +7,7 @@ use App\Models\Dossier;
 use App\Services\Erp\ErpSyncDriver;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Session;
 use Livewire\Component;
 use Throwable;
 
@@ -21,9 +22,60 @@ class Ficha extends Component
 
     public Dossier $dossier;
 
+    // Colunas das LINHAS (chave => rótulo). A ordem aqui é a de fábrica.
+    public const COLUNAS = [
+        'ref' => 'Referência',
+        'pn' => 'PN',
+        'marca' => 'Marca',
+        'descricao' => 'Descrição',
+        'faltas' => 'Faltas',
+        'qtt' => 'Qtd',
+        'movimentado' => 'Movim.',
+        'series' => 'Série(s)',
+        'unitario' => 'Unitário',
+        'total' => 'Total',
+    ];
+
+    // Colunas alinhadas à direita (números/valores).
+    public const NUMERICAS = ['faltas', 'qtt', 'movimentado', 'unitario', 'total'];
+
+    // Ordem escolhida pelo utilizador (arrastar os títulos), guardada na sessão. As chaves
+    // são uma whitelist — nada vindo do browser entra em cru.
+    #[Session(key: 'encomendas.colunas-linhas')]
+    public array $ordemColunas = [];
+
     public function mount(Dossier $dossier): void
     {
         $this->dossier = $dossier;
+        $this->normalizarColunas();
+    }
+
+    // Garante que a ordem guardada é sempre uma permutação válida das colunas conhecidas
+    // (apanha uma sessão antiga ou uma coluna nova/removida no código).
+    private function normalizarColunas(): void
+    {
+        $validas = array_values(array_unique(array_filter(
+            $this->ordemColunas,
+            fn ($c) => is_string($c) && isset(self::COLUNAS[$c]),
+        )));
+        foreach (array_keys(self::COLUNAS) as $chave) {
+            if (! in_array($chave, $validas, true)) {
+                $validas[] = $chave; // acrescenta as que faltem, no fim
+            }
+        }
+        $this->ordemColunas = $validas;
+    }
+
+    // Aplica a nova ordem vinda do arrastar (revalidada no servidor).
+    public function reordenarColunas(array $ordem): void
+    {
+        $this->ordemColunas = $ordem;
+        $this->normalizarColunas();
+    }
+
+    public function reporColunas(): void
+    {
+        $this->ordemColunas = array_keys(self::COLUNAS);
     }
 
     public function render(ErpSyncDriver $erp)
@@ -46,6 +98,8 @@ class Ficha extends Component
             'linhas' => $linhas,
             'erroLinhas' => $erroLinhas,
             'totalLinhas' => array_sum(array_map(fn ($l) => (float) ($l->total ?? 0), $linhas)),
+            'colunas' => self::COLUNAS,
+            'numericas' => self::NUMERICAS,
         ]);
     }
 }
