@@ -129,6 +129,32 @@
                 </section>
             @endif
 
+            {{-- Encomendas / propostas (dossiês do PHC ligados por cliente_no = id_erp) --}}
+            @if ($encomendasTotal > 0)
+                <section class="cartao mt-5 p-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-sm font-semibold text-texto-forte">Encomendas e propostas <span class="text-texto-fraco">({{ $encomendasTotal }})</span></h2>
+                        @if ($encomendasTotal > $limite)
+                            <a href="{{ route('encomendas', ['pesquisa' => $cliente->id_erp]) }}" wire:navigate class="text-sm font-medium text-verde-600 hover:text-verde-700">Ver todas →</a>
+                        @endif
+                    </div>
+                    <div class="mt-4 space-y-2">
+                        @foreach ($encomendas as $d)
+                            <a href="{{ route('encomendas.ficha', $d) }}" wire:navigate class="flex items-center justify-between gap-3 rounded-lg border border-borda px-3 py-2 transition hover:border-verde-300 hover:bg-fundo" wire:key="enc-{{ $d->id }}">
+                                <div class="min-w-0">
+                                    <div class="truncate text-sm font-medium text-texto-forte">{{ $d->tipoRotulo() }} {{ $d->obrano }}/{{ $d->ano }}</div>
+                                    <div class="truncate text-xs text-texto-fraco">{{ $d->data?->translatedFormat('d M Y') ?? '—' }}</div>
+                                </div>
+                                <div class="shrink-0 text-right">
+                                    <div class="text-sm font-medium text-texto-forte">{{ $d->total_debito !== null ? number_format((float) $d->total_debito, 2, ',', ' ') . ' €' : '—' }}</div>
+                                    <span class="etiqueta {{ $d->fechada ? 'bg-fundo text-texto-medio' : 'bg-verde-50 text-verde-700' }}">{{ $d->fechada ? 'Fechada' : 'Em aberto' }}</span>
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
             {{-- Faturação (linhas do PHC ligadas por cliente_no = id_erp) --}}
             <section class="cartao mt-5 p-6">
                 <div class="flex items-center justify-between">

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
+use App\Livewire\Clientes\Detalhe;
 use App\Livewire\Encomendas\Ficha;
 use App\Models\Cliente;
 use App\Models\Dossier;
@@ -72,6 +73,21 @@ class EncomendaFichaTest extends TestCase
         $this->assertInstanceOf(LinhaDossierErp::class, $linhas[0]);
         $this->assertNotNull($linhas[0]->ref);
         $this->assertNotNull($linhas[0]->total);
+    }
+
+    public function test_encomendas_do_cliente_aparecem_na_ficha_do_cliente(): void
+    {
+        $cliente = Cliente::create(['id_erp' => '148', 'nome' => 'ACME Lda', 'ativo' => true]);
+        Dossier::create(['id_erp' => 'BO-C-1', 'ndos' => 7, 'nmdos' => 'Encomenda Produção', 'obrano' => 55,
+            'ano' => 2025, 'data' => now(), 'cliente_no' => '148', 'nome' => 'ACME Lda', 'total_debito' => 3200, 'fechada' => false]);
+        // Dossiê de OUTRO cliente — não deve aparecer.
+        Dossier::create(['id_erp' => 'BO-X-1', 'ndos' => 3, 'nmdos' => 'Proposta', 'obrano' => 1,
+            'ano' => 2025, 'data' => now(), 'cliente_no' => '999', 'nome' => 'Outro', 'total_debito' => 10, 'fechada' => false]);
+
+        Livewire::actingAs($this->admin())->test(Detalhe::class, ['cliente' => $cliente])
+            ->assertViewHas('encomendasTotal', 1)
+            ->assertSee('Encomendas e propostas')
+            ->assertSee('Encomenda Produção 55/2025');
     }
 
     public function test_ficha_barrada_ao_cliente_do_portal(): void

@@ -5,6 +5,7 @@ namespace App\Livewire\Clientes;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Cliente;
 use App\Models\Contrato;
+use App\Models\Dossier;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\Intervencao;
@@ -42,6 +43,8 @@ class Detalhe extends Component
         $relatorios = Relatorio::whereHas('intervencao.equipamento.local', fn ($q) => $q->where('cliente_id', $id));
         // Faturação — linhas do PHC ligadas por cliente_no = id_erp do cliente.
         $faturacao = LinhaFatura::where('cliente_no', $this->cliente->id_erp);
+        // Encomendas/propostas (dossiês do PHC) — ligadas por cliente_no = id_erp do cliente.
+        $encomendas = Dossier::where('cliente_no', $this->cliente->id_erp);
 
         // Trabalho FATURÁVEL À PARTE (Vaga 2): visitas extra + intervenções sem contrato —
         // "quanto trabalho extra fizemos ao cliente X?" não tinha resposta em ecrã nenhum.
@@ -64,6 +67,8 @@ class Detalhe extends Component
             'relatoriosTotal' => (clone $relatorios)->count(),
             'faturacao' => (clone $faturacao)->orderByDesc('data')->limit(self::LIMITE)->get(),
             'faturacaoTotal' => (clone $faturacao)->count(),
+            'encomendas' => (clone $encomendas)->orderByDesc('ano')->orderByDesc('obrano')->limit(self::LIMITE)->get(),
+            'encomendasTotal' => (clone $encomendas)->count(),
             'limite' => self::LIMITE,
         ]);
     }

@@ -12,6 +12,17 @@ import ptLocale from '@fullcalendar/core/locales/pt';
 let scrollAPreservar = null;
 window.preservarScroll = () => { scrollAPreservar = window.scrollY; };
 
+// Reordenar colunas por arrastar (listagem de Encomendas): tira `mover` da sua posição e
+// insere-o na posição de `alvo`, devolvendo a nova ordem. O servidor revalida a whitelist.
+window.reordenar = (ordem, mover, alvo) => {
+    const nova = [...(ordem || [])];
+    const de = nova.indexOf(mover);
+    const para = nova.indexOf(alvo);
+    if (de === -1 || para === -1) return nova;
+    nova.splice(para, 0, nova.splice(de, 1)[0]);
+    return nova;
+};
+
 // Geolocalização pedida UMA vez por página (prova de presença nas fotos — Vaga 2). O prompt
 // do browser é o consentimento; negado/indisponível/timeout → null e as fotos seguem sem geo.
 let geoPromessa = null;

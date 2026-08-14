@@ -30,6 +30,52 @@ class Listagem extends Component
     #[Session]
     public string $ano = '';
 
+    // Ordem das colunas da tabela (desktop), reordenável por arrastar e guardada na sessão
+    // por utilizador. As chaves são uma whitelist — nada vindo do browser entra em cru.
+    #[Session]
+    public array $ordemColunas = [];
+
+    // Colunas disponíveis (chave => rótulo). A ordem aqui é a de fábrica.
+    public const COLUNAS = [
+        'tipo' => 'Tipo',
+        'numero' => 'Nº',
+        'cliente' => 'Cliente',
+        'data' => 'Data',
+        'total' => 'Total',
+        'estado' => 'Estado',
+    ];
+
+    public function mount(): void
+    {
+        $this->normalizarColunas();
+    }
+
+    // Garante que a ordem guardada é sempre uma permutação válida das colunas conhecidas
+    // (apanha uma sessão antiga ou uma coluna nova/removida no código).
+    private function normalizarColunas(): void
+    {
+        $validas = array_values(array_filter($this->ordemColunas, fn ($c) => isset(self::COLUNAS[$c])));
+        $validas = array_values(array_unique($validas));
+        foreach (array_keys(self::COLUNAS) as $chave) {
+            if (! in_array($chave, $validas, true)) {
+                $validas[] = $chave; // acrescenta as que faltem, no fim
+            }
+        }
+        $this->ordemColunas = $validas;
+    }
+
+    // Aplica uma nova ordem vinda do arrastar (só chaves conhecidas; defesa contra payload).
+    public function reordenarColunas(array $ordem): void
+    {
+        $this->ordemColunas = array_values(array_filter($ordem, fn ($c) => isset(self::COLUNAS[$c])));
+        $this->normalizarColunas();
+    }
+
+    public function reporColunas(): void
+    {
+        $this->ordemColunas = array_keys(self::COLUNAS);
+    }
+
     public function updatingPesquisa(): void
     {
         $this->resetPage();
@@ -78,6 +124,7 @@ class Listagem extends Component
             'dossiers' => $dossiers,
             'anos' => $anos,
             'tipos' => Dossier::TIPOS, // [1 => 'Encomenda Peças', 3 => 'Proposta', 7 => 'Encomenda Produção']
+            'colunas' => self::COLUNAS,
         ]);
     }
 }

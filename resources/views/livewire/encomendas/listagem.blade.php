@@ -55,35 +55,60 @@
                 @endforelse
             </div>
 
-            {{-- DESKTOP (md+): tabela. --}}
-            <div class="cartao mt-5 hidden overflow-x-auto md:block" wire:loading.class="opacity-60">
+            {{-- DESKTOP (md+): tabela com COLUNAS reordenáveis (arrastar o cabeçalho). A ordem
+                 guarda-se por utilizador na sessão. --}}
+            <div class="mt-5 hidden items-center justify-end gap-2 md:flex">
+                <span class="text-xs text-texto-fraco">Arraste os títulos das colunas para trocar a ordem</span>
+                <button type="button" wire:click="reporColunas" class="text-xs font-medium text-texto-medio hover:text-verde-700">Repor</button>
+            </div>
+            <div class="cartao mt-2 hidden overflow-x-auto md:block" wire:loading.class="opacity-60"
+                x-data="{ arrastado: null }">
                 <table class="w-full min-w-[820px] text-sm">
                     <thead>
                         <tr class="border-b border-borda text-left text-xs uppercase tracking-wide text-texto-fraco">
-                            <th class="px-6 py-3 font-semibold">Tipo</th>
-                            <th class="px-6 py-3 font-semibold">Nº</th>
-                            <th class="px-6 py-3 font-semibold">Cliente</th>
-                            <th class="px-6 py-3 font-semibold">Data</th>
-                            <th class="px-6 py-3 text-right font-semibold">Total</th>
-                            <th class="px-6 py-3 font-semibold">Estado</th>
+                            @foreach ($ordemColunas as $col)
+                                <th draggable="true"
+                                    x-on:dragstart="arrastado = '{{ $col }}'"
+                                    x-on:dragover.prevent
+                                    x-on:drop.prevent="if (arrastado && arrastado !== '{{ $col }}') { $wire.reordenarColunas(reordenar($wire.ordemColunas, arrastado, '{{ $col }}')); } arrastado = null"
+                                    class="cursor-move select-none px-6 py-3 font-semibold hover:text-texto-forte {{ $col === 'total' ? 'text-right' : '' }}">
+                                    {{ $colunas[$col] }}
+                                </th>
+                            @endforeach
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($dossiers as $d)
                             <tr class="cursor-pointer border-b border-borda last:border-0 hover:bg-fundo" wire:key="dos-{{ $d->id }}"
                                 x-on:click="Livewire.navigate(@js(route('encomendas.ficha', $d)))">
-                                <td class="whitespace-nowrap px-6 py-3.5 text-texto-medio">{{ $d->tipoRotulo() }}</td>
-                                <td class="whitespace-nowrap px-6 py-3.5 font-medium text-texto-forte">{{ $d->obrano }}/{{ $d->ano }}</td>
-                                <td class="px-6 py-3.5 text-texto-forte">{{ $d->nome ?: '—' }}</td>
-                                <td class="whitespace-nowrap px-6 py-3.5 text-texto-medio">{{ $d->data?->translatedFormat('d M Y') ?? '—' }}</td>
-                                <td class="whitespace-nowrap px-6 py-3.5 text-right font-medium text-texto-forte">{{ $d->total_debito !== null ? number_format((float) $d->total_debito, 2, ',', ' ').' €' : '—' }}</td>
-                                <td class="whitespace-nowrap px-6 py-3.5">
-                                    <span class="etiqueta {{ $d->fechada ? 'bg-fundo text-texto-medio' : 'bg-verde-50 text-verde-700' }}">{{ $d->fechada ? 'Fechada' : 'Em aberto' }}</span>
-                                </td>
+                                @foreach ($ordemColunas as $col)
+                                    @switch($col)
+                                        @case('tipo')
+                                            <td class="whitespace-nowrap px-6 py-3.5 text-texto-medio">{{ $d->tipoRotulo() }}</td>
+                                            @break
+                                        @case('numero')
+                                            <td class="whitespace-nowrap px-6 py-3.5 font-medium text-texto-forte">{{ $d->obrano }}/{{ $d->ano }}</td>
+                                            @break
+                                        @case('cliente')
+                                            <td class="px-6 py-3.5 text-texto-forte">{{ $d->nome ?: '—' }}</td>
+                                            @break
+                                        @case('data')
+                                            <td class="whitespace-nowrap px-6 py-3.5 text-texto-medio">{{ $d->data?->translatedFormat('d M Y') ?? '—' }}</td>
+                                            @break
+                                        @case('total')
+                                            <td class="whitespace-nowrap px-6 py-3.5 text-right font-medium text-texto-forte">{{ $d->total_debito !== null ? number_format((float) $d->total_debito, 2, ',', ' ').' €' : '—' }}</td>
+                                            @break
+                                        @case('estado')
+                                            <td class="whitespace-nowrap px-6 py-3.5">
+                                                <span class="etiqueta {{ $d->fechada ? 'bg-fundo text-texto-medio' : 'bg-verde-50 text-verde-700' }}">{{ $d->fechada ? 'Fechada' : 'Em aberto' }}</span>
+                                            </td>
+                                            @break
+                                    @endswitch
+                                @endforeach
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-6 py-12 text-center text-sm text-texto-medio">Sem dossiês nos filtros selecionados.</td>
+                                <td colspan="{{ count($ordemColunas) }}" class="px-6 py-12 text-center text-sm text-texto-medio">Sem dossiês nos filtros selecionados.</td>
                             </tr>
                         @endforelse
                     </tbody>
