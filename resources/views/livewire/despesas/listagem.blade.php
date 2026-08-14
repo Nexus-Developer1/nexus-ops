@@ -16,12 +16,26 @@
                 </div>
             @endif
 
-            <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Despesas</h1>
-            <p class="mt-2 text-sm text-texto-medio">Custos da operação · {{ $periodo === 'mes' ? 'mês atual' : 'todo o período' }}.</p>
+            @php
+                $rotuloPeriodo = $periodo === 'mes' ? 'mês atual'
+                    : ($periodo === 'tudo' ? 'todo o período'
+                    : \Illuminate\Support\Carbon::createFromFormat('Y-m', $periodo)->translatedFormat('F \d\e Y'));
+            @endphp
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Despesas</h1>
+                    <p class="mt-2 text-sm text-texto-medio">Custos de deslocação/serviço dos técnicos · {{ $rotuloPeriodo }}.</p>
+                </div>
+                {{-- Export mensal consolidado (CSV) — todas as folhas do período, por colaborador. --}}
+                @if ($kpis['numero'] > 0)
+                    <a href="{{ route('despesas.export', ['periodo' => $periodo, 'categoria' => $categoria, 'pesquisa' => $pesquisa]) }}" class="botao-secundario">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+                        Exportar (CSV)
+                    </a>
+                @endif
+            </div>
 
-
-            {{-- KPIs (o "faturável à parte" / "incluído no contrato" saiu a pedido da equipa —
-                 as despesas deixaram de se ligar a contratos no formulário). --}}
+            {{-- KPIs --}}
             <div class="mt-8 grid grid-cols-2 gap-5">
                 <div class="cartao p-6">
                     <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Total</div>
@@ -33,11 +47,32 @@
                 </div>
             </div>
 
+            {{-- Total por categoria no período/filtros — o detalhe para a contabilidade. --}}
+            @if ($porCategoria->isNotEmpty())
+                <div class="cartao mt-4 p-5">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Por categoria · {{ $rotuloPeriodo }}</div>
+                    <div class="mt-3 flex flex-wrap gap-x-8 gap-y-2">
+                        @foreach ($porCategoria as $c)
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-sm text-texto-medio">{{ $c->categoria }}</span>
+                                <span class="text-sm font-semibold text-texto-forte">{{ number_format((float) $c->total, 2, ',', '.') }} €</span>
+                                <span class="text-xs text-texto-fraco">({{ $c->n }})</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             {{-- Filtros — largura total no telemóvel, lado a lado no desktop. --}}
             <div class="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
-                <select wire:model.live="periodo" class="campo-select w-full sm:w-40">
+                <select wire:model.live="periodo" class="campo-select w-full sm:w-48">
                     <option value="mes">Este mês</option>
                     <option value="tudo">Todo o período</option>
+                    @foreach ($meses as $m)
+                        @if ($m !== now()->format('Y-m'))
+                            <option value="{{ $m }}">{{ \Illuminate\Support\Carbon::createFromFormat('Y-m', $m)->translatedFormat('F \d\e Y') }}</option>
+                        @endif
+                    @endforeach
                 </select>
                 <select wire:model.live="categoria" class="campo-select w-full sm:w-44">
                     <option value="">Todas as categorias</option>
@@ -47,7 +82,7 @@
                 </select>
                 <div class="relative col-span-2 sm:col-span-1 sm:min-w-56 sm:flex-1">
                     <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 17a6 6 0 100-12 6 6 0 000 12z"/></svg>
-                    <input wire:model.live.debounce.300ms="pesquisa" type="text" class="campo-input pl-10" placeholder="Pesquisar por descrição ou cliente...">
+                    <input wire:model.live.debounce.300ms="pesquisa" type="text" class="campo-input pl-10" placeholder="Pesquisar por descrição ou colaborador...">
                 </div>
             </div>
 
