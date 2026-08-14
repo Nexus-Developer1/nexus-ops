@@ -64,7 +64,7 @@ Registar a data em baixo a cada corrida.
 
 | Data do ensaio | Quem | Resultado |
 |---|---|---|
-| _(por preencher)_ | | |
+| 2026-08-14 | Davide | **PASSOU** — 3061 clientes, 17818 equipamentos, 200695 dossiês, 4 relatórios, 2 fichas; arquivo com 23 anexos, 5 assinaturas e 4 PDFs; `.env` a 600. Próximo ensaio: novembro/2026. |
 
 ## 4. Nota de manutenção do servidor
 
