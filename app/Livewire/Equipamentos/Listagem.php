@@ -34,11 +34,6 @@ class Listagem extends Component
     #[Session]
     public string $banco = '';
 
-    // Só equipamentos SEM cliente ("por associar", vindos do PHC sem nº de cliente na
-    // fatura) — o backlog era invisível: ~893 registos sem filtro nem contador (Vaga 1).
-    #[Session]
-    public bool $porAssociar = false;
-
     // Ordenação ativa (valor de uma whitelist — nunca interpolado em cru). Por defeito, os
     // MAIS RECENTES primeiro: era a ordem de inserção do ERP (id), que escondia lá no fim
     // os equipamentos acabados de sincronizar/registar.
@@ -94,11 +89,6 @@ class Listagem extends Component
         $this->resetPage();
     }
 
-    public function updatedPorAssociar(): void
-    {
-        $this->resetPage();
-    }
-
     public function render()
     {
         $equipamentos = Equipamento::query()
@@ -107,7 +97,6 @@ class Listagem extends Component
             // (O combobox "1º filtrar por cliente" saiu a pedido da equipa: no PHC há faturas
             // sem a série associada ao cliente certo, e a navegação por cliente enganava.
             // A pesquisa de texto procura sempre em TODOS — série, modelo ou nome do cliente.)
-            ->when($this->porAssociar, fn ($q) => $q->whereNull('local_id'))
             ->when($this->tipo, fn ($q) => $q->where('tipo', $this->tipo))
             ->when($this->familia, fn ($q) => $q->where('faminome', $this->familia))
             // 'com'/'sem' banco associado (exclui os próprios bancos); 'banco' = só bancos associados a um UPS.
@@ -153,8 +142,6 @@ class Listagem extends Component
             'tipos' => TipoEquipamento::cases(),
             'familias' => $familias,
             'ordenacoes' => $this->ordenacoes(),
-            // Contador do backlog "por associar" (o botão só aparece quando há trabalho).
-            'porAssociarTotal' => Equipamento::whereNull('local_id')->count(),
         ]);
     }
 }

@@ -66,14 +66,6 @@
                         <option value="banco">Só bancos associados a UPS</option>
                     </select>
 
-                    {{-- Backlog "por associar" (Vaga 1): botão com contador — só aparece
-                         quando há equipamentos do PHC sem cliente. Nunca encolhe nem parte. --}}
-                    @if ($porAssociarTotal > 0)
-                        <button type="button" wire:click="$toggle('porAssociar')"
-                            class="shrink-0 whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-medium {{ $porAssociar ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">
-                            Por associar ({{ $porAssociarTotal }})
-                        </button>
-                    @endif
                 </div>
             </div>
 

@@ -65,7 +65,9 @@ class Vaga1GestaoTest extends TestCase
             ->assertViewHas('saldoContratoForm', fn ($s) => $s['usadas'] === 3 && $s['restantes'] === 1);
     }
 
-    public function test_listagem_filtra_por_associar_com_contador(): void
+    // (O filtro/botão "Por associar" saiu da barra a pedido da equipa — os equipamentos sem
+    // cliente continuam na listagem e encontram-se pela pesquisa, como qualquer outro.)
+    public function test_listagem_mostra_equipamentos_sem_cliente(): void
     {
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sede']);
@@ -73,9 +75,8 @@ class Vaga1GestaoTest extends TestCase
         Equipamento::create(['local_id' => null, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SEM-CLIENTE-1']);
 
         Livewire::actingAs($this->admin())->test(Listagem::class)
-            ->assertSee('Por associar (1)')
-            ->set('porAssociar', true)
-            ->assertSee('SEM-CLIENTE-1')
-            ->assertDontSee('COM-CLIENTE');
+            ->assertDontSee('Por associar (')   // o botão saiu da barra
+            ->assertSee('SEM-CLIENTE-1')        // mas o equipamento continua na lista
+            ->assertSee('COM-CLIENTE');
     }
 }
