@@ -80,7 +80,9 @@ class Ficha extends Component
 
         return view('livewire.contratos.ficha', [
             'contrato' => $this->contrato,
-            'saldo' => $this->saldoVisitas(),
+            // Saldo de visitas incluídas (o cálculo vive no modelo — o modal da agenda também
+            // o mostra). Null se o contrato não tem cláusula de visitas.
+            'saldo' => $this->contrato->saldoVisitas(),
             // Visitas que alimentam o saldo (Vaga 2) — as mais recentes primeiro.
             'visitas' => $this->contrato->eventos()
                 ->with('tecnico')
@@ -93,15 +95,5 @@ class Ficha extends Component
                 ->orderByDesc('data')
                 ->get(),
         ]);
-    }
-
-    // Saldo de visitas incluídas (modelo manual). Conta por COBERTURA, sem filtrar tipo
-    // (apanha visitas manuais; ignora as auto-geradas, que têm cobertura null). Null se o
-    // contrato não tem cláusula de visitas (visitas_incluidas vazio) → não se mostra saldo.
-    /** @return array{incluidas:int, usadas:int, extras:int, restantes:int, excedido:int}|null */
-    // O cálculo vive no modelo (Vaga 1: o modal da agenda também o mostra).
-    private function saldoVisitas(): ?array
-    {
-        return $this->contrato->saldoVisitas();
     }
 }
