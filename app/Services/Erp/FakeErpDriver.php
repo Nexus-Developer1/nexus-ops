@@ -75,6 +75,43 @@ class FakeErpDriver implements ErpSyncDriver
         }
     }
 
+    public function obterDossiers(?int $limite = null): iterable
+    {
+        $n = max(1, $limite ?? self::PADRAO);
+
+        // O WHERE (ndos in 1,3,7) é server-side no PHC: aqui o gerador só produz dossiês
+        // desses tipos, tal como a query real já os traz filtrados.
+        for ($i = 0; $i < $n; $i++) {
+            yield $this->gerarDossier($i);
+        }
+    }
+
+    private function gerarDossier(int $i): DossierErp
+    {
+        // Determinístico por índice — o dossiê i é sempre igual (mesmo bostamp), tornando o
+        // upsert por id_erp reproduzível (2.ª corrida = atualizações, não duplicados).
+        mt_srand(self::SEMENTE + 15000 + $i);
+
+        // Tipos reais: 1 = Encomenda Peças, 3 = Proposta, 7 = Encomenda Produção.
+        $tipos = [1 => 'Encomenda a Fornecedores', 3 => 'Proposta', 7 => 'Encomenda de Produção'];
+        $ndosCiclo = [1, 3, 7];
+        $ndos = $ndosCiclo[$i % 3];
+
+        return new DossierErp(
+            idErp: sprintf('BO25%010d,%07d-%d', $i, mt_rand(1000000, 9999999), mt_rand(0, 9)), // bo.bostamp único por i
+            ndos: $ndos,
+            nmdos: $tipos[$ndos],
+            obrano: 100 + $i,
+            data: sprintf('2025-%02d-%02d', mt_rand(1, 12), mt_rand(1, 28)),
+            ano: 2025,
+            clienteNo: (string) (1000 + ($i % 10)), // liga aos clientes fake (id_erp 1000..1009)
+            nome: 'Cliente Fake '.(1000 + ($i % 10)),
+            totalDebito: round(mt_rand(50, 500000) / 100, 2),
+            fechada: ($i % 4) === 0, // 1 em cada 4 fechado
+            uRelat: ($i % 3) === 0 ? 'Notas do dossiê '.$i : null,
+        );
+    }
+
     private function gerarArtigo(int $i): ArtigoErp
     {
         // Determinístico por índice — o artigo i é sempre igual (mesma ref), tornando o

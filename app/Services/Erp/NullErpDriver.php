@@ -25,4 +25,9 @@ class NullErpDriver implements ErpSyncDriver
     {
         return [];
     }
+
+    public function obterDossiers(?int $limite = null): iterable
+    {
+        return [];
+    }
 }

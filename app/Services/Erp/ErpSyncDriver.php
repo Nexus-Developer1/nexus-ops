@@ -37,4 +37,12 @@ interface ErpSyncDriver
      * @return iterable<ArtigoErp>
      */
     public function obterArtigos(?int $limite = null): iterable;
+
+    /**
+     * Devolve os dossiês do ERP (tabela bo — tipos 1/3/7: propostas e encomendas).
+     *
+     * @param  int|null  $limite  Nº máximo de dossiês a devolver (null = decisão do driver).
+     * @return iterable<DossierErp>
+     */
+    public function obterDossiers(?int $limite = null): iterable;
 }

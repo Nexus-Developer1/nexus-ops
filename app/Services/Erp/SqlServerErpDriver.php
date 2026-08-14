@@ -127,6 +127,42 @@ class SqlServerErpDriver implements ErpSyncDriver
         }
     }
 
+    public function obterDossiers(?int $limite = null): iterable
+    {
+        // Lê os dossiês da tabela bo do PHC pela ligação 'erp' — só os tipos 1 (Encomenda
+        // Peças), 3 (Proposta) e 7 (Encomenda Produção). Correlação por bo.bostamp → id_erp;
+        // cliente por bo.no → clientes.id_erp (nome denormalizado em bo.nome). `ndos` entra no
+        // SELECT (além do filtro) para guardar o TIPO de cada dossiê.
+        //
+        // Opção A (sem view): lê direto de bo porque ainda não há acesso de ESCRITA ao PHC para
+        // criar a view. §5 do CLAUDE.md: quando houver, envolver numa VIEW read-only dedicada
+        // (vw_dossiers) e ler dessa view, nunca da tabela bruta. (Igual aos restantes syncs.)
+        //
+        // SQL Server: o limite usa TOP (não LIMIT). É um inteiro, interpolado em segurança.
+        $top = $limite !== null ? 'TOP '.(int) $limite.' ' : '';
+
+        $sql = "SELECT {$top}bostamp, ndos, nmdos, obrano, dataobra, boano, no, nome, etotaldeb, fechada, u_relat
+                FROM bo
+                WHERE (ndos = 1 OR ndos = 3 OR ndos = 7)";
+
+        foreach (DB::connection('erp')->select($sql) as $r) {
+            // TRIM nas colunas char (padding do PHC); casts explícitos dos numéricos/data/bool.
+            yield new DossierErp(
+                idErp: trim((string) $r->bostamp),
+                ndos: $r->ndos !== null ? (int) $r->ndos : null,
+                nmdos: $r->nmdos !== null ? trim((string) $r->nmdos) : null,
+                obrano: $r->obrano !== null ? (int) $r->obrano : null,
+                data: $r->dataobra ? Carbon::parse($r->dataobra)->format('Y-m-d') : null,
+                ano: $r->boano !== null ? (int) $r->boano : null,
+                clienteNo: $r->no !== null ? (string) $r->no : null,
+                nome: $r->nome !== null ? trim((string) $r->nome) : null,
+                totalDebito: $r->etotaldeb !== null ? (float) $r->etotaldeb : null,
+                fechada: (bool) $r->fechada,
+                uRelat: $r->u_relat !== null ? trim((string) $r->u_relat) : null,
+            );
+        }
+    }
+
     public function obterEquipamentos(?int $limite = null): iterable
     {
         // Lê os equipamentos da tabela ma do PHC pela ligação 'erp' (dblib/FreeTDS), a MESMA que

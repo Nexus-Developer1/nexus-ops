@@ -44,6 +44,7 @@ class SincronizarErp implements ShouldQueue
         'Clientes' => 'erp:sincronizar-clientes',
         'Equipamentos' => 'erp:sincronizar-equipamentos',
         'Artigos' => 'erp:sincronizar-artigos',
+        'Dossiês' => 'erp:sincronizar-dossiers',
         'Faturação' => 'erp:sincronizar-faturacao',
     ];
 
