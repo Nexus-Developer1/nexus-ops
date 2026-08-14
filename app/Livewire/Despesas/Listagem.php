@@ -6,7 +6,6 @@ use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Despesa;
 use App\Models\RegistoDespesa;
 use App\Services\Auditor;
-use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Session;
 use Livewire\Component;
@@ -24,9 +23,8 @@ class Listagem extends Component
     #[Session]
     public string $categoria = '';
 
-    // Período: 'mes' (mês corrente), 'tudo', ou 'AAAA-MM' de um mês específico (fecho mensal).
     #[Session]
-    public string $periodo = 'mes';
+    public string $periodo = 'mes'; // mes | tudo
 
     public function updatingPesquisa(): void
     {
@@ -41,16 +39,6 @@ class Listagem extends Component
     public function updatingPeriodo(): void
     {
         $this->resetPage();
-    }
-
-    /** Meses com despesas (para o seletor de fecho mensal), do mais recente ao mais antigo. */
-    private function mesesDisponiveis(): Collection
-    {
-        return Despesa::query()
-            ->selectRaw("to_char(data, 'YYYY-MM') as mes")
-            ->distinct()
-            ->orderByDesc('mes')
-            ->pluck('mes');
     }
 
     // Elimina um REGISTO inteiro (documento + linhas) — soft delete (recuperável).
@@ -71,11 +59,6 @@ class Listagem extends Component
     {
         return Despesa::query()
             ->when($this->periodo === 'mes', fn ($q) => $q->whereYear('data', now()->year)->whereMonth('data', now()->month))
-            ->when(
-                preg_match('/^\d{4}-\d{2}$/', $this->periodo),
-                fn ($q) => $q->whereYear('data', (int) substr($this->periodo, 0, 4))
-                    ->whereMonth('data', (int) substr($this->periodo, 5, 2)),
-            )
             ->when($this->categoria, fn ($q) => $q->where('categoria', $this->categoria))
             ->when($this->pesquisa, function ($q) {
                 $termo = '%'.$this->pesquisa.'%';
@@ -98,14 +81,8 @@ class Listagem extends Component
             ->orderByDesc('id')
             ->paginate(12);
 
-        // KPIs sobre as LINHAS filtradas (cada base() devolve uma query nova).
-        $kpis = [
-            'total' => (float) $this->base()->sum('valor'),
-            'numero' => $this->base()->count(),
-        ];
-
-        // Total por CATEGORIA no período/filtros — o detalhe que a contabilidade quer ver
-        // num relance (combustíveis, refeições, portagens…). Ordenado do maior para o menor.
+        // Total por CATEGORIA no período/filtros (combustíveis, refeições, portagens…) —
+        // é o único resumo que fica na página. Ordenado do maior para o menor.
         $porCategoria = $this->base()
             ->selectRaw('categoria, sum(valor) as total, count(*) as n')
             ->groupBy('categoria')
@@ -114,9 +91,7 @@ class Listagem extends Component
 
         return view('livewire.despesas.listagem', [
             'registos' => $registos,
-            'kpis' => $kpis,
             'porCategoria' => $porCategoria,
-            'meses' => $this->mesesDisponiveis(),
             'categorias' => Despesa::CATEGORIAS, // categorias fixas (filtro)
         ]);
     }

@@ -16,41 +16,13 @@
                 </div>
             @endif
 
-            @php
-                $rotuloPeriodo = $periodo === 'mes' ? 'mês atual'
-                    : ($periodo === 'tudo' ? 'todo o período'
-                    : \Illuminate\Support\Carbon::createFromFormat('Y-m', $periodo)->translatedFormat('F \d\e Y'));
-            @endphp
-            <div class="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                    <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Despesas</h1>
-                    <p class="mt-2 text-sm text-texto-medio">Custos de deslocação/serviço dos técnicos · {{ $rotuloPeriodo }}.</p>
-                </div>
-                {{-- Export mensal consolidado (CSV) — todas as folhas do período, por colaborador. --}}
-                @if ($kpis['numero'] > 0)
-                    <a href="{{ route('despesas.export', ['periodo' => $periodo, 'categoria' => $categoria, 'pesquisa' => $pesquisa]) }}" class="botao-secundario">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
-                        Exportar (CSV)
-                    </a>
-                @endif
-            </div>
+            <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Despesas</h1>
+            <p class="mt-2 text-sm text-texto-medio">Custos de deslocação/serviço dos técnicos · {{ $periodo === 'mes' ? 'mês atual' : 'todo o período' }}.</p>
 
-            {{-- KPIs --}}
-            <div class="mt-8 grid grid-cols-2 gap-5">
-                <div class="cartao p-6">
-                    <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Total</div>
-                    <div class="mt-2 text-2xl font-semibold text-texto-forte">{{ number_format($kpis['total'], 2, ',', '.') }} €</div>
-                </div>
-                <div class="cartao p-6">
-                    <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Nº de despesas</div>
-                    <div class="mt-2 text-2xl font-semibold text-texto-forte">{{ $kpis['numero'] }}</div>
-                </div>
-            </div>
-
-            {{-- Total por categoria no período/filtros — o detalhe para a contabilidade. --}}
+            {{-- Total por categoria no período/filtros — o único resumo da página. --}}
             @if ($porCategoria->isNotEmpty())
-                <div class="cartao mt-4 p-5">
-                    <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Por categoria · {{ $rotuloPeriodo }}</div>
+                <div class="cartao mt-6 p-5">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Total por categoria</div>
                     <div class="mt-3 flex flex-wrap gap-x-8 gap-y-2">
                         @foreach ($porCategoria as $c)
                             <div class="flex items-baseline gap-2">
@@ -65,14 +37,9 @@
 
             {{-- Filtros — largura total no telemóvel, lado a lado no desktop. --}}
             <div class="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
-                <select wire:model.live="periodo" class="campo-select w-full sm:w-48">
+                <select wire:model.live="periodo" class="campo-select w-full sm:w-40">
                     <option value="mes">Este mês</option>
                     <option value="tudo">Todo o período</option>
-                    @foreach ($meses as $m)
-                        @if ($m !== now()->format('Y-m'))
-                            <option value="{{ $m }}">{{ \Illuminate\Support\Carbon::createFromFormat('Y-m', $m)->translatedFormat('F \d\e Y') }}</option>
-                        @endif
-                    @endforeach
                 </select>
                 <select wire:model.live="categoria" class="campo-select w-full sm:w-44">
                     <option value="">Todas as categorias</option>

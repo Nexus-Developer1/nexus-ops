@@ -82,7 +82,7 @@
         </tr>
         <tr class="sub">
             <td></td>
-            <td class="sub">(cliente - localidade)</td>
+            <td class="sub">(local · serviço)</td>
             <td colspan="6"></td>
         </tr>
         @foreach ($linhas as $d)
@@ -90,7 +90,7 @@
             @php($indiceCol = $indiceCol === false ? count($colunas) - 1 : $indiceCol)
             <tr>
                 <td class="dia">{{ $d->data->format('d/m/Y') }}</td>
-                {{-- Descrição (cliente - localidade) + "o que é" quando preenchido. --}}
+                {{-- Descrição (local · serviço) + "o que é" quando preenchido. --}}
                 <td>{{ $d->descricao }}{{ $d->detalhe ? ' — ' . $d->detalhe : '' }}</td>
                 @foreach ($colunas as $i => $c)
                     <td class="num">{{ $i === $indiceCol ? $eur($d->valor) . ($d->refeicao_tipo ? ' (' . $d->refeicao_tipo . ')' : '') : '' }}</td>

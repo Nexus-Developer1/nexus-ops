@@ -260,21 +260,42 @@ class DespesaTest extends TestCase
         $this->assertSame(1, $r3->despesas()->count());
     }
 
-    // KPIs: só Total e Nº de despesas (o faturável/incluído saiu da página com o filtro).
-    public function test_kpis_mostram_total_e_numero_do_periodo(): void
+    // O único resumo da página é o total POR CATEGORIA no período (mês por defeito). Os
+    // cartões KPI (Total/Nº), o seletor de mês e o export saíram — "muita coisa", a pedido.
+    public function test_total_por_categoria_do_periodo(): void
     {
         $admin = $this->admin();
-        Despesa::create(['data' => now(), 'categoria' => 'Outras despesas', 'descricao' => 'A', 'valor' => 100, 'faturavel' => true]);
-        Despesa::create(['data' => now(), 'categoria' => 'Combustíveis', 'descricao' => 'B', 'valor' => 50, 'faturavel' => false]);
-        // Fora do mês atual → não entra no KPI por defeito (período = mês).
-        Despesa::create(['data' => now()->subMonths(2), 'categoria' => 'Hotel', 'descricao' => 'C', 'valor' => 999, 'faturavel' => true]);
+        Despesa::create(['data' => now(), 'categoria' => 'Combustíveis', 'descricao' => 'A', 'valor' => 40, 'faturavel' => false]);
+        Despesa::create(['data' => now(), 'categoria' => 'Combustíveis', 'descricao' => 'B', 'valor' => 35, 'faturavel' => false]);
+        Despesa::create(['data' => now(), 'categoria' => 'Refeições', 'descricao' => 'C', 'valor' => 12, 'faturavel' => false]);
+        // Fora do mês atual → não entra por defeito (período = mês).
+        Despesa::create(['data' => now()->subMonths(2), 'categoria' => 'Hotel', 'descricao' => 'D', 'valor' => 999, 'faturavel' => false]);
 
         Livewire::actingAs($admin)->test(Listagem::class)
-            ->assertViewHas('kpis', fn ($k) => $k['total'] === 150.0
-                && $k['numero'] === 2
-                && ! array_key_exists('faturavel', $k))
-            ->assertDontSee('Faturável à parte')
-            ->assertDontSee('Incluído no contrato');
+            ->assertViewHas('porCategoria', function ($pc) {
+                $comb = $pc->firstWhere('categoria', 'Combustíveis');
+
+                return (float) $comb->total === 75.0 && (int) $comb->n === 2
+                    && $pc->firstWhere('categoria', 'Hotel') === null; // fora do mês
+            })
+            ->assertDontSee('Exportar')      // export removido
+            ->assertDontSee('Nº de despesas'); // KPI removido
+    }
+
+    public function test_pesquisa_por_colaborador(): void
+    {
+        $joao = User::create(['nome' => 'João Silva', 'email' => 'joao@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+        $rui = User::create(['nome' => 'Rui Costa', 'email' => 'rui@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+        $rJoao = RegistoDespesa::create(['criado_por' => $joao->id]);
+        $rJoao->despesas()->create(['data' => now(), 'categoria' => 'Combustíveis', 'descricao' => 'GASOLEO-A1', 'valor' => 40, 'faturavel' => false]);
+        $rRui = RegistoDespesa::create(['criado_por' => $rui->id]);
+        $rRui->despesas()->create(['data' => now(), 'categoria' => 'Refeições', 'descricao' => 'ALMOCO-BRAGA', 'valor' => 12, 'faturavel' => false]);
+
+        // Pesquisar pelo colaborador (não por cliente — estas despesas não têm cliente).
+        Livewire::actingAs($this->admin())->test(Listagem::class)
+            ->set('pesquisa', 'João')
+            ->assertSee('GASOLEO-A1')
+            ->assertDontSee('ALMOCO-BRAGA');
     }
 
     public function test_admin_e_tecnico_acedem(): void

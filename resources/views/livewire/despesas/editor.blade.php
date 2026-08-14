@@ -11,7 +11,7 @@
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-6xl">
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ $registoId ? 'Editar registo de despesas' : 'Registo de despesas' }}</h1>
-            <p class="mt-2 text-sm text-texto-medio">Uma linha por despesa: dia, onde (cliente - localidade), o que é, tipo, valor — e os recibos anexados à própria linha.</p>
+            <p class="mt-2 text-sm text-texto-medio">Uma linha por despesa: dia, onde (local · serviço), o que é, tipo, valor — e os recibos anexados à própria linha.</p>
 
             <form wire:submit="guardar" class="cartao mt-6 p-4 sm:mt-8 sm:p-8" x-data="scannerRecibo">
                 {{-- ===== Cabeçalho da folha — empilha no telemóvel ===== --}}
@@ -51,7 +51,7 @@
                                     <input wire:model.live.debounce.500ms="linhas.{{ $n }}.valor" type="number" step="0.01" min="0" inputmode="decimal" class="campo-input text-right" placeholder="0,00">
                                 </div>
                                 <div class="col-span-2">
-                                    <label class="campo-label">Descrição <span class="text-perigo-500">*</span> <span class="text-xs font-normal normal-case text-texto-fraco">(cliente - localidade)</span></label>
+                                    <label class="campo-label">Descrição <span class="text-perigo-500">*</span> <span class="text-xs font-normal normal-case text-texto-fraco">(local · serviço)</span></label>
                                     <input wire:model="linhas.{{ $n }}.descricao" type="text" class="campo-input" placeholder="Ex: ACME - Porto">
                                 </div>
                                 <div class="col-span-2 grid grid-cols-2 gap-3">
@@ -98,7 +98,7 @@
                         <thead>
                             <tr class="bg-fundo text-xs uppercase tracking-wide text-texto-medio">
                                 <th class="w-36 border-b border-r border-borda px-3 py-2 text-left font-semibold">Dia <span class="text-perigo-500">*</span></th>
-                                <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">Descrição <span class="text-perigo-500">*</span><br><span class="font-normal normal-case text-texto-fraco">(cliente - localidade)</span></th>
+                                <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">Descrição <span class="text-perigo-500">*</span><br><span class="font-normal normal-case text-texto-fraco">(local · serviço)</span></th>
                                 <th class="w-44 border-b border-r border-borda px-3 py-2 text-left font-semibold">Tipo <span class="text-perigo-500">*</span></th>
                                 <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">O que é<br><span class="font-normal normal-case text-texto-fraco">(opcional)</span></th>
                                 <th class="w-28 border-b border-r border-borda px-3 py-2 text-right font-semibold">Valor (€) <span class="text-perigo-500">*</span></th>

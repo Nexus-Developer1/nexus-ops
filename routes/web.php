@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\EstadoRelatorio;
-use App\Http\Controllers\ExportarDespesas;
 use App\Livewire\Agenda\Calendario;
 use App\Livewire\Alertas\Painel;
 use App\Livewire\Auth\AceitarConvite;
@@ -111,10 +110,6 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
     // compostas ANTES de /{despesa} para não colidir.
     Route::get('/despesas', App\Livewire\Despesas\Listagem::class)->name('despesas');
     Route::get('/despesas/nova', App\Livewire\Despesas\Editor::class)->name('despesas.nova');
-
-    // Export CSV consolidado do período/filtros (fecho mensal para a contabilidade): uma
-    // linha por despesa, com colaborador, dia, tipo, descrição, detalhe e valor.
-    Route::get('/despesas/export', ExportarDespesas::class)->name('despesas.export');
     Route::get('/despesas/registo/{registo}/editar', App\Livewire\Despesas\Editor::class)->name('despesas.registo.editar');
 
     // PDF do registo (layout da folha da empresa, logótipo Nexus) — transferível.

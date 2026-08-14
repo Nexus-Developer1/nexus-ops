@@ -15,7 +15,7 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 // REGISTO de despesas: cabeçalho (colaborador, matrícula, departamento) + linhas — cada
-// linha é UMA despesa: dia (escrito à mão), descrição (cliente - localidade), "o que é"
+// linha é UMA despesa: dia (escrito à mão), descrição (local · serviço), "o que é"
 // (detalhe), tipo (categoria da folha), valor e os RECIBOS anexados à própria linha.
 // O registo aparece na listagem como uma só entrada e tem PDF transferível.
 #[Layout('components.layouts.app', ['ativo' => 'despesas', 'titulo' => 'Despesa'])]
@@ -193,7 +193,7 @@ class Editor extends Component
 
             $descricao = trim((string) ($linha['descricao'] ?? ''));
             if ($descricao === '') {
-                $this->addError("linhas.$n.descricao", 'Indique a descrição (cliente - localidade) na linha '.($n + 1).'.');
+                $this->addError("linhas.$n.descricao", 'Indique a descrição (local · serviço) na linha '.($n + 1).'.');
 
                 return;
             }
