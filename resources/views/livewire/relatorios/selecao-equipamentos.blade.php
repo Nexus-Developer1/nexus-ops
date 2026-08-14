@@ -82,11 +82,17 @@
                 @if ($equipamentoPrincipal)
                     <button type="button" wire:key="chip-{{ $equipamentoPrincipal->id }}" @click="tab='equip-{{ $equipamentoPrincipal->id }}'" title="{{ $equipamentoPrincipal->localInstalacao() }}" class="inline-flex items-center gap-1.5 rounded-full border border-verde-200 bg-verde-50 px-3 py-1 text-xs font-medium text-verde-700 hover:bg-verde-100 transition">
                         {{ $equipamentoPrincipal->numero_serie ?? '—' }}
+                        @if ($local = $equipamentoPrincipal->localInstalacao())
+                            <span class="font-normal text-verde-600">· {{ \Illuminate\Support\Str::limit($local, 45) }}</span>
+                        @endif
                     </button>
                 @endif
                 @foreach ($cobertosSelecionados as $e)
                     <button type="button" wire:key="chip-{{ $e->id }}" @click="tab='equip-{{ $e->id }}'" title="{{ $e->localInstalacao() }}" class="inline-flex items-center gap-1.5 rounded-full border border-borda bg-fundo px-3 py-1 text-xs text-texto-forte hover:border-verde-300 hover:text-verde-700 transition">
                         {{ $e->numero_serie ?? '—' }}
+                        @if ($local = $e->localInstalacao())
+                            <span class="font-normal text-texto-fraco">· {{ \Illuminate\Support\Str::limit($local, 45) }}</span>
+                        @endif
                     </button>
                 @endforeach
             </div>
