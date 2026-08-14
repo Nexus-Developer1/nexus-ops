@@ -46,13 +46,34 @@ tar -xzf "${PASTA}/storage-app.tar.gz" -C /var/www/nexus-ops/storage/
 
 Um backup que nunca foi restaurado não é um backup — é uma esperança.
 
-- [ ] `pg_restore` do dump mais recente para uma BD `nexus_restauro` (comando acima)
-- [ ] `psql -d nexus_restauro -c "select count(*) from equipamentos;"` — número plausível (~17k)?
-- [ ] `psql -d nexus_restauro -c "select count(*) from relatorios;"` — bate com a app?
-- [ ] Extrair o tar para uma pasta temporária e abrir 2–3 PDFs/fotos/assinaturas
-- [ ] Registar a data do ensaio aqui em baixo
-- [ ] `dropdb nexus_restauro` no fim
+O ensaio está **automatizado** e é **não destrutivo**: restaura o backup mais recente para
+uma base de dados temporária, confirma que os dados lá estão (contagens), verifica que o
+arquivo do storage abre e traz anexos/assinaturas, e apaga a base temporária no fim. Nunca
+toca na base de dados nem no storage de produção.
+
+```bash
+# Instalar (uma vez, como root):
+install -m 700 /var/www/nexus-ops/scripts/ensaio-restauro.sh /usr/local/sbin/ensaio-restauro-nexus.sh
+
+# Correr o ensaio (usa o backup mais recente; ou passar a pasta como argumento):
+/usr/local/sbin/ensaio-restauro-nexus.sh
+```
+
+Termina com **ENSAIO PASSOU** (código 0) ou **ENSAIO FALHOU** com a lista dos problemas.
+Registar a data em baixo a cada corrida.
 
 | Data do ensaio | Quem | Resultado |
 |---|---|---|
 | _(por preencher)_ | | |
+
+## 4. Nota de manutenção do servidor
+
+O **Node.js** está na versão 18 e o Vite (usado no `npm run build` de cada deploy) já avisa
+que exige 20.19+. Compila à mesma por agora, mas uma atualização futura do Vite pode
+recusar. Quando houver janela:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt-get install -y nodejs
+node -v   # deve dizer v20.x
+```
