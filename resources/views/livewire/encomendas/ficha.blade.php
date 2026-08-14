@@ -36,12 +36,28 @@
             {{-- Linhas do dossiê — LIDAS AO VIVO do PHC (não sincronizadas). --}}
             <div class="mt-6 flex flex-wrap items-center justify-between gap-2">
                 <h2 class="text-lg font-semibold text-texto-forte">Linhas</h2>
-                <div class="flex items-center gap-3">
-                    <span class="hidden text-xs text-texto-fraco md:inline">Arraste os títulos para trocar a ordem das colunas</span>
-                    <button type="button" wire:click="reporColunas" class="hidden text-xs font-medium text-texto-medio hover:text-verde-700 md:inline">Repor</button>
-                    <span class="text-xs text-texto-fraco">em direto do PHC</span>
-                </div>
+                <span class="text-xs text-texto-fraco">em direto do PHC</span>
             </div>
+
+            {{-- Escolher COLUNAS: um botão por coluna (ligar/desligar). Arrastar os títulos
+                 troca a ordem; o "Repor" volta à ordem de fábrica com todas visíveis. --}}
+            @unless ($erroLinhas)
+                <div class="mt-3 hidden flex-wrap items-center gap-2 md:flex">
+                    <span class="mr-1 text-xs font-medium uppercase tracking-wide text-texto-fraco">Colunas</span>
+                    @foreach ($colunas as $chave => $rotulo)
+                        @php($visivel = in_array($chave, $visiveis, true))
+                        <button type="button" wire:click="alternarColuna('{{ $chave }}')"
+                            title="{{ $visivel ? 'Ocultar a coluna' : 'Mostrar a coluna' }} {{ $rotulo }}"
+                            class="rounded-full border px-3 py-1 text-xs font-medium transition {{ $visivel
+                                ? 'border-verde-200 bg-verde-50 text-verde-700 hover:bg-verde-100'
+                                : 'border-borda bg-white text-texto-fraco line-through hover:text-texto-medio' }}">
+                            {{ $rotulo }}
+                        </button>
+                    @endforeach
+                    <span class="ml-1 text-xs text-texto-fraco">· arraste os títulos para trocar a ordem</span>
+                    <button type="button" wire:click="reporColunas" class="text-xs font-medium text-texto-medio hover:text-verde-700">Repor</button>
+                </div>
+            @endunless
 
             @if ($erroLinhas)
                 <div class="cartao mt-3 flex items-center gap-2 border border-aviso-200 bg-aviso-100 p-4 text-sm text-aviso-500">
@@ -52,10 +68,12 @@
                 {{-- Colunas REORDENÁVEIS: arrastar o título troca a ordem (guardada por
                      utilizador na sessão; a whitelist é revalidada no servidor). --}}
                 <div class="cartao mt-3 overflow-x-auto" x-data="{ arrastado: null }">
-                    <table class="w-full min-w-[900px] text-sm">
+                    {{-- A largura mínima só se impõe com muitas colunas: ocultar colunas
+                         passa a livrar mesmo do scroll horizontal. --}}
+                    <table class="w-full text-sm {{ count($visiveis) >= 7 ? 'min-w-[900px]' : '' }}">
                         <thead>
                             <tr class="border-b border-borda text-left text-xs uppercase tracking-wide text-texto-fraco">
-                                @foreach ($ordemColunas as $col)
+                                @foreach ($visiveis as $col)
                                     <th draggable="true"
                                         x-on:dragstart="arrastado = '{{ $col }}'"
                                         x-on:dragover.prevent
@@ -71,7 +89,7 @@
                                 @php($num = fn ($v) => $v !== null ? rtrim(rtrim(number_format((float) $v, 2, ',', ' '), '0'), ',') : '—')
                                 @php($eur = fn ($v) => $v !== null ? number_format((float) $v, 2, ',', ' ').' €' : '—')
                                 <tr class="border-b border-borda align-top last:border-0" wire:key="linha-{{ $loop->index }}">
-                                    @foreach ($ordemColunas as $col)
+                                    @foreach ($visiveis as $col)
                                         @switch($col)
                                             @case('ref')
                                                 <td class="whitespace-nowrap px-4 py-3 font-medium text-texto-forte">{{ $l->ref ?: '—' }}</td>
@@ -107,13 +125,13 @@
                                     @endforeach
                                 </tr>
                             @empty
-                                <tr><td colspan="{{ count($ordemColunas) }}" class="px-4 py-10 text-center text-sm text-texto-medio">Este dossiê não tem linhas no PHC.</td></tr>
+                                <tr><td colspan="{{ count($visiveis) }}" class="px-4 py-10 text-center text-sm text-texto-medio">Este dossiê não tem linhas no PHC.</td></tr>
                             @endforelse
                         </tbody>
                         @if (! empty($linhas))
                             <tfoot>
                                 <tr class="border-t border-borda bg-fundo">
-                                    <td colspan="{{ count($ordemColunas) }}" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-texto-medio">
+                                    <td colspan="{{ count($visiveis) }}" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-texto-medio">
                                         Total das linhas <span class="ml-3 text-sm font-semibold normal-case text-texto-forte">{{ number_format((float) $totalLinhas, 2, ',', ' ') }} €</span>
                                     </td>
                                 </tr>

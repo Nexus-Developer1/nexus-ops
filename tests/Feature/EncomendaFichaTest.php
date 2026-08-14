@@ -106,6 +106,47 @@ class EncomendaFichaTest extends TestCase
             ->assertSet('ordemColunas', $ordemFabrica);
     }
 
+    // Botões de ligar/desligar colunas: a escolha guarda-se na sessão, uma chave forjada é
+    // ignorada, e nunca se consegue esconder a última coluna (a tabela ficaria sem nada e
+    // sem forma de voltar atrás).
+    public function test_ocultar_e_mostrar_colunas(): void
+    {
+        $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver);
+
+        $comp = Livewire::actingAs($this->admin())->test(Ficha::class, ['dossier' => $this->dossier()])
+            ->assertSet('colunasOcultas', [])
+            ->assertSee('Movim.')
+            // Esconder duas colunas.
+            ->call('alternarColuna', 'movimentado')
+            ->call('alternarColuna', 'faltas')
+            ->assertSet('colunasOcultas', ['movimentado', 'faltas'])
+            ->assertViewHas('visiveis', fn ($v) => ! in_array('movimentado', $v, true) && count($v) === 8)
+            // Voltar a mostrar uma.
+            ->call('alternarColuna', 'faltas')
+            ->assertSet('colunasOcultas', ['movimentado'])
+            // Chave desconhecida (payload forjado) — ignorada.
+            ->call('alternarColuna', 'rm -rf')
+            ->assertSet('colunasOcultas', ['movimentado']);
+
+        // Repor devolve a ordem de fábrica E todas as colunas visíveis.
+        $comp->call('reporColunas')
+            ->assertSet('colunasOcultas', [])
+            ->assertViewHas('visiveis', fn ($v) => count($v) === 10);
+    }
+
+    public function test_nao_deixa_esconder_a_ultima_coluna(): void
+    {
+        $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver);
+        $comp = Livewire::actingAs($this->admin())->test(Ficha::class, ['dossier' => $this->dossier()]);
+
+        // Esconde todas menos a última tentativa — a 10.ª é recusada.
+        foreach (['ref', 'pn', 'marca', 'descricao', 'faltas', 'qtt', 'movimentado', 'series', 'unitario', 'total'] as $c) {
+            $comp->call('alternarColuna', $c);
+        }
+
+        $comp->assertViewHas('visiveis', fn ($v) => count($v) === 1);
+    }
+
     public function test_ficha_barrada_ao_cliente_do_portal(): void
     {
         $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver);

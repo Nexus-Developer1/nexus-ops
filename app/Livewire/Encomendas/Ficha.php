@@ -44,10 +44,42 @@ class Ficha extends Component
     #[Session(key: 'encomendas.colunas-linhas')]
     public array $ordemColunas = [];
 
+    // Colunas ESCONDIDAS pelo utilizador (botões de ligar/desligar). Guardam-se as ocultas
+    // (e não as visíveis) para que uma coluna nova no código apareça por defeito.
+    #[Session(key: 'encomendas.colunas-ocultas')]
+    public array $colunasOcultas = [];
+
     public function mount(Dossier $dossier): void
     {
         $this->dossier = $dossier;
         $this->normalizarColunas();
+    }
+
+    /** Colunas realmente mostradas: a ordem escolhida, menos as escondidas. */
+    public function colunasVisiveis(): array
+    {
+        return array_values(array_diff($this->ordemColunas, $this->colunasOcultas));
+    }
+
+    // Liga/desliga uma coluna. Nunca deixa esconder a última — uma tabela sem colunas
+    // nenhumas não tem como voltar atrás pela própria tabela.
+    public function alternarColuna(string $chave): void
+    {
+        if (! isset(self::COLUNAS[$chave])) {
+            return; // chave desconhecida (payload forjado) — ignorada
+        }
+
+        if (in_array($chave, $this->colunasOcultas, true)) {
+            $this->colunasOcultas = array_values(array_diff($this->colunasOcultas, [$chave]));
+
+            return;
+        }
+
+        if (count($this->colunasVisiveis()) <= 1) {
+            return; // já só resta uma coluna visível
+        }
+
+        $this->colunasOcultas[] = $chave;
     }
 
     // Garante que a ordem guardada é sempre uma permutação válida das colunas conhecidas
@@ -73,9 +105,11 @@ class Ficha extends Component
         $this->normalizarColunas();
     }
 
+    // Repõe a ordem de fábrica E volta a mostrar todas as colunas.
     public function reporColunas(): void
     {
         $this->ordemColunas = array_keys(self::COLUNAS);
+        $this->colunasOcultas = [];
     }
 
     public function render(ErpSyncDriver $erp)
@@ -100,6 +134,7 @@ class Ficha extends Component
             'totalLinhas' => array_sum(array_map(fn ($l) => (float) ($l->total ?? 0), $linhas)),
             'colunas' => self::COLUNAS,
             'numericas' => self::NUMERICAS,
+            'visiveis' => $this->colunasVisiveis(),
         ]);
     }
 }
