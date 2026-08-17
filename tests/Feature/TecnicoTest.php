@@ -64,7 +64,7 @@ class TecnicoTest extends TestCase
         $this->actingAs($tec)->get('/dashboard')->assertOk();
         $this->actingAs($tec)->get('/contratos')->assertOk();
         $this->actingAs($tec)->get('/alertas')->assertOk();
-        $this->actingAs($tec)->get('/ativos')->assertOk();
+        $this->actingAs($tec)->get('/equipamentos')->assertOk();
         $this->actingAs($tec)->get('/despesas')->assertOk();
 
         // ÚNICA exceção: gestão de utilizadores → 403 (Gate 'gerir-utilizadores').

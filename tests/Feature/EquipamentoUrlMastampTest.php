@@ -42,10 +42,10 @@ class EquipamentoUrlMastampTest extends TestCase
 
         $url = route('equipamentos.ficha', $equip);
 
-        $this->assertStringEndsWith('/ativos/'.self::MASTAMP, $url);
+        $this->assertStringEndsWith('/equipamentos/'.self::MASTAMP, $url);
         // A vírgula do mastamp fica literal no URL (não escapada) — é o que o Davide vê na barra.
         $this->assertStringNotContainsString('%2C', $url);
-        $this->assertStringNotContainsString('/ativos/'.$equip->id, $url);
+        $this->assertStringNotContainsString('/equipamentos/'.$equip->id, $url);
     }
 
     public function test_ficha_abre_pelo_mastamp(): void
@@ -66,12 +66,12 @@ class EquipamentoUrlMastampTest extends TestCase
         $tecnico = $this->tecnico();
 
         $this->actingAs($tecnico)
-            ->get('/ativos/'.$equip->id)
+            ->get('/equipamentos/'.$equip->id)
             ->assertRedirect(route('equipamentos.ficha', $equip));
 
         $this->actingAs($tecnico)
             ->followingRedirects()
-            ->get('/ativos/'.$equip->id)
+            ->get('/equipamentos/'.$equip->id)
             ->assertOk()
             ->assertSee('NPW 2000');
     }
@@ -81,7 +81,7 @@ class EquipamentoUrlMastampTest extends TestCase
     {
         $equip = $this->equipamento(null);
 
-        $this->assertStringEndsWith('/ativos/'.$equip->id, route('equipamentos.ficha', $equip));
+        $this->assertStringEndsWith('/equipamentos/'.$equip->id, route('equipamentos.ficha', $equip));
 
         $this->actingAs($this->tecnico())
             ->get(route('equipamentos.ficha', $equip))
@@ -93,14 +93,14 @@ class EquipamentoUrlMastampTest extends TestCase
     {
         $equip = $this->equipamento('MA/2309/001');
 
-        $this->assertStringEndsWith('/ativos/'.$equip->id, route('equipamentos.ficha', $equip));
+        $this->assertStringEndsWith('/equipamentos/'.$equip->id, route('equipamentos.ficha', $equip));
     }
 
     public function test_etiqueta_qr_tambem_usa_o_mastamp(): void
     {
         $equip = $this->equipamento();
 
-        $this->assertStringEndsWith('/ativos/'.self::MASTAMP.'/etiqueta', route('equipamentos.etiqueta', $equip));
+        $this->assertStringEndsWith('/equipamentos/'.self::MASTAMP.'/etiqueta', route('equipamentos.etiqueta', $equip));
 
         $this->actingAs($this->tecnico())
             ->get(route('equipamentos.etiqueta', $equip))
@@ -113,8 +113,30 @@ class EquipamentoUrlMastampTest extends TestCase
         $this->equipamento();
 
         $this->actingAs($this->tecnico())
-            ->get('/ativos/NAO-EXISTE,000')
+            ->get('/equipamentos/NAO-EXISTE,000')
             ->assertNotFound();
+    }
+
+    // O caminho antigo /ativos/... (etiquetas QR impressas, favoritos) redireciona permanente
+    // para /equipamentos/..., segmento a segmento — e a listagem antiga também.
+    public function test_caminho_antigo_ativos_redireciona_para_equipamentos(): void
+    {
+        $equip = $this->equipamento();
+        $tecnico = $this->tecnico();
+
+        $this->actingAs($tecnico)->get('/ativos')
+            ->assertMovedPermanently('/equipamentos');
+        $this->actingAs($tecnico)->get('/ativos/'.$equip->id)
+            ->assertMovedPermanently('/equipamentos/'.$equip->id);
+        $this->actingAs($tecnico)->get('/ativos/'.self::MASTAMP.'/etiqueta')
+            ->assertMovedPermanently('/equipamentos/'.self::MASTAMP.'/etiqueta');
+
+        // A viagem completa de um QR impresso: /ativos/<id> → /equipamentos/<id> → mastamp.
+        $this->actingAs($tecnico)
+            ->followingRedirects()
+            ->get('/ativos/'.$equip->id)
+            ->assertOk()
+            ->assertSee('NPW 2000');
     }
 
     // Fail-closed: um equipamento apagado não se abre nem pelo mastamp nem pelo id.
@@ -125,8 +147,8 @@ class EquipamentoUrlMastampTest extends TestCase
         $equip->delete();
         $tecnico = $this->tecnico();
 
-        $this->actingAs($tecnico)->get('/ativos/'.self::MASTAMP)->assertNotFound();
-        $this->actingAs($tecnico)->get('/ativos/'.$id)->assertNotFound();
+        $this->actingAs($tecnico)->get('/equipamentos/'.self::MASTAMP)->assertNotFound();
+        $this->actingAs($tecnico)->get('/equipamentos/'.$id)->assertNotFound();
     }
 
     // Isolamento por cliente mantém-se com a chave nova: o mastamp de OUTRO cliente não resolve.
@@ -138,7 +160,7 @@ class EquipamentoUrlMastampTest extends TestCase
             'papel' => PapelUtilizador::Cliente, 'cliente_id' => $outro->id, 'ativo' => true]);
 
         $this->actingAs($userCliente)
-            ->get('/ativos/'.self::MASTAMP)
+            ->get('/equipamentos/'.self::MASTAMP)
             ->assertNotFound();
     }
 }

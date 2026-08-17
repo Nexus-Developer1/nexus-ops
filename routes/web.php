@@ -91,9 +91,15 @@ $servirPdf = function (Relatorio $relatorio, GeradorRelatorio $gerador) {
 Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
     Route::get('/dashboard', DashboardGestao::class)->name('dashboard');
 
-    Route::get('/ativos', Listagem::class)->name('ativos');
-    // Associar um equipamento existente a um local (rota literal ANTES de /ativos/{equipamento}).
-    Route::get('/ativos/associar/{equipamento?}', Associar::class)->name('equipamentos.associar');
+    Route::get('/equipamentos', Listagem::class)->name('ativos');
+    // Associar um equipamento existente a um local (rota literal ANTES de /equipamentos/{equipamento}).
+    Route::get('/equipamentos/associar/{equipamento?}', Associar::class)->name('equipamentos.associar');
+
+    // Caminho antigo /ativos/... — as etiquetas QR já impressas e coladas nos equipamentos
+    // levam /ativos/<id> dentro do código e não se reimprimem; favoritos e links de emails
+    // antigos também. Redirect permanente, segmento a segmento (/ativos/X/Y → /equipamentos/X/Y).
+    Route::get('/ativos/{resto?}', fn (?string $resto = null) => redirect('/equipamentos'.($resto !== null ? '/'.$resto : ''), 301))
+        ->where('resto', '.*');
 
     // Contratos (rota /novo declarada ANTES de /{contrato} para não colidir).
     Route::get('/contratos', App\Livewire\Contratos\Listagem::class)->name('contratos');
@@ -161,13 +167,13 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
     Route::get('/clientes/{cliente}/faturacao/{linha}', Fatura::class)->name('clientes.fatura');
 
     // Registo manual de equipamento (não vindo do ERP). /novo ANTES de {equipamento} para não colidir.
-    Route::get('/ativos/novo', Novo::class)->name('equipamentos.novo');
+    Route::get('/equipamentos/novo', Novo::class)->name('equipamentos.novo');
 
     // Ficha de equipamento (leitura em campo — ex.: QR code).
-    Route::get('/ativos/{equipamento}', App\Livewire\Equipamentos\Ficha::class)->name('equipamentos.ficha');
+    Route::get('/equipamentos/{equipamento}', App\Livewire\Equipamentos\Ficha::class)->name('equipamentos.ficha');
     // Etiqueta QR (90x50mm) para imprimir e colar no equipamento — o QR contém o URL da
     // ficha (qualquer câmara o abre; o login é pedido se a sessão tiver caducado).
-    Route::get('/ativos/{equipamento}/etiqueta', function (Equipamento $equipamento, GeradorQrEquipamento $qr) {
+    Route::get('/equipamentos/{equipamento}/etiqueta', function (Equipamento $equipamento, GeradorQrEquipamento $qr) {
         $html = view('pdf.etiqueta-equipamento', ['equipamento' => $equipamento, 'qrPng' => $qr->pngDataUri($equipamento)])->render();
         $dompdf = new Dompdf(['enable_remote' => false]);
         $dompdf->loadHtml($html);

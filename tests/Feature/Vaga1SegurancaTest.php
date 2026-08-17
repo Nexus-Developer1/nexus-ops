@@ -43,11 +43,11 @@ class Vaga1SegurancaTest extends TestCase
         // Sessão autenticada ANTES da mudança de password (marca antiga).
         $this->actingAs($user);
         session(['autenticado_em' => now()->subHour()->timestamp]);
-        $this->get('/ativos')->assertOk(); // sessão válida
+        $this->get('/equipamentos')->assertOk(); // sessão válida
 
         // A password muda (noutro dispositivo) → esta sessão é expulsa no pedido seguinte.
         $user->forceFill(['password_alterada_em' => now()])->save();
-        $this->get('/ativos')->assertRedirect(route('login'));
+        $this->get('/equipamentos')->assertRedirect(route('login'));
         $this->assertGuest();
     }
 
@@ -59,7 +59,7 @@ class Vaga1SegurancaTest extends TestCase
         $this->actingAs($user);
         session(['autenticado_em' => now()->timestamp]); // login DEPOIS da mudança
 
-        $this->get('/ativos')->assertOk();
+        $this->get('/equipamentos')->assertOk();
     }
 
     public function test_gestao_de_utilizadores_fica_auditada(): void
