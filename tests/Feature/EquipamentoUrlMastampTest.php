@@ -58,12 +58,19 @@ class EquipamentoUrlMastampTest extends TestCase
             ->assertSee('NPW 2000');
     }
 
-    // A garantia que protege as etiquetas QR já impressas: o id interno continua a resolver.
-    public function test_id_interno_continua_a_abrir_a_ficha(): void
+    // A garantia que protege as etiquetas QR já impressas: o id interno continua a resolver —
+    // e redireciona para o URL canónico, para a barra do browser mostrar sempre o mastamp.
+    public function test_id_interno_redireciona_para_o_url_do_mastamp(): void
     {
         $equip = $this->equipamento();
+        $tecnico = $this->tecnico();
 
-        $this->actingAs($this->tecnico())
+        $this->actingAs($tecnico)
+            ->get('/ativos/'.$equip->id)
+            ->assertRedirect(route('equipamentos.ficha', $equip));
+
+        $this->actingAs($tecnico)
+            ->followingRedirects()
             ->get('/ativos/'.$equip->id)
             ->assertOk()
             ->assertSee('NPW 2000');

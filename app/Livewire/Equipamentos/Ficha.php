@@ -54,6 +54,19 @@ class Ficha extends Component
     public function mount(Equipamento $equipamento): void
     {
         $this->equipamento = $equipamento->load('local.cliente');
+
+        // URL canónico: a barra do browser mostra SEMPRE o mastamp. Uma ficha aberta pelo id
+        // interno (etiqueta QR já impressa, favorito, link de email antigo) resolve na mesma,
+        // mas é redirecionada para /ativos/<mastamp> — sem isto, os URLs antigos continuavam
+        // a exibir o id apesar de a chave nova existir. Nos testes Livewire diretos (sem rota)
+        // o parâmetro bruto não existe e o redirect não dispara.
+        $bruto = request()->route()?->originalParameters()['equipamento'] ?? null;
+        if ($bruto !== null && $bruto !== (string) $equipamento->getRouteKey()) {
+            $this->redirect(route('equipamentos.ficha', $equipamento), navigate: true);
+
+            return;
+        }
+
         $this->notas = $equipamento->notas ?? '';
         $this->clienteFinal = $equipamento->cliente_final ?? '';
         $this->localizacaoInstalacao = $equipamento->localizacao_instalacao ?? '';
