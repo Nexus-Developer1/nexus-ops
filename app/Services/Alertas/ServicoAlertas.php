@@ -79,7 +79,8 @@ class ServicoAlertas
                 'severidade' => $a->data->isPast() || $a->data->isToday() ? 'alta' : 'media',
                 'titulo' => $a->texto.' · '.(trim(($a->equipamento->fabricante ?? '').' '.($a->equipamento->modelo ?? '')) ?: ($a->equipamento->numero_serie ?? '—')),
                 'descricao' => ($a->equipamento->local?->cliente?->nome ?? '—').' · programado para '.$a->data->translatedFormat('d M Y'),
-                'url' => route('equipamentos.ficha', $a->equipamento_id),
+                // O MODELO, não o id: é o que faz o link sair com o mastamp (ver Equipamento::getRouteKey).
+                'url' => route('equipamentos.ficha', $a->equipamento),
                 'data' => $a->data,
             ])
             ->all();

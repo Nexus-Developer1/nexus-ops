@@ -70,6 +70,41 @@ class Equipamento extends Model
     }
 
     /**
+     * URL da ficha pelo MASTAMP do PHC (id_erp) em vez do id interno: /ativos/Mic23091346621,906000001
+     * em vez de /ativos/17822 — quem olha para o link vê logo o registo do PHC a que corresponde.
+     *
+     * Cai para o id interno em dois casos: equipamentos MANUAIS (id_erp null, "não vendidos por
+     * nós") e a defesa contra um mastamp com '/' (partiria o segmento do URL e daria 404).
+     */
+    public function getRouteKey(): mixed
+    {
+        $mastamp = (string) ($this->id_erp ?? '');
+
+        return $mastamp !== '' && ! str_contains($mastamp, '/') ? $mastamp : $this->getKey();
+    }
+
+    /**
+     * Resolve /ativos/{equipamento} por mastamp OU por id interno. O id TEM de continuar a
+     * funcionar: as etiquetas QR já impressas e coladas nos UPS/geradores levam /ativos/<id>
+     * dentro do código e não se reimprimem — trocar a chave sem este fallback cegava-as todas.
+     * Também mantém de pé links antigos em emails de alertas e favoritos do browser.
+     *
+     * Ordem: mastamp primeiro (é o que os links novos geram), id só se o valor for todo dígitos
+     * — um mastamp do PHC traz sempre letras e vírgula, por isso não há ambiguidade possível.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        if ($field !== null) {
+            return parent::resolveRouteBinding($value, $field);
+        }
+
+        $valor = (string) $value;
+
+        return $this->newQuery()->where('id_erp', $valor)->first()
+            ?? (ctype_digit($valor) ? $this->newQuery()->whereKey((int) $valor)->first() : null);
+    }
+
+    /**
      * ONDE o equipamento está instalado, para mostrar em listas e fichas. O nome do local
      * ("Instalação principal") não diz nada, por isso a cascata é: localização explícita →
      * morada do local → morada da sede do cliente (ERP) → nome do local.
