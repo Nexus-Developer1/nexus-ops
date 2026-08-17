@@ -5,8 +5,6 @@
  */
 export default {
     content: [
-        './preview/**/*.html',
-        './preview/**/*.js',
         './resources/views/**/*.blade.php',
         './app/Livewire/**/*.php',
     ],
@@ -57,10 +55,8 @@ export default {
                     medio: '#6B7280',
                     fraco: '#9CA3AF',
                 },
-                // Sidebar escura
+                // Sidebar escura (o degradê em si vive em backgroundImage.sidebar-grad)
                 sidebar: {
-                    de: '#0A2A18',
-                    para: '#050D08',
                     ativo: '#0F3D24',
                     barra: '#22C55E',
                 },
