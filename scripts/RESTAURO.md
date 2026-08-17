@@ -70,10 +70,12 @@ Registar a data em baixo a cada corrida.
 
 O **Node.js** está na versão 18 e o Vite (usado no `npm run build` de cada deploy) já avisa
 que exige 20.19+. Compila à mesma por agora, mas uma atualização futura do Vite pode
-recusar. Quando houver janela:
+recusar. Ir direto ao **22 (LTS)** — o 20 sai de suporte em abril de 2026, seria trocar um
+fim-de-vida por outro. Quando houver janela (como root):
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 apt-get install -y nodejs
-node -v   # deve dizer v20.x
+node -v   # deve dizer v22.x
+cd /var/www/nexus-ops && sudo -u www-data env HOME=/var/www npm_config_cache=/tmp/npm-cache npm run build
 ```
