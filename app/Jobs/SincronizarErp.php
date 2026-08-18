@@ -37,7 +37,7 @@ class SincronizarErp implements ShouldQueue
 
     // O que o email diz quando uma etapa falha — o detalhe técnico (que pode expor query/host
     // do ERP) fica só no log da aplicação.
-    private const DETALHE_FALHA = 'falhou — o detalhe técnico está no log da aplicação.';
+    public const DETALHE_FALHA = 'falhou — o detalhe técnico está no log da aplicação.';
 
     // Nome legível de cada etapa → comando (a ordem importa).
     private const ETAPAS = [
@@ -48,7 +48,34 @@ class SincronizarErp implements ShouldQueue
         'Faturação' => 'erp:sincronizar-faturacao',
     ];
 
-    public function __construct(public bool $agendado = false, public bool $completo = false) {}
+    // Origem da corrida (para o /api/sync/estado e a auditoria): "agendado", "dashboard" ou "api".
+    public function __construct(public bool $agendado = false, public bool $completo = false, public string $origem = '') {}
+
+    // Marcador "sync em curso" (cache): lido pelo /api/sync/estado e pelos disparos da API (409).
+    // Vive ao lado do lock (que não se consegue consultar sem o adquirir); TTL = pior caso do timeout.
+    /** @param list<string> $etapas */
+    public static function marcarEmCurso(string $origem, array $etapas): void
+    {
+        Cache::put('erp-sync:em-curso', ['origem' => $origem, 'etapas' => $etapas, 'iniciado_em' => now()->toIso8601String()], 1800);
+    }
+
+    public static function desmarcarEmCurso(): void
+    {
+        Cache::forget('erp-sync:em-curso');
+    }
+
+    // Último resultado em cache — o dashboard (botão "Sincronizar PHC") e o /api/sync/estado leem
+    // daqui. Partilhado com o SincronizarEtapaErp.
+    /** @param array<string, array{ok: bool, detalhe: string}> $resultados */
+    public static function registarUltimo(array $resultados, bool $falhou, string $origem): void
+    {
+        Cache::put('erp-sync:ultimo', [
+            'terminado_em' => now()->toIso8601String(),
+            'origem' => $origem,
+            'falhou' => $falhou,
+            'resultados' => $resultados,
+        ], now()->addDay());
+    }
 
     public function handle(): void
     {
@@ -61,6 +88,9 @@ class SincronizarErp implements ShouldQueue
 
             return;
         }
+
+        $origem = $this->origemEfetiva();
+        self::marcarEmCurso($origem, array_keys(self::ETAPAS));
 
         try {
             // etapa → ['ok' => bool, 'detalhe' => resumo do comando ou mensagem de erro]
@@ -95,13 +125,9 @@ class SincronizarErp implements ShouldQueue
                 Mail::to(config('erp.email_sync'))->send(new ResultadoSincronizacaoErp($resultados, $falhou));
             }
 
-            // Último resultado em cache — o dashboard (botão "Sincronizar PHC") faz poll disto
-            // para mostrar o que foi criado/atualizado assim que a corrida termina.
-            Cache::put('erp-sync:ultimo', [
-                'terminado_em' => now()->toIso8601String(),
-                'falhou' => $falhou,
-                'resultados' => $resultados,
-            ], now()->addDay());
+            // Último resultado em cache — o dashboard (botão "Sincronizar PHC") faz poll disto e o
+            // /api/sync/estado lê-o.
+            self::registarUltimo($resultados, $falhou, $origem);
 
             Log::info('Sync do ERP (encadeado) terminado.', [
                 'agendado' => $this->agendado,
@@ -110,12 +136,21 @@ class SincronizarErp implements ShouldQueue
             // Auditoria: uma linha por corrida (quem = null → sistema; detalhe = resumo por etapa).
             Auditor::registar('sync_erp', detalhe: [
                 'agendado' => $this->agendado,
+                'origem' => $origem,
                 'falhou' => $falhou,
                 'resultados' => array_map(fn ($r) => $r['detalhe'], $resultados),
             ]);
         } finally {
+            self::desmarcarEmCurso();
             $lock->release();
         }
+    }
+
+    // "agendado" (cron), "api" (/api/sync), "dashboard" (botão) — o construtor antigo (sem origem)
+    // continua a funcionar: os chamadores existentes não mudam.
+    private function origemEfetiva(): string
+    {
+        return $this->origem !== '' ? $this->origem : ($this->agendado ? 'agendado' : 'dashboard');
     }
 
     // Crash/timeout do worker (o handle nem chegou ao fim) — regista sempre o desfecho em
@@ -124,11 +159,8 @@ class SincronizarErp implements ShouldQueue
     {
         Log::error('Sync do ERP: job falhou/interrompido.', ['erro' => $e?->getMessage()]);
         $resultados = ['Sincronização' => ['ok' => false, 'detalhe' => 'o processo foi interrompido (timeout ou crash do worker) — detalhe no log.']];
-        Cache::put('erp-sync:ultimo', [
-            'terminado_em' => now()->toIso8601String(),
-            'falhou' => true,
-            'resultados' => $resultados,
-        ], now()->addDay());
+        self::registarUltimo($resultados, true, $this->origemEfetiva());
+        self::desmarcarEmCurso();
         if (! $this->agendado) {
             return;
         }

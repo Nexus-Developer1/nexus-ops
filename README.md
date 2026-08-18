@@ -55,6 +55,27 @@ A suite cobre os fluxos principais (relatórios, fichas de medição, contratos,
 | `php artisan relatorio:gerar {intervencao}` | Gerar o relatório de uma intervenção à mão |
 | `php artisan mail:teste {email}` | Testar o envio de email via Graph |
 
+## API de sincronização (PHC → Nexus)
+
+O equivalente, para o Nexus Infra, do **NXSync** do Configurador (`soon-srv2:8081`): URLs que **disparam e monitorizam** a sincronização do PHC a partir de fora do browser — um botão no PHC, um cron externo, o próprio NXSync, um `curl`. Não é uma API de dados nem de escrita: não traz nada de novo do PHC e não escreve no PHC; reutiliza os comandos, o job encadeado, o lock e a auditoria que já corriam.
+
+| Endpoint | O quê |
+|---|---|
+| `GET\|POST /api/sync/tudo` | Corrida encadeada (clientes → equipamentos → artigos → dossiês → faturação) — o mesmo do botão do dashboard e do cron. `?completo=1` ignora os hashes |
+| `GET\|POST /api/sync/{etapa}` | Só uma etapa: `clientes`, `equipamentos`, `artigos`, `dossiers`, `faturacao` |
+| `GET /api/sync/estado` | Há sync em curso? Último resultado por etapa, últimas 10 corridas (auditoria), horários agendados |
+
+Autenticação por **chave partilhada** (`API_SYNC_CHAVE` no `.env` do servidor), em `Authorization: Bearer <chave>` ou `X-Api-Key: <chave>`. Sem chave configurada, a API responde 503 a tudo (desligada). Os disparos **nunca correm o sync no pedido**: vai para a fila e o pedido volta logo com `202`; se já houver um em curso, `409`. `GET` é aceite nos disparos porque o PHC/NXSync só sabem fazer GET.
+
+```bash
+# gerar a chave (uma vez, guardar só no .env do servidor)
+php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
+
+# disparar e ver o estado
+curl -H "X-Api-Key: $CHAVE" https://infra.nexus-solutions.pt/api/sync/tudo
+curl -H "X-Api-Key: $CHAVE" https://infra.nexus-solutions.pt/api/sync/estado
+```
+
 ## Produção
 
 Deploy por `git pull` + `php artisan migrate --force` + `npm run build` + `php artisan optimize` no servidor (runbook interno). Produção usa caches agressivas — o `optimize` no fim do deploy é obrigatório.
