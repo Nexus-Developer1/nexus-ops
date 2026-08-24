@@ -89,7 +89,7 @@ Contrato (nº de visitas incluídas + equipamentos cobertos)
 
 ### Agenda
 
-- `eventos_agenda` — id, tipo (visita_preventiva/intervencao/ausencia/outro), titulo, inicio, fim, tecnico_id, cliente_id, local_id, equipamento_id, intervencao_id, contrato_id, **cobertura** (incluida/extra/null — liga uma visita manual ao saldo do contrato), estado (planeado/confirmado/em curso/concluído/cancelado), recorrencia (RRULE — metadado em desuso)
+- `eventos_agenda` — id, tipo (visita_preventiva/intervencao/ausencia/outro), titulo, inicio, fim, tecnico_id, cliente_id, local_id, equipamento_id, intervencao_id, contrato_id, **cobertura** (incluida/extra/null — liga uma visita manual ao saldo do contrato), estado (planeado/confirmado/em curso/concluído/cancelado)
 - `tecnico_disponibilidade` — horários, férias, ausências → deteção de conflitos e capacidade
 
 ### Intervenções e relatórios
