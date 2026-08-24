@@ -30,6 +30,10 @@
         <env name="DB_CONNECTION" value="pgsql" force="true"/>
         <env name="DB_DATABASE" value="nexus_testing" force="true"/>
         <env name="MAIL_MAILER" value="array" force="true"/>
+        <!-- A suite corre com a verificacao em duas etapas LIGADA, para os
+             testes de MFA continuarem a testar o MFA. Em producao esta
+             desligada (MFA_ACTIVA=false no .env). -->
+        <env name="MFA_ACTIVA" value="true" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync" force="true"/>
         <env name="SESSION_DRIVER" value="array" force="true"/>
         <env name="PULSE_ENABLED" value="false"/>

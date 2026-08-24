@@ -1,5 +1,12 @@
 <div>
-    <x-topbar :breadcrumb="['Utilizadores', 'Adicionar']" />
+    <x-topbar :breadcrumb="['Utilizadores', 'Adicionar']">
+        {{-- A outra metade da tarefa: aqui cria-se a pessoa, no portal
+             decide-se a que módulos ela entra. --}}
+        <a href="{{ rtrim(config('app.portal_url'), '/') }}/gestao/utilizadores" class="botao-secundario">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/><path stroke-linecap="round" stroke-linejoin="round" d="M17 15l3 3-3 3"/></svg>
+            Acessos aos módulos
+        </a>
+    </x-topbar>
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-2xl">

@@ -67,8 +67,11 @@ class TecnicoTest extends TestCase
         $this->actingAs($tec)->get('/equipamentos')->assertOk();
         $this->actingAs($tec)->get('/despesas')->assertOk();
 
-        // ÚNICA exceção: gestão de utilizadores → 403 (Gate 'gerir-utilizadores').
-        $this->actingAs($tec)->get(route('utilizadores.adicionar'))->assertForbidden();
+        // Gestão de utilizadores passou para o PORTAL da suite: o URL antigo redireciona
+        // para lá (a permissão é decidida no portal; o Gate no componente mantém-se como
+        // rede de segurança caso a rota volte a servir o ecrã local).
+        $destino = $this->actingAs($tec)->get(route('utilizadores.adicionar'))->headers->get('Location');
+        $this->assertStringStartsWith(rtrim(config('app.portal_url'), '/'), (string) $destino);
     }
 
     public function test_tecnico_acede_a_sua_operacao(): void

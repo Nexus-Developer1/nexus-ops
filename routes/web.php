@@ -3,11 +3,7 @@
 use App\Enums\EstadoRelatorio;
 use App\Livewire\Agenda\Calendario;
 use App\Livewire\Alertas\Painel;
-use App\Livewire\Auth\AceitarConvite;
-use App\Livewire\Auth\EsqueciPassword;
 use App\Livewire\Auth\Login;
-use App\Livewire\Auth\RedefinirPassword;
-use App\Livewire\Auth\VerificarCodigo;
 use App\Livewire\Clientes\Contratos;
 use App\Livewire\Clientes\Detalhe;
 use App\Livewire\Clientes\Equipamentos;
@@ -23,7 +19,6 @@ use App\Livewire\Equipamentos\Listagem;
 use App\Livewire\Equipamentos\Novo;
 use App\Livewire\Portal\Dashboard;
 use App\Livewire\Relatorios\Enviar;
-use App\Livewire\Utilizadores\Adicionar;
 use App\Models\Anexo;
 use App\Models\Despesa;
 use App\Models\Equipamento;
@@ -41,19 +36,31 @@ use Illuminate\Support\Facades\Storage;
 
 Route::get('/', fn () => redirect()->route('dashboard'));
 
-// Autenticação
+// Autenticação — vive toda no portal, que é a única entrada da suite.
+//
+// Estes endereços já não mostram ecrãs: encaminham para o portal. Ficam aqui
+// porque há links antigos em circulação (emails de convite, favoritos) e
+// porque `route('login')` é para onde o Laravel manda quem não tem sessão.
+// Os componentes Livewire de autenticação continuam no sítio, sem uso, para
+// se poder voltar atrás sem os reescrever.
 Route::middleware('guest')->group(function () {
-    Route::get('/login', Login::class)->name('login');
+    $portal = fn (string $caminho = '') => rtrim(config('app.portal_url'), '/').$caminho;
 
-    // Segunda etapa do login (MFA por email): introduzir o código enviado.
-    Route::get('/verificar-codigo', VerificarCodigo::class)->name('mfa.verificar');
+    Route::get('/login', fn () => redirect()->away($portal('/entrar')))->name('login');
 
-    // Recuperação de palavra-passe (broker nativo do Laravel).
-    Route::get('/esqueci-password', EsqueciPassword::class)->name('password.request');
-    Route::get('/redefinir-password/{token}', RedefinirPassword::class)->name('password.reset');
+    Route::get('/verificar-codigo', fn () => redirect()->away($portal('/verificar')))->name('mfa.verificar');
 
-    // Aceitar convite: definir a password de uma conta nova (broker 'invites', uso único).
-    Route::get('/convite/{token}', AceitarConvite::class)->name('convite.definir');
+    Route::get('/esqueci-password', fn () => redirect()->away($portal('/esqueci-password')))->name('password.request');
+
+    // O email vai como parâmetro no link; sem ele a pessoa teria de o escrever
+    // outra vez, e o do link é o que corresponde ao token.
+    Route::get('/redefinir-password/{token}', fn (string $token) => redirect()->away(
+        $portal('/redefinir-password/'.$token).'?'.http_build_query(['email' => request()->query('email', '')])
+    ))->name('password.reset');
+
+    Route::get('/convite/{token}', fn (string $token) => redirect()->away(
+        $portal('/convite/'.$token).'?'.http_build_query(['email' => request()->query('email', '')])
+    ))->name('convite.definir');
 });
 
 // Feed iCal de um técnico — URL assinada, acessível por apps de calendário
@@ -150,7 +157,12 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
 // 'gerir-utilizadores' (o middleware papel:admin redirecionaria, não daria 403). A guarda
 // verdadeira é o abort_unless(Gate) no componente.
 Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
-    Route::get('/utilizadores/adicionar', Adicionar::class)->name('utilizadores.adicionar');
+    // A gestao de pessoas passou para o portal, onde tambem se decide a que
+    // modulos cada uma entra — eram as duas metades da mesma tarefa. O endereco
+    // fica porque ha favoritos antigos, e porque o nome da rota ainda e usado.
+    Route::get('/utilizadores/adicionar', fn () => redirect()->away(
+        rtrim(config('app.portal_url'), '/').'/gestao/utilizadores'
+    ))->name('utilizadores.adicionar');
 });
 
 // ---- Operação de campo (admin + técnico) — agenda, intervenções, relatórios ----

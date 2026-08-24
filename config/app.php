@@ -126,4 +126,17 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Portal da suite
+    |--------------------------------------------------------------------------
+    |
+    | A entrada (login, recuperar palavra-passe e convites) passou a ser feita
+    | no portal, que e a unica porta da suite. Os enderecos antigos desta
+    | aplicacao redireccionam para la.
+    |
+    */
+
+    'portal_url' => env('PORTAL_URL', 'https://infra.nexus-solutions.pt:9443/portal'),
+
 ];

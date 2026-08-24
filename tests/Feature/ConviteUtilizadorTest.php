@@ -164,13 +164,16 @@ class ConviteUtilizadorTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_tecnico_que_adivinha_o_url_leva_403(): void
+    public function test_url_de_utilizadores_redireciona_para_o_portal(): void
     {
-        // GET real ao URL: o middleware admin,tecnico deixa-o chegar ao componente, que dá 403
-        // pelo Gate 'gerir-utilizadores' (um técnico não gere utilizadores).
-        $this->actingAs($this->tecnico())
+        // A gestão de utilizadores vive agora no PORTAL da suite: o URL antigo redireciona
+        // para lá em vez de servir o ecrã local. A guarda do componente (403 no mount pelo
+        // Gate) mantém-se — testada em test_tecnico_leva_403_no_componente.
+        $destino = $this->actingAs($this->tecnico())
             ->get(route('utilizadores.adicionar'))
-            ->assertForbidden();
+            ->headers->get('Location');
+
+        $this->assertStringStartsWith(rtrim(config('app.portal_url'), '/'), (string) $destino);
     }
 
     public function test_utilizador_sem_password_nao_faz_login(): void

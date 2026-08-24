@@ -5,6 +5,7 @@ namespace App\Livewire\Auth;
 use App\Models\User;
 use App\Services\Auditor;
 use App\Services\Auth\ServicoMfa;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
@@ -69,6 +70,19 @@ class Login extends Component
         }
 
         RateLimiter::clear($chave);
+
+        // Verificação em duas etapas desligada: as credenciais certas bastam.
+        // O que se faz aqui é exactamente o que o VerificarCodigo faria a seguir
+        // ao código — mesma sessão, mesma auditoria, mesma marca de instante.
+        if (! config('auth.mfa_activa')) {
+            Auth::login($user, $this->manter);
+            Auditor::registar('login');
+
+            session()->regenerate();
+            session(['autenticado_em' => now()->timestamp]);
+
+            return redirect()->intended(route($user->rotaInicial()));
+        }
 
         // Credenciais válidas → envia o código por email e guarda o estado pendente na sessão.
         // NÃO se faz login aqui; isso acontece em VerificarCodigo após o código certo.

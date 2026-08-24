@@ -43,7 +43,7 @@
                                     @if ($r->detalhe)
                                         <div class="max-w-md break-words text-xs">
                                             @foreach ($r->detalhe as $chave => $valor)
-                                                <div><span class="text-texto-fraco">{{ $chave }}:</span> {{ is_scalar($valor) ? $valor : json_encode($valor, JSON_UNESCAPED_UNICODE) }}</div>
+                                                <div><span class="text-texto-fraco">{{ $chave }}:</span> {{ \App\Support\ValorLegivel::texto($valor) }}</div>
                                             @endforeach
                                         </div>
                                     @else

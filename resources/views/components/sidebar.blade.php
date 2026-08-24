@@ -34,7 +34,6 @@
     // Gerir utilizadores e Auditoria: exclusivos do admin. Escondidos dos técnicos
     // (a rota da auditoria também os barra no servidor — abort_unless no componente).
     if ($u && $u->ehAdmin()) {
-        $itens[] = ['id' => 'utilizadores', 'label' => 'Utilizadores', 'url' => route('utilizadores.adicionar')];
         $itens[] = ['id' => 'auditoria', 'label' => 'Auditoria', 'url' => route('auditoria')];
     }
 
@@ -81,14 +80,14 @@
             <div class="truncate text-sm font-semibold text-white">{{ $u?->nome }}</div>
             <div class="truncate text-xs text-white/45">{{ $u?->email }}</div>
         </div>
-        {{-- Ao sair, limpa os espelhos locais de rascunhos de relatório (assinaturas já não
-             lá estão, mas as medições/notas sim) — tablet partilhado (19.ª revisão). --}}
-        <form method="POST" action="{{ route('logout') }}"
-            x-on:submit="Object.keys(localStorage).filter(k => k.startsWith('nexus-rascunho:')).forEach(k => localStorage.removeItem(k))">
-            @csrf
-            <button type="submit" title="Sair" class="flex h-8 w-8 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/5 hover:text-white">
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-            </button>
-        </form>
+        {{-- Sair daqui é voltar à escolha de módulos, não terminar a sessão: a
+             sessão é partilhada por toda a suite e termina no portal, que é
+             onde começa. A limpeza dos rascunhos guardados no aparelho (tablet
+             partilhado, 19.ª revisão) passou para o botão de sair do portal —
+             o armazenamento local é o mesmo nas três aplicações. --}}
+        <a href="{{ rtrim(config('app.portal_url'), '/') }}/" title="Voltar aos módulos" aria-label="Voltar aos módulos"
+           class="flex h-8 w-8 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/5 hover:text-white">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14M9 4H7a3 3 0 00-3 3v10a3 3 0 003 3h2"/></svg>
+        </a>
     </div>
 </aside>

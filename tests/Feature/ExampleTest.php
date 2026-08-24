@@ -9,12 +9,14 @@ class ExampleTest extends TestCase
     /**
      * Um visitante não autenticado é encaminhado para o login.
      */
-    public function test_visitante_anonimo_e_redirecionado_para_login(): void
+    public function test_visitante_anonimo_e_encaminhado_para_o_portal(): void
     {
-        $response = $this->get('/');
+        // '/' → dashboard (protegido) → login → PORTAL da suite (a única entrada;
+        // o ecrã de login desta app foi substituído por um redirect externo).
+        $this->get('/')->assertRedirect(route('dashboard'));
+        $this->get(route('dashboard'))->assertRedirect(route('login'));
 
-        // '/' → dashboard (protegido) → login.
-        $response->assertRedirect();
-        $this->followRedirects($response)->assertSee('login', false);
+        $destino = $this->get(route('login'))->headers->get('Location');
+        $this->assertStringStartsWith(rtrim(config('app.portal_url'), '/'), (string) $destino);
     }
 }
