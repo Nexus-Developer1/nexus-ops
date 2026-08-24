@@ -7,7 +7,6 @@ use App\Enums\EstadoRelatorio;
 use App\Enums\TipoIntervencao;
 use App\Models\Concerns\RestritoAoCliente;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -19,7 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 // Intervenção / ordem de trabalho sobre um equipamento.
 class Intervencao extends Model
 {
-    use HasFactory, RestritoAoCliente, SoftDeletes;
+    use RestritoAoCliente, SoftDeletes;
 
     protected $table = 'intervencoes';
 

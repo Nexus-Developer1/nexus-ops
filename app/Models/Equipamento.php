@@ -6,7 +6,6 @@ use App\Enums\EstadoEquipamento;
 use App\Enums\TipoEquipamento;
 use App\Models\Concerns\RestritoAoCliente;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -16,7 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 // Equipamento / ativo. Pertence a um local (e, por via deste, a um cliente).
 class Equipamento extends Model
 {
-    use HasFactory, RestritoAoCliente, SoftDeletes;
+    use RestritoAoCliente, SoftDeletes;
 
     protected $table = 'equipamentos';
 

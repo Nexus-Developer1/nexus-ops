@@ -3,9 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PapelUtilizador;
-use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -13,8 +11,7 @@ use Illuminate\Notifications\Notifiable;
 // Utilizador da aplicação. Tabela em português (ver plano A / secção 4 do CLAUDE.md).
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use Notifiable;
 
     protected $table = 'utilizadores';
 

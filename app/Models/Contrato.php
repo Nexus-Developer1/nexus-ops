@@ -7,7 +7,6 @@ use App\Enums\EstadoEvento;
 use App\Enums\TipoContrato;
 use App\Models\Concerns\RestritoAoCliente;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -20,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 // nº de visitas incluídas; as visitas são agendadas manualmente na agenda (§6).
 class Contrato extends Model
 {
-    use HasFactory, RestritoAoCliente, SoftDeletes;
+    use RestritoAoCliente, SoftDeletes;
 
     protected $table = 'contratos';
 
