@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\CadeiaSincronizacaoCompletaErp;
 use App\Jobs\SincronizarErp;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -30,7 +31,12 @@ Schedule::job(new SincronizarErp(agendado: true))
 // de manhã cedo — realinha qualquer drift local em campos do ERP (10.ª revisão de segurança:
 // sem isto, um registo adulterado na BD da app ou com hash "envenenado" ficava stale para
 // sempre; o incremental só reescreve quando o PHC muda). Demora ~20 min, ninguém a usar.
-Schedule::job(new SincronizarErp(agendado: true, completo: true))
+// Em CADEIA (um job por etapa + resumo): em modo completo cada etapa reescreve todas as linhas
+// (dossiês ~21 min, faturação ~20 min) e o job único rebentava o timeout de 1700 s a meio da
+// faturação — TODOS os domingos (16/08, 23/08): email de falha, sem auditoria, faturação nunca
+// realinhada. Ver CadeiaSincronizacaoCompletaErp. `->name()` é obrigatório no onOneServer com closure.
+Schedule::call(fn () => CadeiaSincronizacaoCompletaErp::despachar('agendado-completo'))
+    ->name('erp-sync-completo')
     ->timezone('Europe/Lisbon')
     ->cron('0 6 * * 0')
     ->onOneServer()

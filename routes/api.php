@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\CadeiaSincronizacaoCompletaErp;
 use App\Jobs\SincronizarErp;
 use App\Jobs\SincronizarEtapaErp;
 use App\Models\Auditoria;
@@ -54,7 +55,10 @@ Route::prefix('sync')->middleware(['chave.api', 'throttle:30,1'])->group(functio
     // Corrida ENCADEADA: clientes → equipamentos → artigos → dossiês → faturação (o mesmo job do
     // botão e do cron; silencioso por email — o resultado fica em /estado, no log e na auditoria).
     Route::match(['get', 'post'], '/tudo', fn (Request $r) => $disparar($r, 'todos os dados do PHC',
-        fn () => SincronizarErp::dispatch(agendado: false, completo: $r->boolean('completo'), origem: 'api')
+        // Completo → cadeia de etapas (o job único não cabe no timeout em modo completo).
+        fn () => $r->boolean('completo')
+            ? CadeiaSincronizacaoCompletaErp::despachar('api-completo')
+            : SincronizarErp::dispatch(agendado: false, completo: false, origem: 'api')
     ))->name('api.sync.tudo');
 
     // Estado — o que se consulta a seguir a um disparo.
@@ -64,7 +68,7 @@ Route::prefix('sync')->middleware(['chave.api', 'throttle:30,1'])->group(functio
         // Últimas corridas (auditoria — uma linha por corrida, sistema).
         $corridas = Auditoria::query()->where('acao', 'sync_erp')->latest('id')->limit(10)->get()
             ->map(fn (Auditoria $a) => [
-                'em' => $a->created_at?->toIso8601String(),
+                'em' => $a->criado_em?->toIso8601String(),
                 'origem' => $a->detalhe['origem'] ?? (($a->detalhe['agendado'] ?? false) ? 'agendado' : 'dashboard'),
                 'falhou' => (bool) ($a->detalhe['falhou'] ?? false),
                 'resultados' => $a->detalhe['resultados'] ?? [],

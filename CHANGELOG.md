@@ -6,6 +6,13 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-08-28
+
+- 🐛 **Sync completo de domingo rebentava TODOS os domingos — passa a cadeia de jobs** — a corrida completa (06:00, ignora os hashes para realinhar drift) morria por timeout às 06:28 em 16/08 e 23/08: em modo completo cada etapa **reescreve todas as linhas** (dossiês 200 923 em ~21 min, faturação 192 142 em ~20 min) e o job único não cabia nos 1700 s — a faturação nunca chegou a ser realinhada, o suporte recebia email de falha e não ficava linha de auditoria (daí as corridas de domingo não aparecerem no `/estado`). Agora a corrida completa é uma **cadeia** (`CadeiaSincronizacaoCompletaErp`): um `SincronizarEtapaErp` por etapa, cada um com o seu timeout, mesmo lock, a acumular o resultado em cache; e um `ResumoSincronizacaoCompletaErp` no fim que junta tudo, regista UMA linha de auditoria, atualiza o "último resultado" e envia o email (só no agendado). Uma etapa interrompida dispara o resumo na mesma — o email diz "interrompida" nela e "não chegou a correr" nas seguintes, em vez de silêncio. O `?completo=1` da API usa a mesma cadeia. O job encadeado incremental (08h/13h/19h, botão) não muda. Não se subiu o timeout porque tem de ficar abaixo do `retry_after=2100` do redis. Requer `optimize` + `queue:restart`. +6 testes, 1 atualizado. `hash`
+- 🐛 **API `/api/sync/estado`: datas das corridas vinham a `null`** — a tabela de auditoria usa `criado_em` (não `created_at`); corrigido e coberto por asserção. Mesmo commit.
+- 🛠️ **Servidor: linha morta no cron do www-data** — `30 2 * * * bash deploy/backup.sh` apontava ao script antigo apagado a 17/08 (falhava em silêncio todas as noites); removida. O backup real (`/usr/local/sbin/backup-nexus.sh`, root) está saudável — marcador de hoje 02:30, "Backup OK" 71 MB. Sem commit.
+- 🛠️ **Diagnóstico: corrida das 08:00 de 27/08 não existiu porque a VM esteve congelada** — Hyper-V (`hv_utils` reinicializado às 06:12 e 09:31, **zero linhas de journal entre as duas, 198 min sem cron**): checkpoint/save do host, não é problema da app. Única ocorrência em 14 dias; as restantes 44 corridas ok.
+
 ## 2026-08-24
 
 - 🧹 **Esquema morto fora da BD: `categorias_despesa` e `eventos_agenda.recorrencia`** — o fecho das duas rondas de limpeza chega à base de dados: a tabela `categorias_despesa` (órfã desde que o modelo saiu na 1.ª ronda; em produção só tinha as 4 seeds de origem) e a coluna `recorrencia` dos eventos (RRULE do modelo antigo de visitas por periodicidade, "em desuso" desde junho; **0 valores em produção** — verificado antes de apagar). O `down()` repõe a estrutura e o CLAUDE.md deixa de listar a coluna. **Requer `php artisan migrate --force`**; sem build. 473 testes no total. `7753be9`

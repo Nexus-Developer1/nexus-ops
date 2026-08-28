@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ResumoSincronizacaoCompletaErp;
 use App\Jobs\SincronizarErp;
 use App\Jobs\SincronizarEtapaErp;
 use App\Models\Auditoria;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -58,7 +60,7 @@ class ApiSincronizacaoTest extends TestCase
 
     public function test_tudo_vai_para_a_fila_com_origem_api_em_get_e_post(): void
     {
-        Queue::fake();
+        Bus::fake();
 
         $this->comChave()->getJson('/api/sync/tudo')
             ->assertStatus(202)
@@ -68,9 +70,17 @@ class ApiSincronizacaoTest extends TestCase
             ->assertStatus(202)
             ->assertJsonPath('completo', true);
 
-        Queue::assertPushed(SincronizarErp::class, 2);
-        Queue::assertPushed(SincronizarErp::class, fn ($j) => $j->origem === 'api' && ! $j->agendado && ! $j->completo);
-        Queue::assertPushed(SincronizarErp::class, fn ($j) => $j->origem === 'api' && $j->completo);
+        // Incremental → o job encadeado; completo → a CADEIA (5 etapas + resumo).
+        Bus::assertDispatched(SincronizarErp::class, fn ($j) => $j->origem === 'api' && ! $j->agendado && ! $j->completo);
+        Bus::assertDispatchedTimes(SincronizarErp::class, 1);
+        Bus::assertChained([
+            new SincronizarEtapaErp('clientes', true, 'api-completo', true),
+            new SincronizarEtapaErp('equipamentos', true, 'api-completo', true),
+            new SincronizarEtapaErp('artigos', true, 'api-completo', true),
+            new SincronizarEtapaErp('dossiers', true, 'api-completo', true),
+            new SincronizarEtapaErp('faturacao', true, 'api-completo', true),
+            new ResumoSincronizacaoCompletaErp('api-completo'),
+        ]);
     }
 
     public function test_etapa_unica_vai_para_a_fila_e_etapa_desconhecida_da_404(): void
@@ -126,6 +136,8 @@ class ApiSincronizacaoTest extends TestCase
             ->assertJsonPath('ultimo.resultados.Clientes.detalhe', '3 criados')
             ->assertJsonCount(2, 'ultimas_corridas')
             ->assertJsonPath('ultimas_corridas.0.origem', 'agendado') // mais recente primeiro
+            ->assertJsonMissingPath('ultimas_corridas.0.nada')
+            ->assertJsonPath('ultimas_corridas.0.em', fn ($v) => is_string($v) && str_starts_with($v, '2026-')) // a auditoria usa criado_em, não created_at
             ->assertJsonPath('ultimas_corridas.0.falhou', true)
             ->assertJsonPath('ultimas_corridas.1.origem', 'api')
             ->assertJsonPath('etapas_disponiveis', ['clientes', 'equipamentos', 'artigos', 'dossiers', 'faturacao']);

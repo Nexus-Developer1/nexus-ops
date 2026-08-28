@@ -208,11 +208,14 @@ class SincronizarErpManualTest extends TestCase
         $eventos = collect(app(Schedule::class)->events());
 
         $doJob = $eventos->filter(fn ($e) => str_contains((string) $e->description, SincronizarErp::class));
-        $this->assertCount(2, $doJob);
-        $this->assertEqualsCanonicalizing(
-            ['0 8,13,19 * * *', '0 6 * * 0'],
-            $doJob->map(fn ($e) => $e->expression)->values()->all(),
-        );
+        $this->assertCount(1, $doJob);
+        $this->assertSame('0 8,13,19 * * *', $doJob->first()->expression);
+
+        // A corrida COMPLETA de domingo é uma CADEIA (um job por etapa + resumo) despachada por
+        // closure — o job único rebentava o timeout a meio da faturação todos os domingos.
+        $completo = $eventos->filter(fn ($e) => (string) $e->description === 'erp-sync-completo');
+        $this->assertCount(1, $completo);
+        $this->assertSame('0 6 * * 0', $completo->first()->expression);
 
         // Os comandos individuais deixaram de estar agendados.
         $comandos = $eventos->filter(fn ($e) => str_contains((string) $e->command, 'erp:sincronizar'));
