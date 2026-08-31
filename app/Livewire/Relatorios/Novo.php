@@ -549,7 +549,10 @@ class Novo extends Component
     // Limitada a MAX_LISTA_CHECKBOXES (50); vazia nas outras faixas (nunca carrega centenas).
     private function equipamentosLista(): Collection
     {
-        if ($this->faixaEquipamentos !== 'lista') {
+        // Também na faixa 'auto' (≤10): anexar tudo de início não chega — um relatório nascido da
+        // agenda com UM equipamento (ou de que se tirou um) ficava sem forma de acrescentar os
+        // outros do mesmo cliente. Com ≤10 a lista é curta e serve para marcar/desmarcar.
+        if (! in_array($this->faixaEquipamentos, ['auto', 'lista'], true)) {
             return collect();
         }
 

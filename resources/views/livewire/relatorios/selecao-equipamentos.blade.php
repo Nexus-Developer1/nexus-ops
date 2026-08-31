@@ -5,9 +5,11 @@
 @php($rotuloFonte = $ehContrato ? 'contrato' : 'cliente')
 @php($fonteEscolhida = $ehContrato ? $contrato_id : $cliente_id)
 
-{{-- Faixa 11-50: lista de checkboxes. Marcar/desmarcar anexa/remove a aba em tempo real. São no
-     máx. 50 linhas (checkboxes leves); as fichas só montam para os marcados (wire:key estáveis). --}}
-@if ($faixaEquipamentos === 'lista')
+{{-- Faixas ≤10 ('auto') e 11-50 ('lista'): lista de checkboxes. Marcar/desmarcar anexa/remove a
+     aba em tempo real. Na 'auto' vem tudo marcado à partida, mas a lista fica — um relatório nascido
+     da agenda com UM equipamento (ou de que se tirou um) precisa de poder acrescentar os outros do
+     mesmo cliente. São no máx. 50 linhas; as fichas só montam para os marcados (wire:key estáveis). --}}
+@if (in_array($faixaEquipamentos, ['auto', 'lista'], true))
     <div class="sm:col-span-2">
         @php($todosMarcados = $equipamentosLista->isNotEmpty() && $equipamentosLista->every(fn ($e) => in_array($e->id, $anexadosIds, true)))
         <div class="mb-2 flex items-center justify-between">
@@ -34,7 +36,13 @@
                 </label>
             @endforeach
         </div>
-        <p class="mt-1.5 text-xs text-texto-fraco">Marca os equipamentos a intervencionar — cada um vira uma aba com ficha em cima.</p>
+        <p class="mt-1.5 text-xs text-texto-fraco">
+            @if ($faixaEquipamentos === 'auto')
+                Marca ou desmarca os equipamentos deste {{ $rotuloFonte }} que entram no relatório — cada um vira uma aba com ficha em cima.
+            @else
+                Marca os equipamentos a intervencionar — cada um vira uma aba com ficha em cima.
+            @endif
+        </p>
         @error('equipamento_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
     </div>
 

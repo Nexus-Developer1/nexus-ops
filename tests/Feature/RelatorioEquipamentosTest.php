@@ -71,6 +71,61 @@ class RelatorioEquipamentosTest extends TestCase
         );
     }
 
+    // Relatório sem contrato nascido da agenda com UM equipamento (cliente ≤10 → faixa 'auto'):
+    // ao reabrir tem de haver forma de acrescentar os outros equipamentos do mesmo cliente —
+    // antes a faixa 'auto' não mostrava lista nenhuma e o relatório ficava preso a esse um.
+    public function test_relatorio_individual_com_um_equipamento_permite_acrescentar_os_outros_do_cliente(): void
+    {
+        [$admin, $principal, $extra1, $extra2] = $this->cenario();
+        $intervencao = Intervencao::create(['equipamento_id' => $principal->id, 'tipo' => 'preventiva', 'estado' => 'planeada', 'contrato_id' => null]);
+        $relatorio = $intervencao->garantirRascunho();
+
+        $c = Livewire::actingAs($admin)->test(Novo::class, ['relatorio' => $relatorio]);
+
+        // Reabre só com o principal (nada anexado às cegas), na faixa 'auto', COM a lista visível.
+        $c->assertSet('faixaEquipamentos', 'auto')
+            ->assertSet('equipamento_id', $principal->id)
+            ->assertSet('equipamentosCobertos', [])
+            ->assertSeeHtml('wire:click="alternarEquipamento(')
+            ->assertSee('SN-EX1')
+            ->assertSee('SN-EX2');
+
+        // Marcar acrescenta; desmarcar tira; o principal mantém-se.
+        $c->call('alternarEquipamento', $extra1->id)
+            ->assertSet('equipamentosCobertos', [$extra1->id])
+            ->call('alternarEquipamento', $extra2->id)
+            ->assertSet('equipamentosCobertos', [$extra1->id, $extra2->id])
+            ->call('alternarEquipamento', $extra1->id)
+            ->assertSet('equipamentosCobertos', [$extra2->id])
+            ->assertSet('equipamento_id', $principal->id);
+
+        // Equipamento de OUTRO cliente continua a ser rejeitado.
+        $outro = Cliente::create(['nome' => 'BETA', 'ativo' => true]);
+        $outroLocal = Local::create(['cliente_id' => $outro->id, 'designacao' => 'DC-B']);
+        $alheio = Equipamento::create(['local_id' => $outroLocal->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-BETA']);
+        $c->call('alternarEquipamento', $alheio->id)->assertSet('equipamentosCobertos', [$extra2->id]);
+
+        // Grava e reabre: os cobertos escolhidos persistem.
+        $c->set('data', now()->toDateString())->call('guardarRascunho');
+        $this->assertSame([$extra2->id], $intervencao->fresh()->equipamentosCobertos()->pluck('equipamentos.id')->all());
+    }
+
+    public function test_faixa_auto_mostra_a_lista_com_tudo_marcado(): void
+    {
+        [$admin, $principal, $extra1, $extra2] = $this->cenario();
+        $cliente = Cliente::firstOrFail();
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)->call('selecionarCliente', $cliente->id);
+
+        // Anexa tudo (comportamento de sempre) E mostra a lista com os 3 marcados + "Limpar seleção".
+        $c->assertSet('faixaEquipamentos', 'auto')
+            ->assertSeeHtml('wire:click="alternarEquipamento(')
+            ->assertSee('Limpar seleção');
+        foreach ([$principal, $extra1, $extra2] as $e) {
+            $c->assertSeeHtml('wire:click="alternarEquipamento('.$e->id.')" checked');
+        }
+    }
+
     public function test_reabrir_rascunho_carrega_os_equipamentos_cobertos(): void
     {
         [$admin] = $this->cenario();
