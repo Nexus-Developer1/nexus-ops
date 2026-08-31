@@ -177,13 +177,14 @@
                             <div>
                                 <label class="campo-label" for="equip-evento-combo">Equipamento (opcional)</label>
                                 @if ($editandoConvertido)
-                                    <p class="mb-1.5 text-xs text-texto-fraco">Este evento já tem relatório em rascunho — o equipamento gere-se no relatório.</p>
+                                    <p class="mb-1.5 text-xs text-texto-fraco">Este evento já tem relatório em rascunho: o equipamento principal gere-se no relatório; pode <strong>acrescentar mais</strong> aqui — entram como equipamentos cobertos do relatório.</p>
+                                @else
+                                    <p class="mb-1.5 text-xs text-texto-fraco">O 1.º escolhido é o principal (dá o cliente ao evento); pode acrescentar mais do mesmo cliente.</p>
                                 @endif
                                 <div x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
                                     <input
                                         id="equip-evento-combo"
                                         type="text"
-                                        @disabled($editandoConvertido)
                                         wire:model.live.debounce.300ms="formEquipamentoBusca"
                                         @focus="aberto = true"
                                         @click="aberto = true"
@@ -215,6 +216,25 @@
                                     </ul>
                                 </div>
                                 @error('formEquipamentoId') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                @error('formEquipamentosExtra.*') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+
+                                {{-- Chips: principal (verde) + adicionais (com ×). Num evento convertido o principal
+                                     não sai daqui (é do relatório); os adicionais sim. --}}
+                                @if ($equipamentoPrincipal || $equipamentosExtra->isNotEmpty())
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        @if ($equipamentoPrincipal)
+                                            <span wire:key="chip-eq-{{ $equipamentoPrincipal->id }}" title="Principal · {{ $equipamentoPrincipal->local?->cliente?->nome ?? '—' }}" class="inline-flex items-center gap-1.5 rounded-full border border-verde-200 bg-verde-50 px-3 py-1 text-xs font-medium text-verde-700">
+                                                {{ $equipamentoPrincipal->numero_serie ?? '—' }} <span class="font-normal text-verde-600">· {{ trim($equipamentoPrincipal->fabricante . ' ' . $equipamentoPrincipal->modelo) ?: '—' }}</span>
+                                            </span>
+                                        @endif
+                                        @foreach ($equipamentosExtra as $eq)
+                                            <span wire:key="chip-eq-{{ $eq->id }}" title="{{ $eq->local?->cliente?->nome ?? '—' }}" class="inline-flex items-center gap-1.5 rounded-full border border-borda bg-fundo px-3 py-1 text-xs text-texto-forte">
+                                                {{ $eq->numero_serie ?? '—' }} <span class="text-texto-fraco">· {{ trim($eq->fabricante . ' ' . $eq->modelo) ?: '—' }}</span>
+                                                <button type="button" wire:click="removerEquipamentoExtra({{ $eq->id }})" class="ml-0.5 rounded-full text-texto-fraco hover:text-perigo-600" title="Retirar" aria-label="Retirar {{ $eq->numero_serie }}">&times;</button>
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                @endif
                             </div>
 
                             {{-- Técnicos: CONTAS de utilizador (mesma lista do relatório), 1 ou mais. Ligar

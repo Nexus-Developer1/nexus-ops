@@ -22,7 +22,7 @@ class NotificadorAgenda
     /** @return array<string, mixed> */
     public static function instantaneo(EventoAgenda $e): array
     {
-        $e->loadMissing(['tecnico', 'tecnicosAdicionais', 'cliente', 'equipamento', 'contrato']);
+        $e->loadMissing(['tecnico', 'tecnicosAdicionais', 'cliente', 'equipamento', 'equipamentosAdicionais', 'contrato']);
 
         return [
             'id' => $e->id,
@@ -35,8 +35,13 @@ class NotificadorAgenda
             'tecnico_ids' => $e->tecnicoIdsTodos(),
             'tecnicos_nomes' => (string) $e->tecnico_label,
             'cliente' => $e->cliente?->nome,
+            // Principal + adicionais ("SN1 · Riello NPW, SN2 · Riello NPW") — o email e o convite
+            // dizem tudo o que o trabalho abrange.
             'equipamento' => $e->equipamento
-                ? trim(($e->equipamento->numero_serie ?? '').' · '.trim(($e->equipamento->fabricante ?? '').' '.($e->equipamento->modelo ?? '')), ' ·')
+                ? implode(', ', array_map(
+                    fn ($eq) => trim(($eq->numero_serie ?? '').' · '.trim(($eq->fabricante ?? '').' '.($eq->modelo ?? '')), ' ·'),
+                    [$e->equipamento, ...$e->equipamentosAdicionais->all()],
+                ))
                 : null,
             'contrato' => $e->contrato?->numero,
             'notificar' => (bool) $e->notificar_tecnicos,

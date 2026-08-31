@@ -82,6 +82,11 @@ class Calendario extends Component
 
     public string $formEquipamentoBusca = '';
 
+    // Equipamentos ADICIONAIS do evento (além do principal): um trabalho pode abranger vários
+    // equipamentos do mesmo cliente. Num evento já convertido são os "cobertos" do relatório.
+    /** @var list<int> */
+    public array $formEquipamentosExtra = [];
+
     // Contrato opcional a que a visita pertence; cobertura só conta se houver contrato.
     public ?int $formContratoId = null;
 
@@ -356,7 +361,7 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoIds', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura', 'formHorasDias', 'formNotificar', 'formDiaInteiro']);
+        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoIds', 'formEquipamentoId', 'formEquipamentoBusca', 'formEquipamentosExtra', 'formContratoId', 'formCobertura', 'formHorasDias', 'formNotificar', 'formDiaInteiro']);
 
         // A agenda manda o DIA (sem hora) — as horas reais escrevem-se no formulário e podem
         // abranger vários dias. Sem hora, arranca na abertura e propõe 1h (fácil de ajustar).
@@ -401,6 +406,12 @@ class Calendario extends Component
             $evento->tecnicosAdicionais()->pluck('utilizadores.id')->all(),
         ))));
         $this->formEquipamentoId = $evento->equipamento_id;
+        // Adicionais: num evento convertido a fonte de verdade são os COBERTOS do relatório
+        // (podem ter sido acrescentados/retirados no editor); senão, a pivot do evento.
+        $this->formEquipamentosExtra = $evento->intervencao_id
+            ? $evento->intervencao->equipamentosCobertos()->pluck('equipamentos.id')->map(fn ($v) => (int) $v)->all()
+            : $evento->equipamentosAdicionais()->pluck('equipamentos.id')->map(fn ($v) => (int) $v)->all();
+        $this->formEquipamentosExtra = array_values(array_diff($this->formEquipamentosExtra, [(int) $evento->equipamento_id]));
         $this->formEquipamentoBusca = $evento->equipamento
             ? trim(($evento->equipamento->numero_serie ?? '—')
                 .' · '.trim($evento->equipamento->fabricante.' '.$evento->equipamento->modelo))
@@ -430,6 +441,9 @@ class Calendario extends Component
     }
 
     // Seleção de um equipamento na pesquisa server-side: fixa o id e o texto da label.
+    // Escolher da lista: sem principal → fica principal (dá o cliente/local ao evento); com
+    // principal → junta-se aos ADICIONAIS (mesmo cliente — validado ao gravar). Num evento já
+    // convertido o principal pertence ao relatório e não muda por aqui: entra sempre como extra.
     public function selecionarEquipamento(int $id): void
     {
         $equipamento = Equipamento::with('local')->find($id);
@@ -437,15 +451,36 @@ class Calendario extends Component
             return;
         }
 
-        $this->formEquipamentoId = $equipamento->id;
-        $this->formEquipamentoBusca = trim(($equipamento->numero_serie ?? '—')
-            .' · '.trim($equipamento->fabricante.' '.$equipamento->modelo));
+        if ($this->formEquipamentoId === null && ! $this->editandoConvertido) {
+            $this->formEquipamentoId = $equipamento->id;
+            $this->formEquipamentoBusca = trim(($equipamento->numero_serie ?? '—')
+                .' · '.trim($equipamento->fabricante.' '.$equipamento->modelo));
+
+            return;
+        }
+
+        if ($equipamento->id !== $this->formEquipamentoId && ! in_array($equipamento->id, $this->formEquipamentosExtra, true)) {
+            $this->formEquipamentosExtra[] = $equipamento->id;
+        }
+        // A caixa fica livre para a próxima pesquisa; o principal continua no chip.
+        if ($this->editandoConvertido || $this->formEquipamentoId !== $equipamento->id) {
+            $this->formEquipamentoBusca = '';
+        }
+    }
+
+    public function removerEquipamentoExtra(int $id): void
+    {
+        $this->formEquipamentosExtra = array_values(array_filter($this->formEquipamentosExtra, fn ($e) => (int) $e !== $id));
     }
 
     // Escrever na caixa desfaz a seleção (campo opcional: sem escolha => sem equipamento).
     public function updatedFormEquipamentoBusca(): void
     {
-        $this->formEquipamentoId = null;
+        // Só desfaz o principal enquanto a caixa era "o" campo do equipamento (sem extras e
+        // sem relatório): com extras, a caixa serve para acrescentar e o principal fica no chip.
+        if (! $this->editandoConvertido && $this->formEquipamentosExtra === []) {
+            $this->formEquipamentoId = null;
+        }
     }
 
     // Escolher contrato assume "incluída" por defeito; limpar contrato limpa a cobertura.
@@ -515,6 +550,8 @@ class Calendario extends Component
                     ->where('papel', PapelUtilizador::Tecnico->value)
                     ->where('ativo', true)],
             'formEquipamentoId' => ['nullable', 'exists:equipamentos,id'],
+            'formEquipamentosExtra' => ['array', 'max:50'],
+            'formEquipamentosExtra.*' => ['integer', 'exists:equipamentos,id'],
             'formInicio' => ['required', 'date'],
             // Teto de duração: sem ele (e sem o travão do horário de cobertura, que já não se
             // aplica a multi-dia) dava para gravar um evento de anos, que colidiria com tudo e
@@ -606,7 +643,27 @@ class Calendario extends Component
         // Instantâneo ANTES da edição — o email de "alterado" diz o que mudou e avisa quem saiu.
         $antes = $this->editandoId ? NotificadorAgenda::instantaneo(EventoAgenda::findOrFail($this->editandoId)) : null;
 
-        $resultado = $agendador->gravar($atributos, $tecnicosEscolhidos, $adicionaisIds, $this->editandoId);
+        // Equipamentos adicionais: só do MESMO cliente do principal (um evento tem um cliente).
+        // Sem principal não há adicionais (o 1.º escolhido é sempre o principal).
+        $extras = array_values(array_unique(array_map('intval', $this->formEquipamentosExtra)));
+        $extras = array_values(array_diff($extras, [(int) $equipamentoId]));
+        if ($extras !== []) {
+            if (! $equipamentoId) {
+                $this->addError('formEquipamentoId', 'Escolha primeiro o equipamento principal.');
+
+                return;
+            }
+            $foraDoCliente = Equipamento::whereIn('id', $extras)
+                ->whereDoesntHave('local', fn ($q) => $q->where('cliente_id', $clienteId))
+                ->exists();
+            if ($foraDoCliente) {
+                $this->addError('formEquipamentoId', 'Todos os equipamentos têm de ser do mesmo cliente.');
+
+                return;
+            }
+        }
+
+        $resultado = $agendador->gravar($atributos, $tecnicosEscolhidos, $adicionaisIds, $this->editandoId, $extras);
 
         if (isset($resultado['erro'])) {
             $this->addError('formInicio', $resultado['erro']);
@@ -706,6 +763,11 @@ class Calendario extends Component
             'eventoEditavel' => $evento && $evento->editavelPelaAgenda(),
             'assuntos' => AssuntoEvento::orderBy('nome')->get(),
             'equipamentosFiltrados' => $equipamentosFiltrados,
+            // Chips do principal + adicionais (modelos, para mostrar série/modelo/cliente).
+            'equipamentoPrincipal' => $this->formEquipamentoId ? Equipamento::with('local.cliente')->find($this->formEquipamentoId) : null,
+            'equipamentosExtra' => $this->formEquipamentosExtra !== []
+                ? Equipamento::with('local.cliente')->whereIn('id', $this->formEquipamentosExtra)->orderBy('numero_serie')->get()
+                : collect(),
             'contratos' => $contratos,
         ]);
     }

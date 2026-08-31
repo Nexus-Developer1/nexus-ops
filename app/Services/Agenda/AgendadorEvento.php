@@ -27,7 +27,7 @@ class AgendadorEvento
      * @return array{erro?: string, bloqueado?: bool, evento?: EventoAgenda}
      *                                                                       erro = razão legível (horário/conflito); bloqueado = evento já não editável
      */
-    public function gravar(array $atributos, Collection $tecnicos, array $adicionaisIds, ?int $editandoId): array
+    public function gravar(array $atributos, Collection $tecnicos, array $adicionaisIds, ?int $editandoId, array $equipamentosExtraIds = []): array
     {
         /** @var Carbon $inicio */
         $inicio = $atributos['inicio'];
@@ -44,7 +44,7 @@ class AgendadorEvento
             ->values()
             ->all() ?: null;
 
-        return DB::transaction(function () use ($atributos, $tecnicos, $adicionaisIds, $editandoId, $inicio, $fim, $segmentos) {
+        return DB::transaction(function () use ($atributos, $tecnicos, $adicionaisIds, $editandoId, $inicio, $fim, $segmentos, $equipamentosExtraIds) {
             // Trava por id de conta E por nome: o reagendamento de eventos legados trava
             // pelo nome, e assim os dois caminhos serializam entre si.
             $this->detetor->travarAgendaDe([
@@ -106,6 +106,15 @@ class AgendadorEvento
                 // técnicos chega ao observer (espelho no calendário do M365).
                 $evento->touch();
 
+                // Equipamentos adicionais — na pivot do evento E, se já há relatório, nos COBERTOS
+                // do relatório (uma só fonte de verdade; o principal do relatório não muda por aqui).
+                $evento->equipamentosAdicionais()->sync($equipamentosExtraIds);
+                if ($evento->intervencao_id) {
+                    $principalRelatorio = (int) $evento->intervencao->equipamento_id;
+                    $evento->intervencao->equipamentosCobertos()->sync(array_values(array_diff($equipamentosExtraIds, [$principalRelatorio])));
+                }
+                $evento->unsetRelation('equipamentosAdicionais');
+
                 return ['evento' => $evento];
             }
 
@@ -114,6 +123,7 @@ class AgendadorEvento
                 'estado' => EstadoEvento::Planeado,
             ]);
             $evento->tecnicosAdicionais()->sync($adicionaisIds);
+            $evento->equipamentosAdicionais()->sync($equipamentosExtraIds);
 
             return ['evento' => $evento];
         });

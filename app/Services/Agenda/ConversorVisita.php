@@ -35,6 +35,15 @@ class ConversorVisita
                 'data_inicio' => now(),
             ]);
 
+            // Equipamentos adicionais do evento → cobertos do relatório (mesmos factos dos dois lados).
+            $extras = array_values(array_diff(
+                $evento->equipamentosAdicionais()->pluck('equipamentos.id')->map(fn ($v) => (int) $v)->all(),
+                [(int) $intervencao->equipamento_id],
+            ));
+            if ($extras !== []) {
+                $intervencao->equipamentosCobertos()->sync($extras);
+            }
+
             $evento->update([
                 'intervencao_id' => $intervencao->id,
                 'estado' => EstadoEvento::EmCurso,

@@ -62,10 +62,13 @@ class GeradorRascunhoDeEvento
                 'hora_fim' => $evento->fim->format('H:i'),
             ]);
 
-            // Modo contrato: os equipamentos cobertos são os DO CONTRATO menos o principal,
-            // para o relatório abrir com a ficha de medições por equipamento.
-            if ($evento->contrato_id) {
-                $cobertos = array_values(array_diff($idsContrato, [$principalId]));
+            // Cobertos do relatório = os DO CONTRATO (modo contrato, para abrir com a ficha de
+            // medições por equipamento) + os ADICIONAIS escolhidos no evento, menos o principal.
+            $cobertos = array_values(array_unique(array_diff(
+                array_merge($idsContrato, $evento->equipamentosAdicionais()->pluck('equipamentos.id')->map(fn ($v) => (int) $v)->all()),
+                [$principalId],
+            )));
+            if ($cobertos !== []) {
                 $intervencao->equipamentosCobertos()->sync($cobertos);
             }
 

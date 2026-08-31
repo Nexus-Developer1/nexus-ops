@@ -124,6 +124,22 @@ class EventoAgenda extends Model
         return $this->belongsToMany(User::class, 'evento_tecnicos', 'evento_agenda_id', 'user_id');
     }
 
+    // Equipamentos ADICIONAIS (além do principal em equipamento_id) — um trabalho pode abranger
+    // vários equipamentos do mesmo cliente. Espelhados nos "cobertos" do relatório ligado.
+    public function equipamentosAdicionais(): BelongsToMany
+    {
+        return $this->belongsToMany(Equipamento::class, 'evento_equipamentos', 'evento_agenda_id', 'equipamento_id')->withTimestamps();
+    }
+
+    /** @return list<int> Principal + adicionais, sem repetidos. */
+    public function equipamentoIdsTodos(): array
+    {
+        return array_values(array_unique(array_filter(array_merge(
+            [$this->equipamento_id],
+            $this->equipamentosAdicionais->pluck('id')->all(),
+        ))));
+    }
+
     // Ids de TODOS os técnicos do evento (principal + adicionais) — conflitos e iCal.
     /** @return list<int> */
     /**
