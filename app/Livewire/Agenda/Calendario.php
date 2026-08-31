@@ -77,6 +77,12 @@ class Calendario extends Component
     /** @var list<array{dia: string, inicio: string, fim: string}> */
     public array $formHorasDias = [];
 
+    // Cliente do evento (combobox por nome/NIF/nº ERP). Filtra a pesquisa de equipamentos a esse
+    // cliente; escolher um equipamento preenche-o. Sem equipamento, o evento fica com este cliente.
+    public ?int $formClienteId = null;
+
+    public string $formClienteBusca = '';
+
     // Equipamento principal do evento, opcional (pesquisa server-side; deriva local/cliente).
     public ?int $formEquipamentoId = null;
 
@@ -361,7 +367,7 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoIds', 'formEquipamentoId', 'formEquipamentoBusca', 'formEquipamentosExtra', 'formContratoId', 'formCobertura', 'formHorasDias', 'formNotificar', 'formDiaInteiro']);
+        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoIds', 'formClienteId', 'formClienteBusca', 'formEquipamentoId', 'formEquipamentoBusca', 'formEquipamentosExtra', 'formContratoId', 'formCobertura', 'formHorasDias', 'formNotificar', 'formDiaInteiro']);
 
         // A agenda manda o DIA (sem hora) — as horas reais escrevem-se no formulário e podem
         // abranger vários dias. Sem hora, arranca na abertura e propõe 1h (fácil de ajustar).
@@ -383,7 +389,7 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $evento = EventoAgenda::with('equipamento', 'intervencao.relatorio')->findOrFail($this->eventoSelecionadoId);
+        $evento = EventoAgenda::with('equipamento', 'cliente', 'intervencao.relatorio')->findOrFail($this->eventoSelecionadoId);
 
         if (! $evento->editavelPelaAgenda()) {
             return; // o botão não aparece nestes casos — guard defensivo
@@ -405,6 +411,8 @@ class Calendario extends Component
             [$principal],
             $evento->tecnicosAdicionais()->pluck('utilizadores.id')->all(),
         ))));
+        $this->formClienteId = $evento->cliente_id;
+        $this->formClienteBusca = '';
         $this->formEquipamentoId = $evento->equipamento_id;
         // Adicionais: num evento convertido a fonte de verdade são os COBERTOS do relatório
         // (podem ter sido acrescentados/retirados no editor); senão, a pivot do evento.
@@ -452,6 +460,8 @@ class Calendario extends Component
 
         if ($this->formEquipamentoId === null && ! $this->editandoConvertido) {
             $this->formEquipamentoId = $equipamento->id;
+            // O cliente segue o principal (equipamento → local → cliente).
+            $this->formClienteId = $equipamento->local?->cliente_id ?? $this->formClienteId;
         } elseif ($equipamento->id !== $this->formEquipamentoId && ! in_array($equipamento->id, $this->formEquipamentosExtra, true)) {
             $this->formEquipamentosExtra[] = $equipamento->id;
         }
@@ -480,6 +490,41 @@ class Calendario extends Component
     public function updatedFormContratoId(): void
     {
         $this->formCobertura = $this->formContratoId ? ($this->formCobertura ?: 'incluida') : null;
+    }
+
+    // Escolher um cliente no combobox. Se já havia equipamentos de OUTRO cliente escolhidos,
+    // saem (um evento tem um só cliente). Num evento convertido o cliente é do relatório.
+    public function selecionarCliente(int $id): void
+    {
+        if ($this->editandoConvertido) {
+            return;
+        }
+
+        $cliente = Cliente::find($id);
+        if (! $cliente) {
+            return;
+        }
+
+        if ($this->formClienteId !== null && $this->formClienteId !== $cliente->id) {
+            $this->formEquipamentoId = null;
+            $this->formEquipamentosExtra = [];
+        }
+
+        $this->formClienteId = $cliente->id;
+        $this->formClienteBusca = '';
+    }
+
+    // Tirar o cliente: os equipamentos (que são dele) saem também.
+    public function removerCliente(): void
+    {
+        if ($this->editandoConvertido) {
+            return;
+        }
+
+        $this->formClienteId = null;
+        $this->formClienteBusca = '';
+        $this->formEquipamentoId = null;
+        $this->formEquipamentosExtra = [];
     }
 
     // Dobra de acentos para pesquisa (igual ao combobox de cliente).
@@ -542,6 +587,7 @@ class Calendario extends Component
                 Rule::exists('utilizadores', 'id')
                     ->where('papel', PapelUtilizador::Tecnico->value)
                     ->where('ativo', true)],
+            'formClienteId' => ['nullable', 'exists:clientes,id'],
             'formEquipamentoId' => ['nullable', 'exists:equipamentos,id'],
             'formEquipamentosExtra' => ['array', 'max:50'],
             'formEquipamentosExtra.*' => ['integer', 'exists:equipamentos,id'],
@@ -613,6 +659,9 @@ class Calendario extends Component
         if (! $clienteId && $this->formContratoId) {
             $clienteId = Contrato::withoutGlobalScopes()->whereKey($this->formContratoId)->value('cliente_id');
         }
+
+        // Sem equipamento nem contrato: fica o cliente escolhido no formulário (pode ser nenhum).
+        $clienteId ??= $this->formClienteId;
 
         $atributos = [
             'titulo' => $titulo,
@@ -709,10 +758,13 @@ class Calendario extends Component
 
         // Pesquisa de equipamentos server-side (nº série/fabricante/modelo, sem acentos), limitada.
         // São muitos (~17k) — nunca carregar tudo no cliente.
-        $equipamentosFiltrados = $this->formEquipamentoBusca !== ''
+        // Com cliente escolhido, a lista fica restrita aos equipamentos dele — e aparece logo ao
+        // abrir a caixa, mesmo sem escrever nada (são poucos por cliente).
+        $equipamentosFiltrados = $this->formEquipamentoBusca !== '' || $this->formClienteId
             ? Equipamento::query()
                 ->with('local.cliente')
-                ->where(function ($q) {
+                ->when($this->formClienteId, fn ($q) => $q->whereHas('local', fn ($l) => $l->where('cliente_id', $this->formClienteId)))
+                ->when($this->formEquipamentoBusca !== '', fn ($q) => $q->where(function ($q) {
                     $termo = '%'.$this->formEquipamentoBusca.'%';
                     $norm = '%'.$this->normalizarBusca($this->formEquipamentoBusca).'%';
                     $semAcentos = "translate(lower(fabricante || ' ' || modelo), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
@@ -722,7 +774,7 @@ class Calendario extends Component
                         // Pela CLIENTE: escreve-se o nome do cliente e aparecem os equipamentos dele
                         // para escolher (quem marca a visita sabe o cliente, não o nº de série).
                         ->orWhereHas('local.cliente', fn ($c) => $c->whereRaw($clienteSemAcentos.' like ?', [$norm]));
-                })
+                }))
                 // Agrupados por cliente (os do mesmo cliente ficam juntos), depois por nº de série.
                 ->orderBy(Cliente::select('nome')->join('locais', 'locais.cliente_id', '=', 'clientes.id')->whereColumn('locais.id', 'equipamentos.local_id')->limit(1))
                 ->orderBy('numero_serie')
@@ -735,9 +787,10 @@ class Calendario extends Component
         $clienteDoEquipamento = $this->formEquipamentoId
             ? Equipamento::with('local')->find($this->formEquipamentoId)?->local?->cliente_id
             : null;
+        $clienteDoForm = $clienteDoEquipamento ?? $this->formClienteId;
         $contratos = Contrato::query()
             ->where('estado', EstadoContrato::Ativo->value)
-            ->when($clienteDoEquipamento, fn ($q) => $q->where('cliente_id', $clienteDoEquipamento))
+            ->when($clienteDoForm, fn ($q) => $q->where('cliente_id', $clienteDoForm))
             ->with('cliente')
             ->orderBy('numero')
             ->get();
@@ -748,7 +801,24 @@ class Calendario extends Component
             ? Contrato::find($this->formContratoId)?->saldoVisitas()
             : null;
 
+        // Pesquisa de clientes server-side (nome sem acentos, NIF, nº ERP), limitada.
+        $clientesFiltrados = $this->formClienteBusca !== ''
+            ? Cliente::query()
+                ->where(function ($q) {
+                    $termo = '%'.$this->formClienteBusca.'%';
+                    $norm = '%'.$this->normalizarBusca($this->formClienteBusca).'%';
+                    $q->whereRaw("translate(lower(nome), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu') like ?", [$norm])
+                        ->orWhere('nif', 'ilike', $termo)
+                        ->orWhere('id_erp', 'ilike', $termo);
+                })
+                ->orderBy('nome')
+                ->limit(30)
+                ->get()
+            : collect();
+
         return view('livewire.agenda.calendario', [
+            'clientesFiltrados' => $clientesFiltrados,
+            'clienteEscolhido' => $this->formClienteId ? Cliente::find($this->formClienteId) : null,
             'tecnicos' => $tecnicos,
             'nomesTecnicos' => $nomesTecnicos,
             'saldoContratoForm' => $saldoContratoForm,
