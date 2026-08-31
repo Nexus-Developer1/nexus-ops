@@ -42,6 +42,14 @@ return [
         'client_id' => env('MS_GRAPH_CLIENT_ID'),
         'client_secret' => env('MS_GRAPH_CLIENT_SECRET'),
         'sender' => env('MS_GRAPH_SENDER'),
+
+        // Calendário PARTILHADO da agenda no M365 (via Graph, Calendars.ReadWrite): a app escreve
+        // os eventos num calendário da mailbox `sender` e partilha-o com a equipa — aparece no
+        // Outlook de todos, em tempo real, sem porta aberta nem subscrição por URL. Desligado
+        // por defeito: liga-se (MS_GRAPH_CALENDARIO_ATIVO=true) DEPOIS do consentimento de admin
+        // à permissão Calendars.ReadWrite — sem ela cada chamada dá 403.
+        'calendario_ativo' => (bool) env('MS_GRAPH_CALENDARIO_ATIVO', false),
+        'calendario_agenda' => env('MS_GRAPH_CALENDARIO_AGENDA', 'Agenda Nexus Infra'),
     ],
 
 ];

@@ -6,7 +6,9 @@ use App\Enums\EstadoEvento;
 use App\Enums\EstadoRelatorio;
 use App\Enums\TipoEvento;
 use App\Models\Concerns\RestritoAoCliente;
+use App\Observers\EventoAgendaObserver;
 use App\Services\Agenda\GeradorIcs;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +18,8 @@ use Illuminate\Support\Carbon;
 
 // Evento da agenda — visita preventiva, intervenção ou evento próprio.
 // Projeção temporal central da operação (CLAUDE.md §6).
+// Observer: espelha cada criação/alteração/remoção no calendário partilhado do M365 (Graph).
+#[ObservedBy(EventoAgendaObserver::class)]
 class EventoAgenda extends Model
 {
     use RestritoAoCliente, SoftDeletes;
@@ -47,6 +51,7 @@ class EventoAgenda extends Model
         'horas_dias', // horas trabalhadas por dia (eventos multi-dia): [{dia, inicio, fim}, ...]
         'notificar_tecnicos', // avisar por email os técnicos associados ao criar/alterar/remover
         'ical_sequence', // SEQUENCE dos convites iCalendar (0 na criação, +1 por alteração enviada)
+        'graph_event_id', // id do evento espelhado no calendário partilhado do M365 (Graph)
     ];
 
     /** @return array<string, string> */

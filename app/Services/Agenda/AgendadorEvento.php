@@ -106,6 +106,9 @@ class AgendadorEvento
                 // Técnicos adicionais (além do principal) — em ambos os tipos de edição.
                 $evento->tecnicosAdicionais()->sync($adicionaisIds);
                 $evento->unsetRelation('tecnicosAdicionais');
+                // A pivot não dispara eventos do modelo: o touch garante que uma edição SÓ de
+                // técnicos chega ao observer (espelho no calendário do M365).
+                $evento->touch();
 
                 return ['evento' => $evento];
             }

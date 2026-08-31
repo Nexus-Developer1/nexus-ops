@@ -54,4 +54,26 @@ Se um convite não atualizar o evento existente, o mais provável é o Outlook e
 
 - **Feeds da agenda** (menu lateral): lista da equipa com o URL de cada um, **Gerar feed**, **Regenerar** (invalida o URL antigo) e **Revogar** (deixa de haver feed). Cada ação fica na auditoria.
 - Quem sai da empresa: **Revogar** o feed (a desativação da conta também o desliga — o endpoint só responde a contas ativas).
-- O feed é servido em `https://infra.nexus-solutions.pt:9443/agenda/feed/<token>.ics` — hostname público de propósito: o Outlook novo e o Web fazem o pedido a partir dos servidores da Microsoft, não do PC.
+- O feed é servido em `https://infra.nexus-solutions.pt:9443/agenda/feed/<token>.ics` — hostname público de propósito: o Outlook novo e o Web fazem o pedido a partir dos servidores da Microsoft, não do PC. **Enquanto a porta 443 externa não estiver aberta na firewall, o Outlook novo/Web e o Exchange Online não conseguem chegar ao feed** — usar a via 4.
+
+## 4. Calendário partilhado no Microsoft 365 (a via sem porta aberta)
+
+Em vez de o Outlook ir buscar um feed, **a app escreve os eventos num calendário "Agenda Nexus Infra" na mailbox `Suporte@nxs.pt`** e partilha-o (leitura) com a equipa. Aparece no Outlook de todos como calendário partilhado normal, **em tempo real**, sem configurar nada nos PCs. A ligação é do servidor para a Microsoft (como o email) — não precisa de porta aberta.
+
+### Ativação (uma vez, administrador do M365 + servidor)
+
+1. No **Entra ID → Registos de aplicações → (a app do Nexus Infra) → Permissões de API**: adicionar **Microsoft Graph → Permissões de aplicação → `Calendars.ReadWrite`** e carregar em **Conceder consentimento de administrador**. (Tem de ser *de aplicação*, não *delegada* — a app corre sem utilizador.)
+2. No servidor: `MS_GRAPH_CALENDARIO_ATIVO=true` no `.env` + `php artisan optimize`.
+3. `php artisan agenda:graph --verificar` → tem de dizer que a permissão existe e que o calendário está OK (cria-o se não existir).
+4. `php artisan agenda:graph` → carga inicial (eventos dos últimos 30 e próximos 90 dias).
+5. `php artisan agenda:graph --partilhar` → partilha o calendário com toda a equipa ativa.
+
+A partir daí é automático: criar, alterar, arrastar ou remover um evento na agenda reflete-se no calendário partilhado em segundos.
+
+### Para o utilizador
+
+Nada a fazer: o calendário **"Agenda Nexus Infra"** aparece no Outlook (novo, Web e clássico) em **Calendários partilhados** / "Calendários de pessoas". Se não aparecer, no Outlook: **Adicionar calendário → Adicionar a partir do diretório → Suporte@nxs.pt → Agenda Nexus Infra**.
+
+- Eventos cancelados/removidos desaparecem do calendário partilhado.
+- É só de leitura — as alterações fazem-se na agenda do Nexus Infra, nunca no Outlook.
+- Os técnicos continuam a receber os **convites** dos seus eventos (via 1); o calendário partilhado é a vista geral.
