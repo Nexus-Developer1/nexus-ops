@@ -8,6 +8,7 @@ use App\Enums\PapelUtilizador;
 use App\Enums\TipoEvento;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\AssuntoEvento;
+use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
@@ -665,11 +666,17 @@ class Calendario extends Component
                     $termo = '%'.$this->formEquipamentoBusca.'%';
                     $norm = '%'.$this->normalizarBusca($this->formEquipamentoBusca).'%';
                     $semAcentos = "translate(lower(fabricante || ' ' || modelo), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
+                    $clienteSemAcentos = "translate(lower(nome), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu')";
                     $q->whereRaw($semAcentos.' like ?', [$norm])
-                        ->orWhere('numero_serie', 'ilike', $termo);
+                        ->orWhere('numero_serie', 'ilike', $termo)
+                        // Pela CLIENTE: escreve-se o nome do cliente e aparecem os equipamentos dele
+                        // para escolher (quem marca a visita sabe o cliente, não o nº de série).
+                        ->orWhereHas('local.cliente', fn ($c) => $c->whereRaw($clienteSemAcentos.' like ?', [$norm]));
                 })
+                // Agrupados por cliente (os do mesmo cliente ficam juntos), depois por nº de série.
+                ->orderBy(Cliente::select('nome')->join('locais', 'locais.cliente_id', '=', 'clientes.id')->whereColumn('locais.id', 'equipamentos.local_id')->limit(1))
                 ->orderBy('numero_serie')
-                ->limit(30)
+                ->limit(50)
                 ->get()
             : collect();
 

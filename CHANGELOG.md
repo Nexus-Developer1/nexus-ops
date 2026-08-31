@@ -8,6 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-08-29
 
+- 🧰 **Agenda: pesquisar o equipamento pelo CLIENTE** — no modal do evento, a pesquisa de equipamento só encontrava por nº de série, fabricante ou modelo; quem marca uma visita sabe o cliente, não o nº de série. Agora escreve-se o nome do cliente (sem acentos, minúsculas — "evora" encontra "Câmara Municipal de Évora") e aparecem os equipamentos dele para escolher, agrupados por cliente; escolher um herda o cliente e o local como antes. Série/modelo continuam a funcionar; lista até 50 resultados. Requer build; sem migração. +3 testes (526 no total). `hash`
+
 - 🧰 **Férias ocupam o dia inteiro, em cada dia — opção "Dia inteiro" no evento** — ao escrever **"Férias"** no tipo de evento, o modal liga sozinho a opção **Dia inteiro**: início às 00:00 do 1.º dia, fim às 23:59 do último e **cada dia do período preenchido das 00:00 às 23:59** (nada de 08h–19h por dia). Pode marcar-se à mão para outros casos (ausências, formações); com a opção ligada, mudar as datas mantém os dias cheios; desligar volta às horas propostas. Ao reabrir um evento de dia inteiro a opção vem ligada. Como o evento cobre os dias todos, **qualquer outra marcação para esse técnico nesses dias dá conflito** — é o efeito pretendido. Requer build; sem migração. +5 testes (523 no total). `99234b7`
 
 - 🎨 **Calendário mostra o dia inteiro (00h–24h)** — a grelha de dia/semana só ia das 07h às 20h: com o horário de cobertura fora de jogo, um evento à noite (ou que atravessa a meia-noite) ficava invisível e impossível de arrastar. Passa a mostrar as 24 horas; abre nas 07h (é onde está a maioria do trabalho) e faz-se scroll para o resto. Requer `npm run build`; sem migração. `d3e1303`
