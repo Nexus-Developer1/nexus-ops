@@ -111,7 +111,7 @@ class Ficha extends Component
             $this->equipamento->alertasManutencao()->create(['data' => $a['data'], 'texto' => trim($a['texto'])]);
         }
 
-        session()->flash('sucesso', 'Alertas de manutenção guardados.');
+        session()->flash('sucesso', 'Alertas guardados.');
     }
 
     public function adicionarComponente(): void

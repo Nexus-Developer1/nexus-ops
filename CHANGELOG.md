@@ -8,6 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-08-31
 
+- 🎨 **"Alertas de manutenção" passa a "Alertas"** — o cartão na ficha do equipamento (e a mensagem de guardado) usa só "Alertas", como na agenda. Requer build. `hash`
+
 - 🧰 **Alertas programados nos eventos da agenda, com texto à escolha** — no modal do evento há agora uma secção "Alertas" (+ Alerta): cada linha tem uma **data** e o **texto que se quer no aviso** (ex.: "Confirmar acesso com o cliente", "Levar baterias novas"). Mesma mecânica dos alertas do contrato e do equipamento: entram no **painel de alertas** (cartão novo "Alertas de eventos"), no dashboard e no **email diário das 08h** aos administradores a partir de **7 dias antes** da data (severidade média), passando a **alta** quando a data chega/passa. Eventos cancelados não alertam; apagar o evento apaga os alertas. Até 24 linhas por evento; geridas na criação e na edição (também em eventos já convertidos). Tabela nova `evento_alertas`. **Requer migração**, build e `optimize`. +4 testes (551 no total). `6bf9504`
 
 - 🎨 **Blocos do calendário mostram o cliente** — os eventos na agenda só diziam a hora e o título ("serviço"): numa semana cheia não se sabia onde estava cada técnico sem abrir evento a evento. O bloco passa a dizer **"título · cliente"** (ex.: "serviço · Câmara de Évora") em todas as vistas, incluindo os segmentos multi-dia e os de dia inteiro; eventos sem cliente ficam como estavam. Só muda o texto no calendário — detalhe, emails e convites já diziam o cliente. Sem migração; `optimize`. +1 teste (547 no total). `4972453`
