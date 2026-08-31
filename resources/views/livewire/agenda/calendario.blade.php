@@ -193,7 +193,7 @@
                                         @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
                                         @keydown.enter.prevent="$refs['eopt' + destaque]?.click()"
                                         class="campo-input pr-10"
-                                        placeholder="Pesquisar por cliente, nº de série, fabricante ou modelo... (opcional)"
+                                        placeholder="Pesquisar por cliente, nº de série, fabricante ou modelo e escolher para acrescentar... (opcional)"
                                         autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
                                     <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
 
@@ -225,6 +225,9 @@
                                         @if ($equipamentoPrincipal)
                                             <span wire:key="chip-eq-{{ $equipamentoPrincipal->id }}" title="Principal · {{ $equipamentoPrincipal->local?->cliente?->nome ?? '—' }}" class="inline-flex items-center gap-1.5 rounded-full border border-verde-200 bg-verde-50 px-3 py-1 text-xs font-medium text-verde-700">
                                                 {{ $equipamentoPrincipal->numero_serie ?? '—' }} <span class="font-normal text-verde-600">· {{ trim($equipamentoPrincipal->fabricante . ' ' . $equipamentoPrincipal->modelo) ?: '—' }}</span>
+                                                @unless ($editandoConvertido)
+                                                    <button type="button" wire:click="removerEquipamentoPrincipal" class="ml-0.5 rounded-full text-verde-600 hover:text-perigo-600" title="Tirar (o 1.º adicional passa a principal)" aria-label="Tirar {{ $equipamentoPrincipal->numero_serie }}">&times;</button>
+                                                @endunless
                                             </span>
                                         @endif
                                         @foreach ($equipamentosExtra as $eq)

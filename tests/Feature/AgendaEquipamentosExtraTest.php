@@ -130,6 +130,51 @@ class AgendaEquipamentosExtraTest extends TestCase
         $this->assertSame([$this->ups3->id], $e->fresh()->equipamentosAdicionais()->pluck('equipamentos.id')->all());
     }
 
+    // O bug reportado: em edição a caixa vinha com o texto do principal e a pesquisa corria com
+    // esse texto (nada batia). A caixa fica vazia — o principal está no chip — e pesquisar mostra
+    // os outros equipamentos para acrescentar.
+    public function test_em_edicao_a_caixa_esta_vazia_e_a_pesquisa_encontra_para_acrescentar(): void
+    {
+        $this->modal()->call('selecionarEquipamento', $this->ups1->id)->call('criarEvento')->assertHasNoErrors();
+        $e = EventoAgenda::where('titulo', 'Serviço')->firstOrFail();
+
+        Livewire::actingAs($this->admin)->test(Calendario::class)
+            ->call('selecionar', $e->id)
+            ->call('abrirEdicao')
+            ->assertSet('formEquipamentoBusca', '')          // caixa livre
+            ->assertSet('formEquipamentoId', $this->ups1->id) // principal no chip
+            ->assertSee('AC-001')
+            ->set('formEquipamentoBusca', 'acme')             // escrever NÃO deita o principal abaixo
+            ->assertSet('formEquipamentoId', $this->ups1->id)
+            ->assertSee('AC-002')->assertSee('AC-003')        // a lista mostra os outros do cliente
+            ->call('selecionarEquipamento', $this->ups2->id)
+            ->assertSet('formEquipamentosExtra', [$this->ups2->id])
+            ->assertSet('formEquipamentoBusca', '');           // e volta a ficar livre
+    }
+
+    public function test_tirar_o_principal_promove_o_primeiro_adicional_mas_nao_num_convertido(): void
+    {
+        $c = $this->modal()
+            ->call('selecionarEquipamento', $this->ups1->id)
+            ->call('selecionarEquipamento', $this->ups2->id)
+            ->call('selecionarEquipamento', $this->ups3->id)
+            ->call('removerEquipamentoPrincipal')
+            ->assertSet('formEquipamentoId', $this->ups2->id)
+            ->assertSet('formEquipamentosExtra', [$this->ups3->id]);
+        $c->call('removerEquipamentoPrincipal')->call('removerEquipamentoPrincipal')
+            ->assertSet('formEquipamentoId', null)
+            ->assertSet('formEquipamentosExtra', []);
+
+        // Convertido: o principal é do relatório e não sai pela agenda.
+        $this->modal()->call('selecionarEquipamento', $this->ups1->id)->call('criarEvento')->assertHasNoErrors();
+        $e = EventoAgenda::where('titulo', 'Serviço')->firstOrFail();
+        Livewire::actingAs($this->admin)->test(Calendario::class)
+            ->call('selecionar', $e->id)->call('abrirEdicao')
+            ->assertDontSeeHtml('wire:click="removerEquipamentoPrincipal"')
+            ->call('removerEquipamentoPrincipal')
+            ->assertSet('formEquipamentoId', $this->ups1->id);
+    }
+
     public function test_equipamento_de_outro_cliente_e_recusado(): void
     {
         $this->modal()

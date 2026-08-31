@@ -412,10 +412,9 @@ class Calendario extends Component
             ? $evento->intervencao->equipamentosCobertos()->pluck('equipamentos.id')->map(fn ($v) => (int) $v)->all()
             : $evento->equipamentosAdicionais()->pluck('equipamentos.id')->map(fn ($v) => (int) $v)->all();
         $this->formEquipamentosExtra = array_values(array_diff($this->formEquipamentosExtra, [(int) $evento->equipamento_id]));
-        $this->formEquipamentoBusca = $evento->equipamento
-            ? trim(($evento->equipamento->numero_serie ?? '—')
-                .' · '.trim($evento->equipamento->fabricante.' '.$evento->equipamento->modelo))
-            : '';
+        // A caixa fica VAZIA: o principal mostra-se no chip; a caixa é só para pesquisar e
+        // acrescentar (com o texto do principal lá dentro, a pesquisa não encontrava nada).
+        $this->formEquipamentoBusca = '';
         $this->formContratoId = $evento->contrato_id;
         $this->formCobertura = $evento->cobertura;
         $this->formNotificar = (bool) $evento->notificar_tecnicos;
@@ -453,34 +452,28 @@ class Calendario extends Component
 
         if ($this->formEquipamentoId === null && ! $this->editandoConvertido) {
             $this->formEquipamentoId = $equipamento->id;
-            $this->formEquipamentoBusca = trim(($equipamento->numero_serie ?? '—')
-                .' · '.trim($equipamento->fabricante.' '.$equipamento->modelo));
+        } elseif ($equipamento->id !== $this->formEquipamentoId && ! in_array($equipamento->id, $this->formEquipamentosExtra, true)) {
+            $this->formEquipamentosExtra[] = $equipamento->id;
+        }
 
+        // A caixa fica sempre livre para a próxima pesquisa — o escolhido mostra-se no chip.
+        $this->formEquipamentoBusca = '';
+    }
+
+    // Tirar o principal (só em eventos sem relatório): o 1.º adicional sobe a principal.
+    public function removerEquipamentoPrincipal(): void
+    {
+        if ($this->editandoConvertido) {
             return;
         }
 
-        if ($equipamento->id !== $this->formEquipamentoId && ! in_array($equipamento->id, $this->formEquipamentosExtra, true)) {
-            $this->formEquipamentosExtra[] = $equipamento->id;
-        }
-        // A caixa fica livre para a próxima pesquisa; o principal continua no chip.
-        if ($this->editandoConvertido || $this->formEquipamentoId !== $equipamento->id) {
-            $this->formEquipamentoBusca = '';
-        }
+        $this->formEquipamentoId = array_shift($this->formEquipamentosExtra) ?: null;
+        $this->formEquipamentosExtra = array_values($this->formEquipamentosExtra);
     }
 
     public function removerEquipamentoExtra(int $id): void
     {
         $this->formEquipamentosExtra = array_values(array_filter($this->formEquipamentosExtra, fn ($e) => (int) $e !== $id));
-    }
-
-    // Escrever na caixa desfaz a seleção (campo opcional: sem escolha => sem equipamento).
-    public function updatedFormEquipamentoBusca(): void
-    {
-        // Só desfaz o principal enquanto a caixa era "o" campo do equipamento (sem extras e
-        // sem relatório): com extras, a caixa serve para acrescentar e o principal fica no chip.
-        if (! $this->editandoConvertido && $this->formEquipamentosExtra === []) {
-            $this->formEquipamentoId = null;
-        }
     }
 
     // Escolher contrato assume "incluída" por defeito; limpar contrato limpa a cobertura.
