@@ -66,4 +66,31 @@ class FiltroAgendaTecnicoTest extends TestCase
             ->assertViewHas('nomesTecnicos', fn ($lista) => collect($lista)->pluck('nome')->contains('Rui Moreira'))
             ->assertSee('Rui Moreira');
     }
+
+    // A legenda (e o filtro) mostram a equipa TODA: contas de técnico ativas mesmo sem eventos,
+    // e quem só entra em eventos como técnico adicional — cada um com a sua cor. O filtro por
+    // esse nome inclui os eventos em que é adicional. Contas inativas sem eventos não aparecem.
+    public function test_legenda_inclui_todas_as_contas_de_tecnico_e_os_adicionais(): void
+    {
+        $admin = $this->admin();
+        $mk = fn (string $nome, string $email, bool $ativo = true) => User::create(['nome' => $nome, 'email' => $email, 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => $ativo]);
+        $mk('Daniel Ribeiro', 'd@nexus.pt');                 // conta sem eventos
+        $paulo = $mk('Paulo Bento', 'p@nexus.pt');            // só adicional
+        $mk('Antigo Saído', 'x@nexus.pt', ativo: false);      // inativa, sem eventos → fora
+        $ev = $this->evento('Ev Rui', 'Rui Moreira', '2026-07-02'); // legado, só nome
+        $ev->tecnicosAdicionais()->sync([$paulo->id]);
+
+        $c = Livewire::actingAs($admin)->test(Calendario::class)
+            ->assertViewHas('nomesTecnicos', function ($lista) {
+                $nomes = collect($lista)->pluck('nome')->all();
+                $cores = collect($lista)->pluck('cor')->unique();
+
+                return $nomes === ['Daniel Ribeiro', 'Paulo Bento', 'Rui Moreira'] && $cores->count() === 3;
+            });
+
+        // Filtrar pelo Paulo (só adicional) traz o evento em que acompanha o Rui.
+        $c->set('tecnicoNome', 'Paulo Bento')
+            ->call('eventos', '2026-07-01', '2026-07-08')
+            ->assertReturned(fn ($r) => count($r) === 1 && $r[0]['title'] === 'Ev Rui');
+    }
 }

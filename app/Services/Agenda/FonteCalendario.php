@@ -29,7 +29,10 @@ class FonteCalendario
             ->where('estado', '!=', EstadoEvento::Cancelado->value)
             ->where('inicio', '<', $ate)
             ->where('fim', '>', $de)
-            ->when($tecnicoNome !== '', fn ($q) => $q->where('tecnico_nome', $tecnicoNome))
+            // Filtro por técnico: eventos em que é o principal (tecnico_nome) OU um dos adicionais.
+            ->when($tecnicoNome !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('tecnico_nome', $tecnicoNome)
+                ->orWhereHas('tecnicosAdicionais', fn ($u) => $u->where('utilizadores.nome', $tecnicoNome))))
             ->get()
             ->flatMap(function (EventoAgenda $e) {
                 // Cores de TODOS os técnicos do evento (principal + adicionais, sem repetidos):
@@ -136,16 +139,29 @@ class FonteCalendario
         return $this->coresTecnicos[$nome] ?? self::PALETA[abs(crc32($nome)) % count(self::PALETA)];
     }
 
-    // Nomes de técnico usados nos eventos + cor respetiva — filtro e legenda do calendário.
+    // Técnicos + cor respetiva — filtro e legenda do calendário. Entram TODAS as contas de
+    // técnico ativas (mesmo sem eventos ainda — a legenda mostra a equipa toda), os nomes
+    // legados usados nos eventos (só texto) e quem só aparece como técnico ADICIONAL (antes só
+    // contava o principal, e um técnico que estivesse sempre "a acompanhar" nunca aparecia).
     /** @return array<int, array{nome: string, cor: string}> */
     public function legenda(): array
     {
-        return EventoAgenda::query()
+        $contas = User::where('papel', PapelUtilizador::Tecnico)->where('ativo', true)->pluck('nome');
+
+        $principais = EventoAgenda::query()
             ->whereNotNull('tecnico_nome')
             ->where('tecnico_nome', '!=', '')
             ->distinct()
-            ->orderBy('tecnico_nome')
-            ->pluck('tecnico_nome')
+            ->pluck('tecnico_nome');
+
+        $adicionais = User::whereHas('eventosAdicionais')->pluck('nome');
+
+        return $contas->concat($principais)->concat($adicionais)
+            ->map(fn (string $n) => trim($n))
+            ->filter()
+            ->unique()
+            ->sortBy(fn (string $n) => mb_strtolower($n), SORT_NATURAL)
+            ->values()
             ->map(fn (string $nome) => ['nome' => $nome, 'cor' => $this->corTecnico($nome)])
             ->all();
     }

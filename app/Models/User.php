@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\PapelUtilizador;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -75,5 +76,11 @@ class User extends Authenticatable
     public function rotaInicial(): string
     {
         return $this->ehCliente() ? 'portal.dashboard' : 'dashboard';
+    }
+
+    // Eventos da agenda em que esta conta é técnico ADICIONAL (pivot evento_tecnicos).
+    public function eventosAdicionais(): BelongsToMany
+    {
+        return $this->belongsToMany(EventoAgenda::class, 'evento_tecnicos', 'user_id', 'evento_agenda_id');
     }
 }
