@@ -48,7 +48,7 @@ class AgendaCorrecoesTest extends TestCase
         Livewire::actingAs($this->admin())
             ->test(Calendario::class)
             ->call('eventos', '2026-07-01', '2026-08-01')
-            ->assertReturned(fn (array $r) => collect($r)->contains(fn ($e) => $e['title'] === 'Atravessa'));
+            ->assertReturned(fn (array $r) => collect($r)->contains(fn ($e) => str_starts_with($e['title'], 'Atravessa')));
     }
 
     public function test_cores_dos_tecnicos_nao_mudam_quando_entra_conta_nova(): void
@@ -64,7 +64,7 @@ class AgendaCorrecoesTest extends TestCase
         Livewire::actingAs($admin)->test(Calendario::class)
             ->call('eventos', '2026-07-01', '2026-07-08')
             ->assertReturned(function (array $r) use (&$corAntes) {
-                $corAntes = collect($r)->firstWhere('title', 'Visita')['backgroundColor'] ?? null;
+                $corAntes = collect($r)->first(fn ($b) => str_starts_with($b['title'], 'Visita'))['backgroundColor'] ?? null;
 
                 return $corAntes !== null;
             });
@@ -75,7 +75,7 @@ class AgendaCorrecoesTest extends TestCase
 
         Livewire::actingAs($admin)->test(Calendario::class)
             ->call('eventos', '2026-07-01', '2026-07-08')
-            ->assertReturned(fn (array $r) => (collect($r)->firstWhere('title', 'Visita')['backgroundColor'] ?? null) === $corAntes);
+            ->assertReturned(fn (array $r) => (collect($r)->first(fn ($b) => str_starts_with($b['title'], 'Visita'))['backgroundColor'] ?? null) === $corAntes);
     }
 
     public function test_evento_multi_tecnico_leva_as_cores_de_todos(): void
@@ -95,7 +95,7 @@ class AgendaCorrecoesTest extends TestCase
         Livewire::actingAs($admin)->test(Calendario::class)
             ->call('eventos', '2026-07-01', '2026-07-08')
             ->assertReturned(function (array $r) {
-                $e = collect($r)->firstWhere('title', 'Serviço');
+                $e = collect($r)->first(fn ($b) => str_starts_with($b['title'], 'Serviço')); // título agora leva ' · cliente'
 
                 return count($e['extendedProps']['cores']) === 2
                     && count(array_unique($e['extendedProps']['cores'])) === 2

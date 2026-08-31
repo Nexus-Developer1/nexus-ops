@@ -63,8 +63,12 @@ class FonteCalendario
                 // de dia inteiro no topo da vista (allDay), não para a grelha das horas: senão
                 // ocupava a coluna toda e empurrava/tapava os eventos com hora desse dia.
                 // Não arrastável — muda-se no formulário.
-                $bloco = function (string $id, Carbon $de, Carbon $ate, bool $arrastavel) use ($e, $cor, $props): array {
-                    $base = ['id' => $id, 'title' => $e->titulo, 'backgroundColor' => $cor, 'borderColor' => $cor, 'extendedProps' => $props];
+                // O bloco diz o que é E de quem é: "título · cliente" (quem olha para a semana
+                // quer saber onde cada um está sem abrir evento a evento).
+                $titulo = $e->titulo.($e->cliente ? ' · '.$e->cliente->nome : '');
+
+                $bloco = function (string $id, Carbon $de, Carbon $ate, bool $arrastavel) use ($cor, $props, $titulo): array {
+                    $base = ['id' => $id, 'title' => $titulo, 'backgroundColor' => $cor, 'borderColor' => $cor, 'extendedProps' => $props];
 
                     if (self::diaInteiro($de, $ate)) {
                         return $base + [

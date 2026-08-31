@@ -173,4 +173,13 @@ class AgendaClienteEventoTest extends TestCase
             ->call('selecionarCliente', $this->acme->id)
             ->assertSee('2026/0001')->assertDontSee('2026/0002');
     }
+
+    public function test_bloco_do_calendario_mostra_titulo_e_cliente(): void
+    {
+        $this->modal()->call('selecionarEquipamento', $this->ac1->id)->call('criarEvento')->assertHasNoErrors();
+
+        $blocos = Livewire::actingAs($this->admin)->test(Calendario::class)
+            ->call('eventos', '2026-08-09', '2026-08-12')
+            ->assertReturned(fn ($r) => count($r) === 1 && $r[0]['title'] === 'Serviço · Câmara de Évora');
+    }
 }
