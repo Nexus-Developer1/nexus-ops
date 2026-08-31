@@ -56,36 +56,48 @@ class FonteCalendario
 
                 $segmentos = $e->segmentos();
 
+                // Um segmento 00:00–23:59 (férias, ausências — "dia inteiro") vai para a faixa
+                // de dia inteiro no topo da vista (allDay), não para a grelha das horas: senão
+                // ocupava a coluna toda e empurrava/tapava os eventos com hora desse dia.
+                // Não arrastável — muda-se no formulário.
+                $bloco = function (string $id, Carbon $de, Carbon $ate, bool $arrastavel) use ($e, $cor, $props): array {
+                    $base = ['id' => $id, 'title' => $e->titulo, 'backgroundColor' => $cor, 'borderColor' => $cor, 'extendedProps' => $props];
+
+                    if (self::diaInteiro($de, $ate)) {
+                        return $base + [
+                            'allDay' => true,
+                            'start' => $de->format('Y-m-d'),
+                            'end' => $ate->copy()->addDay()->format('Y-m-d'), // fim exclusivo
+                            'editable' => false,
+                        ];
+                    }
+
+                    return $base + [
+                        'start' => $de->format('Y-m-d\TH:i:s'),
+                        'end' => $ate->format('Y-m-d\TH:i:s'),
+                    ] + ($arrastavel ? [] : ['editable' => false]);
+                };
+
                 // Evento de um dia (ou multi-dia legado sem horas por dia): um bloco, como sempre.
                 if (count($segmentos) === 1) {
-                    return [[
-                        'id' => (string) $e->id,
-                        'title' => $e->titulo,
-                        'start' => $e->inicio->format('Y-m-d\TH:i:s'),
-                        'end' => $e->fim->format('Y-m-d\TH:i:s'),
-                        'backgroundColor' => $cor,
-                        'borderColor' => $cor,
-                        'extendedProps' => $props,
-                    ]];
+                    return [$bloco((string) $e->id, $e->inicio, $e->fim, true)];
                 }
 
                 // Multi-dia com horas por dia: um bloco POR DIA com as horas reais trabalhadas.
                 // Não arrastáveis (editable: false) — as horas de cada dia editam-se no formulário.
-                return collect($segmentos)->map(fn (array $s, int $i) => [
-                    'id' => $e->id.':'.$i,
-                    'title' => $e->titulo,
-                    'start' => $s[0]->format('Y-m-d\TH:i:s'),
-                    'end' => $s[1]->format('Y-m-d\TH:i:s'),
-                    'backgroundColor' => $cor,
-                    'borderColor' => $cor,
-                    'editable' => false,
-                    'extendedProps' => $props,
-                ])->all();
+                return collect($segmentos)->map(fn (array $s, int $i) => $bloco($e->id.':'.$i, $s[0], $s[1], false))->all();
             })
             ->values()
             ->all();
 
         return $eventos;
+    }
+
+    // Segmento que cobre o dia todo: começa às 00:00 e acaba às 23:59 do mesmo dia (o que a
+    // opção "Dia inteiro" do formulário grava).
+    public static function diaInteiro(Carbon $de, Carbon $ate): bool
+    {
+        return $de->isSameDay($ate) && $de->format('H:i') === '00:00' && $ate->format('H:i') === '23:59';
     }
 
     public function corTecnico(?string $nome): string

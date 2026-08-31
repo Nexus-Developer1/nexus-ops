@@ -660,7 +660,13 @@ document.addEventListener('alpine:init', () => {
                 slotMinTime: '00:00:00',
                 slotMaxTime: '24:00:00',
                 scrollTime: '07:00:00',
-                allDaySlot: false,
+                // Faixa "dia inteiro" no topo: férias/ausências (00:00–23:59) vivem aqui e deixam
+                // a grelha das horas livre para o trabalho desse dia.
+                allDaySlot: true,
+                allDayText: 'Dia inteiro',
+                // Eventos à mesma hora ficam LADO A LADO, cada um com a sua coluna, em vez de
+                // meio sobrepostos uns aos outros (por defeito o FullCalendar sobrepõe metade).
+                slotEventOverlap: false,
                 nowIndicator: true,
                 expandRows: true,
                 height: 'auto',

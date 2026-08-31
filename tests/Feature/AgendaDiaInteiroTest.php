@@ -6,6 +6,7 @@ use App\Enums\PapelUtilizador;
 use App\Livewire\Agenda\Calendario;
 use App\Models\EventoAgenda;
 use App\Models\User;
+use App\Services\Agenda\FonteCalendario;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
@@ -143,5 +144,41 @@ class AgendaDiaInteiroTest extends TestCase
             ->set('formFim', '2026-09-09T11:00')
             ->call('criarEvento')
             ->assertHasErrors('formInicio');
+    }
+
+    // Na agenda, cada dia de férias vai para a faixa "Dia inteiro" no topo (allDay), com fim
+    // exclusivo no dia seguinte e sem arrasto — a grelha das horas fica livre para o trabalho
+    // desse dia (antes o bloco 00:00–23:59 ocupava a coluna toda e tapava os outros eventos).
+    public function test_dia_inteiro_vai_para_a_faixa_all_day_e_nao_para_a_grelha(): void
+    {
+        Livewire::actingAs($this->admin)->test(Calendario::class)
+            ->call('abrirCriacao', '2026-09-07', '2026-09-07')
+            ->set('formTecnicoIds', [$this->tec->id])
+            ->set('formTitulo', 'Férias')
+            ->set('formFim', '2026-09-08T00:00')
+            ->call('criarEvento')->assertHasNoErrors();
+        $ferias = EventoAgenda::where('titulo', 'Férias')->firstOrFail();
+
+        // Um evento normal no mesmo intervalo (outro técnico) continua na grelha das horas.
+        $outro = User::create(['nome' => 'Outro', 'email' => 'o@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+        EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Visita', 'estado' => 'planeado',
+            'inicio' => '2026-09-07 09:00', 'fim' => '2026-09-07 11:00', 'tecnico_id' => $outro->id, 'tecnico_nome' => $outro->nome]);
+
+        $blocos = collect(app(FonteCalendario::class)->eventos(Carbon::parse('2026-09-07'), Carbon::parse('2026-09-09')));
+
+        $dias = $blocos->where('title', 'Férias')->values();
+        $this->assertCount(2, $dias);
+        $this->assertSame([$ferias->id.':0', $ferias->id.':1'], $dias->pluck('id')->all());
+        $this->assertTrue($dias[0]['allDay']);
+        $this->assertSame('2026-09-07', $dias[0]['start']);
+        $this->assertSame('2026-09-08', $dias[0]['end']); // exclusivo
+        $this->assertSame('2026-09-08', $dias[1]['start']);
+        $this->assertSame('2026-09-09', $dias[1]['end']);
+        $this->assertFalse($dias[0]['editable']);
+
+        $visita = $blocos->firstWhere('title', 'Visita');
+        $this->assertArrayNotHasKey('allDay', $visita);
+        $this->assertSame('2026-09-07T09:00:00', $visita['start']);
+        $this->assertArrayNotHasKey('editable', $visita); // arrastável como sempre
     }
 }
