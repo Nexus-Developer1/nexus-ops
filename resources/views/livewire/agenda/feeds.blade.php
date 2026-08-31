@@ -8,9 +8,7 @@
             <p class="mt-2 text-sm text-texto-medio">URLs de subscrição da agenda no Outlook (só leitura, atualiza de hora a hora). Cada pessoa tem o seu URL — é o segredo: quem o tiver vê a agenda. Revogar invalida o URL de imediato.</p>
             <p class="mt-1 text-xs text-texto-fraco">Os técnicos recebem os seus eventos por convite (email); o feed de cada pessoa não inclui os eventos em que ela é convidada — nunca vê nada a dobrar.</p>
 
-            @if (session('sucesso'))
-                <div class="mt-6 rounded-lg border border-verde-200 bg-verde-50 px-4 py-3 text-sm text-verde-700">{{ session('sucesso') }}</div>
-            @endif
+            <x-toast-sucesso />
 
             <div class="cartao mt-8 overflow-hidden">
                 <div class="overflow-x-auto">

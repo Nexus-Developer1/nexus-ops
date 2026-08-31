@@ -16,11 +16,7 @@
                 <p class="mt-2 text-sm text-texto-medio">O utilizador recebe um email de convite para definir a sua palavra-passe. Fica com acesso de técnico.</p>
             </div>
 
-            @if (session('sucesso'))
-                <div class="mt-6 rounded-lg border border-verde-200 bg-verde-50 px-4 py-3 text-sm text-verde-700">
-                    {{ session('sucesso') }}
-                </div>
-            @endif
+            <x-toast-sucesso />
 
             <form wire:submit="convidar">
                 <section class="cartao mt-7">
