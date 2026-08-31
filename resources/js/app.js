@@ -654,8 +654,12 @@ document.addEventListener('alpine:init', () => {
                 locale: ptLocale,
                 timeZone: 'local',
                 firstDay: 1,
-                slotMinTime: '07:00:00',
-                slotMaxTime: '20:00:00',
+                // Dia inteiro (00h–24h): os técnicos não têm horário fixo — trabalho noturno e
+                // serviços que atravessam a meia-noite têm de se ver e arrastar como qualquer outro.
+                // A vista abre às 07h (scrollTime), que é onde a maioria do trabalho está.
+                slotMinTime: '00:00:00',
+                slotMaxTime: '24:00:00',
+                scrollTime: '07:00:00',
                 allDaySlot: false,
                 nowIndicator: true,
                 expandRows: true,
