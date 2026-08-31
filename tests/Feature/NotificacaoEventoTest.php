@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
 use App\Livewire\Agenda\Calendario;
+use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\User;
 use App\Notifications\EventoAgendaNotificacao;
@@ -28,6 +29,8 @@ class NotificacaoEventoTest extends TestCase
 
     private User $daniel;
 
+    private Equipamento $ups;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -36,6 +39,7 @@ class NotificacaoEventoTest extends TestCase
 
         $this->admin = User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
         $this->paulo = User::create(['nome' => 'Paulo Bento', 'email' => 'paulo@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+        $this->ups = $this->equipamentoDeTeste();
         $this->daniel = User::create(['nome' => 'Daniel Ribeiro', 'email' => 'daniel@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
     }
 
@@ -45,6 +49,7 @@ class NotificacaoEventoTest extends TestCase
         Livewire::actingAs($this->admin)->test(Calendario::class)
             ->call('abrirCriacao', '2026-09-04', '2026-09-04')
             ->set('formTitulo', $titulo)
+            ->set('formEquipamentoId', $this->ups->id)
             ->set('formTecnicoIds', $tecnicos)
             ->set('formInicio', '2026-09-04T08:00')
             ->set('formFim', '2026-09-04T09:00')
@@ -92,6 +97,7 @@ class NotificacaoEventoTest extends TestCase
         Livewire::actingAs($this->paulo)->test(Calendario::class)
             ->call('abrirCriacao', '2026-09-04', '2026-09-04')
             ->set('formTitulo', 'Visita')
+            ->set('formEquipamentoId', $this->ups->id)
             ->set('formTecnicoIds', [$this->paulo->id, $this->daniel->id])
             ->set('formInicio', '2026-09-04T08:00')
             ->set('formFim', '2026-09-04T09:00')

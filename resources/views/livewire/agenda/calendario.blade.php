@@ -150,7 +150,7 @@
                                 @keydown.escape.stop="fechar()"
                                 class="relative"
                             >
-                                <label class="campo-label" for="tipo-combo">Tipo de evento</label>
+                                <label class="campo-label" for="tipo-combo">Tipo de evento <span class="text-perigo-500">*</span></label>
                                 <input id="tipo-combo" type="text" x-model="titulo"
                                     @focus="abrir()" @click="abrir()" @input="abrir()"
                                     @keydown.enter.prevent="existeExato ? fechar() : adicionar()"
@@ -175,7 +175,7 @@
                             {{-- Equipamento opcional: pesquisa server-side (~17k registos, nunca carregar tudo).
                                  Ao escolher, o evento herda local e cliente do equipamento. --}}
                             <div>
-                                <label class="campo-label" for="equip-evento-combo">Equipamento (opcional)</label>
+                                <label class="campo-label" for="equip-evento-combo">Equipamento @unless ($formDiaInteiro)<span class="text-perigo-500">*</span>@endunless</label>
                                 @if ($editandoConvertido)
                                     <p class="mb-1.5 text-xs text-texto-fraco">Este evento já tem relatório em rascunho: o equipamento principal gere-se no relatório; pode <strong>acrescentar mais</strong> aqui — entram como equipamentos cobertos do relatório.</p>
                                 @else
@@ -193,7 +193,7 @@
                                         @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
                                         @keydown.enter.prevent="$refs['eopt' + destaque]?.click()"
                                         class="campo-input pr-10"
-                                        placeholder="Pesquisar por cliente, nº de série, fabricante ou modelo e escolher para acrescentar... (opcional)"
+                                        placeholder="Pesquisar por cliente, nº de série, fabricante ou modelo e escolher para acrescentar..."
                                         autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
                                     <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
 
@@ -243,7 +243,7 @@
                             {{-- Técnicos: CONTAS de utilizador (mesma lista do relatório), 1 ou mais. Ligar
                                  a conta ativa o feed iCal e as notificações. --}}
                             <div>
-                                <label class="campo-label">Técnicos (opcional)</label>
+                                <label class="campo-label">Técnicos</label>
                                 <div class="space-y-1 rounded-lg border border-borda px-4 py-3">
                                     @forelse ($tecnicos as $t)
                                         {{-- py-2 + h-5: alvo de toque confortável no telemóvel (linha inteira clicável). --}}
@@ -313,7 +313,7 @@
 
                             {{-- Contrato (opcional) + cobertura — liga a visita ao saldo do contrato. --}}
                             <div>
-                                <label class="campo-label">Contrato (opcional)</label>
+                                <label class="campo-label">Contrato</label>
                                 @if ($editandoConvertido)
                                     <p class="mb-1.5 text-xs text-texto-fraco">O contrato gere-se no relatório; aqui só a cobertura pode mudar.</p>
                                 @endif
@@ -355,6 +355,7 @@
                         </div>
 
                         <div class="flex flex-wrap items-center justify-end gap-3 border-t border-borda px-6 py-4">
+                            <p class="mr-auto text-xs text-texto-fraco">Campos com <span class="text-perigo-500">*</span> são obrigatórios</p>
                             <button type="button" wire:click="fecharCriar" class="botao-secundario">Cancelar</button>
                             <button type="submit" class="botao-primario">{{ $editandoId ? 'Guardar' : 'Criar' }}</button>
                         </div>

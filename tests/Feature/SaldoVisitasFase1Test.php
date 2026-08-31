@@ -121,6 +121,7 @@ class SaldoVisitasFase1Test extends TestCase
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Visita manual')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste($c->cliente)->id)
             ->set('formInicio', $d->format('Y-m-d\TH:i'))
             ->set('formFim', $d->copy()->addHour()->format('Y-m-d\TH:i'))
             ->set('formContratoId', $c->id)
@@ -138,6 +139,7 @@ class SaldoVisitasFase1Test extends TestCase
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Reunião')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formInicio', $d->format('Y-m-d\TH:i'))
             ->set('formFim', $d->copy()->addHour()->format('Y-m-d\TH:i'))
             ->set('formContratoId', null)
@@ -156,6 +158,7 @@ class SaldoVisitasFase1Test extends TestCase
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Visita manual')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste($c->cliente)->id)
             ->set('formInicio', $d->format('Y-m-d\TH:i'))
             ->set('formFim', $d->copy()->addHour()->format('Y-m-d\TH:i'))
             ->set('formContratoId', $c->id)   // hook põe 'incluida'

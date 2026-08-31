@@ -36,6 +36,7 @@ class AgendaHorasPorDiaTest extends TestCase
         // 3 dias de serviço; o 2.º dia teve um horário diferente dos restantes.
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Instalação grande')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-08-03T09:00')
             ->set('formFim', '2026-08-05T17:00')
@@ -76,6 +77,7 @@ class AgendaHorasPorDiaTest extends TestCase
             ->call('selecionar', $evento->id)
             ->call('abrirEdicao')
             ->assertSet('formHorasDias.1.inicio', '09:00') // pré-preenchido do gravado
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formHorasDias.1.inicio', '08:00')
             ->set('formHorasDias.1.fim', '12:30')
             ->call('criarEvento')
@@ -140,6 +142,7 @@ class AgendaHorasPorDiaTest extends TestCase
         // trabalhadas → deixa de bloquear.
         Livewire::actingAs($admin)->test(Calendario::class)
             ->set('formTitulo', 'Reunião ao fim do dia')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-08-03T18:00')
             ->set('formFim', '2026-08-03T18:45')
@@ -149,6 +152,7 @@ class AgendaHorasPorDiaTest extends TestCase
         // 10:00 do 1.º dia: colide com as horas trabalhadas → bloqueado.
         Livewire::actingAs($admin)->test(Calendario::class)
             ->set('formTitulo', 'Sobreposto')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-08-03T10:00')
             ->set('formFim', '2026-08-03T11:00')

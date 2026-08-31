@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-08-31
+
+- 🎨 **Campos obrigatórios marcados com `*` em toda a aplicação — e o equipamento passa a obrigatório no evento da agenda** — o modal do evento dizia "Equipamento (opcional)", "Técnicos (opcional)", "Contrato (opcional)" e a pesquisa terminava em "(opcional)"; o resto da aplicação já usava a convenção do `*` vermelho. Fica tudo igual: **campo obrigatório = `*`, campo sem `*` = pode ficar vazio**, e a palavra "opcional" desaparece dos formulários (agenda, despesas). No evento da agenda: **Tipo de evento `*`** e **Equipamento `*`** — o equipamento é agora **exigido ao gravar** (é ele que dá o cliente e o contexto ao trabalho), **exceto em eventos de dia inteiro** (férias, ausências), onde o `*` se esconde e o campo pode ficar vazio — senão cada semana de férias gerava um rascunho de relatório num equipamento qualquer. Consequências: uma reunião sem equipamento tem de ser marcada como dia inteiro; ao **editar um evento antigo sem equipamento** é preciso escolher um antes de guardar (arrastar na agenda não passa por aqui); com contrato continua a ser preciso escolher o principal (os cobertos vêm do contrato). Novo relatório: "Nº de série do equipamento `*`". Rodapé "Campos com `*` são obrigatórios" no modal. Requer build; sem migração. 2 testes invertidos, 30 atualizados, helper `equipamentoDeTeste()` partilhado (533 no total). `hash`
+
 ## 2026-08-29
 
 - 🐛 **Acrescentar equipamentos num evento: a pesquisa "não aparecia nada"** — em edição, a caixa vinha preenchida com o texto do principal ("MH14… · Riello UPS…") e a pesquisa corria com esse texto todo — nada batia certo. Como o principal já se mostra no chip, a caixa passa a ficar **vazia, só para pesquisar e acrescentar**; escrever nela já não deita o principal abaixo (para o trocar há um × no chip, só em eventos sem relatório — o 1.º adicional sobe a principal). Visto logo no primeiro teste em produção. Requer build. +2 testes (533 no total). `688aeb0`

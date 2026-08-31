@@ -137,6 +137,7 @@ class AgendaDiaInteiroTest extends TestCase
         Livewire::actingAs($this->admin)->test(Calendario::class)
             ->call('abrirCriacao', '2026-09-09', '2026-09-09')
             ->set('formTitulo', 'Visita')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formTecnicoIds', [$this->tec->id])
             ->set('formInicio', '2026-09-09T10:00')
             ->set('formFim', '2026-09-09T11:00')

@@ -77,7 +77,8 @@ class Calendario extends Component
     /** @var list<array{dia: string, inicio: string, fim: string}> */
     public array $formHorasDias = [];
 
-    // Equipamento opcional do evento (pesquisa server-side; deriva local/cliente).
+    // Equipamento principal do evento (pesquisa server-side; deriva local/cliente). Obrigatório,
+    // exceto em eventos de dia inteiro.
     public ?int $formEquipamentoId = null;
 
     public string $formEquipamentoBusca = '';
@@ -542,7 +543,9 @@ class Calendario extends Component
                 Rule::exists('utilizadores', 'id')
                     ->where('papel', PapelUtilizador::Tecnico->value)
                     ->where('ativo', true)],
-            'formEquipamentoId' => ['nullable', 'exists:equipamentos,id'],
+            // Equipamento obrigatório (é o que dá cliente e contexto ao trabalho) — exceto em dia
+            // inteiro (férias, ausências), que não é trabalho em equipamento nenhum.
+            'formEquipamentoId' => [$this->formDiaInteiro ? 'nullable' : 'required', 'exists:equipamentos,id'],
             'formEquipamentosExtra' => ['array', 'max:50'],
             'formEquipamentosExtra.*' => ['integer', 'exists:equipamentos,id'],
             'formInicio' => ['required', 'date'],

@@ -4,6 +4,9 @@ namespace Tests;
 
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\VerificarCodigo;
+use App\Models\Cliente;
+use App\Models\Equipamento;
+use App\Models\Local;
 use App\Models\User;
 use App\Notifications\CodigoMfaNotification;
 use Illuminate\Contracts\Console\Kernel;
@@ -35,6 +38,20 @@ abstract class TestCase extends BaseTestCase
         }
 
         return $app;
+    }
+
+    // Equipamento pronto a usar num evento da agenda (o equipamento passou a ser obrigatório
+    // em qualquer evento que não seja de dia inteiro). Cria cliente + local se não vierem.
+    private static int $seqEquipamento = 0;
+
+    protected function equipamentoDeTeste(?Cliente $cliente = null): Equipamento
+    {
+        $n = ++self::$seqEquipamento;
+        $cliente ??= Cliente::create(['nome' => 'Cliente de teste '.$n, 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sede '.$n]);
+
+        return Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional',
+            'fabricante' => 'APC', 'modelo' => 'X40', 'numero_serie' => 'SN-TESTE-'.$n]);
     }
 
     // Completa o login de duas etapas (MFA): faz a 1.ª etapa (email+password), captura o

@@ -76,7 +76,7 @@
                                     @endif
                                 </div>
                                 <div class="col-span-2">
-                                    <label class="campo-label">O que é <span class="text-xs font-normal normal-case text-texto-fraco">(opcional)</span></label>
+                                    <label class="campo-label">O que é</label>
                                     <input wire:model="linhas.{{ $n }}.detalhe" type="text" class="campo-input" placeholder="Ex: Portagem A1, almoço com cliente…">
                                 </div>
                                 <div class="col-span-2">

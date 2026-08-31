@@ -113,6 +113,7 @@ class AgendaCorrecoesTest extends TestCase
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Sobreposto')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-07-01T09:30')
             ->set('formFim', '2026-07-01T10:30')
@@ -131,6 +132,7 @@ class AgendaCorrecoesTest extends TestCase
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Reunião')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-07-01T09:00')
             ->set('formFim', '2026-07-01T10:00')

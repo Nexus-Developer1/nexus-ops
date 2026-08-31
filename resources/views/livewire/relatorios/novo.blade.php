@@ -176,7 +176,7 @@
                         @else
                         {{-- Atalho: pesquisa GLOBAL por nº de série → resolve o cliente automaticamente. --}}
                         <div class="sm:col-span-2">
-                            <label class="campo-label" for="serie-combo">Nº de série do equipamento</label>
+                            <label class="campo-label" for="serie-combo">Nº de série do equipamento <span class="text-perigo-500">*</span></label>
                             <div wire:key="combo-serie" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
                                 <input id="serie-combo" type="text"
                                     wire:model.live.debounce.300ms="serieBusca"

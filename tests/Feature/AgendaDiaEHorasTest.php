@@ -57,6 +57,7 @@ class AgendaDiaEHorasTest extends TestCase
         // tem de ser possível regularizar (e já não há horário de cobertura que o recuse).
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Intervenção noturna')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-08-03T22:00')
             ->set('formFim', '2026-08-04T06:00')
@@ -80,6 +81,7 @@ class AgendaDiaEHorasTest extends TestCase
         // Multi-dia que se sobrepõe ao evento existente → continua bloqueado.
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Sobreposto')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-08-03T22:00')
             ->set('formFim', '2026-08-04T10:00')
@@ -98,6 +100,7 @@ class AgendaDiaEHorasTest extends TestCase
         // qualquer outro (os técnicos não têm horário fixo).
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Noite')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-08-03T22:00')
             ->set('formFim', '2026-08-03T23:00')

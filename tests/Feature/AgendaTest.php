@@ -170,6 +170,7 @@ class AgendaTest extends TestCase
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Reunião de equipa')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-07-06T10:00')
             ->set('formFim', '2026-07-06T11:00')
@@ -193,6 +194,7 @@ class AgendaTest extends TestCase
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Instalação a dois')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formTecnicoIds', [$tec->id, $maria->id])
             ->set('formInicio', '2026-07-06T10:00')
             ->set('formFim', '2026-07-06T11:00')
@@ -235,6 +237,7 @@ class AgendaTest extends TestCase
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Visita a dois')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formTecnicoIds', [$maria->id, $tec->id])
             ->set('formInicio', '2026-07-06T10:00')
             ->set('formFim', '2026-07-06T11:00')
@@ -256,6 +259,7 @@ class AgendaTest extends TestCase
 
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Nova')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-07-06T10:30')
             ->set('formFim', '2026-07-06T11:30')
@@ -332,7 +336,9 @@ class AgendaTest extends TestCase
         ]);
     }
 
-    public function test_evento_sem_equipamento_nao_gera_rascunho(): void
+    // O equipamento é obrigatório em qualquer evento que não seja de dia inteiro: sem ele o
+    // evento é recusado (logo nunca há evento futuro "sem rascunho por falta de equipamento").
+    public function test_evento_sem_equipamento_e_recusado(): void
     {
         Notification::fake();
 
@@ -341,8 +347,9 @@ class AgendaTest extends TestCase
             ->set('formInicio', now()->addWeek()->format('Y-m-d\TH:i'))
             ->set('formFim', now()->addWeek()->addHour()->format('Y-m-d\TH:i'))
             ->call('criarEvento')
-            ->assertHasNoErrors();
+            ->assertHasErrors(['formEquipamentoId' => 'required']);
 
+        $this->assertDatabaseCount('eventos_agenda', 0);
         $this->assertDatabaseCount('intervencoes', 0);
         $this->assertDatabaseCount('relatorios', 0);
     }
@@ -436,6 +443,7 @@ class AgendaTest extends TestCase
             ->assertSet('formInicio', '2026-07-06T10:00')
             // Altera e grava (troca o técnico para a Maria).
             ->set('formTitulo', 'Reunião com cliente')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formTecnicoIds', [$maria->id])
             ->set('formInicio', '2026-07-07T14:00')
             ->set('formFim', '2026-07-07T15:00')
@@ -468,6 +476,7 @@ class AgendaTest extends TestCase
             ->call('selecionar', $e->id)
             ->call('abrirEdicao')
             ->assertSet('formTecnicoIds', [$tec->id])
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->call('criarEvento')
             ->assertHasNoErrors();
 
@@ -491,6 +500,7 @@ class AgendaTest extends TestCase
             ->call('selecionar', $e->id)
             ->call('abrirEdicao')
             ->set('formTitulo', 'Reunião (atualizada)')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->call('criarEvento')
             ->assertHasNoErrors();
 
@@ -513,6 +523,7 @@ class AgendaTest extends TestCase
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->call('selecionar', $e->id)
             ->call('abrirEdicao')
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
             ->set('formInicio', '2026-07-06T14:30')
             ->set('formFim', '2026-07-06T15:30')
             ->call('criarEvento')
