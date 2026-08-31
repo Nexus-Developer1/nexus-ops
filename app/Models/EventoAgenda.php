@@ -44,6 +44,7 @@ class EventoAgenda extends Model
         'cobertura', // 'incluida' | 'extra' | null — marcação para o saldo de visitas do contrato
         'intervencao_id',
         'horas_dias', // horas trabalhadas por dia (eventos multi-dia): [{dia, inicio, fim}, ...]
+        'notificar_tecnicos', // avisar por email os técnicos associados ao criar/alterar/remover
     ];
 
     /** @return array<string, string> */
@@ -55,6 +56,7 @@ class EventoAgenda extends Model
             'inicio' => 'datetime',
             'fim' => 'datetime',
             'horas_dias' => 'array',
+            'notificar_tecnicos' => 'boolean',
         ];
     }
 

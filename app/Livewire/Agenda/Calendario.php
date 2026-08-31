@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\Agenda\AgendadorEvento;
 use App\Services\Agenda\ConversorVisita;
 use App\Services\Agenda\FonteCalendario;
+use App\Services\Agenda\NotificadorAgenda;
 use App\Services\Agenda\SincronizadorAgenda;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -84,6 +85,10 @@ class Calendario extends Component
     public ?int $formContratoId = null;
 
     public ?string $formCobertura = null; // 'incluida' | 'extra'
+
+    // Avisar por email os técnicos associados (criar / alterar / remover). Guardado no evento,
+    // para valer também no arrasto na agenda e no remover do detalhe. Ligado por defeito ao criar.
+    public bool $formNotificar = true;
 
     // Ao mudar o filtro de técnico, manda o FullCalendar re-buscar os eventos (sem F5).
     public function updatedTecnicoNome(): void
@@ -175,7 +180,17 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        return $agendador->reagendar(EventoAgenda::findOrFail($id), Carbon::parse($inicio), Carbon::parse($fim));
+        $evento = EventoAgenda::findOrFail($id);
+        // Instantâneo ANTES do arrasto — o email de "alterado" mostra o horário antigo → novo.
+        $antes = NotificadorAgenda::instantaneo($evento);
+
+        $resultado = $agendador->reagendar($evento, Carbon::parse($inicio), Carbon::parse($fim));
+
+        if ($resultado['ok'] ?? false) {
+            app(NotificadorAgenda::class)->alterado($evento->refresh(), $antes);
+        }
+
+        return $resultado;
     }
 
     // ---- Detalhe + conversão evento→intervenção ----
@@ -220,12 +235,17 @@ class Calendario extends Component
             return;
         }
 
+        // Instantâneo ANTES de apagar — depois já não há evento para descrever no email.
+        $antes = NotificadorAgenda::instantaneo($evento);
+
         DB::transaction(function () use ($evento, $intervencao, $relatorio) {
             // Rascunho ligado → apaga o relatório e a intervenção que nasceram do evento.
             $relatorio?->delete();
             $intervencao?->delete();
             $evento->delete();
         });
+
+        app(NotificadorAgenda::class)->removido($antes);
 
         $this->eventoSelecionadoId = null;
         $this->recarregar();
@@ -261,7 +281,7 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoIds', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura', 'formHorasDias']);
+        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoIds', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura', 'formHorasDias', 'formNotificar']);
 
         // A agenda manda o DIA (sem hora) — as horas reais escrevem-se no formulário e podem
         // abranger vários dias. Sem hora, arranca na abertura e propõe 1h (fácil de ajustar).
@@ -312,6 +332,7 @@ class Calendario extends Component
             : '';
         $this->formContratoId = $evento->contrato_id;
         $this->formCobertura = $evento->cobertura;
+        $this->formNotificar = (bool) $evento->notificar_tecnicos;
         $this->formInicio = $evento->inicio->format('Y-m-d\TH:i');
         $this->formFim = $evento->fim->format('Y-m-d\TH:i');
         // Horas por dia gravadas → pré-preenche; reconstruir alinha com o intervalo
@@ -397,7 +418,7 @@ class Calendario extends Component
     // Submit do modal de evento: cria um novo OU grava a edição (editandoId preenchido).
     // Mantém o nome histórico "criarEvento" — é o submit único do formulário. As regras
     // (conflitos, transação, locks) vivem no AgendadorEvento; a camada 2 no Sincronizador.
-    public function criarEvento(AgendadorEvento $agendador, SincronizadorAgenda $sincronizador)
+    public function criarEvento(AgendadorEvento $agendador, SincronizadorAgenda $sincronizador, NotificadorAgenda $notificador)
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
@@ -499,7 +520,11 @@ class Calendario extends Component
             'cobertura' => $this->formContratoId ? $this->formCobertura : null,
             // Horas trabalhadas por dia (multi-dia); null = evento contínuo de um dia.
             'horas_dias' => $horasDias,
+            'notificar_tecnicos' => $this->formNotificar,
         ];
+
+        // Instantâneo ANTES da edição — o email de "alterado" diz o que mudou e avisa quem saiu.
+        $antes = $this->editandoId ? NotificadorAgenda::instantaneo(EventoAgenda::findOrFail($this->editandoId)) : null;
 
         $resultado = $agendador->gravar($atributos, $tecnicosEscolhidos, $adicionaisIds, $this->editandoId);
 
@@ -519,6 +544,10 @@ class Calendario extends Component
         }
 
         $evento = $resultado['evento'];
+
+        // Email aos técnicos associados (se o evento o pedir): novo → "criado"; edição →
+        // "alterado" a quem ficou, "criado" a quem entrou, "removido" a quem saiu.
+        $antes ? $notificador->alterado($evento, $antes) : $notificador->criado($evento);
 
         // Camada 2 (agenda → relatórios) via ponto único: evento com equipamento OU contrato
         // e início futuro → rascunho de relatório ligado. As guardas anti-loop vivem no serviço.

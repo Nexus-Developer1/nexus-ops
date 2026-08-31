@@ -134,6 +134,7 @@ class AgendaCorrecoesTest extends TestCase
             ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-07-01T09:00')
             ->set('formFim', '2026-07-01T10:00')
+            ->set('formNotificar', false) // o email é testado em NotificacaoEventoTest
             ->call('criarEvento')
             ->assertHasNoErrors();
 

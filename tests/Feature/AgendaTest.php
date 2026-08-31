@@ -170,6 +170,7 @@ class AgendaTest extends TestCase
             ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-07-06T10:00')
             ->set('formFim', '2026-07-06T11:00')
+            ->set('formNotificar', false)
             ->call('criarEvento')
             ->assertHasNoErrors();
 
@@ -177,7 +178,7 @@ class AgendaTest extends TestCase
         $this->assertDatabaseHas('eventos_agenda', ['titulo' => 'Reunião de equipa', 'tipo' => 'outro',
             'tecnico_id' => $tec->id, 'tecnico_nome' => $tec->nome]);
         $this->assertDatabaseHas('assuntos_evento', ['nome' => 'Reunião de equipa']);
-        Notification::assertNothingSent(); // criar evento já NÃO envia email ao técnico
+        Notification::assertNothingSent(); // sem a checkbox "Avisar os técnicos", criar não envia email
     }
 
     public function test_evento_com_varios_tecnicos_guarda_pivot(): void
@@ -192,6 +193,7 @@ class AgendaTest extends TestCase
             ->set('formTecnicoIds', [$tec->id, $maria->id])
             ->set('formInicio', '2026-07-06T10:00')
             ->set('formFim', '2026-07-06T11:00')
+            ->set('formNotificar', false)
             ->call('criarEvento')
             ->assertHasNoErrors();
 
