@@ -10,6 +10,7 @@ use App\Models\ContratoAlertaVisita;
 use App\Models\Equipamento;
 use App\Models\EquipamentoAlertaManutencao;
 use App\Models\EventoAgenda;
+use App\Models\EventoAlerta;
 use App\Models\Intervencao;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -27,6 +28,7 @@ class ServicoAlertas
             ...$this->renovacoes(),
             ...$this->visitasProgramadas(),
             ...$this->manutencoesProgramadas(),
+            ...$this->eventosProgramados(),
             ...$this->visitasEmAtraso(),
             ...$this->slaEmRisco(),
         ])->sortByDesc(fn ($a) => $a['severidade'] === 'alta' ? 1 : 0)->values();
@@ -102,6 +104,29 @@ class ServicoAlertas
                 'titulo' => $a->texto.' · '.($a->contrato->numero ?? '—'),
                 'descricao' => ($a->contrato->cliente->nome ?? '—').' · programado para '.$a->data->translatedFormat('d M Y'),
                 'url' => route('contratos.editar', $a->contrato_id),
+                'data' => $a->data,
+            ])
+            ->all();
+    }
+
+    // Alertas PROGRAMADOS num evento da agenda (data + texto editável no modal do evento):
+    // mesma mecânica — 7 dias antes (média), alta ao vencer. Eventos cancelados não alertam.
+    private function eventosProgramados(): array
+    {
+        return EventoAlerta::query()
+            ->whereDate('data', '<=', now()->addDays(7))
+            ->whereHas('evento', fn ($q) => $q->where('estado', '!=', EstadoEvento::Cancelado->value))
+            ->with('evento.cliente')
+            ->orderBy('data')
+            ->get()
+            ->map(fn (EventoAlerta $a) => [
+                'tipo' => 'evento_programado',
+                'severidade' => $a->data->isPast() || $a->data->isToday() ? 'alta' : 'media',
+                'titulo' => $a->texto.' · '.$a->evento->titulo,
+                'descricao' => ($a->evento->cliente?->nome ? $a->evento->cliente->nome.' · ' : '')
+                    .'evento a '.$a->evento->inicio->translatedFormat('d M Y')
+                    .' · aviso programado para '.$a->data->translatedFormat('d M Y'),
+                'url' => route('agenda'),
                 'data' => $a->data,
             ])
             ->all();

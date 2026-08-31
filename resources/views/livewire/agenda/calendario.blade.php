@@ -300,6 +300,30 @@
                                 @error('formNotas') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
 
+                            {{-- Alertas programados: data + texto à escolha. Entram no painel de alertas e
+                                 no email diário a partir de 7 dias antes (igual ao contrato/equipamento). --}}
+                            <div>
+                                <div class="flex items-center justify-between">
+                                    <label class="campo-label mb-0">Alertas</label>
+                                    <button type="button" wire:click="adicionarAlerta" class="text-sm font-medium text-verde-600 hover:text-verde-500">+ Alerta</button>
+                                </div>
+                                @foreach ($formAlertas as $i => $alerta)
+                                    <div class="mt-2 flex items-start gap-2" wire:key="alerta-ev-{{ $i }}">
+                                        <div class="w-40 shrink-0">
+                                            <input wire:model="formAlertas.{{ $i }}.data" type="date" class="campo-input">
+                                            @error('formAlertas.'.$i.'.data') <p class="mt-1.5 text-xs text-perigo-500">Escolha a data.</p> @enderror
+                                        </div>
+                                        <div class="flex-1">
+                                            <input wire:model="formAlertas.{{ $i }}.texto" type="text" class="campo-input" placeholder="Texto do aviso — ex.: Confirmar acesso com o cliente">
+                                            @error('formAlertas.'.$i.'.texto') <p class="mt-1.5 text-xs text-perigo-500">Escreva o texto.</p> @enderror
+                                        </div>
+                                        <button type="button" wire:click="removerAlerta({{ $i }})" class="mt-2.5 shrink-0 text-texto-fraco hover:text-perigo-600" title="Remover" aria-label="Remover alerta">
+                                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
+                                    </div>
+                                @endforeach
+                            </div>
+
                             {{-- Técnicos: CONTAS de utilizador (mesma lista do relatório), 1 ou mais. Ligar
                                  a conta ativa o feed iCal e as notificações. --}}
                             <div>

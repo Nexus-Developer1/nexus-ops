@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -127,6 +128,12 @@ class EventoAgenda extends Model
 
     // Equipamentos ADICIONAIS (além do principal em equipamento_id) — um trabalho pode abranger
     // vários equipamentos do mesmo cliente. Espelhados nos "cobertos" do relatório ligado.
+    // Alertas programados neste evento (data + texto editável) — ver EventoAlerta.
+    public function alertas(): HasMany
+    {
+        return $this->hasMany(EventoAlerta::class, 'evento_agenda_id');
+    }
+
     public function equipamentosAdicionais(): BelongsToMany
     {
         return $this->belongsToMany(Equipamento::class, 'evento_equipamentos', 'evento_agenda_id', 'equipamento_id')->withTimestamps();

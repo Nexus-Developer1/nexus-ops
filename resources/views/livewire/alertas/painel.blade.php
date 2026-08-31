@@ -17,6 +17,7 @@
                     'sla' => 'SLA em risco',
                     'visita_programada' => 'Visitas programadas',
                     'manutencao_programada' => 'Manutenções programadas',
+                    'evento_programado' => 'Alertas de eventos',
                     'backup' => 'Backups',
                 ];
                 $cartoes = [['tipo' => '', 'rotulo' => 'Todos', 'n' => array_sum($contagens)]];

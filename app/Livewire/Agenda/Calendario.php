@@ -63,6 +63,11 @@ class Calendario extends Component
     // Notas livres do evento (morada, contactos no local, indicações de acesso, o que levar…).
     public string $formNotas = '';
 
+    // Alertas programados do evento: linhas {data, texto} — mesma mecânica dos alertas do
+    // contrato/equipamento (painel de alertas + email diário), com o texto que se quiser.
+    /** @var list<array{data: string, texto: string}> */
+    public array $formAlertas = [];
+
     // Técnicos do evento: CONTAS de utilizador (mesma lista do relatório) — um evento pode ter
     // 1 ou mais. O 1.º (por ordem alfabética) fica como principal em tecnico_id (cor do evento);
     // os restantes vão para a pivot evento_tecnicos. Todos contam para conflitos,
@@ -371,7 +376,7 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formNotas', 'formTecnicoIds', 'formClienteId', 'formClienteBusca', 'formEquipamentoId', 'formEquipamentoBusca', 'formEquipamentosExtra', 'formContratoId', 'formCobertura', 'formHorasDias', 'formNotificar', 'formDiaInteiro']);
+        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formNotas', 'formAlertas', 'formTecnicoIds', 'formClienteId', 'formClienteBusca', 'formEquipamentoId', 'formEquipamentoBusca', 'formEquipamentosExtra', 'formContratoId', 'formCobertura', 'formHorasDias', 'formNotificar', 'formDiaInteiro']);
 
         // A agenda manda o DIA (sem hora) — as horas reais escrevem-se no formulário e podem
         // abranger vários dias. Sem hora, arranca na abertura e propõe 1h (fácil de ajustar).
@@ -404,6 +409,9 @@ class Calendario extends Component
         $this->editandoId = $evento->id;
         $this->formTitulo = $evento->titulo;
         $this->formNotas = (string) $evento->notas;
+        $this->formAlertas = $evento->alertas()->orderBy('data')->get()
+            ->map(fn ($a) => ['data' => $a->data->toDateString(), 'texto' => $a->texto])
+            ->all();
         // Contas dos técnicos (principal + adicionais). Eventos LEGADOS só têm o nome em texto —
         // tenta casá-lo com uma conta (é o caso normal: os nomes escritos eram os dos técnicos).
         $principal = $evento->tecnico_id
@@ -520,6 +528,19 @@ class Calendario extends Component
     }
 
     // Tirar o cliente: os equipamentos (que são dele) saem também.
+    public function adicionarAlerta(): void
+    {
+        if (count($this->formAlertas) < 24) {
+            $this->formAlertas[] = ['data' => '', 'texto' => ''];
+        }
+    }
+
+    public function removerAlerta(int $i): void
+    {
+        unset($this->formAlertas[$i]);
+        $this->formAlertas = array_values($this->formAlertas);
+    }
+
     public function removerCliente(): void
     {
         if ($this->editandoConvertido) {
@@ -587,6 +608,9 @@ class Calendario extends Component
         $this->validate([
             'formTitulo' => ['required', 'string', 'max:255'],
             'formNotas' => ['nullable', 'string', 'max:5000'],
+            'formAlertas' => ['array', 'max:24'],
+            'formAlertas.*.data' => ['required', 'date'],
+            'formAlertas.*.texto' => ['required', 'string', 'max:255'],
             // Técnicos = contas ativas com papel técnico (mesma regra dos colaboradores no relatório).
             'formTecnicoIds' => ['array'],
             'formTecnicoIds.*' => ['integer',
@@ -730,6 +754,12 @@ class Calendario extends Component
         }
 
         $evento = $resultado['evento'];
+
+        // Alertas programados: substituição total pelas linhas do formulário (igual ao contrato).
+        $evento->alertas()->delete();
+        foreach ($this->formAlertas as $a) {
+            $evento->alertas()->create(['data' => $a['data'], 'texto' => trim($a['texto'])]);
+        }
 
         // Email aos técnicos associados (se o evento o pedir): novo → "criado"; edição →
         // "alterado" a quem ficou, "criado" a quem entrou, "removido" a quem saiu.
