@@ -18,7 +18,7 @@ use App\Models\Intervencao;
 use App\Models\Local;
 use App\Models\ModeloFaturacao;
 use App\Models\User;
-use App\Services\Agenda\GeradorIcal;
+use App\Services\Agenda\GeradorIcs;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
@@ -209,9 +209,13 @@ class AgendaTest extends TestCase
         $this->assertStringContainsString('Maria Costa', $e->fresh()->tecnico_label);
         $this->assertStringContainsString('Téc', $e->fresh()->tecnico_label);
 
-        // O feed iCal do técnico ADICIONAL também inclui o evento.
-        $ics = app(GeradorIcal::class)->paraTecnico($tec);
-        $this->assertStringContainsString('Instala', $ics);
+        // O feed de quem NÃO é convidado (coordenação) inclui o evento; o feed de um técnico
+        // convidado exclui-o (recebe-o por convite — senão via-o a dobrar).
+        $coordenacao = User::create(['nome' => 'Coord', 'email' => 'coord@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
+        Carbon::setTestNow('2026-07-05 09:00'); // janela do feed: [-30, +90] dias sobre o evento
+        $this->assertStringContainsString('Instala', app(GeradorIcs::class)->feed($coordenacao));
+        $this->assertStringNotContainsString('Instala', app(GeradorIcs::class)->feed($tec));
+        Carbon::setTestNow();
     }
 
     public function test_conflito_detetado_para_o_segundo_tecnico(): void
@@ -365,27 +369,29 @@ class AgendaTest extends TestCase
         $this->assertDatabaseCount('relatorios', 0);
     }
 
-    public function test_feed_ical_do_tecnico(): void
+    public function test_feed_ics_por_token_da_coordenacao(): void
     {
+        // O feed é por TOKEN (não URL assinado — a revogação tem de funcionar). Detalhe em FeedAgendaTest.
+        Carbon::setTestNow('2026-07-05 09:00');
         $tec = $this->tecnico();
+        $coordenacao = $this->admin();
+        $coordenacao->forceFill(['agenda_feed_token' => str_repeat('c', 48)])->save();
         $cliente = Cliente::create(['nome' => 'Central Norte', 'ativo' => true]);
         EventoAgenda::create(['tipo' => 'visita_preventiva', 'titulo' => 'Preventiva · UPS', 'estado' => 'planeado',
             'inicio' => Carbon::parse('2026-07-06 09:00'), 'fim' => Carbon::parse('2026-07-06 10:00'), 'tecnico_id' => $tec->id, 'cliente_id' => $cliente->id]);
 
-        $url = URL::signedRoute('agenda.ical', ['tecnico' => $tec->id]);
-
-        $resposta = $this->get($url);
+        $resposta = $this->get(route('agenda.feed', ['token' => str_repeat('c', 48)]));
         $resposta->assertOk();
         $resposta->assertHeader('Content-Type', 'text/calendar; charset=utf-8');
         $this->assertStringContainsString('BEGIN:VCALENDAR', $resposta->getContent());
-        $this->assertStringContainsString('SUMMARY:Preventiva · UPS', $resposta->getContent());
+        $this->assertStringContainsString('Preventiva · UPS · Central Norte', $resposta->getContent());
         $this->assertStringContainsString('LOCATION:Central Norte', $resposta->getContent());
+        Carbon::setTestNow();
     }
 
-    public function test_feed_ical_sem_assinatura_e_rejeitado(): void
+    public function test_feed_ics_sem_token_valido_da_404(): void
     {
-        $tec = $this->tecnico();
-        $this->get(route('agenda.ical', ['tecnico' => $tec->id]))->assertForbidden();
+        $this->get(route('agenda.feed', ['token' => str_repeat('x', 48)]))->assertNotFound();
     }
 
     public function test_reagendar_sem_conflito_persiste(): void

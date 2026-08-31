@@ -1,7 +1,9 @@
 <?php
 
 use App\Enums\EstadoRelatorio;
+use App\Http\Controllers\FeedAgendaController;
 use App\Livewire\Agenda\Calendario;
+use App\Livewire\Agenda\Feeds;
 use App\Livewire\Alertas\Painel;
 use App\Livewire\Auth\Login;
 use App\Livewire\Clientes\Contratos;
@@ -25,8 +27,6 @@ use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Models\RegistoDespesa;
 use App\Models\Relatorio;
-use App\Models\User;
-use App\Services\Agenda\GeradorIcal;
 use App\Services\GeradorQrEquipamento;
 use App\Services\GeradorRelatorio;
 use Dompdf\Dompdf;
@@ -63,13 +63,12 @@ Route::middleware('guest')->group(function () {
     ))->name('convite.definir');
 });
 
-// Feed iCal de um técnico — URL assinada, acessível por apps de calendário
-// externas (sem sessão). CLAUDE.md §6.
-Route::get('/agenda/ical/{tecnico}.ics', function (User $tecnico, GeradorIcal $gerador) {
-    return response($gerador->paraTecnico($tecnico))
-        ->header('Content-Type', 'text/calendar; charset=utf-8')
-        ->header('Content-Disposition', 'inline; filename="agenda-'.$tecnico->id.'.ics"');
-})->middleware('signed')->name('agenda.ical');
+// Feed ICS da agenda para o Outlook (só leitura, sem sessão): o token no URL é validado contra
+// a BD em cada pedido — revogar na página "Feeds da agenda" invalida-o de imediato (por isso
+// NÃO é URL assinado). Cache + ETag no controller. CLAUDE.md §6.
+Route::get('/agenda/feed/{token}.ics', FeedAgendaController::class)
+    ->where('token', '[A-Za-z0-9]{32,64}')
+    ->name('agenda.feed');
 
 Route::post('/logout', function () {
     Auth::logout();
@@ -123,6 +122,8 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
     Route::get('/alertas', Painel::class)->name('alertas');
     // Auditoria: o componente barra os técnicos (abort_unless ehAdmin em mount+render).
     Route::get('/auditoria', App\Livewire\Auditoria\Listagem::class)->name('auditoria');
+    // Feeds da agenda (URLs de subscrição do Outlook): só admin — Gate 'gerir-feeds-agenda' no componente.
+    Route::get('/agenda/feeds', Feeds::class)->name('agenda.feeds');
 
     // Despesas: REGISTOS (documento com linhas, como a folha da empresa). Rotas literais/
     // compostas ANTES de /{despesa} para não colidir.

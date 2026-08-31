@@ -6,6 +6,7 @@ use App\Enums\EstadoEvento;
 use App\Enums\EstadoRelatorio;
 use App\Enums\TipoEvento;
 use App\Models\Concerns\RestritoAoCliente;
+use App\Services\Agenda\GeradorIcs;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -45,6 +46,7 @@ class EventoAgenda extends Model
         'intervencao_id',
         'horas_dias', // horas trabalhadas por dia (eventos multi-dia): [{dia, inicio, fim}, ...]
         'notificar_tecnicos', // avisar por email os técnicos associados ao criar/alterar/remover
+        'ical_sequence', // SEQUENCE dos convites iCalendar (0 na criação, +1 por alteração enviada)
     ];
 
     /** @return array<string, string> */
@@ -57,6 +59,7 @@ class EventoAgenda extends Model
             'fim' => 'datetime',
             'horas_dias' => 'array',
             'notificar_tecnicos' => 'boolean',
+            'ical_sequence' => 'integer',
         ];
     }
 
@@ -118,6 +121,24 @@ class EventoAgenda extends Model
 
     // Ids de TODOS os técnicos do evento (principal + adicionais) — conflitos e iCal.
     /** @return list<int> */
+    /**
+     * Eventos que entram no FEED ICS (Outlook): janela [-30, +90] dias sobre o início, e os
+     * apagados há menos de 30 dias vão também (o feed emite-os como CANCELLED — o Outlook
+     * risca-os em vez de os deixar órfãos no calendário). Sem histórico completo.
+     */
+    public function scopeParaFeed(Builder $query): Builder
+    {
+        $de = now()->subDays(GeradorIcs::FEED_DIAS_ATRAS)->startOfDay();
+        $ate = now()->addDays(GeradorIcs::FEED_DIAS_FRENTE)->endOfDay();
+
+        return $query
+            ->withTrashed()
+            ->whereBetween('inicio', [$de, $ate])
+            ->where(fn (Builder $q) => $q
+                ->whereNull('deleted_at')
+                ->orWhere('deleted_at', '>=', now()->subDays(GeradorIcs::FEED_CANCELADOS_DIAS)));
+    }
+
     public function tecnicoIdsTodos(): array
     {
         return array_values(array_unique(array_filter(array_merge(

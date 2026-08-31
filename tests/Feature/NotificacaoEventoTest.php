@@ -189,6 +189,60 @@ class NotificacaoEventoTest extends TestCase
         Notification::assertNothingSent();
     }
 
+    // ---- Convite iCalendar (Outlook): REQUEST/CANCEL, UID estável, SEQUENCE, ORGANIZER/ATTENDEE ----
+
+    public function test_convite_ics_request_e_cancel_com_uid_estavel_e_sequence(): void
+    {
+        $evento = $this->criar([$this->paulo->id]);
+        $this->assertSame(0, $evento->ical_sequence);
+
+        // Criado: REQUEST com SEQUENCE:0, UID derivado do id, TZID, organizer = mailbox de serviço, attendee = o técnico.
+        $criado = Notification::sent($this->paulo, EventoAgendaNotificacao::class)->first();
+        $mail = $criado->toMail($this->paulo);
+        $anexo = $mail->rawAttachments[0];
+        $ics = $anexo['data'];
+        $this->assertSame('convite.ics', $anexo['name']);
+        $this->assertStringContainsString('method=REQUEST', $anexo['options']['mime']);
+        $this->assertStringContainsString('METHOD:REQUEST', $ics);
+        $this->assertStringContainsString("UID:agenda-{$evento->id}@infra.nexus-solutions.pt", $ics);
+        $this->assertStringContainsString('SEQUENCE:0', $ics);
+        $this->assertStringContainsString('DTSTART;TZID=Europe/Lisbon:20260904T080000', $ics);
+        $this->assertStringContainsString('ORGANIZER;CN=Nexus Infra:mailto:', $ics);
+        $this->assertStringContainsString('ATTENDEE;CN=Paulo Bento;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:paulo@nexus.pt', $ics);
+        $this->assertStringContainsString('STATUS:CONFIRMED', $ics);
+
+        // Alterado: SEQUENCE incrementado no evento e no convite.
+        Notification::fake();
+        Livewire::actingAs($this->admin)->test(Calendario::class)
+            ->call('selecionar', $evento->id)->call('abrirEdicao')
+            ->set('formInicio', '2026-09-04T10:00')->set('formFim', '2026-09-04T11:00')
+            ->call('criarEvento')->assertHasNoErrors();
+        $this->assertSame(1, $evento->fresh()->ical_sequence);
+        $alterado = Notification::sent($this->paulo, EventoAgendaNotificacao::class)->first();
+        $this->assertStringContainsString('SEQUENCE:1', $alterado->toMail($this->paulo)->rawAttachments[0]['data']);
+        $this->assertStringContainsString("UID:agenda-{$evento->id}@", $alterado->toMail($this->paulo)->rawAttachments[0]['data']);
+
+        // Removido: CANCEL, mesmo UID, SEQUENCE seguinte (2), STATUS:CANCELLED.
+        Notification::fake();
+        Livewire::actingAs($this->admin)->test(Calendario::class)->call('selecionar', $evento->id)->call('removerEvento');
+        $removido = Notification::sent($this->paulo, EventoAgendaNotificacao::class)->first();
+        $anexo = $removido->toMail($this->paulo)->rawAttachments[0];
+        $this->assertStringContainsString('method=CANCEL', $anexo['options']['mime']);
+        $this->assertStringContainsString('METHOD:CANCEL', $anexo['data']);
+        $this->assertStringContainsString("UID:agenda-{$evento->id}@infra.nexus-solutions.pt", $anexo['data']);
+        $this->assertStringContainsString('SEQUENCE:2', $anexo['data']);
+        $this->assertStringContainsString('STATUS:CANCELLED', $anexo['data']);
+    }
+
+    public function test_arrasto_sem_mudanca_nao_gasta_sequence(): void
+    {
+        $evento = $this->criar([$this->paulo->id]);
+        Livewire::actingAs($this->admin)->test(Calendario::class)
+            ->call('reagendar', $evento->id, '2026-09-04 08:00:00', '2026-09-04 09:00:00', null);
+
+        $this->assertSame(0, $evento->fresh()->ical_sequence);
+    }
+
     public function test_email_tem_assunto_e_o_que_mudou(): void
     {
         $antes = ['id' => 1, 'titulo' => 'Reunião', 'inicio' => '2026-09-04T08:00:00+01:00', 'fim' => '2026-09-04T09:00:00+01:00',

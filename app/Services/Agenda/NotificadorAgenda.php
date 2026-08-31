@@ -7,13 +7,16 @@ use App\Models\User;
 use App\Notifications\EventoAgendaNotificacao;
 use Illuminate\Support\Facades\Notification;
 
-// Ponto único dos emails aos técnicos associados a um evento (criado / alterado / removido).
-// Só dispara se o evento tiver `notificar_tecnicos` (a escolha feita no formulário e guardada
-// no evento — vale também para o arrasto na agenda e para o remover no detalhe). Quem fez a
-// ação NÃO recebe o email (já sabe); os emails vão pela fila (notificação ShouldQueue).
+// Ponto único dos emails aos técnicos associados a um evento (criado / alterado / removido),
+// cada um com o CONVITE iCalendar anexado (um por técnico — o Outlook mete o evento no
+// calendário, e um cancelamento tira-o). Só dispara se o evento tiver `notificar_tecnicos`
+// (a escolha do formulário, guardada no evento — vale também para o arrasto na agenda e para
+// o remover no detalhe). Quem fez a ação NÃO recebe (já sabe); os emails vão pela fila.
 //
-// Instantâneos (arrays) em vez de modelos: no "removido" o evento já não existe quando o
-// worker corre; no "alterado" é preciso o ANTES tal como estava, para o email dizer o que mudou.
+// SEQUENCE (iCalendar): 0 na criação; a cada alteração ENVIADA incrementa-se ical_sequence no
+// evento e o convite vai com esse valor; o cancelamento vai com o seguinte — sem sequence
+// crescente o Outlook ignora a atualização. Instantâneos (arrays) em vez de modelos: no
+// "removido" o evento já não existe quando o worker corre; no "alterado" é preciso o ANTES.
 class NotificadorAgenda
 {
     /** @return array<string, mixed> */
@@ -23,6 +26,8 @@ class NotificadorAgenda
 
         return [
             'id' => $e->id,
+            'uid' => GeradorIcs::uid($e->id),
+            'sequence' => (int) $e->ical_sequence,
             'titulo' => $e->titulo,
             'inicio' => $e->inicio->toIso8601String(),
             'fim' => $e->fim->toIso8601String(),
@@ -45,6 +50,7 @@ class NotificadorAgenda
             return;
         }
 
+        // Criação: SEQUENCE 0 (o valor que o evento já tem).
         $this->enviar($agora['tecnico_ids'], new EventoAgendaNotificacao('criado', $agora, null, $this->autor()));
     }
 
@@ -56,17 +62,26 @@ class NotificadorAgenda
             return;
         }
 
-        // Quem saiu do evento recebe "removido" (para ele, deixou de existir); quem ficou ou
-        // entrou recebe "alterado" com o antes/depois — e quem acabou de entrar não tem antes.
         $sairam = array_values(array_diff($antes['tecnico_ids'], $agora['tecnico_ids']));
         $entraram = array_values(array_diff($agora['tecnico_ids'], $antes['tecnico_ids']));
         $ficaram = array_values(array_intersect($antes['tecnico_ids'], $agora['tecnico_ids']));
+        $mudou = $this->mudouAlgo($antes, $agora);
 
-        $this->enviar($sairam, new EventoAgendaNotificacao('removido', $antes, null, $this->autor()));
+        // Só se vai mesmo enviar algo é que o SEQUENCE avança (um arrasto que volta ao mesmo sítio
+        // não gasta sequence nem manda email).
+        if ($sairam === [] && $entraram === [] && ! $mudou) {
+            return;
+        }
+
+        $evento->increment('ical_sequence');
+        $agora['sequence'] = (int) $evento->fresh()->ical_sequence;
+
+        // Quem saiu: CANCEL com o UID do evento (o Outlook tira-o do calendário dele).
+        $this->enviar($sairam, new EventoAgendaNotificacao('removido', ['sequence' => $agora['sequence']] + $antes, null, $this->autor()));
+        // Quem entrou: REQUEST novo (para ele é a primeira vez que vê o evento).
         $this->enviar($entraram, new EventoAgendaNotificacao('criado', $agora, null, $this->autor()));
-
-        // Para quem ficou, só se algo visível mudou — arrastar 5 min e voltar a pôr não avisa.
-        if ($ficaram !== [] && $this->mudouAlgo($antes, $agora)) {
+        // Quem ficou: REQUEST atualizado com o antes/depois.
+        if ($ficaram !== [] && $mudou) {
             $this->enviar($ficaram, new EventoAgendaNotificacao('alterado', $agora, $antes, $this->autor()));
         }
     }
@@ -77,6 +92,9 @@ class NotificadorAgenda
         if (! $antes['notificar']) {
             return;
         }
+
+        // Cancelamento: mesmo UID, SEQUENCE seguinte ao último enviado.
+        $antes['sequence'] = ((int) ($antes['sequence'] ?? 0)) + 1;
 
         $this->enviar($antes['tecnico_ids'], new EventoAgendaNotificacao('removido', $antes, null, $this->autor()));
     }
