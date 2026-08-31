@@ -355,7 +355,6 @@
                         </div>
 
                         <div class="flex flex-wrap items-center justify-end gap-3 border-t border-borda px-6 py-4">
-                            <p class="mr-auto text-xs text-texto-fraco">Campos com <span class="text-perigo-500">*</span> são obrigatórios</p>
                             <button type="button" wire:click="fecharCriar" class="botao-secundario">Cancelar</button>
                             <button type="submit" class="botao-primario">{{ $editandoId ? 'Guardar' : 'Criar' }}</button>
                         </div>
