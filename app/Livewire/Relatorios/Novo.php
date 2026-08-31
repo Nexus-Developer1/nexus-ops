@@ -23,6 +23,7 @@ use App\Models\User;
 use App\Services\Agenda\SincronizadorAgenda;
 use App\Services\Auditor;
 use App\Services\GeradorRelatorio;
+use App\Services\Relatorios\LeitorTesteDescarga;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -138,6 +139,11 @@ class Novo extends Component
 
     /** @var array<int, array<int, mixed>> [equipId => fotos por gravar] — acumuladas entre seleções. */
     public array $fotosNovas = [];
+
+    // Ficheiro do teste de descarga (battest.txt do carregador) por equipamento: ao aterrar é
+    // lido e vira a curva do gráfico (fichas.{id}.descarga_curva); o ficheiro NÃO é guardado.
+    /** @var array<int|string, mixed> */
+    public array $descargaFicheiros = [];
 
     // Metadados de captura das fotos (Vaga 2): [equipId => [{nome, capturada_em, latitude,
     // longitude}]] — o EXIF morre na compressão client-side, isto é o que sobra dele.
@@ -742,6 +748,34 @@ class Novo extends Component
 
         $this->fotosNovas[$equipId] = array_merge($this->fotosNovas[$equipId] ?? [], $this->fotos[$key] ?? []);
         $this->fotos[$key] = [];
+    }
+
+    // Upload do registo do teste de descarga: valida, lê a curva (LeitorTesteDescarga) e
+    // guarda-a na ficha do equipamento; o ficheiro temporário é descartado.
+    public function updatedDescargaFicheiros($value, $key): void
+    {
+        $equipId = (int) $key;
+        $this->validate(["descargaFicheiros.$key" => ['file', 'max:5120', 'mimes:txt,csv,log']]);
+
+        $ficheiro = $this->descargaFicheiros[$key] ?? null;
+        $curva = $ficheiro ? app(LeitorTesteDescarga::class)->ler($ficheiro->get()) : [];
+        $this->descargaFicheiros[$key] = null;
+
+        if (count($curva) < 2 || ! isset($this->fichas[$equipId])) {
+            $this->addError("descargaFicheiros.$key", 'Sem leituras Vbat no ficheiro — é o registo do teste de descarga (battest.txt)?');
+
+            return;
+        }
+
+        $this->fichas[$equipId]['descarga_curva'] = $curva;
+    }
+
+    // Tira a curva importada (o gráfico volta à tabela manual, se estiver preenchida).
+    public function removerCurvaDescarga(int $equipId): void
+    {
+        if (isset($this->fichas[$equipId])) {
+            $this->fichas[$equipId]['descarga_curva'] = [];
+        }
     }
 
     // Remove uma foto ainda NÃO gravada (da pré-visualização) de um equipamento, pelo índice.

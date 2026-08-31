@@ -16,6 +16,7 @@ class FichaMedicao extends Model
     /** @var list<string> */
     protected $fillable = [
         'intervencao_id', 'equipamento_id', 'tipo_equipamento',
+        'descarga_curva', // curva do ficheiro do teste de descarga (battest.txt)
         'marca', 'modelo', 'serie', 'baterias',
         'config_tipo', 'bypass_externo', 'modulos', 'bancos_bateria',
         've_ln_l1', 've_ln_l2', 've_ln_l3',
@@ -52,6 +53,7 @@ class FichaMedicao extends Model
             'bancos_bateria' => 'array',
             'verificacoes' => 'array',
             'teste_descarga' => 'array',
+            'descarga_curva' => 'array',
             'sadei' => 'array',
             'assinado_em' => 'datetime',
         ];
@@ -295,6 +297,9 @@ class FichaMedicao extends Model
             }
         }
 
+        // Curva do teste importada do ficheiro do carregador (preferida pelo gráfico).
+        $ficha['descarga_curva'] = [];
+
         foreach (self::OKNOK as $c) {
             $ficha[$c] = '';
         }
@@ -392,6 +397,8 @@ class FichaMedicao extends Model
                 $base['teste_descarga'][$linha][$col] = (string) ($this->teste_descarga[$linha][$col] ?? '');
             }
         }
+
+        $base['descarga_curva'] = $this->descarga_curva ?? [];
 
         // Assinaturas: só os nomes voltam ao formulário; a imagem já gravada é mostrada a
         // partir do storage (não se reenvia o PNG para o browser a cada render).
@@ -491,6 +498,17 @@ class FichaMedicao extends Model
             }
         }
         $attrs['teste_descarga'] = $descarga;
+
+        // Curva importada do ficheiro: whitelist {t, p, n}, teto de pontos (payload forjado
+        // não incha a BD) — vazia grava null.
+        $curva = [];
+        foreach (array_slice(array_values(is_array($dados['descarga_curva'] ?? null) ? $dados['descarga_curva'] : []), 0, 1200) as $a) {
+            if (! is_array($a) || ! is_numeric($a['p'] ?? null) || ! is_numeric($a['n'] ?? null)) {
+                continue;
+            }
+            $curva[] = ['t' => mb_substr(trim((string) ($a['t'] ?? '')), 0, 12), 'p' => (float) $a['p'], 'n' => (float) $a['n']];
+        }
+        $attrs['descarga_curva'] = $curva === [] ? null : $curva;
 
         // Nomes de quem assina (a imagem é gravada no storage pelo componente).
         $attrs['assinatura_cliente_nome'] = $limpar($dados['assinatura_cliente_nome'] ?? null);
@@ -607,6 +625,11 @@ class FichaMedicao extends Model
                     return true;
                 }
             }
+        }
+
+        // Curva do teste importada do ficheiro também é conteúdo real.
+        if (($attrs['descarga_curva'] ?? null) !== null) {
+            return true;
         }
 
         // Bloco SADEI (equipamentos de incêndio): sadeiAtributos devolve null quando vazio.

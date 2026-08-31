@@ -374,7 +374,7 @@
                                         :linhas-grelhas="['cilindros' => count($fichas[$e->id]['sadei']['cilindros'] ?? []), 'piloto' => count($fichas[$e->id]['sadei']['piloto'] ?? [])]"
                                         :assinaturas="$assinaturasGravadas[$e->id] ?? []" />
                                 @else
-                                    <x-relatorios.ficha-ups :prefixo="'fichas.' . $e->id" :descarga="$fichas[$e->id]['teste_descarga'] ?? []" />
+                                    <x-relatorios.ficha-ups :prefixo="'fichas.' . $e->id" :descarga="$fichas[$e->id]['teste_descarga'] ?? []" :curva="$fichas[$e->id]['descarga_curva'] ?? []" />
                                 @endif
                             </div>
 

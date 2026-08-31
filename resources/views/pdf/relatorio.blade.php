@@ -376,7 +376,7 @@
                 {{-- Gráfico das tensões Vbat+/Vbat− ao longo do teste (SVG puro — o DomPDF
                      desenha-o; só aparece com ≥2 valores preenchidos). --}}
                 <div style="margin: 2px 0 4px; text-align: center;">
-                    <x-relatorios.grafico-descarga :dados="$ficha->teste_descarga ?? []" :largura="680" :altura="220" />
+                    <x-relatorios.grafico-descarga :curva="$ficha->descarga_curva ?? []" :dados="$ficha->teste_descarga ?? []" :largura="680" :altura="($ficha->descarga_curva ?? []) !== [] ? 260 : 220" />
                 </div>
                 <table class="ficha-tab">
                     <tr>
