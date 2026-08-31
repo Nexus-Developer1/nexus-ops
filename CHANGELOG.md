@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-08-31
 
-- 🎨 **"Alertas de manutenção" passa a "Alertas"** — o cartão na ficha do equipamento (e a mensagem de guardado) usa só "Alertas", como na agenda. Requer build. `hash`
+- 🎨 **"Alertas de manutenção" passa a "Alertas"** — o cartão na ficha do equipamento (e a mensagem de guardado) usa só "Alertas", como na agenda. Requer build. `015a2df`
 
 - 🧰 **Alertas programados nos eventos da agenda, com texto à escolha** — no modal do evento há agora uma secção "Alertas" (+ Alerta): cada linha tem uma **data** e o **texto que se quer no aviso** (ex.: "Confirmar acesso com o cliente", "Levar baterias novas"). Mesma mecânica dos alertas do contrato e do equipamento: entram no **painel de alertas** (cartão novo "Alertas de eventos"), no dashboard e no **email diário das 08h** aos administradores a partir de **7 dias antes** da data (severidade média), passando a **alta** quando a data chega/passa. Eventos cancelados não alertam; apagar o evento apaga os alertas. Até 24 linhas por evento; geridas na criação e na edição (também em eventos já convertidos). Tabela nova `evento_alertas`. **Requer migração**, build e `optimize`. +4 testes (551 no total). `6bf9504`
 
