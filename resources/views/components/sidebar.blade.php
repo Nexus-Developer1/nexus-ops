@@ -26,7 +26,7 @@
         ['id' => 'clientes',   'label' => 'Clientes',   'url' => route('clientes')],
         ['id' => 'relatorios', 'label' => 'Relatórios', 'url' => route('relatorios')],
         ['id' => 'contratos',  'label' => 'Contratos',  'url' => route('contratos')],
-        ['id' => 'encomendas', 'label' => 'Encomendas', 'url' => route('encomendas')],
+        ['id' => 'encomendas', 'label' => 'Dossiers PHC', 'url' => route('encomendas')],
         ['id' => 'despesas',   'label' => 'Despesas',   'url' => route('despesas')],
         ['id' => 'agenda',     'label' => 'Agenda',     'url' => route('agenda')],
         ['id' => 'alertas',    'label' => 'Alertas',    'url' => route('alertas')],

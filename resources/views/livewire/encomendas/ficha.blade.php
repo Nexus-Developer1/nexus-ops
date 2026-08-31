@@ -1,5 +1,5 @@
 <div>
-    <x-topbar :breadcrumb="['Início', 'Encomendas', $dossier->tipoRotulo().' '.$dossier->obrano.'/'.$dossier->ano]">
+    <x-topbar :breadcrumb="['Início', 'Dossiers PHC', $dossier->tipoRotulo().' '.$dossier->obrano.'/'.$dossier->ano]">
         <a href="{{ route('encomendas') }}" wire:navigate class="botao-secundario">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
             Voltar

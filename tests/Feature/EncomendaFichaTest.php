@@ -86,7 +86,7 @@ class EncomendaFichaTest extends TestCase
 
         Livewire::actingAs($this->admin())->test(Detalhe::class, ['cliente' => $cliente])
             ->assertViewHas('encomendasTotal', 1)
-            ->assertSee('Encomendas e propostas')
+            ->assertSee('Dossiers PHC')
             ->assertSee('Encomenda Produção 55/2025');
     }
 

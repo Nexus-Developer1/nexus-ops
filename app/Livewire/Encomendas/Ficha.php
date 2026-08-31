@@ -15,7 +15,7 @@ use Throwable;
 // LINHAS são lidas AO VIVO do PHC (tabela bi) no momento de abrir — não são sincronizadas.
 // O ERP nunca deve rebentar o pedido do utilizador (CLAUDE.md §5): se estiver em baixo ou
 // sem driver, a ficha abre na mesma e avisa que não conseguiu obter as linhas.
-#[Layout('components.layouts.app', ['ativo' => 'encomendas', 'titulo' => 'Encomenda'])]
+#[Layout('components.layouts.app', ['ativo' => 'encomendas', 'titulo' => 'Dossier PHC'])]
 class Ficha extends Component
 {
     use ApenasEquipa;

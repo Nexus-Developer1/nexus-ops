@@ -12,7 +12,7 @@ use Livewire\WithPagination;
 // Listagem dos dossiês do PHC (propostas e encomendas — tabela `dossiers`, só leitura).
 // Filtros e pesquisa vivem na sessão (como as outras listagens). São ~200 mil registos:
 // paginado sempre, e os filtros usam os índices (ndos, cliente_no).
-#[Layout('components.layouts.app', ['ativo' => 'encomendas', 'titulo' => 'Encomendas'])]
+#[Layout('components.layouts.app', ['ativo' => 'encomendas', 'titulo' => 'Dossiers PHC'])]
 class Listagem extends Component
 {
     use ApenasEquipa;

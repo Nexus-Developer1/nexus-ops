@@ -61,7 +61,7 @@ class EncomendasListagemTest extends TestCase
 
     public function test_rota_visivel_para_equipa_e_barrada_ao_cliente(): void
     {
-        $this->actingAs($this->admin())->get('/encomendas')->assertOk()->assertSee('Encomendas');
+        $this->actingAs($this->admin())->get('/encomendas')->assertOk()->assertSee('Dossiers PHC');
 
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         $userCliente = User::create(['nome' => 'C', 'email' => 'c@nexus.pt', 'password' => 'x',

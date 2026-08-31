@@ -133,7 +133,7 @@
             @if ($encomendasTotal > 0)
                 <section class="cartao mt-5 p-6">
                     <div class="flex items-center justify-between">
-                        <h2 class="text-sm font-semibold text-texto-forte">Encomendas e propostas <span class="text-texto-fraco">({{ $encomendasTotal }})</span></h2>
+                        <h2 class="text-sm font-semibold text-texto-forte">Dossiers PHC <span class="font-normal text-texto-medio">(encomendas e propostas)</span> <span class="text-texto-fraco">({{ $encomendasTotal }})</span></h2>
                         @if ($encomendasTotal > $limite)
                             <a href="{{ route('encomendas', ['pesquisa' => $cliente->id_erp]) }}" wire:navigate class="text-sm font-medium text-verde-600 hover:text-verde-700">Ver todas →</a>
                         @endif

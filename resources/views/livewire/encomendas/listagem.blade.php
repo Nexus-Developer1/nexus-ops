@@ -1,10 +1,10 @@
 <div>
-    <x-topbar :breadcrumb="['Início', 'Encomendas']" />
+    <x-topbar :breadcrumb="['Início', 'Dossiers PHC']" />
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-6xl">
 
-            <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Encomendas</h1>
+            <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Dossiers PHC</h1>
             <p class="mt-2 text-sm text-texto-medio">Propostas e encomendas do PHC · {{ number_format($dossiers->total(), 0, ',', '.') }} {{ \Illuminate\Support\Str::plural('dossiê', $dossiers->total()) }}.</p>
 
             {{-- Filtros --}}
