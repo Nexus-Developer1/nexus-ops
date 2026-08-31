@@ -8,8 +8,10 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
-// Deteta conflitos ao agendar/reagendar um evento (CLAUDE.md §6): fora de horário
-// de cobertura ou sobreposição com outro evento do técnico.
+// Deteta conflitos ao agendar/reagendar um evento (CLAUDE.md §6): sobreposição com outro
+// evento do mesmo técnico. NÃO há horário de cobertura nem dias úteis — os técnicos não têm
+// horário fixo (trabalho noturno, fim-de-semana e serviços que atravessam dias são normais);
+// a regra "fora de horário" foi retirada a pedido da equipa (2026-08-29).
 class DetetorConflitos
 {
     // Serializa o agendamento por técnico (advisory lock do Postgres, âmbito da transação):
@@ -26,33 +28,6 @@ class DetetorConflitos
         foreach ($chaves as $chave) {
             DB::select('SELECT pg_advisory_xact_lock(hashtext(?))', ['agenda:tecnico:'.$chave]);
         }
-    }
-
-    // Evento fora do horário comercial / fim-de-semana? (independente de técnico).
-    // Só se aplica a eventos DENTRO do mesmo dia — o horário de cobertura serve para o
-    // planeamento normal. Um evento que atravessa dias é registo de trabalho REAL
-    // (deslocações longas, intervenções de noite/fim-de-semana): regulariza-se como foi,
-    // sem ser bloqueado. A deteção de conflitos/double-booking aplica-se sempre.
-    public function foraDeHorario(Carbon $inicio, Carbon $fim): ?string
-    {
-        if (! $inicio->isSameDay($fim)) {
-            return null;
-        }
-
-        $abertura = (int) config('agenda.hora_abertura');
-        $fecho = (int) config('agenda.hora_fecho');
-        $diasUteis = (array) config('agenda.dias_uteis');
-
-        if (! in_array($inicio->dayOfWeekIso, $diasUteis, true)) {
-            return 'Fora do horário de cobertura (fim-de-semana).';
-        }
-
-        // O fim pode coincidir com a hora de fecho (ex.: termina às 19:00).
-        if ($inicio->hour < $abertura || $fim->copy()->subSecond()->hour >= $fecho) {
-            return "Fora do horário de cobertura ({$abertura}h–{$fecho}h).";
-        }
-
-        return null;
     }
 
     // Devolve a razão do conflito (texto legível) ou null se não houver conflito.

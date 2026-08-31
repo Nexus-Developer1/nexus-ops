@@ -149,15 +149,18 @@ class AgendaTest extends TestCase
         $e = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'X', 'estado' => 'planeado',
             'inicio' => Carbon::parse('2026-07-06 09:00'), 'fim' => Carbon::parse('2026-07-06 10:00'), 'cliente_id' => $cliente->id]);
 
-        // Mover para as 22:00 (fora do horário) → bloqueado.
+        // Sem horário de cobertura (os técnicos não têm horário fixo): mover para as 22:00 é
+        // aceite — só a sobreposição com outro evento do técnico bloqueia.
         Livewire::actingAs($admin)->test(Calendario::class)
             ->call('reagendar', $e->id, '2026-07-06T22:00:00', '2026-07-06T23:00:00', null)
-            ->assertReturned(fn ($r) => $r['ok'] === false);
+            ->assertReturned(fn ($r) => $r['ok'] === true);
+        $this->assertSame('2026-07-06 22:00:00', $e->fresh()->inicio->format('Y-m-d H:i:s'));
 
-        // Mover para sábado (fim-de-semana) → bloqueado.
+        // Sábado também é aceite (fim-de-semana não é limite).
         Livewire::actingAs($admin)->test(Calendario::class)
             ->call('reagendar', $e->id, '2026-07-11T10:00:00', '2026-07-11T11:00:00', null)
-            ->assertReturned(fn ($r) => $r['ok'] === false);
+            ->assertReturned(fn ($r) => $r['ok'] === true);
+        $this->assertSame('2026-07-11 10:00:00', $e->fresh()->inicio->format('Y-m-d H:i:s'));
     }
 
     public function test_criar_evento_guarda_conta_do_tecnico_sem_email(): void
@@ -351,8 +354,8 @@ class AgendaTest extends TestCase
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC1']);
         $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'fabricante' => 'APC', 'modelo' => 'X40', 'numero_serie' => 'SN-003']);
 
-        // Dia útil no passado, em horário comercial (evita o bloqueio de fim-de-semana/horário).
-        // inicio < now() → o evento cria-se, mas NÃO gera rascunho (apesar de ter equipamento).
+        // Dia no passado: inicio < now() → o evento cria-se, mas NÃO gera rascunho (apesar de ter
+        // equipamento). (Já não há horário de cobertura nem dias úteis a evitar.)
         $passado = now()->subWeekdays(5);
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Inspeção')

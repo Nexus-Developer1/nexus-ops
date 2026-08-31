@@ -34,10 +34,6 @@ class AgendadorEvento
         /** @var Carbon $fim */
         $fim = $atributos['fim'];
 
-        if ($razao = $this->detetor->foraDeHorario($inicio, $fim)) {
-            return ['erro' => $razao];
-        }
-
         // Segmentos reais (horas por dia, eventos multi-dia): os conflitos comparam o trabalho
         // efetivo de cada dia, não o intervalo contínuo (as noites pelo meio ficam livres).
         $segmentos = collect($atributos['horas_dias'] ?? [])
@@ -131,10 +127,6 @@ class AgendadorEvento
      */
     public function reagendar(EventoAgenda $evento, Carbon $novoInicio, Carbon $novoFim): array
     {
-        if ($razao = $this->detetor->foraDeHorario($novoInicio, $novoFim)) {
-            return ['ok' => false, 'mensagem' => $razao];
-        }
-
         return DB::transaction(function () use ($evento, $novoInicio, $novoFim) {
             $this->detetor->travarAgendaDe($evento->tecnicoIdsTodos() !== []
                 ? $evento->tecnicoIdsTodos()

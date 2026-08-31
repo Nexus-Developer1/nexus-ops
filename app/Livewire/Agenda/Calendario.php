@@ -144,7 +144,7 @@ class Calendario extends Component
         $horaIni = $ini->format('H:i');
         $horaFim = $fim->format('H:i');
         if ($horaFim <= $horaIni) {
-            // Horas do intervalo não servem de padrão por dia — usa o horário de cobertura.
+            // Horas do intervalo não servem de padrão por dia — usa as horas propostas (config).
             $horaIni = sprintf('%02d:00', (int) config('agenda.hora_abertura'));
             $horaFim = sprintf('%02d:00', (int) config('agenda.hora_fecho'));
         }

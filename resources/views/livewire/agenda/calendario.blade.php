@@ -256,7 +256,7 @@
                                     @error('formFim') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                                 </div>
                                 <p class="text-xs text-texto-fraco sm:col-span-2">
-                                    Escreva as horas realmente trabalhadas — o fim pode ser <strong>noutro dia</strong> (trabalho que atravessa dias não é limitado pelo horário de cobertura).
+                                    Escreva as horas realmente trabalhadas — a qualquer hora, em qualquer dia; o fim pode ser <strong>noutro dia</strong>. A agenda só avisa se o técnico já tiver outro evento nesse período.
                                 </p>
 
                                 {{-- Horas trabalhadas POR DIA (serviços de vários dias): uma linha

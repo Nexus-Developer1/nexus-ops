@@ -128,7 +128,7 @@ Padrão obrigatório:
 
 ### Agenda
 - A agenda é em larga medida uma **projeção** das intervenções e visitas planeadas + eventos próprios (reuniões, ausências)
-- Drag-and-drop para reagendar com **deteção de conflitos** (técnico sobreposto, fora de horário de cobertura, em ausência)
+- Drag-and-drop para reagendar com **deteção de conflitos** (técnico sobreposto, em ausência). **Não há horário de cobertura nem dias úteis**: os técnicos não têm horário fixo — qualquer hora, qualquer dia, serviços que atravessam dias (decisão da equipa, 2026-08-29)
 - Visitas agendadas à mão; ao criar, pode ligar-se a um contrato e marcar a cobertura (incluída/extra) → alimenta o saldo do contrato
 - Conversão evento → intervenção quando o técnico inicia a visita, mantendo `evento_agenda_id` para rastreio
 - **Regra de ouro:** intervenção e evento de agenda partilham os mesmos factos (técnico, datas, equipamento). Há **uma única fonte de verdade** (ver decisão pendente #4) — nunca duplicar/dessincronizar

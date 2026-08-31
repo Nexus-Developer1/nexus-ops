@@ -53,8 +53,8 @@ class AgendaDiaEHorasTest extends TestCase
         Notification::fake();
         $tec = $this->tecnico();
 
-        // Trabalho real: entra às 22h de 2ª e sai às 6h de 3ª — fora do horário de cobertura,
-        // mas é registo do que aconteceu; tem de ser possível regularizar.
+        // Trabalho real: entra às 22h de 2ª e sai às 6h de 3ª — é registo do que aconteceu;
+        // tem de ser possível regularizar (e já não há horário de cobertura que o recuse).
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Intervenção noturna')
             ->set('formTecnicoIds', [$tec->id])
@@ -94,13 +94,17 @@ class AgendaDiaEHorasTest extends TestCase
         Notification::fake();
         $tec = $this->tecnico();
 
-        // Planeamento normal (mesmo dia) mantém a regra do horário de cobertura.
+        // Sem horário de cobertura: um evento das 22h às 23h no mesmo dia é aceite como
+        // qualquer outro (os técnicos não têm horário fixo).
         Livewire::actingAs($this->admin())->test(Calendario::class)
-            ->set('formTitulo', 'Tarde demais')
+            ->set('formTitulo', 'Noite')
             ->set('formTecnicoIds', [$tec->id])
             ->set('formInicio', '2026-08-03T22:00')
             ->set('formFim', '2026-08-03T23:00')
             ->call('criarEvento')
-            ->assertHasErrors('formInicio');
+            ->assertHasNoErrors();
+
+        $evento = EventoAgenda::where('titulo', 'Noite')->firstOrFail();
+        $this->assertSame('2026-08-03 22:00:00', $evento->inicio->format('Y-m-d H:i:s'));
     }
 }
