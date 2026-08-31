@@ -259,6 +259,13 @@
                                     Escreva as horas realmente trabalhadas — a qualquer hora, em qualquer dia; o fim pode ser <strong>noutro dia</strong>. A agenda só avisa se o técnico já tiver outro evento nesse período.
                                 </p>
 
+                                {{-- Dia inteiro (férias, ausências): 00:00–23:59 em CADA dia do período. Liga-se sozinho
+                                     quando o tipo de evento é "Férias"; pode marcar-se à mão para outros casos. --}}
+                                <label class="sm:col-span-2 flex cursor-pointer items-center gap-3 rounded-lg border border-borda px-4 py-3 text-sm text-texto-forte">
+                                    <input type="checkbox" wire:model.live="formDiaInteiro" class="h-5 w-5 rounded border-borda text-verde-600 focus:ring-verde-500">
+                                    <span>Dia inteiro <span class="block text-xs font-normal text-texto-fraco">ocupa cada dia do período das 00:00 às 23:59 — férias, ausências (marca-se sozinho ao escrever "Férias")</span></span>
+                                </label>
+
                                 {{-- Horas trabalhadas POR DIA (serviços de vários dias): uma linha
                                      por dia, horas editáveis — o calendário mostra um bloco por dia. --}}
                                 @if (count($formHorasDias) > 1)

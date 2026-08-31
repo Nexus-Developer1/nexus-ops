@@ -90,6 +90,10 @@ class Calendario extends Component
     // para valer também no arrasto na agenda e no remover do detalhe. Ligado por defeito ao criar.
     public bool $formNotificar = true;
 
+    // Dia inteiro: o evento ocupa CADA dia do período das 00:00 às 23:59 (férias, ausências).
+    // Liga-se sozinho quando o tipo de evento é "Férias"; pode marcar-se à mão para outros.
+    public bool $formDiaInteiro = false;
+
     // Ao mudar o filtro de técnico, manda o FullCalendar re-buscar os eventos (sem F5).
     public function updatedTecnicoNome(): void
     {
@@ -99,11 +103,76 @@ class Calendario extends Component
     // Mudar o intervalo refaz as linhas por dia (mantendo as horas já editadas).
     public function updatedFormInicio(): void
     {
-        $this->reconstruirHorasDias();
+        $this->formDiaInteiro ? $this->aplicarDiaInteiro() : $this->reconstruirHorasDias();
     }
 
     public function updatedFormFim(): void
     {
+        $this->formDiaInteiro ? $this->aplicarDiaInteiro() : $this->reconstruirHorasDias();
+    }
+
+    // Tipo de evento "Férias" → dia inteiro, automaticamente (o técnico não tem de acertar horas
+    // em cada dia). Só liga; não desliga se a pessoa mudar o texto depois de o ter marcado.
+    public function updatedFormTitulo(): void
+    {
+        if (self::ehFerias($this->formTitulo) && ! $this->formDiaInteiro) {
+            $this->formDiaInteiro = true;
+            $this->aplicarDiaInteiro();
+        }
+    }
+
+    public function updatedFormDiaInteiro(): void
+    {
+        if ($this->formDiaInteiro) {
+            $this->aplicarDiaInteiro();
+
+            return;
+        }
+
+        // Desligar: volta às horas propostas (08h–19h) nos mesmos dias — senão ficavam os
+        // 00:00–23:59 do dia inteiro como se fossem horas escolhidas à mão.
+        try {
+            $ini = Carbon::parse($this->formInicio)->setTime((int) config('agenda.hora_abertura'), 0);
+            $fim = Carbon::parse($this->formFim)->setTime((int) config('agenda.hora_fecho'), 0);
+        } catch (\Throwable) {
+            $this->reconstruirHorasDias();
+
+            return;
+        }
+
+        $this->formInicio = $ini->format('Y-m-d\TH:i');
+        $this->formFim = $fim->format('Y-m-d\TH:i');
+        $this->formHorasDias = [];
+        $this->reconstruirHorasDias();
+    }
+
+    public static function ehFerias(string $titulo): bool
+    {
+        return (bool) preg_match('/f[ée]rias?/iu', $titulo);
+    }
+
+    // Dia inteiro: início às 00:00 do 1.º dia, fim às 23:59 do último, e CADA dia do período
+    // com 00:00–23:59 nas horas por dia (o calendário mostra um bloco cheio em todos os dias).
+    private function aplicarDiaInteiro(): void
+    {
+        if (trim($this->formInicio) === '' || trim($this->formFim) === '') {
+            return;
+        }
+
+        try {
+            $ini = Carbon::parse($this->formInicio)->startOfDay();
+            $fim = Carbon::parse($this->formFim)->startOfDay();
+        } catch (\Throwable) {
+            return;
+        }
+
+        if ($fim->lt($ini)) {
+            $fim = $ini->copy();
+        }
+
+        $this->formInicio = $ini->format('Y-m-d\T00:00');
+        $this->formFim = $fim->format('Y-m-d\T23:59');
+        $this->formHorasDias = []; // sem restos de horas editadas
         $this->reconstruirHorasDias();
     }
 
@@ -157,6 +226,11 @@ class Calendario extends Component
                 'inicio' => $existentes[$chave]['inicio'] ?? $horaIni,
                 'fim' => $existentes[$chave]['fim'] ?? $horaFim,
             ];
+        }
+
+        // Dia inteiro: todos os dias cheios, ignorando horas editadas antes de marcar a opção.
+        if ($this->formDiaInteiro) {
+            $linhas = array_map(fn (array $l) => ['dia' => $l['dia'], 'inicio' => '00:00', 'fim' => '23:59'], $linhas);
         }
 
         $this->formHorasDias = $linhas;
@@ -281,7 +355,7 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoIds', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura', 'formHorasDias', 'formNotificar']);
+        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoIds', 'formEquipamentoId', 'formEquipamentoBusca', 'formContratoId', 'formCobertura', 'formHorasDias', 'formNotificar', 'formDiaInteiro']);
 
         // A agenda manda o DIA (sem hora) — as horas reais escrevem-se no formulário e podem
         // abranger vários dias. Sem hora, arranca na abertura e propõe 1h (fácil de ajustar).
@@ -345,6 +419,10 @@ class Calendario extends Component
             ])
             ->all();
         $this->reconstruirHorasDias();
+
+        // Dia inteiro guardado? (00:00 → 23:59 e, se houver horas por dia, todas cheias.)
+        $this->formDiaInteiro = $evento->inicio->format('H:i') === '00:00' && $evento->fim->format('H:i') === '23:59'
+            && collect($this->formHorasDias)->every(fn ($l) => $l['inicio'] === '00:00' && $l['fim'] === '23:59');
 
         $this->eventoSelecionadoId = null; // fecha o detalhe; abre o formulário
         $this->modalCriar = true;
@@ -424,7 +502,8 @@ class Calendario extends Component
 
         // Refaz as linhas por dia a partir do intervalo submetido (à prova de payload forjado:
         // os DIAS vêm sempre do intervalo; só as horas de cada dia vêm do formulário).
-        $this->reconstruirHorasDias();
+        // Dia inteiro manda: à prova de um payload que traga outras horas com a opção marcada.
+        $this->formDiaInteiro ? $this->aplicarDiaInteiro() : $this->reconstruirHorasDias();
 
         $this->validate([
             'formTitulo' => ['required', 'string', 'max:255'],
