@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-08-31
 
-- 🎨 **Confirmações de gravação sempre visíveis (toast fixo)** — as mensagens "Alertas guardados", "Componentes guardados", "Bancos de baterias guardados", "Contrato guardado", etc. apareciam num banner **no topo da página**: quem carregava num botão "Guardar…" a meio ou ao fundo da ficha não via confirmação nenhuma. Agora todas as mensagens de sucesso aparecem num **toast fixo ao fundo do ecrã, ao centro, por cima de tudo** — visível seja qual for o scroll — e desaparecem sozinhas ao fim de 5s (ou no ×). Componente único `<x-toast-sucesso />` a substituir os 9 banners (agenda, feeds, contratos, despesas, equipamentos, relatórios, utilizadores); as mensagens em si não mudam. Requer build; sem migração. `hash`
+- 🎨 **Confirmações de gravação sempre visíveis (toast fixo)** — as mensagens "Alertas guardados", "Componentes guardados", "Bancos de baterias guardados", "Contrato guardado", etc. apareciam num banner **no topo da página**: quem carregava num botão "Guardar…" a meio ou ao fundo da ficha não via confirmação nenhuma. Agora todas as mensagens de sucesso aparecem num **toast fixo ao fundo do ecrã, ao centro, por cima de tudo** — visível seja qual for o scroll — e desaparecem sozinhas ao fim de 5s (ou no ×). Componente único `<x-toast-sucesso />` a substituir os 9 banners (agenda, feeds, contratos, despesas, equipamentos, relatórios, utilizadores); as mensagens em si não mudam. Requer build; sem migração. `8ed2d9e`
 
 - 🎨 **"Alertas de manutenção" passa a "Alertas"** — o cartão na ficha do equipamento (e a mensagem de guardado) usa só "Alertas", como na agenda. Requer build. `015a2df`
 
