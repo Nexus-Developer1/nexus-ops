@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-08-31
 
-- 🐛 **Agenda: férias tapavam os outros eventos e blocos à mesma hora ficavam meio sobrepostos** — um evento de dia inteiro (00:00–23:59) era desenhado na grelha das horas como um bloco que ocupava a coluna toda; qualquer evento com hora nesse dia ficava por cima, apertado e com o texto cortado. Agora cada dia de férias/ausência vai para a **faixa "Dia inteiro" no topo** da vista de dia/semana (não arrastável — muda-se no formulário) e a grelha fica livre para o trabalho desse dia. E dois eventos à mesma hora passam a ficar **lado a lado, cada um na sua coluna** (`slotEventOverlap: false`), em vez de um por cima do outro. Requer build; sem migração. +1 teste (534 no total). `hash`
+- 🐛 **Agenda: férias tapavam os outros eventos e blocos à mesma hora ficavam meio sobrepostos** — um evento de dia inteiro (00:00–23:59) era desenhado na grelha das horas como um bloco que ocupava a coluna toda; qualquer evento com hora nesse dia ficava por cima, apertado e com o texto cortado. Agora cada dia de férias/ausência vai para a **faixa "Dia inteiro" no topo** da vista de dia/semana (não arrastável — muda-se no formulário) e a grelha fica livre para o trabalho desse dia. E dois eventos à mesma hora passam a ficar **lado a lado, cada um na sua coluna** (`slotEventOverlap: false`), em vez de um por cima do outro. Requer build; sem migração. +1 teste (534 no total). `e74ef20`
 
 - 🎨 **Modal do evento sem o rodapé "Campos com * são obrigatórios"** — o `*` nos rótulos chega; a frase só ocupava espaço (pedido do Davide logo após ver em produção). Requer build. `d78f4fe`
 
