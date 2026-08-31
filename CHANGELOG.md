@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-08-29
 
-- 🎨 **Calendário mostra o dia inteiro (00h–24h)** — a grelha de dia/semana só ia das 07h às 20h: com o horário de cobertura fora de jogo, um evento à noite (ou que atravessa a meia-noite) ficava invisível e impossível de arrastar. Passa a mostrar as 24 horas; abre nas 07h (é onde está a maioria do trabalho) e faz-se scroll para o resto. Requer `npm run build`; sem migração. `hash`
+- 🎨 **Calendário mostra o dia inteiro (00h–24h)** — a grelha de dia/semana só ia das 07h às 20h: com o horário de cobertura fora de jogo, um evento à noite (ou que atravessa a meia-noite) ficava invisível e impossível de arrastar. Passa a mostrar as 24 horas; abre nas 07h (é onde está a maioria do trabalho) e faz-se scroll para o resto. Requer `npm run build`; sem migração. `d3e1303`
 
 - 🧰 **Agenda sem horário de cobertura: os técnicos não têm horário fixo** — a agenda recusava eventos fora das 08h–19h e ao fim-de-semana ("Fora do horário de cobertura") ao criar e ao arrastar, exceto quando atravessavam dias. Só que os técnicos trabalham a qualquer hora e em qualquer dia (noites, sábados, serviços que atravessam dias) — a regra impedia registar o que aconteceu de facto. **Retirada por completo**: a agenda aceita qualquer hora e qualquer dia; o único conflito que continua a detetar é a **sobreposição com outro evento do mesmo técnico**. As 08h/19h ficam apenas como horas propostas por defeito ao abrir um evento novo (`config/agenda.php`; `dias_uteis` saiu). Texto de ajuda do modal e CLAUDE.md alinhados. Sem migração; build (blade). 4 testes invertidos (518 no total). `a8457fe`
 
