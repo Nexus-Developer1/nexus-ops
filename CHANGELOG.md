@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-08-29
 
-- 🎨 **"Encomendas" passa a "Dossiers PHC"** — o menu, a listagem, a ficha, os títulos dos separadores e o cartão no detalhe do cliente ("Dossiers PHC (encomendas e propostas)") passam a usar o nome com que a equipa fala do que ali está: os dossiês do PHC (propostas e encomendas). O URL `/encomendas` e os nomes internos das rotas não mudam — favoritos continuam a funcionar. Requer build; sem migração. 2 testes atualizados (526 no total). `hash`
+- 🎨 **"Encomendas" passa a "Dossiers PHC"** — o menu, a listagem, a ficha, os títulos dos separadores e o cartão no detalhe do cliente ("Dossiers PHC (encomendas e propostas)") passam a usar o nome com que a equipa fala do que ali está: os dossiês do PHC (propostas e encomendas). O URL `/encomendas` e os nomes internos das rotas não mudam — favoritos continuam a funcionar. Requer build; sem migração. 2 testes atualizados (526 no total). `ddcbf8a`
 
 - 🧰 **Agenda: pesquisar o equipamento pelo CLIENTE** — no modal do evento, a pesquisa de equipamento só encontrava por nº de série, fabricante ou modelo; quem marca uma visita sabe o cliente, não o nº de série. Agora escreve-se o nome do cliente (sem acentos, minúsculas — "evora" encontra "Câmara Municipal de Évora") e aparecem os equipamentos dele para escolher, agrupados por cliente; escolher um herda o cliente e o local como antes. Série/modelo continuam a funcionar; lista até 50 resultados. Requer build; sem migração. +3 testes (526 no total). `98e4f84`
 
