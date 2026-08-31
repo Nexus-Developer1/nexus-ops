@@ -8,6 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-08-31
 
+- 🧰 **Gráfico automático do teste de descarga na ficha UPS (editor e PDF)** — a partir dos valores escritos na tabela do teste de descarga (Vbat+ e Vbat− em Início, 1, 2, 3, 5, 7, 10, 15 e 20 min), o relatório desenha sozinho a curva de descarga — o mesmo gráfico que a equipa fazia à mão no Excel: Vbat+ a azul, Vbat− a laranja, eixo com escala automática e legenda. É **SVG gerado no servidor** (componente `grafico-descarga`), por isso sai igual no editor do relatório (por baixo da tabela, atualiza quando os valores sincronizam) e no **PDF** (DomPDF desenha-o — verificado com um PDF real). Só aparece com ≥2 valores; células vazias/texto são ignoradas; vírgula decimal aceite. Relatórios antigos não mudam (os PDFs emitidos estão guardados). Requer build; sem migração. +3 testes (554 no total). `hash`
+
 - 🎨 **Confirmações de gravação sempre visíveis (toast fixo)** — as mensagens "Alertas guardados", "Componentes guardados", "Bancos de baterias guardados", "Contrato guardado", etc. apareciam num banner **no topo da página**: quem carregava num botão "Guardar…" a meio ou ao fundo da ficha não via confirmação nenhuma. Agora todas as mensagens de sucesso aparecem num **toast fixo ao fundo do ecrã, ao centro, por cima de tudo** — visível seja qual for o scroll — e desaparecem sozinhas ao fim de 5s (ou no ×). Componente único `<x-toast-sucesso />` a substituir os 9 banners (agenda, feeds, contratos, despesas, equipamentos, relatórios, utilizadores); as mensagens em si não mudam. Requer build; sem migração. `8ed2d9e`
 
 - 🎨 **"Alertas de manutenção" passa a "Alertas"** — o cartão na ficha do equipamento (e a mensagem de guardado) usa só "Alertas", como na agenda. Requer build. `015a2df`

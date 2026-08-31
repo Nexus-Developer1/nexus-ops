@@ -1,5 +1,6 @@
 @props([
     'prefixo',              // caminho Livewire da ficha, ex.: "fichas.123"
+    'descarga' => [],       // valores do teste de descarga já gravados (para o gráfico)
 ])
 
 @php
@@ -141,6 +142,12 @@
                     </tbody>
                 </table>
             </div>
+            {{-- Gráfico Vbat+/Vbat− (o mesmo do PDF); redesenha quando os valores sincronizam. --}}
+            @if ($descarga !== [])
+                <div class="mt-3 overflow-x-auto">
+                    <x-relatorios.grafico-descarga :dados="$descarga" />
+                </div>
+            @endif
             <div class="mt-3 sm:max-w-xs">
                 <label class="campo-label">Baterias em funcionamento</label>
                 <select wire:model="{{ $prefixo }}.baterias_funcionamento" class="campo-select">
