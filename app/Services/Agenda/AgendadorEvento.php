@@ -79,6 +79,7 @@ class AgendadorEvento
                     // história (única fonte de verdade — CLAUDE.md §6).
                     $evento->update([
                         'titulo' => $atributos['titulo'],
+                        'notas' => $atributos['notas'] ?? null,
                         'inicio' => $inicio,
                         'fim' => $fim,
                         'tecnico_id' => $atributos['tecnico_id'],

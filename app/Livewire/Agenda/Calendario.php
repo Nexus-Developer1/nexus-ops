@@ -60,6 +60,9 @@ class Calendario extends Component
 
     public string $formTitulo = '';
 
+    // Notas livres do evento (morada, contactos no local, indicações de acesso, o que levar…).
+    public string $formNotas = '';
+
     // Técnicos do evento: CONTAS de utilizador (mesma lista do relatório) — um evento pode ter
     // 1 ou mais. O 1.º (por ordem alfabética) fica como principal em tecnico_id (cor do evento);
     // os restantes vão para a pivot evento_tecnicos. Todos contam para conflitos,
@@ -355,6 +358,7 @@ class Calendario extends Component
             'formTecnicoIds' => 'técnicos',
             'formTecnicoIds.*' => 'técnico',
             'formEquipamentoId' => 'equipamento',
+            'formNotas' => 'notas',
             'formInicio' => 'início',
             'formFim' => 'fim',
             'formHorasDias.*.inicio' => 'hora de início do dia',
@@ -367,7 +371,7 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formTecnicoIds', 'formClienteId', 'formClienteBusca', 'formEquipamentoId', 'formEquipamentoBusca', 'formEquipamentosExtra', 'formContratoId', 'formCobertura', 'formHorasDias', 'formNotificar', 'formDiaInteiro']);
+        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formNotas', 'formTecnicoIds', 'formClienteId', 'formClienteBusca', 'formEquipamentoId', 'formEquipamentoBusca', 'formEquipamentosExtra', 'formContratoId', 'formCobertura', 'formHorasDias', 'formNotificar', 'formDiaInteiro']);
 
         // A agenda manda o DIA (sem hora) — as horas reais escrevem-se no formulário e podem
         // abranger vários dias. Sem hora, arranca na abertura e propõe 1h (fácil de ajustar).
@@ -399,6 +403,7 @@ class Calendario extends Component
         $this->editandoConvertido = (bool) $evento->intervencao_id;
         $this->editandoId = $evento->id;
         $this->formTitulo = $evento->titulo;
+        $this->formNotas = (string) $evento->notas;
         // Contas dos técnicos (principal + adicionais). Eventos LEGADOS só têm o nome em texto —
         // tenta casá-lo com uma conta (é o caso normal: os nomes escritos eram os dos técnicos).
         $principal = $evento->tecnico_id
@@ -581,6 +586,7 @@ class Calendario extends Component
 
         $this->validate([
             'formTitulo' => ['required', 'string', 'max:255'],
+            'formNotas' => ['nullable', 'string', 'max:5000'],
             // Técnicos = contas ativas com papel técnico (mesma regra dos colaboradores no relatório).
             'formTecnicoIds' => ['array'],
             'formTecnicoIds.*' => ['integer',
@@ -665,6 +671,7 @@ class Calendario extends Component
 
         $atributos = [
             'titulo' => $titulo,
+            'notas' => trim($this->formNotas) !== '' ? trim($this->formNotas) : null,
             'inicio' => $inicio,
             'fim' => $fim,
             // Conta do técnico + nome desnormalizado: o id liga conflitos/iCal;

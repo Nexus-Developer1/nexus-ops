@@ -29,6 +29,7 @@ class NotificadorAgenda
             'uid' => GeradorIcs::uid($e->id),
             'sequence' => (int) $e->ical_sequence,
             'titulo' => $e->titulo,
+            'notas' => $e->notas ? (string) $e->notas : null,
             'inicio' => $e->inicio->toIso8601String(),
             'fim' => $e->fim->toIso8601String(),
             'segmentos' => array_map(fn ($s) => [$s[0]->toIso8601String(), $s[1]->toIso8601String()], $e->segmentos()),
@@ -106,7 +107,7 @@ class NotificadorAgenda
 
     private function mudouAlgo(array $a, array $d): bool
     {
-        foreach (['titulo', 'inicio', 'fim', 'segmentos', 'tecnicos_nomes', 'cliente', 'equipamento', 'contrato'] as $campo) {
+        foreach (['titulo', 'notas', 'inicio', 'fim', 'segmentos', 'tecnicos_nomes', 'cliente', 'equipamento', 'contrato'] as $campo) {
             if (($a[$campo] ?? null) != ($d[$campo] ?? null)) {
                 return true;
             }

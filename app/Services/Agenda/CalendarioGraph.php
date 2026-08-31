@@ -139,6 +139,7 @@ class CalendarioGraph
             $e->contrato ? 'Contrato: '.$e->contrato->numero : null,
             $e->local?->designacao ? 'Local: '.$e->local->designacao : null,
             'Estado: '.$e->estado->value,
+            $e->notas ? "\nNotas:\n".$e->notas : null,
             '',
             'Agenda: '.route('agenda'),
         ]);

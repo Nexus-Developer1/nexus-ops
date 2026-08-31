@@ -154,6 +154,7 @@ class GeradorIcs
             $e->cliente ? 'Cliente: '.$e->cliente->nome : null,
             $e->local?->designacao ? 'Local: '.$e->local->designacao : null,
             $e->estado ? 'Estado: '.$e->estado->value : null,
+            $e->notas ? "Notas:\n".$e->notas : null,
         ]);
 
         return implode("\n", $linhas);
@@ -167,6 +168,7 @@ class GeradorIcs
             ($e['cliente'] ?? null) ? 'Cliente: '.$e['cliente'] : null,
             ($e['equipamento'] ?? null) ? 'Equipamento: '.$e['equipamento'] : null,
             ($e['contrato'] ?? null) ? 'Contrato: '.$e['contrato'] : null,
+            ($e['notas'] ?? null) ? "Notas:\n".$e['notas'] : null,
             'Agenda: '.route('agenda'),
         ]);
 

@@ -37,6 +37,7 @@ class EventoAgenda extends Model
     protected $fillable = [
         'tipo',
         'titulo',
+        'notas', // texto livre: morada, contactos, indicações de acesso…
         'inicio',
         'fim',
         'estado',

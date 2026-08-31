@@ -67,6 +67,9 @@
                                 <div class="flex justify-between gap-4"><dt class="text-texto-fraco">Equipamento</dt><dd class="text-right font-medium text-texto-forte">{{ trim($evento->equipamento->fabricante . ' ' . $evento->equipamento->modelo) ?: $evento->equipamento->numero_serie }}</dd></div>
                             @endif
                             <div class="flex justify-between gap-4"><dt class="text-texto-fraco">Técnico</dt><dd class="text-right font-medium text-texto-forte">{{ $evento->tecnico_label ?? 'Por atribuir' }}</dd></div>
+                            @if ($evento->notas)
+                                <div><dt class="text-texto-fraco">Notas</dt><dd class="mt-1 whitespace-pre-line font-medium text-texto-forte">{{ $evento->notas }}</dd></div>
+                            @endif
                         </dl>
 
                         <div class="flex flex-wrap items-center justify-end gap-3 border-t border-borda px-6 py-4">
@@ -287,6 +290,14 @@
                                         @endforeach
                                     </div>
                                 @endif
+                            </div>
+
+                            {{-- Notas livres: morada, contactos no local, indicações de acesso, o que levar…
+                                 Vão no detalhe, no email/convite aos técnicos, no feed e no calendário partilhado. --}}
+                            <div>
+                                <label class="campo-label" for="notas-evento">Notas</label>
+                                <textarea id="notas-evento" wire:model="formNotas" rows="3" class="campo-input" placeholder="Morada, contactos, indicações de acesso…"></textarea>
+                                @error('formNotas') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
 
                             {{-- Técnicos: CONTAS de utilizador (mesma lista do relatório), 1 ou mais. Ligar
