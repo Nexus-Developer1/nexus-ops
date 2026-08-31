@@ -8,11 +8,13 @@ use App\Services\Erp\ErpSyncDriver;
 use App\Services\Erp\FakeErpDriver;
 use App\Services\Erp\NullErpDriver;
 use App\Services\Erp\SqlServerErpDriver;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Connectors\SqlServerConnector;
 use Illuminate\Database\SqlServerConnection;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
@@ -49,6 +51,22 @@ class AppServiceProvider extends ServiceProvider
     {
         // Única capacidade exclusiva do admin: gerir/convidar utilizadores. O técnico tem todo
         // o resto (ver grupos de rotas). Usada no componente (abort_unless) e para esconder o link.
+        /*
+         * Marca o instante em que a sessão foi autenticada.
+         *
+         * Quem volta pelo "Manter sessão iniciada" entra sem passar pelo
+         * formulário, e a sessão nascia sem esta marca — o SessaoValida
+         * tomava-a por anterior à última mudança de palavra-passe e expulsava
+         * a pessoa. É seguro marcar aqui: ao mudar a palavra-passe o
+         * `remember_token` é trocado, portanto um cookie de "manter" que ainda
+         * sirva é necessariamente posterior a essa mudança.
+         */
+        Event::listen(function (Login $evento) {
+            if (! session()->has('autenticado_em')) {
+                session(['autenticado_em' => now()->timestamp]);
+            }
+        });
+
         Gate::define('gerir-utilizadores', fn (User $utilizador) => $utilizador->ehAdmin());
 
         // Política de passwords (Vaga 1): min 10 + letras + números; em produção verifica
