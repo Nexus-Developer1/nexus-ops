@@ -175,12 +175,7 @@
                             {{-- Equipamento opcional: pesquisa server-side (~17k registos, nunca carregar tudo).
                                  Ao escolher, o evento herda local e cliente do equipamento. --}}
                             <div>
-                                <label class="campo-label" for="equip-evento-combo">Equipamento @unless ($formDiaInteiro)<span class="text-perigo-500">*</span>@endunless</label>
-                                @if ($editandoConvertido)
-                                    <p class="mb-1.5 text-xs text-texto-fraco">Este evento já tem relatório em rascunho: o equipamento principal gere-se no relatório; pode <strong>acrescentar mais</strong> aqui — entram como equipamentos cobertos do relatório.</p>
-                                @else
-                                    <p class="mb-1.5 text-xs text-texto-fraco">O 1.º escolhido é o principal (dá o cliente ao evento); pode acrescentar mais do mesmo cliente.</p>
-                                @endif
+                                <label class="campo-label" for="equip-evento-combo">Equipamento</label>
                                 <div x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
                                     <input
                                         id="equip-evento-combo"
@@ -255,7 +250,6 @@
                                         <p class="py-1 text-sm text-texto-medio">Sem técnicos com conta ativa.</p>
                                     @endforelse
                                 </div>
-                                <p class="mt-1.5 text-xs text-texto-fraco">Marca um ou mais; o evento entra no calendário (iCal) de cada um.</p>
                                 {{-- Email aos técnicos marcados — ao criar, e também quando o evento for alterado
                                      (aqui ou por arrasto na agenda) ou removido. A escolha fica guardada no evento. --}}
                                 <label class="mt-3 flex cursor-pointer items-center gap-3 rounded-lg border border-borda px-4 py-3 text-sm text-texto-forte">
@@ -278,9 +272,6 @@
                                     <input wire:model.live="formFim" type="datetime-local" class="campo-input">
                                     @error('formFim') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                                 </div>
-                                <p class="text-xs text-texto-fraco sm:col-span-2">
-                                    Escreva as horas realmente trabalhadas — a qualquer hora, em qualquer dia; o fim pode ser <strong>noutro dia</strong>. A agenda só avisa se o técnico já tiver outro evento nesse período.
-                                </p>
 
                                 {{-- Dia inteiro (férias, ausências): 00:00–23:59 em CADA dia do período. Liga-se sozinho
                                      quando o tipo de evento é "Férias"; pode marcar-se à mão para outros casos. --}}
@@ -306,7 +297,6 @@
                                                 </div>
                                             @endforeach
                                         </div>
-                                        <p class="mt-2 text-xs text-texto-fraco">Cada dia pode ter o seu horário — pode voltar aqui em qualquer dia e acertar as horas realmente trabalhadas.</p>
                                     </div>
                                 @endif
                             </div>
@@ -314,9 +304,6 @@
                             {{-- Contrato (opcional) + cobertura — liga a visita ao saldo do contrato. --}}
                             <div>
                                 <label class="campo-label">Contrato</label>
-                                @if ($editandoConvertido)
-                                    <p class="mb-1.5 text-xs text-texto-fraco">O contrato gere-se no relatório; aqui só a cobertura pode mudar.</p>
-                                @endif
                                 <select wire:model.live="formContratoId" @disabled($editandoConvertido) class="campo-select">
                                     <option value="">Sem contrato</option>
                                     @foreach ($contratos as $c)
@@ -339,7 +326,6 @@
                                             Extra (faturável)
                                         </button>
                                     </div>
-                                    <p class="mt-1.5 text-xs text-texto-fraco">"Incluída" desconta do saldo do contrato; "Extra" é faturável à parte.</p>
                                     {{-- Saldo em direto do contrato escolhido (Vaga 1) — deixa de se marcar às cegas. --}}
                                     @if ($saldoContratoForm)
                                         <p class="mt-1.5 text-xs {{ $saldoContratoForm['restantes'] === 0 ? 'font-medium text-aviso-500' : 'text-texto-medio' }}">

@@ -117,8 +117,7 @@ class AgendaEquipamentosExtraTest extends TestCase
             ->call('abrirEdicao')
             ->assertSet('editandoConvertido', true)
             ->assertSet('formEquipamentoId', $this->ups1->id)
-            ->assertSet('formEquipamentosExtra', [$this->ups2->id])
-            ->assertSee('acrescentar mais');
+            ->assertSet('formEquipamentosExtra', [$this->ups2->id]);
 
         // Acrescentar o 3.º e tirar o 2.º → cobertos do relatório = [3].
         $c->call('selecionarEquipamento', $this->ups3->id)

@@ -40,8 +40,7 @@ abstract class TestCase extends BaseTestCase
         return $app;
     }
 
-    // Equipamento pronto a usar num evento da agenda (o equipamento passou a ser obrigatório
-    // em qualquer evento que não seja de dia inteiro). Cria cliente + local se não vierem.
+    // Equipamento pronto a usar num evento da agenda. Cria cliente + local se não vierem.
     private static int $seqEquipamento = 0;
 
     protected function equipamentoDeTeste(?Cliente $cliente = null): Equipamento

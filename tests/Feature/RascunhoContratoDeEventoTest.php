@@ -87,9 +87,7 @@ class RascunhoContratoDeEventoTest extends TestCase
         $this->assertDatabaseHas('relatorios', ['intervencao_id' => $interv->id, 'estado' => 'rascunho', 'numero' => null]);
     }
 
-    // O equipamento principal é obrigatório mesmo com contrato: o contrato dá o âmbito (os
-    // cobertos), mas o relatório precisa de um principal escolhido — sem ele nada é gravado.
-    public function test_evento_com_contrato_sem_equipamento_e_recusado(): void
+    public function test_evento_com_contrato_sem_equipamento_gera_rascunho_do_contrato(): void
     {
         [$cliente, $local] = $this->clienteLocal();
         [$e1, $e2, $e3] = [$this->equip($local, 'SN-1'), $this->equip($local, 'SN-2'), $this->equip($local, 'SN-3')];
@@ -98,6 +96,7 @@ class RascunhoContratoDeEventoTest extends TestCase
 
         $inicio = now()->addWeek()->setTime(10, 0);
 
+        // Associa SÓ o contrato (sem escolher equipamento) → o âmbito vem do contrato.
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Preventiva UPS')
             ->set('formInicio', $inicio->format('Y-m-d\TH:i'))
@@ -105,10 +104,20 @@ class RascunhoContratoDeEventoTest extends TestCase
             ->set('formContratoId', $contrato->id)
             ->set('formCobertura', 'incluida')
             ->call('criarEvento')
-            ->assertHasErrors(['formEquipamentoId' => 'required']);
+            ->assertHasNoErrors();
 
-        $this->assertSame(0, EventoAgenda::count());
-        $this->assertSame(0, Intervencao::count());
+        $interv = Intervencao::firstOrFail();
+        $this->assertSame($contrato->id, $interv->contrato_id);
+        $this->assertSame('preventiva', $interv->tipo->value);
+
+        // Todos os equipamentos do contrato ficam no relatório (principal + cobertos).
+        $todos = collect([$interv->equipamento_id])
+            ->merge($interv->equipamentosCobertos()->pluck('equipamentos.id'))
+            ->sort()->values()->all();
+        $this->assertSame([$e1->id, $e2->id, $e3->id], $todos);
+
+        // E o evento herda o cliente do contrato (não tinha equipamento de onde o tirar).
+        $this->assertSame($cliente->id, EventoAgenda::firstOrFail()->cliente_id);
     }
 
     public function test_evento_sem_contrato_gera_rascunho_individual(): void

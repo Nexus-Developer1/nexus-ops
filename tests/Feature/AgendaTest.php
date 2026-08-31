@@ -336,9 +336,7 @@ class AgendaTest extends TestCase
         ]);
     }
 
-    // O equipamento é obrigatório em qualquer evento que não seja de dia inteiro: sem ele o
-    // evento é recusado (logo nunca há evento futuro "sem rascunho por falta de equipamento").
-    public function test_evento_sem_equipamento_e_recusado(): void
+    public function test_evento_sem_equipamento_nao_gera_rascunho(): void
     {
         Notification::fake();
 
@@ -347,9 +345,8 @@ class AgendaTest extends TestCase
             ->set('formInicio', now()->addWeek()->format('Y-m-d\TH:i'))
             ->set('formFim', now()->addWeek()->addHour()->format('Y-m-d\TH:i'))
             ->call('criarEvento')
-            ->assertHasErrors(['formEquipamentoId' => 'required']);
+            ->assertHasNoErrors();
 
-        $this->assertDatabaseCount('eventos_agenda', 0);
         $this->assertDatabaseCount('intervencoes', 0);
         $this->assertDatabaseCount('relatorios', 0);
     }
