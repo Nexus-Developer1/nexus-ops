@@ -75,7 +75,8 @@
     'Verificação semestral' => ['semestral', FichaMedicao::SADEI_SEMESTRAL],
     'Verificação anual' => ['anual', FichaMedicao::SADEI_ANUAL],
 ] as $tituloSec => [$sec, $itens])
-    <div class="ficha-seccao">{{ $tituloSec }} — inibir o sistema antes de iniciar; repor em automático no fim</div>
+    {{-- Sem o lembrete "inibir/repor": é instrução ao técnico durante a manutenção, não informação para o cliente. --}}
+    <div class="ficha-seccao">{{ $tituloSec }}</div>
     <table class="ficha-tab">
         <tr><th>Item</th><th class="cel-ok">OK</th><th class="cel-nok">KO</th><th class="cel-na">N/A</th></tr>
         @foreach ($itens as $k => $rotulo)

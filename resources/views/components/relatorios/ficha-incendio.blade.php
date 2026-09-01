@@ -83,9 +83,12 @@
     {{-- Verificações periódicas (estado apenas) --}}
     @foreach ($periodicas as $tituloSec => $sec)
         <div>
+            {{-- Lembretes de segurança da manutenção (só no editor, não vão para o PDF): a ordem
+                 importa — inibir ANTES de tocar no sistema (vermelho, no topo) e repor em automático
+                 só DEPOIS da última verificação (verde, no fim da secção). --}}
             <div class="flex items-center justify-between">
                 <p class="campo-label">{{ $tituloSec }}</p>
-                <span class="text-xs text-aviso-500">Inibir o sistema antes de iniciar · repor em automático no fim</span>
+                <span class="text-xs font-semibold text-perigo-600">Inibir o sistema antes de iniciar</span>
             </div>
             {{-- Uma linha horizontal a separar cada questão (leitura mais fácil em listas longas). --}}
             <div class="divide-y divide-borda">
@@ -103,6 +106,7 @@
                     </div>
                 @endforeach
             </div>
+            <p class="mt-2 text-right text-xs font-semibold text-verde-700">Repor em automático no fim</p>
         </div>
     @endforeach
 
