@@ -47,8 +47,9 @@ class Ficha extends Component
     /** @var list<array{designacao: string, quantidade: string|int}> */
     public array $componentes = [];
 
-    // Alertas de manutenção programados: linhas { data, texto } — o texto do aviso é editável.
-    /** @var list<array{data: ?string, texto: string}> */
+    // Alertas de manutenção programados: linhas { data, texto, user_id } — o texto do aviso é
+    // editável; user_id = a quem está atribuído ('' = equipa completa).
+    /** @var list<array{data: ?string, texto: string, user_id: string}> */
     public array $alertasManutencao = [];
 
     public function mount(Equipamento $equipamento): void
@@ -77,7 +78,7 @@ class Ficha extends Component
         $this->componentes = array_values($attrs['componentes'] ?? []);
         $this->alertasManutencao = $equipamento->alertasManutencao()
             ->orderBy('data')->get()
-            ->map(fn ($a) => ['data' => $a->data->toDateString(), 'texto' => $a->texto])
+            ->map(fn ($a) => ['data' => $a->data->toDateString(), 'texto' => $a->texto, 'user_id' => (string) ($a->user_id ?? '')])
             ->all();
     }
 
@@ -85,7 +86,7 @@ class Ficha extends Component
     {
         if (count($this->alertasManutencao) < 24) {
             // Texto por defeito editável — escreve-se o aviso que fizer sentido.
-            $this->alertasManutencao[] = ['data' => '', 'texto' => 'Manutenção preventiva'];
+            $this->alertasManutencao[] = ['data' => '', 'texto' => 'Manutenção preventiva', 'user_id' => ''];
         }
     }
 
@@ -104,11 +105,14 @@ class Ficha extends Component
             'alertasManutencao' => ['array', 'max:24'],
             'alertasManutencao.*.data' => ['required', 'date'],
             'alertasManutencao.*.texto' => ['required', 'string', 'max:255'],
+            // Atribuição: equipa completa ('') ou uma conta ATIVA da equipa (técnico/admin).
+            'alertasManutencao.*.user_id' => ['nullable', \Illuminate\Validation\Rule::exists('utilizadores', 'id')
+                ->where('ativo', true)->whereIn('papel', [\App\Enums\PapelUtilizador::Tecnico->value, \App\Enums\PapelUtilizador::Admin->value])],
         ]);
 
         $this->equipamento->alertasManutencao()->delete();
         foreach ($this->alertasManutencao as $a) {
-            $this->equipamento->alertasManutencao()->create(['data' => $a['data'], 'texto' => trim($a['texto'])]);
+            $this->equipamento->alertasManutencao()->create(['data' => $a['data'], 'texto' => trim($a['texto']), 'user_id' => ($a['user_id'] ?? '') !== '' ? (int) $a['user_id'] : null]);
         }
 
         session()->flash('sucesso', 'Alertas guardados.');
@@ -413,6 +417,10 @@ class Ficha extends Component
             ->get();
 
         return view('livewire.equipamentos.ficha', [
+            // Contas da equipa (técnicos e admins) para atribuir alertas.
+            'equipaAlertas' => \App\Models\User::where('ativo', true)
+                ->whereIn('papel', [\App\Enums\PapelUtilizador::Tecnico->value, \App\Enums\PapelUtilizador::Admin->value])
+                ->orderBy('nome')->get(['id', 'nome']),
             'intervencoes' => $intervencoes,
             'contratos' => $contratos,
             // Bancos/kits associados a este equipamento e (se for um banco) o UPS pai.

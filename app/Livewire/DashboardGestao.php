@@ -93,7 +93,8 @@ class DashboardGestao extends Component
 
     public function render(ServicoMetricas $metricas, ServicoAlertas $alertas)
     {
-        $listaAlertas = $alertas->recolher();
+        // Só o que este utilizador deve ver (equipa + atribuídos a ele; admin vê tudo).
+        $listaAlertas = $alertas->recolherPara(auth()->user());
 
         return view('livewire.dashboard-gestao', [
             'resumo' => $metricas->resumo(),

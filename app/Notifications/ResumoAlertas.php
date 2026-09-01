@@ -29,7 +29,8 @@ class ResumoAlertas extends Notification
 
         // Até 10 alertas no corpo do email.
         foreach ($this->alertas->take(10) as $alerta) {
-            $mail->line('• '.$this->semMarkdown($alerta['titulo']).' — '.$this->semMarkdown($alerta['descricao']));
+            $quem = ($alerta['atribuido_nome'] ?? null) ? ' (atribuído a '.$this->semMarkdown($alerta['atribuido_nome']).')' : '';
+            $mail->line('• '.$this->semMarkdown($alerta['titulo']).' — '.$this->semMarkdown($alerta['descricao']).$quem);
         }
 
         return $mail->action('Ver alertas', route('alertas'));

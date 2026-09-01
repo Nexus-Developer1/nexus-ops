@@ -28,7 +28,20 @@
                     }
                 }
             @endphp
-            <div class="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {{-- Atribuição: quem deve tratar do alerta (equipa completa ou uma pessoa). --}}
+            <div class="mt-6 flex flex-wrap items-center gap-3">
+                <label class="text-sm text-texto-medio">Atribuído a</label>
+                <select wire:model.live="atribuido" class="campo-select w-56">
+                    <option value="">{{ auth()->user()->ehAdmin() ? 'Todos' : 'Os meus (equipa + atribuídos a mim)' }}</option>
+                    @if (auth()->user()->ehAdmin())<option value="meus">Os meus (equipa + atribuídos a mim)</option>@else<option value="todos">Todos</option>@endif
+                    <option value="equipa">Equipa completa (sem atribuição)</option>
+                    @foreach ($equipa as $u)
+                        <option value="{{ $u->id }}">{{ $u->nome }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
                 @foreach ($cartoes as $c)
                     <button wire:click="filtrar('{{ $c['tipo'] }}')"
                         class="cartao p-4 text-left transition {{ $tipo === $c['tipo'] ? 'ring-2 ring-verde-500' : 'hover:bg-fundo' }}">
@@ -49,6 +62,7 @@
                             <div class="min-w-0 flex-1">
                                 <div class="text-sm font-semibold text-texto-forte">{{ $a['titulo'] }}</div>
                                 <div class="text-xs text-texto-medio">{{ $a['descricao'] }}</div>
+                                <div class="mt-0.5 text-xs text-texto-fraco">Atribuído a: {{ $a['atribuido_nome'] ?? 'equipa completa' }}</div>
                             </div>
                             <span class="etiqueta {{ $a['severidade'] === 'alta' ? 'bg-perigo-100 text-perigo-600' : 'bg-aviso-100 text-aviso-500' }}">
                                 {{ $a['severidade'] === 'alta' ? 'Alta' : 'Média' }}

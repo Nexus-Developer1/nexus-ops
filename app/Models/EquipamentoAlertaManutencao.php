@@ -12,7 +12,13 @@ class EquipamentoAlertaManutencao extends Model
     protected $table = 'equipamento_alertas_manutencao';
 
     /** @var list<string> */
-    protected $fillable = ['equipamento_id', 'data', 'texto'];
+    // user_id: a quem o alerta está atribuído (null = equipa completa).
+    protected $fillable = ['equipamento_id', 'data', 'texto', 'user_id'];
+
+    public function utilizador(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 
     /** @return array<string, string> */
     protected function casts(): array

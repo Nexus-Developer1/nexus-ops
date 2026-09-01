@@ -293,9 +293,19 @@
                                 <input wire:model="alertasVisita.{{ $i }}.data" type="date" class="campo-input">
                                 @error('alertasVisita.'.$i.'.data') <p class="mt-1.5 text-xs text-perigo-500">Escolha a data do aviso.</p> @enderror
                             </div>
-                            <div class="col-span-2 sm:col-span-8">
+                            <div class="col-span-2 sm:col-span-5">
                                 <input wire:model="alertasVisita.{{ $i }}.texto" type="text" class="campo-input" placeholder="Texto do aviso — ex.: Agendar 1.ª visita preventiva">
                                 @error('alertasVisita.'.$i.'.texto') <p class="mt-1.5 text-xs text-perigo-500">Escreva o texto do aviso.</p> @enderror
+                            </div>
+                            {{-- A quem está atribuído: equipa completa ou uma pessoa. --}}
+                            <div class="col-span-2 sm:col-span-3">
+                                <select wire:model="alertasVisita.{{ $i }}.user_id" class="campo-select" title="Atribuído a">
+                                    <option value="">Equipa completa</option>
+                                    @foreach ($equipaAlertas as $u)
+                                        <option value="{{ $u->id }}">{{ $u->nome }}</option>
+                                    @endforeach
+                                </select>
+                                @error('alertasVisita.'.$i.'.user_id') <p class="mt-1.5 text-xs text-perigo-500">Escolha uma conta da equipa.</p> @enderror
                             </div>
                             <div class="col-span-2 flex justify-end sm:col-span-1 sm:pt-2">
                                 <button type="button" wire:click="removerAlertaVisita({{ $i }})" class="inline-flex items-center gap-1.5 text-sm font-medium text-texto-fraco hover:text-perigo-600 sm:gap-0" title="Remover">

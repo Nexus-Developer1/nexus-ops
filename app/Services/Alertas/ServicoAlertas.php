@@ -14,14 +14,31 @@ use App\Models\EventoAgenda;
 use App\Models\EventoAlerta;
 use App\Models\Intervencao;
 use App\Models\RegistoDespesa;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 // Recolhe os alertas proativos da operação (CLAUDE.md §6/§9): baterias a vencer,
 // renovações de contrato, visitas planeadas em atraso e SLA em risco.
-// Cada alerta é um array: tipo, severidade (alta|media), titulo, descricao, url, data.
+// Cada alerta é um array: tipo, severidade (alta|media), titulo, descricao, url, data,
+// atribuido_a (ids de utilizador; [] = equipa completa) e atribuido_nome (rótulo ou null).
 class ServicoAlertas
 {
+    // Alertas que um utilizador deve ver: os da equipa (sem atribuição) + os atribuídos a ele.
+    // Administradores veem tudo (gerem a operação).
+    public function recolherPara(User $utilizador): Collection
+    {
+        return $this->recolher()->filter(fn ($a) => self::visivelPara($a, $utilizador))->values();
+    }
+
+    /** @param array<string, mixed> $alerta */
+    public static function visivelPara(array $alerta, User $utilizador): bool
+    {
+        return $utilizador->ehAdmin()
+            || ($alerta['atribuido_a'] ?? []) === []
+            || in_array($utilizador->id, $alerta['atribuido_a'] ?? [], true);
+    }
+
     public function recolher(): Collection
     {
         return collect([
@@ -34,19 +51,27 @@ class ServicoAlertas
             ...$this->visitasEmAtraso(),
             ...$this->slaEmRisco(),
             ...$this->despesasPorAprovar(),
-        ])->sortByDesc(fn ($a) => $a['severidade'] === 'alta' ? 1 : 0)->values();
+        ])
+            // Sem atribuição explícita = equipa completa.
+            ->map(fn ($a) => $a + ['atribuido_a' => [], 'atribuido_nome' => null])
+            ->sortByDesc(fn ($a) => $a['severidade'] === 'alta' ? 1 : 0)->values();
     }
 
     // Processo de validação das despesas: cada registo PENDENTE é um alerta com link para a
     // ficha (onde o aprovador aprova/rejeita). Média; alta quando espera há mais de 7 dias.
     private function despesasPorAprovar(): array
     {
+        // Atribuídas aos aprovadores com conta (config despesas.aprovadores); sem nenhum → equipa.
+        $aprovadores = User::where('ativo', true)
+            ->whereIn(\Illuminate\Support\Facades\DB::raw('lower(email)'), config('despesas.aprovadores', []))
+            ->orderBy('nome')->get(['id', 'nome']);
+
         return RegistoDespesa::query()
             ->where('estado', EstadoDespesa::Pendente->value)
             ->with(['colaborador', 'despesas'])
             ->orderBy('submetido_em')
             ->get()
-            ->map(function (RegistoDespesa $r) {
+            ->map(function (RegistoDespesa $r) use ($aprovadores) {
                 $desde = $r->submetido_em ?? $r->created_at ?? now();
                 $n = $r->despesas->count();
 
@@ -57,6 +82,8 @@ class ServicoAlertas
                     'descricao' => $n.' '.($n === 1 ? 'lançamento' : 'lançamentos').' · submetida a '.$desde->translatedFormat('d M Y'),
                     'url' => route('despesas.registo.ficha', $r),
                     'data' => $desde,
+                    'atribuido_a' => $aprovadores->pluck('id')->all(),
+                    'atribuido_nome' => $aprovadores->pluck('nome')->implode(', ') ?: null,
                 ];
             })
             ->all();
@@ -101,7 +128,7 @@ class ServicoAlertas
     {
         return EquipamentoAlertaManutencao::query()
             ->whereDate('data', '<=', now()->addDays(7))
-            ->with('equipamento.local.cliente')
+            ->with(['equipamento.local.cliente', 'utilizador'])
             ->orderBy('data')
             ->get()
             ->map(fn (EquipamentoAlertaManutencao $a) => [
@@ -112,6 +139,8 @@ class ServicoAlertas
                 // O MODELO, não o id: é o que faz o link sair com o mastamp (ver Equipamento::getRouteKey).
                 'url' => route('equipamentos.ficha', $a->equipamento),
                 'data' => $a->data,
+                'atribuido_a' => $a->utilizador ? [$a->utilizador->id] : [],
+                'atribuido_nome' => $a->utilizador?->nome,
             ])
             ->all();
     }
@@ -123,7 +152,7 @@ class ServicoAlertas
     {
         return ContratoAlertaVisita::query()
             ->whereDate('data', '<=', now()->addDays(7))
-            ->with('contrato.cliente')
+            ->with(['contrato.cliente', 'utilizador'])
             ->orderBy('data')
             ->get()
             ->map(fn (ContratoAlertaVisita $a) => [
@@ -133,6 +162,8 @@ class ServicoAlertas
                 'descricao' => ($a->contrato->cliente->nome ?? '—').' · programado para '.$a->data->translatedFormat('d M Y'),
                 'url' => route('contratos.editar', $a->contrato_id),
                 'data' => $a->data,
+                'atribuido_a' => $a->utilizador ? [$a->utilizador->id] : [],
+                'atribuido_nome' => $a->utilizador?->nome,
             ])
             ->all();
     }
@@ -144,7 +175,7 @@ class ServicoAlertas
         return EventoAlerta::query()
             ->whereDate('data', '<=', now()->addDays(7))
             ->whereHas('evento', fn ($q) => $q->where('estado', '!=', EstadoEvento::Cancelado->value))
-            ->with('evento.cliente')
+            ->with(['evento.cliente', 'evento.tecnico', 'evento.tecnicosAdicionais'])
             ->orderBy('data')
             ->get()
             ->map(fn (EventoAlerta $a) => [
@@ -156,6 +187,9 @@ class ServicoAlertas
                     .' · aviso programado para '.$a->data->translatedFormat('d M Y'),
                 'url' => route('agenda'),
                 'data' => $a->data,
+                // Quem faz parte do evento: principal + adicionais (sem técnicos = equipa).
+                'atribuido_a' => $a->evento->tecnicoIdsTodos(),
+                'atribuido_nome' => collect([$a->evento->tecnico])->merge($a->evento->tecnicosAdicionais)->filter()->unique('id')->pluck('nome')->implode(', ') ?: null,
             ])
             ->all();
     }

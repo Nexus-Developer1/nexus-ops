@@ -12,7 +12,13 @@ class ContratoAlertaVisita extends Model
     protected $table = 'contrato_alertas_visita';
 
     /** @var list<string> */
-    protected $fillable = ['contrato_id', 'data', 'texto'];
+    // user_id: a quem o alerta está atribuído (null = equipa completa).
+    protected $fillable = ['contrato_id', 'data', 'texto', 'user_id'];
+
+    public function utilizador(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 
     /** @return array<string, string> */
     protected function casts(): array

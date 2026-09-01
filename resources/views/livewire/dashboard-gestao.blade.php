@@ -114,7 +114,7 @@
                             <li class="flex items-center justify-between gap-3 border-b border-borda px-6 py-3.5 last:border-0">
                                 <div class="min-w-0">
                                     <a href="{{ $a['url'] }}" wire:navigate class="block truncate text-sm font-medium text-texto-forte hover:text-verde-600">{{ $a['titulo'] }}</a>
-                                    <div class="truncate text-xs text-texto-fraco">{{ $a['descricao'] }}</div>
+                                    <div class="truncate text-xs text-texto-fraco">{{ $a['descricao'] }}@if ($a['atribuido_nome']) · {{ $a['atribuido_nome'] }}@endif</div>
                                 </div>
                                 <span class="etiqueta shrink-0 {{ $a['severidade'] === 'alta' ? 'bg-perigo-100 text-perigo-600' : 'bg-aviso-100 text-aviso-500' }}">{{ $a['severidade'] === 'alta' ? 'Alta' : 'Média' }}</span>
                             </li>

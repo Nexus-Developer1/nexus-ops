@@ -64,8 +64,9 @@ class Editor extends Component
     /** @var array<int, array<string, mixed>> */
     public array $slas = [];
 
-    // Alertas de visita programados: linhas { data, texto } — o texto do aviso é editável.
-    /** @var list<array{data: ?string, texto: string}> */
+    // Alertas de visita programados: linhas { data, texto, user_id } — o texto do aviso é
+    // editável; user_id = a quem está atribuído ('' = equipa completa).
+    /** @var list<array{data: ?string, texto: string, user_id: string}> */
     public array $alertasVisita = [];
 
     // Popup pós-gravação (só contratos em RASCUNHO): ativar / suspender / manter rascunho.
@@ -135,7 +136,7 @@ class Editor extends Component
             ])->all();
             $this->alertasVisita = $contrato->alertasVisita
                 ->sortBy('data')->values()
-                ->map(fn ($a) => ['data' => $a->data->toDateString(), 'texto' => $a->texto])
+                ->map(fn ($a) => ['data' => $a->data->toDateString(), 'texto' => $a->texto, 'user_id' => (string) ($a->user_id ?? '')])
                 ->all();
         } else {
             // Sugere o próximo número sequencial (ex.: 2026/0007).
@@ -168,7 +169,7 @@ class Editor extends Component
     {
         if (count($this->alertasVisita) < 24) {
             // Texto por defeito editável — o mais comum é lembrar de agendar a visita.
-            $this->alertasVisita[] = ['data' => '', 'texto' => 'Agendar visita preventiva'];
+            $this->alertasVisita[] = ['data' => '', 'texto' => 'Agendar visita preventiva', 'user_id' => ''];
         }
     }
 
@@ -234,6 +235,9 @@ class Editor extends Component
             'alertasVisita' => ['array', 'max:24'],
             'alertasVisita.*.data' => ['required', 'date'],
             'alertasVisita.*.texto' => ['required', 'string', 'max:255'],
+            // Atribuição: equipa completa ('') ou uma conta ATIVA da equipa (técnico/admin).
+            'alertasVisita.*.user_id' => ['nullable', \Illuminate\Validation\Rule::exists('utilizadores', 'id')
+                ->where('ativo', true)->whereIn('papel', [\App\Enums\PapelUtilizador::Tecnico->value, \App\Enums\PapelUtilizador::Admin->value])],
         ];
     }
 
@@ -280,7 +284,7 @@ class Editor extends Component
         // Alertas de visita programados: substitui o conjunto (mesma mecânica dos SLAs).
         $this->contrato->alertasVisita()->delete();
         foreach ($this->alertasVisita as $a) {
-            $this->contrato->alertasVisita()->create(['data' => $a['data'], 'texto' => trim($a['texto'])]);
+            $this->contrato->alertasVisita()->create(['data' => $a['data'], 'texto' => trim($a['texto']), 'user_id' => ($a['user_id'] ?? '') !== '' ? (int) $a['user_id'] : null]);
         }
 
         // Contrato ainda em RASCUNHO → popup "ativar / suspender / deixar em rascunho" antes
@@ -378,6 +382,10 @@ class Editor extends Component
             ->get();
 
         return view('livewire.contratos.editor', [
+            // Contas da equipa (técnicos e admins) para atribuir alertas.
+            'equipaAlertas' => \App\Models\User::where('ativo', true)
+                ->whereIn('papel', [\App\Enums\PapelUtilizador::Tecnico->value, \App\Enums\PapelUtilizador::Admin->value])
+                ->orderBy('nome')->get(['id', 'nome']),
             'clientesFiltrados' => $clientesFiltrados,
             'equipamentos' => $equipamentos,
             'tiposEquipamentos' => $tiposEquipamentos,
