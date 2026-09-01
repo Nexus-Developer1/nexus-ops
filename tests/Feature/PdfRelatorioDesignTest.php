@@ -144,30 +144,21 @@ class PdfRelatorioDesignTest extends TestCase
         $this->assertStringNotContainsString('>Contrato<', $html);
     }
 
-    // ---- A 1.ª página adapta-se ao resumo ------------------------------------------------
+    // ---- A ficha começa SEMPRE em página nova ---------------------------------------------
 
-    public function test_primeira_ficha_segue_na_pagina_do_resumo_quando_ele_e_curto_ou_nao_existe(): void
+    public function test_ficha_comeca_sempre_em_pagina_nova_mesmo_sem_resumo(): void
     {
         [$r, $i, $ups, $inc] = $this->cenario();
         FichaMedicao::create(['intervencao_id' => $i->id, 'equipamento_id' => $ups->id, 'tipo_equipamento' => 'ups']);
         FichaMedicao::create(['intervencao_id' => $i->id, 'equipamento_id' => $inc->id, 'tipo_equipamento' => 'incendio']);
 
-        // Sem textos: a 1.ª ficha segue logo a seguir ao resumo (senão a página ficava em branco);
-        // a 2.ª começa em página nova como sempre.
+        // Sem textos a 1.ª página fica meia em branco — decisão da equipa: a ficha de
+        // verificações nunca se mistura com o resumo. Cada ficha no seu div com page-break.
         $html = $this->html($r);
-        $this->assertSame(1, substr_count($html, '<div class="ficha-pagina ficha-segue">'));
-        $this->assertSame(1, substr_count($html, '<div class="ficha-pagina">'));
-        $this->assertStringNotContainsString('Descrição da intervenção', $html); // secção omitida sem textos
-
-        // Resumo curto: idem.
-        $i->update(['trabalho_realizado' => 'Limpeza e verificação geral.']);
-        $this->assertSame(1, substr_count($this->html($r), '<div class="ficha-pagina ficha-segue">'));
-
-        // Resumo grande (enche a 1.ª página): a 1.ª ficha passa para página nova.
-        $i->update(['trabalho_realizado' => str_repeat('Medição das tensões e correntes por fase, verificação do equilíbrio de cargas. ', 25)]);
-        $html = $this->html($r);
-        $this->assertStringNotContainsString('<div class="ficha-pagina ficha-segue">', $html);
         $this->assertSame(2, substr_count($html, '<div class="ficha-pagina">'));
+        $this->assertStringNotContainsString('ficha-segue', $html);
+        $this->assertStringContainsString('.ficha-pagina { page-break-before: always; }', $html);
+        $this->assertStringNotContainsString('Descrição da intervenção', $html); // secção omitida sem textos
     }
 
     // ---- Rodapé em todas as páginas + fotos com título colado ----------------------------

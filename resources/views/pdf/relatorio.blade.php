@@ -74,10 +74,9 @@
         .junto { page-break-inside: avoid; }
 
         /* ---- Fichas de medição --------------------------------------------------------
-           Cada ficha começa em página nova… EXCETO a primeira quando o resumo da 1.ª página é
-           curto ou não existe (classe ficha-segue): senão a 1.ª página ficava quase em branco. */
+           Cada ficha começa SEMPRE em página nova — mesmo que a 1.ª página fique meia em branco
+           (decisão da equipa: a ficha de verificações não se mistura com o resumo). */
         .ficha-pagina { page-break-before: always; }
-        .ficha-segue { page-break-before: auto; margin-top: 16px; }
         .ficha-cab { border-bottom: 3px solid #15803D; padding-bottom: 6px; margin-bottom: 4px; }
         .ficha-cab td { vertical-align: bottom; }
         .ficha-titulo { font-size: 15px; font-weight: bold; color: #111827; margin: 0 0 2px; }
@@ -130,13 +129,6 @@
     @php($semFichas = $fichas->isEmpty())
     @php($temExtrasEquipamento = $eComponentes->isNotEmpty() || ($semFichas && ($eCliFinal !== '' || $eLocaliz !== '' || $i->equipamentosCobertos->isNotEmpty())))
     @php($temTextos = $i->descricao_problema || $i->trabalho_realizado || $i->observacoes)
-    {{-- A 1.ª página ADAPTA-SE ao resumo: estimativa do que ocupa (caracteres de texto + linhas
-         do resultado/anomalias/recomendações/extras). Curto ou inexistente → a primeira ficha
-         segue logo a seguir, na mesma página; grande → começa em página nova. --}}
-    @php($pesoResumo = mb_strlen((string) $i->descricao_problema.(string) $i->trabalho_realizado.(string) $i->observacoes)
-        + 110 * $fichas->count() + 90 * $anomalias->count() + 90 * $recomendacoes->count()
-        + ($temExtrasEquipamento ? 60 + 40 * $eComponentes->count() : 0))
-    @php($primeiraFichaEmPaginaNova = $pesoResumo > 1500)
 
     <div class="rodape-fixo">
         <table>
@@ -332,8 +324,8 @@
     </div>{{-- /pagina-tecnica --}}
     @endif
 
-    {{-- ===== FICHAS DE MEDIÇÃO — uma por página (contrato e individual); a 1.ª segue na
-         página do resumo quando ele é curto (ver $primeiraFichaEmPaginaNova).
+    {{-- ===== FICHAS DE MEDIÇÃO — uma por página (contrato e individual), SEMPRE a começar em
+         página nova, mesmo que a 1.ª página fique meia em branco (pedido da equipa).
          Nota: usar sempre a forma INLINE do PHP (como o resto desta view); um bloco raw
          de PHP partiria a compilação do Blade. --}}
     @if ($fichas->isNotEmpty())
@@ -353,7 +345,7 @@
             @php($mostrarClienteFinal = $cfTexto !== '' || ($fcli && $i->contrato && $fcli->id !== $i->contrato->cliente_id))
             @php($clienteFinalValor = $cfTexto !== '' ? $cfTexto : ($fcli?->nome ?? '—'))
             @php($resFicha = $ficha->resultado())
-            <div class="ficha-pagina{{ $loop->first && ! $primeiraFichaEmPaginaNova ? ' ficha-segue' : '' }}">
+            <div class="ficha-pagina">
                 {{-- Decide pela FICHA (tipo_equipamento gravado) com fallback ao equipamento:
                      imune a equipamentos entretanto apagados (soft delete) e cobre fichas
                      antigas gravadas antes do tipo real ser registado. --}}

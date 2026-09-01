@@ -71,10 +71,8 @@ class PdfFichaMedicaoTest extends TestCase
 
         $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
 
-        // Duas fichas, cada uma no seu <div class="ficha-pagina…"> (a 1.ª pode seguir na página do
-        // resumo — classe extra ficha-segue — quando o resumo é curto; a 2.ª começa sempre em página nova).
-        $this->assertSame(2, substr_count($html, '<div class="ficha-pagina'));
-        $this->assertSame(1, substr_count($html, '<div class="ficha-pagina">'));
+        // Duas fichas, cada uma no seu <div class="ficha-pagina"> (CSS: page-break-before → 1.ª incluída).
+        $this->assertSame(2, substr_count($html, '<div class="ficha-pagina">'));
 
         // Secções e valores medidos presentes (sem inventar).
         $this->assertStringContainsString('Medições elétricas', $html);
@@ -102,7 +100,7 @@ class PdfFichaMedicaoTest extends TestCase
         $this->assertStringContainsString('<h2>Checklist</h2>', $html);
         $this->assertStringContainsString('Verificar ventoinhas', $html);
         $this->assertStringNotContainsString('Medições elétricas', $html); // sem fichas → sem secção de ficha
-        $this->assertStringNotContainsString('<div class="ficha-pagina', $html);
+        $this->assertStringNotContainsString('<div class="ficha-pagina">', $html);
     }
 
     public function test_pdf_nao_mostra_seccao_diagnostico(): void
@@ -139,7 +137,7 @@ class PdfFichaMedicaoTest extends TestCase
         $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
 
         $this->assertStringContainsString('Medições elétricas', $html);           // ficha renderizada
-        $this->assertStringContainsString('<div class="ficha-pagina', $html);
+        $this->assertStringContainsString('<div class="ficha-pagina">', $html);
         $this->assertStringContainsString('231.40', $html);
         $this->assertStringNotContainsString('<h2>Checklist</h2>', $html);        // sem checklist quando há ficha
         $this->assertStringNotContainsString('null', $html);                      // contrato nulo não vira "null"
