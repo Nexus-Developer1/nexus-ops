@@ -91,6 +91,14 @@ class DashboardGestao extends Component
         }
     }
 
+    // Dar um alerta como concluído a partir do cartão "Próximos alertas".
+    public function concluirAlerta(string $chave, ServicoAlertas $servico): void
+    {
+        session()->flash('sucesso', $servico->concluir($chave, auth()->user())
+            ? 'Alerta concluído.'
+            : 'Esse alerta já não está em aberto.');
+    }
+
     public function render(ServicoMetricas $metricas, ServicoAlertas $alertas)
     {
         // Só o que este utilizador deve ver (equipa + atribuídos a ele; admin vê tudo).

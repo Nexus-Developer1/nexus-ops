@@ -22,6 +22,24 @@ class Painel extends Component
     #[Url]
     public string $atribuido = '';
 
+    // Mostrar o histórico dos alertas concluídos (com quem/quando e "Reabrir").
+    #[Url]
+    public bool $concluidos = false;
+
+    // Dar por concluído: sai do dashboard, do painel e do email diário até ser reaberto.
+    public function concluir(string $chave, ServicoAlertas $servico): void
+    {
+        session()->flash('sucesso', $servico->concluir($chave, auth()->user())
+            ? 'Alerta concluído.'
+            : 'Esse alerta já não está em aberto.');
+    }
+
+    public function reabrir(string $chave, ServicoAlertas $servico): void
+    {
+        $servico->reabrir($chave);
+        session()->flash('sucesso', 'Alerta reaberto.');
+    }
+
     public function filtrar(string $tipo): void
     {
         $this->tipo = $tipo;
@@ -52,6 +70,7 @@ class Painel extends Component
             'alertas' => $alertas,
             'contagens' => $contagens,
             'modo' => $modo,
+            'listaConcluidos' => $this->concluidos ? $servico->concluidos() : collect(),
             'equipa' => User::where('ativo', true)
                 ->whereIn('papel', [PapelUtilizador::Tecnico->value, PapelUtilizador::Admin->value])
                 ->orderBy('nome')->get(['id', 'nome']),

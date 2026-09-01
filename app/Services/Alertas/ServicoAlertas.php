@@ -14,16 +14,58 @@ use App\Models\EventoAgenda;
 use App\Models\EventoAlerta;
 use App\Models\Intervencao;
 use App\Models\RegistoDespesa;
+use App\Models\AlertaConcluido;
 use App\Models\User;
+use App\Services\Auditor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 // Recolhe os alertas proativos da operação (CLAUDE.md §6/§9): baterias a vencer,
 // renovações de contrato, visitas planeadas em atraso e SLA em risco.
 // Cada alerta é um array: tipo, severidade (alta|media), titulo, descricao, url, data,
-// atribuido_a (ids de utilizador; [] = equipa completa) e atribuido_nome (rótulo ou null).
+// atribuido_a (ids de utilizador; [] = equipa completa), atribuido_nome (rótulo ou null) e
+// chave (identificador ESTÁVEL: tipo + entidade + data — é o que permite dar por concluído).
 class ServicoAlertas
 {
+    // Dá um alerta como CONCLUÍDO (pedido da equipa): fica guardado pela chave e deixa de
+    // aparecer no dashboard, no painel e no email — até alguém o reabrir. Se a causa mudar
+    // (nova data de baterias, contrato renovado, despesa reenviada) a chave é outra e volta.
+    public function concluir(string $chave, User $quem): bool
+    {
+        $alerta = $this->todos()->firstWhere('chave', $chave);
+        if (! $alerta) {
+            return false;
+        }
+
+        AlertaConcluido::updateOrCreate(['chave' => $chave], [
+            'tipo' => $alerta['tipo'],
+            'titulo' => mb_substr($alerta['titulo'], 0, 255),
+            'descricao' => mb_substr((string) $alerta['descricao'], 0, 255),
+            'url' => mb_substr((string) $alerta['url'], 0, 255),
+            'concluido_por' => $quem->id,
+            'concluido_em' => now(),
+        ]);
+        Auditor::registar('alerta_concluido', null, ['chave' => $chave, 'titulo' => $alerta['titulo']]);
+
+        return true;
+    }
+
+    public function reabrir(string $chave): bool
+    {
+        $apagados = AlertaConcluido::where('chave', $chave)->delete();
+        if ($apagados > 0) {
+            Auditor::registar('alerta_reaberto', null, ['chave' => $chave]);
+        }
+
+        return $apagados > 0;
+    }
+
+    // Histórico dos concluídos (mais recentes primeiro), para o painel.
+    public function concluidos(int $limite = 50): Collection
+    {
+        return AlertaConcluido::with('utilizador')->orderByDesc('concluido_em')->limit($limite)->get();
+    }
+
     // Alertas que um utilizador deve ver: os da equipa (sem atribuição) + os atribuídos a ele.
     // Administradores veem tudo (gerem a operação).
     public function recolherPara(User $utilizador): Collection
@@ -39,7 +81,16 @@ class ServicoAlertas
             || in_array($utilizador->id, $alerta['atribuido_a'] ?? [], true);
     }
 
+    // Alertas em aberto (sem os concluídos).
     public function recolher(): Collection
+    {
+        $concluidas = AlertaConcluido::pluck('chave')->flip();
+
+        return $this->todos()->reject(fn ($a) => $concluidas->has($a['chave']))->values();
+    }
+
+    // Todos os alertas calculados, incluindo os já concluídos.
+    private function todos(): Collection
     {
         return collect([
             ...$this->backupEmAtraso(),
@@ -77,6 +128,7 @@ class ServicoAlertas
 
                 return [
                     'tipo' => 'despesa_aprovacao',
+                    'chave' => 'despesa_aprovacao:'.$r->id.':'.$desde->timestamp,
                     'severidade' => $desde->lt(now()->subDays(7)) ? 'alta' : 'media',
                     'titulo' => 'Despesa por aprovar · '.($r->colaborador?->nome ?? '—').' · '.number_format((float) $r->despesas->sum('valor'), 2, ',', ' ').' €',
                     'descricao' => $n.' '.($n === 1 ? 'lançamento' : 'lançamentos').' · submetida a '.$desde->translatedFormat('d M Y'),
@@ -112,6 +164,7 @@ class ServicoAlertas
 
         return [[
             'tipo' => 'backup',
+            'chave' => 'backup:'.now()->toDateString(),
             'severidade' => 'alta',
             'titulo' => 'Backup em atraso',
             'descricao' => $idade === null
@@ -133,6 +186,7 @@ class ServicoAlertas
             ->get()
             ->map(fn (EquipamentoAlertaManutencao $a) => [
                 'tipo' => 'manutencao_programada',
+                'chave' => 'manutencao_programada:'.$a->id,
                 'severidade' => $a->data->isPast() || $a->data->isToday() ? 'alta' : 'media',
                 'titulo' => $a->texto.' · '.(trim(($a->equipamento->fabricante ?? '').' '.($a->equipamento->modelo ?? '')) ?: ($a->equipamento->numero_serie ?? '—')),
                 'descricao' => ($a->equipamento->local?->cliente?->nome ?? '—').' · programado para '.$a->data->translatedFormat('d M Y'),
@@ -157,6 +211,7 @@ class ServicoAlertas
             ->get()
             ->map(fn (ContratoAlertaVisita $a) => [
                 'tipo' => 'visita_programada',
+                'chave' => 'visita_programada:'.$a->id,
                 'severidade' => $a->data->isPast() || $a->data->isToday() ? 'alta' : 'media',
                 'titulo' => $a->texto.' · '.($a->contrato->numero ?? '—'),
                 'descricao' => ($a->contrato->cliente->nome ?? '—').' · programado para '.$a->data->translatedFormat('d M Y'),
@@ -180,6 +235,7 @@ class ServicoAlertas
             ->get()
             ->map(fn (EventoAlerta $a) => [
                 'tipo' => 'evento_programado',
+                'chave' => 'evento_programado:'.$a->id,
                 'severidade' => $a->data->isPast() || $a->data->isToday() ? 'alta' : 'media',
                 'titulo' => $a->texto.' · '.$a->evento->titulo,
                 'descricao' => ($a->evento->cliente?->nome ? $a->evento->cliente->nome.' · ' : '')
@@ -210,6 +266,7 @@ class ServicoAlertas
 
                 return [
                     'tipo' => 'bateria',
+                    'chave' => 'bateria:'.$e->id.':'.$e->proxima_troca_baterias->toDateString(),
                     'severidade' => $vencida ? 'alta' : 'media',
                     'titulo' => 'Baterias '.($vencida ? 'vencidas' : 'a vencer').' · '.trim($e->fabricante.' '.$e->modelo),
                     'descricao' => ($e->local?->cliente?->nome ?? '—').' · troca prevista '.$e->proxima_troca_baterias->translatedFormat('d M Y'),
@@ -233,6 +290,7 @@ class ServicoAlertas
 
                 return [
                     'tipo' => 'renovacao',
+                    'chave' => 'renovacao:'.$c->id.':'.$c->data_fim->toDateString(),
                     'severidade' => $dias <= $criticoDias ? 'alta' : 'media',
                     'titulo' => 'Contrato a expirar · '.$c->numero,
                     'descricao' => $c->cliente->nome.' · termina '.$c->data_fim->translatedFormat('d M Y')." (em {$dias} dias)",
@@ -255,6 +313,7 @@ class ServicoAlertas
             ->get()
             ->map(fn (EventoAgenda $e) => [
                 'tipo' => 'visita_atraso',
+                'chave' => 'visita_atraso:'.$e->id,
                 'severidade' => 'alta',
                 'titulo' => 'Visita em atraso · '.$e->titulo,
                 'descricao' => ($e->cliente->nome ?? '—').' · planeada para '.$e->inicio->translatedFormat('d M Y'),
@@ -325,6 +384,7 @@ class ServicoAlertas
 
         return [
             'tipo' => 'sla',
+            'chave' => 'sla:'.$i->id.':'.$fase,
             'severidade' => $estourou ? 'alta' : 'media',
             'titulo' => 'SLA de '.$fase.($estourou ? ' excedido' : ' a esgotar-se').' · intervenção #'.$i->id,
             'descricao' => $cliente.' · prazo '.$prazo->translatedFormat('d M H:i').($estourou ? ' (excedido)' : ' ('.(int) round($fracao * 100).'% decorrido)'),

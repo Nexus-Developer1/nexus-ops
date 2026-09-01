@@ -116,7 +116,12 @@
                                     <a href="{{ $a['url'] }}" wire:navigate class="block truncate text-sm font-medium text-texto-forte hover:text-verde-600">{{ $a['titulo'] }}</a>
                                     <div class="truncate text-xs text-texto-fraco">{{ $a['descricao'] }}@if ($a['atribuido_nome']) · {{ $a['atribuido_nome'] }}@endif</div>
                                 </div>
-                                <span class="etiqueta shrink-0 {{ $a['severidade'] === 'alta' ? 'bg-perigo-100 text-perigo-600' : 'bg-aviso-100 text-aviso-500' }}">{{ $a['severidade'] === 'alta' ? 'Alta' : 'Média' }}</span>
+                                <div class="flex shrink-0 items-center gap-2">
+                                    <span class="etiqueta {{ $a['severidade'] === 'alta' ? 'bg-perigo-100 text-perigo-600' : 'bg-aviso-100 text-aviso-500' }}">{{ $a['severidade'] === 'alta' ? 'Alta' : 'Média' }}</span>
+                                    <button type="button" wire:click="concluirAlerta('{{ $a['chave'] }}')" wire:confirm="Dar este alerta como concluído?" class="rounded-md border border-borda p-1 text-texto-fraco hover:border-verde-500 hover:text-verde-700" title="Concluir">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                    </button>
+                                </div>
                             </li>
                         @empty
                             <li class="px-6 py-8 text-center text-sm text-texto-medio">Sem alertas em aberto — baterias, renovações e SLA em dia.</li>
