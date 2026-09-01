@@ -17,6 +17,23 @@ class DashboardAgendaFiltroTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Um evento sai do cartão assim que acaba; o que ainda decorre fica.
+    public function test_evento_de_hoje_ja_terminado_sai_do_cartao(): void
+    {
+        \Illuminate\Support\Carbon::setTestNow(now()->setTime(17, 0));
+        $admin = User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $base = ['tipo' => 'outro', 'estado' => 'planeado', 'cliente_id' => $cliente->id, 'tecnico_id' => $admin->id]; // 'outro': uma visita passada viraria alerta "em atraso" no outro cartão
+        EventoAgenda::create($base + ['titulo' => 'REUNIAO-TERMINADA', 'inicio' => now()->setTime(9, 0), 'fim' => now()->setTime(11, 0)]);
+        EventoAgenda::create($base + ['titulo' => 'A-DECORRER', 'inicio' => now()->setTime(16, 0), 'fim' => now()->setTime(18, 0)]);
+        EventoAgenda::create($base + ['titulo' => 'LOGO-A-SEGUIR', 'inicio' => now()->setTime(18, 0), 'fim' => now()->setTime(19, 0)]);
+
+        Livewire::actingAs($admin)->test(DashboardGestao::class)
+            ->assertDontSee('REUNIAO-TERMINADA')
+            ->assertSee('A-DECORRER')
+            ->assertSee('LOGO-A-SEGUIR');
+    }
+
     public function test_filtro_por_tecnico_mostra_so_os_eventos_dele_incluindo_como_adicional(): void
     {
         $admin = User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);

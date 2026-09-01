@@ -110,11 +110,12 @@ class DashboardGestao extends Component
             'numAlertas' => $listaAlertas->count(),
             // Próximos alertas (baterias, renovações, visitas em atraso, SLA) — os mais graves primeiro.
             'proximosAlertas' => $listaAlertas->take(6),
-            // Agenda dos próximos 7 dias (inclui hoje; cancelados fora; eventos multi-dia entram
-            // se o intervalo tocar a janela).
+            // Agenda dos próximos 7 dias (cancelados fora; eventos multi-dia entram se o intervalo
+            // tocar a janela). Um evento sai ASSIM QUE ACABA (fim < agora) — com o corte no início
+            // do dia, uma reunião das 9h–11h ficava no cartão até à meia-noite (pedido da equipa).
             'agendaSemana' => EventoAgenda::query()
                 ->where('estado', '!=', EstadoEvento::Cancelado->value)
-                ->where('fim', '>=', now()->startOfDay())
+                ->where('fim', '>=', now())
                 ->where('inicio', '<', now()->startOfDay()->addDays(7))
                 // Técnico escolhido: principal ou um dos adicionais do evento.
                 ->when(ctype_digit($this->agendaTecnico), fn ($q) => $q->where(fn ($q) => $q
