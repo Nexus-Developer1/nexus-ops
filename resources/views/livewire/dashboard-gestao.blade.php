@@ -73,9 +73,18 @@
             {{-- Agenda dos próximos dias + próximos alertas (equipamentos/contratos) --}}
             <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <section class="cartao">
-                    <div class="flex items-center justify-between px-6 py-5">
+                    <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
                         <h2 class="text-lg font-semibold text-texto-forte">Agenda — próximos 7 dias</h2>
-                        <a href="{{ route('agenda') }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">Ver agenda</a>
+                        <div class="flex items-center gap-3">
+                            {{-- Filtro por técnico (principal ou adicional do evento). --}}
+                            <select wire:model.live="agendaTecnico" class="campo-select w-44 py-1.5 text-sm" title="Ver a agenda de um técnico">
+                                <option value="">Todos os técnicos</option>
+                                @foreach ($tecnicosAgenda as $t)
+                                    <option value="{{ $t->id }}">{{ $t->nome }}</option>
+                                @endforeach
+                            </select>
+                            <a href="{{ route('agenda') }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">Ver agenda</a>
+                        </div>
                     </div>
                     <ul class="border-t border-borda">
                         @forelse ($agendaSemana as $ev)
@@ -90,7 +99,7 @@
                                 </div>
                             </li>
                         @empty
-                            <li class="px-6 py-8 text-center text-sm text-texto-medio">Sem eventos agendados para os próximos 7 dias.</li>
+                            <li class="px-6 py-8 text-center text-sm text-texto-medio">{{ $agendaTecnico !== '' ? 'Sem eventos deste técnico nos próximos 7 dias.' : 'Sem eventos agendados para os próximos 7 dias.' }}</li>
                         @endforelse
                     </ul>
                 </section>

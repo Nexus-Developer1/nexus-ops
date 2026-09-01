@@ -5,7 +5,9 @@ namespace App\Livewire;
 use App\Enums\EstadoEvento;
 use App\Jobs\SincronizarErp;
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Enums\PapelUtilizador;
 use App\Models\EventoAgenda;
+use App\Models\User;
 use App\Services\Alertas\ServicoAlertas;
 use App\Services\Gestao\ServicoMetricas;
 use Illuminate\Support\Carbon;
@@ -32,6 +34,11 @@ class DashboardGestao extends Component
     /** @var array{falhou: bool, resultados: array<string, array{ok: bool, detalhe: string}>}|null */
     #[\Livewire\Attributes\Locked]
     public ?array $syncResultado = null;
+
+    // Filtro do cartão da agenda: só os eventos de um técnico (principal OU adicional).
+    // Persiste entre visitas (#[Session]) — quem gere uma equipa fixa não o repõe sempre.
+    #[\Livewire\Attributes\Session]
+    public string $agendaTecnico = ''; // '' = todos | id do utilizador
 
     // Força a sincronização de TODOS os dados do PHC já (sem esperar pelo agendado das
     // 08h/13h/19h). Corre em background na fila, em modo SILENCIOSO — sem email de
@@ -100,10 +107,19 @@ class DashboardGestao extends Component
                 ->where('estado', '!=', EstadoEvento::Cancelado->value)
                 ->where('fim', '>=', now()->startOfDay())
                 ->where('inicio', '<', now()->startOfDay()->addDays(7))
+                // Técnico escolhido: principal ou um dos adicionais do evento.
+                ->when(ctype_digit($this->agendaTecnico), fn ($q) => $q->where(fn ($q) => $q
+                    ->where('tecnico_id', (int) $this->agendaTecnico)
+                    ->orWhereHas('tecnicosAdicionais', fn ($t) => $t->whereKey((int) $this->agendaTecnico))))
                 ->with(['tecnico', 'cliente'])
                 ->orderBy('inicio')
                 ->limit(8)
                 ->get(),
+            // Contas da equipa (técnicos e admins) para o filtro da agenda.
+            'tecnicosAgenda' => User::where('ativo', true)
+                ->whereIn('papel', [PapelUtilizador::Tecnico->value, PapelUtilizador::Admin->value])
+                ->orderBy('nome')
+                ->get(['id', 'nome']),
         ]);
     }
 }
