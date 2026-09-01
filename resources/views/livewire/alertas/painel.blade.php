@@ -22,6 +22,7 @@
                     'evento_programado' => 'Alertas de eventos',
                     'backup' => 'Backups',
                     'despesa_aprovacao' => 'Despesas por aprovar',
+                    'proposta_intervencao' => 'Propostas de intervenção',
                 ];
                 $cartoes = [['tipo' => '', 'rotulo' => 'Todos', 'n' => array_sum($contagens)]];
                 foreach ($rotulos as $t => $r) {

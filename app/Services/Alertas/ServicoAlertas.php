@@ -4,8 +4,10 @@ namespace App\Services\Alertas;
 
 use App\Enums\EstadoDespesa;
 use App\Enums\EstadoEvento;
+use App\Enums\EstadoIntervencao;
 use App\Enums\TipoEquipamento;
 use App\Enums\TipoEvento;
+use App\Enums\TipoIntervencao;
 use App\Models\Contrato;
 use App\Models\ContratoAlertaVisita;
 use App\Models\Equipamento;
@@ -102,6 +104,7 @@ class ServicoAlertas
             ...$this->visitasEmAtraso(),
             ...$this->slaEmRisco(),
             ...$this->despesasPorAprovar(),
+            ...$this->propostasDeIntervencao(),
         ])
             // Sem atribuição explícita = equipa completa.
             ->map(fn ($a) => $a + ['atribuido_a' => [], 'atribuido_nome' => null])
@@ -138,6 +141,64 @@ class ServicoAlertas
                     'atribuido_nome' => $aprovadores->pluck('nome')->implode(', ') ?: null,
                 ];
             })
+            ->all();
+    }
+
+    // Proposta de nova intervenção (pedido da equipa): um equipamento instalado por nós ou já
+    // sujeito a manutenção preventiva avisa `alertas.proposta_meses` (10) meses depois da
+    // ÚLTIMA instalação/preventiva concluída — para propor ao cliente nova intervenção. Conta
+    // tanto o equipamento principal da intervenção como os "também cobertos". Fica em aberto
+    // até ser concluído ou até haver nova intervenção (a chave leva a data da última).
+    private function propostasDeIntervencao(): array
+    {
+        $meses = max(1, (int) config('alertas.proposta_meses', 10));
+        $limite = now()->subMonths($meses);
+
+        $intervencoes = Intervencao::query()
+            ->withoutGlobalScopes()
+            ->whereIn('tipo', [TipoIntervencao::Preventiva->value, TipoIntervencao::Instalacao->value])
+            ->where('estado', EstadoIntervencao::Concluida->value)
+            ->with('equipamentosCobertos:id')
+            ->get(['id', 'equipamento_id', 'tipo', 'data_inicio', 'data_fim', 'created_at']);
+
+        // Última instalação/preventiva por equipamento (principal OU coberto).
+        $ultimas = [];
+        foreach ($intervencoes as $i) {
+            $quando = $i->data_fim ?? $i->data_inicio ?? $i->created_at;
+            $ids = array_unique(array_filter(array_merge([$i->equipamento_id], $i->equipamentosCobertos->pluck('id')->all())));
+            foreach ($ids as $eqId) {
+                if (! isset($ultimas[$eqId]) || $quando->gt($ultimas[$eqId]['quando'])) {
+                    $ultimas[$eqId] = ['quando' => $quando, 'tipo' => $i->tipo];
+                }
+            }
+        }
+        $vencidos = array_filter($ultimas, fn ($u) => $u['quando']->lte($limite));
+        if ($vencidos === []) {
+            return [];
+        }
+
+        return Equipamento::query()
+            ->whereIn('id', array_keys($vencidos))
+            ->with('local.cliente')
+            ->get()
+            ->map(function (Equipamento $e) use ($vencidos, $meses) {
+                $u = $vencidos[$e->id];
+                $mesesDesde = (int) $u['quando']->diffInMonths(now());
+                $tipoRot = $u['tipo'] === TipoIntervencao::Instalacao ? 'instalação' : 'manutenção preventiva';
+
+                return [
+                    'tipo' => 'proposta_intervencao',
+                    'chave' => 'proposta_intervencao:'.$e->id.':'.$u['quando']->toDateString(),
+                    // Média ao chegar aos meses configurados; alta quando passa um ano.
+                    'severidade' => $mesesDesde >= 12 ? 'alta' : 'media',
+                    'titulo' => 'Propor nova intervenção · '.(trim(($e->fabricante ?? '').' '.($e->modelo ?? '')) ?: ($e->numero_serie ?? '—')),
+                    'descricao' => ($e->local?->cliente?->nome ?? '—').' · última '.$tipoRot.' a '.$u['quando']->translatedFormat('d M Y').' ('.$mesesDesde.' meses; aviso aos '.$meses.')',
+                    'url' => route('equipamentos.ficha', $e),
+                    'data' => $u['quando']->copy()->addMonths($meses),
+                ];
+            })
+            ->sortBy('data')
+            ->values()
             ->all();
     }
 

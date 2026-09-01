@@ -12,6 +12,10 @@ return [
     // dispara ALTA se o marcador que o scripts/backup.sh toca no fim de cada backup bem
     // sucedido faltar ou tiver mais de `backup_max_horas`. Opt-in por ambiente: liga-se em
     // produção DEPOIS de instalar o cron do backup (senão alertava em dev/staging à toa).
+    // Proposta de nova intervenção: meses após a última instalação/manutenção preventiva
+    // concluída num equipamento a partir dos quais se avisa para propor ao cliente.
+    'proposta_meses' => env('ALERTAS_PROPOSTA_MESES', 10),
+
     'backup_vigia' => env('ALERTAS_BACKUP_VIGIA', false),
     'backup_max_horas' => env('ALERTAS_BACKUP_MAX_HORAS', 26),
 ];
