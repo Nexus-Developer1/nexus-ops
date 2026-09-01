@@ -95,6 +95,12 @@ class AlertasPropostaIntervencaoTest extends TestCase
         $this->assertCount(0, $this->propostas());
     }
 
+    public function test_intervencao_apagada_nao_conta(): void
+    {
+        $this->intervencao($this->ups, 'preventiva', '2025-09-01')->delete(); // soft delete
+        $this->assertCount(0, $this->propostas());
+    }
+
     public function test_painel_mostra_o_tipo_e_concluir_cala_ate_haver_nova_intervencao(): void
     {
         $admin = User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);

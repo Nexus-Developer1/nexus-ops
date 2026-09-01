@@ -154,8 +154,10 @@ class ServicoAlertas
         $meses = max(1, (int) config('alertas.proposta_meses', 10));
         $limite = now()->subMonths($meses);
 
+        // Só o scope do portal sai (é um cálculo de sistema, sem utilizador); o soft-delete
+        // fica — uma intervenção apagada não pode contar como "última preventiva".
         $intervencoes = Intervencao::query()
-            ->withoutGlobalScopes()
+            ->withoutGlobalScope('cliente')
             ->whereIn('tipo', [TipoIntervencao::Preventiva->value, TipoIntervencao::Instalacao->value])
             ->where('estado', EstadoIntervencao::Concluida->value)
             ->with('equipamentosCobertos:id')
