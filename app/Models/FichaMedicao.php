@@ -644,4 +644,110 @@ class FichaMedicao extends Model
 
         return false;
     }
+
+    /** Temperatura da UPS a partir da qual o PDF alerta (a vermelho e no resumo de anomalias). */
+    public const TEMPERATURA_ALERTA = 25;
+
+    /**
+     * Anomalias desta ficha: tudo o que o técnico marcou KO/NOK — mais a temperatura da UPS
+     * acima do limite. Alimenta o resumo da 1.ª página do PDF ("o que o cliente precisa de
+     * saber sem ler as fichas") e o selo Conforme / Com anomalias de cada ficha.
+     *
+     * @return list<array{item: string, nota: string}>
+     */
+    public function anomalias(): array
+    {
+        $lista = [];
+
+        if ($this->tipo_equipamento === 'incendio') {
+            $g = $this->sadei ?? [];
+            $seccoes = [
+                'central' => self::SADEI_CENTRAL, 'detecao' => self::SADEI_DETECAO, 'aspiracao' => self::SADEI_ASPIRACAO,
+                'sensores' => self::SADEI_SENSORES, 'trimestral' => self::SADEI_TRIMESTRAL,
+                'semestral' => self::SADEI_SEMESTRAL, 'anual' => self::SADEI_ANUAL,
+            ];
+            foreach ($seccoes as $sec => $itens) {
+                foreach ($itens as $k => $rotulo) {
+                    if (($g[$sec][$k]['estado'] ?? null) === 'ko') {
+                        $lista[] = ['item' => $rotulo, 'nota' => trim((string) ($g[$sec][$k]['nota'] ?? ''))];
+                    }
+                }
+            }
+            foreach (['cilindros' => 'Cilindro', 'piloto' => 'Cilindro piloto'] as $grelha => $prefixo) {
+                foreach ((array) ($g[$grelha] ?? []) as $linha) {
+                    if (is_array($linha) && ($linha['estado'] ?? null) === 'ko') {
+                        $lista[] = ['item' => trim($prefixo.' '.(string) ($linha['identificacao'] ?? '')), 'nota' => ''];
+                    }
+                }
+            }
+            if (($g['final_automatico'] ?? null) === 'ko') {
+                $lista[] = ['item' => 'Equipamento em modo automático, com a solenoide colocada, e a funcionar corretamente', 'nota' => ''];
+            }
+
+            return $lista;
+        }
+
+        foreach (self::VERIFICACOES as $k => $rotulo) {
+            $v = $this->verificacoes[$k] ?? [];
+            if (is_array($v) && ($v['estado'] ?? null) === 'nok') {
+                $lista[] = ['item' => $rotulo, 'nota' => trim((string) ($v['nota'] ?? ''))];
+            }
+        }
+        $finais = [
+            'baterias_funcionamento' => 'Baterias em funcionamento',
+            'carga_a_funcionar' => 'Equipamento a suportar a carga e sem anomalias',
+            'ups_modo_normal' => 'Equipamento com status carga no inversor',
+        ];
+        foreach ($finais as $campo => $rotulo) {
+            if ($this->{$campo} === 'nok') {
+                $lista[] = ['item' => $rotulo, 'nota' => ''];
+            }
+        }
+        if (is_numeric($this->temperatura) && (float) $this->temperatura > self::TEMPERATURA_ALERTA) {
+            $lista[] = ['item' => 'Temperatura da UPS acima de '.self::TEMPERATURA_ALERTA.' °C', 'nota' => $this->temperatura.' °C'];
+        }
+
+        return $lista;
+    }
+
+    /**
+     * Veredicto da ficha para o cliente: 'anomalias' (há KO/NOK), 'conforme' (verificações
+     * feitas, tudo OK) ou 'sem_dados' (nada verificado — não se afirma conformidade do nada).
+     */
+    public function resultado(): string
+    {
+        if ($this->anomalias() !== []) {
+            return 'anomalias';
+        }
+
+        return $this->temVerificacoes() ? 'conforme' : 'sem_dados';
+    }
+
+    /** Há pelo menos um estado (OK/KO/NOK/N/A) marcado pelo técnico? */
+    private function temVerificacoes(): bool
+    {
+        if ($this->tipo_equipamento === 'incendio') {
+            $g = $this->sadei ?? [];
+            if (filled($g['final_automatico'] ?? null)) {
+                return true;
+            }
+            foreach (['central', 'detecao', 'aspiracao', 'sensores', 'trimestral', 'semestral', 'anual', 'cilindros', 'piloto'] as $sec) {
+                foreach ((array) ($g[$sec] ?? []) as $item) {
+                    if (is_array($item) && filled($item['estado'] ?? null)) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        foreach ((array) $this->verificacoes as $v) {
+            if (is_array($v) && filled($v['estado'] ?? null)) {
+                return true;
+            }
+        }
+
+        return filled($this->baterias_funcionamento) || filled($this->carga_a_funcionar) || filled($this->ups_modo_normal);
+    }
 }

@@ -53,6 +53,16 @@ abstract class TestCase extends BaseTestCase
             'fabricante' => 'APC', 'modelo' => 'X40', 'numero_serie' => 'SN-TESTE-'.$n]);
     }
 
+    // SVGs embebidos como imagem no HTML do PDF (data:image/svg+xml;base64,…), descodificados
+    // e concatenados: o dompdf não desenha SVG inline, por isso o gráfico do teste de descarga
+    // vai como <img>. Os testes olham para o SVG descodificado, não para o HTML.
+    protected function svgEmbebido(string $html): string
+    {
+        preg_match_all('#data:image/svg\+xml;base64,([A-Za-z0-9+/=]+)#', $html, $m);
+
+        return implode("\n", array_map('base64_decode', $m[1]));
+    }
+
     // Completa o login de duas etapas (MFA): faz a 1.ª etapa (email+password), captura o
     // código enviado por email e submete-o na 2.ª etapa. Devolve o componente
     // VerificarCodigo já depois de `verificar`, para o teste encadear as suas asserções

@@ -1,14 +1,13 @@
 {{-- Ficha de Verificações SADEI (equipamento de incêndio) — espelho da folha oficial 2024.
      Herda o scope do loop de fichas em pdf/relatorio.blade.php: $ficha, $relatorio, $i, $fe,
-     $fcli, $locTexto, $locDerivado, $mostrarClienteFinal, $clienteFinalValor, $hIni, $hFim. --}}
+     $fcli, $locTexto, $locDerivado, $mostrarClienteFinal, $clienteFinalValor, $hIni, $hFim.
+     O cabeçalho da ficha (título, subtítulo e selo Conforme/Com anomalias) é desenhado lá. --}}
 @php
     use App\Models\FichaMedicao;
     $g = $ficha->sadei ?? [];
-    $x = fn ($v, $alvo) => ($v ?? null) === $alvo ? 'X' : '';
+    // Marcas: ✓ (OK, verde), ✗ (KO, vermelho), – (N/A, cinzento) — em vez do "X" para tudo.
+    $x = fn ($v, $alvo) => ($v ?? null) === $alvo ? ($alvo === 'ko' ? '✗' : ($alvo === 'na' ? '–' : '✓')) : '';
 @endphp
-
-<div class="ficha-titulo">Ficha de Verificações SADEI</div>
-<div class="ficha-sub">Relatório {{ $relatorio->numero }} · {{ $ficha->serie ?: ($fe?->numero_serie ?? '—') }}</div>
 
 <div class="ficha-seccao">Identificação</div>
 <table class="ficha-tab">

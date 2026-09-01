@@ -243,10 +243,10 @@ class PdfFichaMedicaoTest extends TestCase
 
         $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
 
-        // Nenhuma marca OK em lado nenhum (nada era 'ok').
-        $this->assertStringNotContainsString('cel-ok">X', $html);
+        // Nenhuma marca OK em lado nenhum (nada era 'ok'). As marcas são ✓ (OK) e ✗ (NOK).
+        $this->assertStringNotContainsString('cel-ok">✓', $html);
         // Exatamente uma marca NOK (a limpeza) — o item null NÃO contribuiu.
-        $this->assertSame(1, substr_count($html, 'cel-nok">X'));
+        $this->assertSame(1, substr_count($html, 'cel-nok">✗'));
     }
 
     public function test_ficha_valor_nulo_fica_vazio_sem_zero_nem_null(): void

@@ -124,11 +124,11 @@ class DescargaCurvaTest extends TestCase
             ]]);
         $r = Relatorio::create(['intervencao_id' => $i->id, 'numero' => '2026/9500', 'data' => now(), 'estado' => EstadoRelatorio::Finalizado]);
 
-        $html = view('pdf.relatorio', ['relatorio' => $r, 'fotos' => []])->render();
+        $svg = $this->svgEmbebido(view('pdf.relatorio', ['relatorio' => $r, 'fotos' => []])->render());
 
-        $this->assertStringContainsString('rotate(-90', $html);      // horas na vertical → veio da curva
-        $this->assertStringContainsString('20:02:53', $html);
-        $this->assertStringNotContainsString('<circle', $html);      // modo curva não desenha pontos
-        $this->assertSame(2, substr_count($html, '<polyline'));
+        $this->assertStringContainsString('rotate(-90', $svg);       // horas na vertical → veio da curva
+        $this->assertStringContainsString('20:02:53', $svg);
+        $this->assertStringNotContainsString('<circle', $svg);       // modo curva não desenha pontos
+        $this->assertSame(2, substr_count($svg, '<polyline'));
     }
 }

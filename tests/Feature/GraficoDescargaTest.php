@@ -14,8 +14,9 @@ use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
 // Gráfico do teste de descarga (Vbat+ / Vbat− ao longo dos tempos da tabela): SVG puro gerado
-// no servidor — desenha igual no editor e no PDF (DomPDF), sem JavaScript. Só aparece com
-// pelo menos 2 valores numéricos; células vazias são ignoradas; vírgula decimal aceite.
+// no servidor — inline no editor; no PDF vai como IMAGEM (data URI svg+xml), porque o dompdf
+// não desenha SVG inline (despejava só os rótulos numa linha). Só aparece com pelo menos 2
+// valores numéricos; células vazias são ignoradas; vírgula decimal aceite.
 class GraficoDescargaTest extends TestCase
 {
     use RefreshDatabase;
@@ -46,18 +47,23 @@ class GraficoDescargaTest extends TestCase
         $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
 
         $this->assertStringContainsString('Gráfico do teste de descarga', $html);
-        $this->assertSame(2, substr_count($html, '<polyline'));                  // Vbat+ e Vbat−
-        $this->assertSame(10, substr_count($html, '<circle'));                   // 5 pontos por série
-        $this->assertStringContainsString('stroke="#2563eb"', $html);            // Vbat+ azul
-        $this->assertStringContainsString('stroke="#ea580c"', $html);            // Vbat− laranja
-        $this->assertStringContainsString('Vbat +', $html);
-        $this->assertStringContainsString('20 min', $html);                       // rótulo do eixo X
+        $this->assertStringContainsString('data:image/svg+xml;base64,', $html);   // vai como imagem
+        $this->assertStringNotContainsString('<svg', $html);                     // nunca inline no PDF
+        $svg = $this->svgEmbebido($html);
+        $this->assertSame(2, substr_count($svg, '<polyline'));                   // Vbat+ e Vbat−
+        $this->assertSame(10, substr_count($svg, '<circle'));                    // 5 pontos por série
+        $this->assertStringContainsString('stroke="#2563eb"', $svg);             // Vbat+ azul
+        $this->assertStringContainsString('stroke="#ea580c"', $svg);             // Vbat− laranja
+        $this->assertStringContainsString('Vbat +', $svg);
+        $this->assertStringContainsString('20 min', $svg);                        // rótulo do eixo X
     }
 
     public function test_sem_valores_suficientes_nao_ha_grafico(): void
     {
         $vazio = $this->relatorioComFicha([]);
-        $this->assertStringNotContainsString('<svg', view('pdf.relatorio', ['relatorio' => $vazio, 'fotos' => []])->render());
+        $htmlVazio = view('pdf.relatorio', ['relatorio' => $vazio, 'fotos' => []])->render();
+        $this->assertStringNotContainsString('data:image/svg+xml', $htmlVazio);
+        $this->assertStringNotContainsString('Gráfico do teste de descarga', $htmlVazio);
 
         // Um único valor não chega para desenhar uma curva.
         $html = Blade::render('<x-relatorios.grafico-descarga :dados="$d" />', ['d' => ['inicio' => ['vbat_pos' => '270']]]);
