@@ -37,8 +37,9 @@ class AgendaNotasEventoTest extends TestCase
     // O iCalendar dobra as linhas a 75 octetos (CRLF + espaço): junta-as antes de procurar texto.
     private static function desdobrar(string $ics): string
     {
-        return preg_replace('/
-[ 	]/', '', $ics);
+        // Quebra CRLF (RFC 5545) ou LF: o padrão é escrito com escapes para não depender das
+        // quebras de linha do checkout (com LF literal no ficheiro só casava em checkouts CRLF).
+        return preg_replace("/\r?\n[ \t]/", '', $ics);
     }
 
     private const NOTAS = "Rua das Flores 12, Évora\nContacto: Sr. Silva 912 345 678\nPortão das traseiras";

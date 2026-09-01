@@ -22,6 +22,14 @@ class DespesaTest extends TestCase
 {
     use RefreshDatabase;
 
+    // As datas dos registos são de agosto de 2026 e a listagem filtra pelo MÊS CORRENTE por
+    // defeito — sem relógio congelado a suite começava a falhar no dia 1 de setembro.
+    protected function setUp(): void
+    {
+        parent::setUp();
+        \Illuminate\Support\Carbon::setTestNow('2026-08-10 10:00:00');
+    }
+
     private function admin(): User
     {
         return User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
