@@ -2,6 +2,7 @@
 
 namespace App\Services\Alertas;
 
+use App\Enums\EstadoDespesa;
 use App\Enums\EstadoEvento;
 use App\Enums\TipoEquipamento;
 use App\Enums\TipoEvento;
@@ -12,6 +13,7 @@ use App\Models\EquipamentoAlertaManutencao;
 use App\Models\EventoAgenda;
 use App\Models\EventoAlerta;
 use App\Models\Intervencao;
+use App\Models\RegistoDespesa;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -31,7 +33,33 @@ class ServicoAlertas
             ...$this->eventosProgramados(),
             ...$this->visitasEmAtraso(),
             ...$this->slaEmRisco(),
+            ...$this->despesasPorAprovar(),
         ])->sortByDesc(fn ($a) => $a['severidade'] === 'alta' ? 1 : 0)->values();
+    }
+
+    // Processo de validação das despesas: cada registo PENDENTE é um alerta com link para a
+    // ficha (onde o aprovador aprova/rejeita). Média; alta quando espera há mais de 7 dias.
+    private function despesasPorAprovar(): array
+    {
+        return RegistoDespesa::query()
+            ->where('estado', EstadoDespesa::Pendente->value)
+            ->with(['colaborador', 'despesas'])
+            ->orderBy('submetido_em')
+            ->get()
+            ->map(function (RegistoDespesa $r) {
+                $desde = $r->submetido_em ?? $r->created_at ?? now();
+                $n = $r->despesas->count();
+
+                return [
+                    'tipo' => 'despesa_aprovacao',
+                    'severidade' => $desde->lt(now()->subDays(7)) ? 'alta' : 'media',
+                    'titulo' => 'Despesa por aprovar · '.($r->colaborador?->nome ?? '—').' · '.number_format((float) $r->despesas->sum('valor'), 2, ',', ' ').' €',
+                    'descricao' => $n.' '.($n === 1 ? 'lançamento' : 'lançamentos').' · submetida a '.$desde->translatedFormat('d M Y'),
+                    'url' => route('despesas.registo.ficha', $r),
+                    'data' => $desde,
+                ];
+            })
+            ->all();
     }
 
     // Vigia de backups (opt-in por config): o scripts/backup.sh toca um marcador no fim de

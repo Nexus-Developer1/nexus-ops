@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\EstadoDespesa;
+
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,7 +20,31 @@ class RegistoDespesa extends Model
     protected $table = 'registos_despesa';
 
     /** @var list<string> */
-    protected $fillable = ['criado_por', 'matricula', 'departamento'];
+    protected $fillable = ['criado_por', 'matricula', 'departamento',
+        // Processo de validação (set. 2026): estado + quem decidiu, quando e porquê.
+        'estado', 'submetido_em', 'decidido_por', 'decidido_em', 'motivo_rejeicao'];
+
+    protected function casts(): array
+    {
+        return [
+            'estado' => EstadoDespesa::class,
+            'submetido_em' => 'datetime',
+            'decidido_em' => 'datetime',
+        ];
+    }
+
+    // Quem aprovou/rejeitou.
+    public function decisor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'decidido_por');
+    }
+
+    // Aprovada = fechada: ninguém edita (senão a aprovação deixava de valer). Pendente e
+    // rejeitada editam-se (a rejeitada volta a pendente ao guardar).
+    public function podeSerEditado(): bool
+    {
+        return $this->estado !== EstadoDespesa::Aprovada;
+    }
 
     public function colaborador(): BelongsTo
     {

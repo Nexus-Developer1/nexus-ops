@@ -2,9 +2,11 @@
 
 namespace App\Livewire\Despesas;
 
+use App\Enums\EstadoDespesa;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Despesa;
 use App\Models\RegistoDespesa;
+use App\Models\User;
 use App\Services\Auditor;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Session;
@@ -25,6 +27,24 @@ class Listagem extends Component
 
     #[Session]
     public string $periodo = 'mes'; // mes | tudo
+
+    // Processo de validação: filtrar pelo estado (pendente/aprovada/rejeitada) e pelo
+    // colaborador — "só as que estão atribuídas a determinada pessoa".
+    #[Session]
+    public string $estado = ''; // '' | pendente | aprovada | rejeitada
+
+    #[Session]
+    public string $colaborador = ''; // id do utilizador
+
+    public function updatingEstado(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingColaborador(): void
+    {
+        $this->resetPage();
+    }
 
     public function updatingPesquisa(): void
     {
@@ -60,6 +80,9 @@ class Listagem extends Component
         return Despesa::query()
             ->when($this->periodo === 'mes', fn ($q) => $q->whereYear('data', now()->year)->whereMonth('data', now()->month))
             ->when($this->categoria, fn ($q) => $q->where('categoria', $this->categoria))
+            ->when(in_array($this->estado, array_column(EstadoDespesa::cases(), 'value'), true),
+                fn ($q) => $q->whereHas('registo', fn ($r) => $r->where('estado', $this->estado)))
+            ->when(ctype_digit($this->colaborador), fn ($q) => $q->whereHas('registo', fn ($r) => $r->where('criado_por', (int) $this->colaborador)))
             ->when($this->pesquisa, function ($q) {
                 $termo = '%'.$this->pesquisa.'%';
                 $q->where(fn ($q) => $q->where('descricao', 'ilike', $termo)
@@ -93,6 +116,10 @@ class Listagem extends Component
             'registos' => $registos,
             'porCategoria' => $porCategoria,
             'categorias' => Despesa::CATEGORIAS, // categorias fixas (filtro)
+            'estados' => EstadoDespesa::cases(),
+            // Colaboradores com registos (filtro "atribuídas a determinada pessoa").
+            'colaboradores' => User::whereIn('id', RegistoDespesa::query()->whereNotNull('criado_por')->select('criado_por'))->orderBy('nome')->get(['id', 'nome']),
+            'pendentes' => RegistoDespesa::where('estado', EstadoDespesa::Pendente->value)->count(),
         ]);
     }
 }

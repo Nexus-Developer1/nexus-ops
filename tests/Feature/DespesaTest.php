@@ -62,6 +62,7 @@ class DespesaTest extends TestCase
             ->set('linhas.0.detalhe', 'Gasóleo A1')
             ->set('linhas.0.categoria', 'Combustíveis')
             ->set('linhas.0.valor', '20.50')
+            ->set('recibosLinhaUpload.0', [UploadedFile::fake()->image('r1.jpg', 800, 600)]) // recibo obrigatório
             ->call('adicionarLinha')
             ->set('linhas.1.dia', '2026-08-05')
             ->set('linhas.1.descricao', 'Beta - Lisboa')
@@ -69,6 +70,7 @@ class DespesaTest extends TestCase
             ->set('linhas.1.categoria', 'Refeições')
             ->set('linhas.1.refeicao_tipo', 'A')
             ->set('linhas.1.valor', '12')
+            ->set('recibosLinhaUpload.1', [UploadedFile::fake()->image('r2.jpg', 800, 600)])
             ->call('guardar')
             ->assertHasNoErrors()
             ->assertRedirect(route('despesas'));
@@ -147,6 +149,7 @@ class DespesaTest extends TestCase
             ->assertSet('linhas.0.detalhe', 'Hotel Mar')
             ->assertSet('linhas.0.categoria', 'Hotel')
             ->set('linhas.0.valor', '95')
+            ->set('recibosLinhaUpload.0', [UploadedFile::fake()->image('r.jpg', 800, 600)]) // recibo obrigatório
             ->call('guardar')
             ->assertHasNoErrors();
 

@@ -72,6 +72,9 @@ class AppServiceProvider extends ServiceProvider
         // Feeds da agenda (URLs de subscrição do Outlook — gerar/revogar tokens): só admin.
         Gate::define('gerir-feeds-agenda', fn (User $utilizador) => $utilizador->ehAdmin());
 
+        // Processo de validação das despesas: aprovadores de config (pgouveia@nxs.pt) + admins.
+        Gate::define('aprovar-despesas', fn (User $utilizador) => \App\Services\Despesas\FluxoAprovacaoDespesas::podeAprovar($utilizador));
+
         // Política de passwords (Vaga 1): min 10 + letras + números; em produção verifica
         // ainda contra fugas conhecidas (HIBP, k-anonymity — só sai um prefixo do hash).
         // Fora de produção fica sem a chamada de rede (testes determinísticos e offline).

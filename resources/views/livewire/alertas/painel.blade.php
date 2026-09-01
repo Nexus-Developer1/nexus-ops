@@ -19,6 +19,7 @@
                     'manutencao_programada' => 'Manutenções programadas',
                     'evento_programado' => 'Alertas de eventos',
                     'backup' => 'Backups',
+                    'despesa_aprovacao' => 'Despesas por aprovar',
                 ];
                 $cartoes = [['tipo' => '', 'rotulo' => 'Todos', 'n' => array_sum($contagens)]];
                 foreach ($rotulos as $t => $r) {

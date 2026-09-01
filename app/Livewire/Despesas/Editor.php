@@ -2,10 +2,12 @@
 
 namespace App\Livewire\Despesas;
 
+use App\Enums\EstadoDespesa;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Anexo;
 use App\Models\Despesa;
 use App\Models\RegistoDespesa;
+use App\Services\Despesas\FluxoAprovacaoDespesas;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -68,6 +70,15 @@ class Editor extends Component
     public function mount(?RegistoDespesa $registo = null): void
     {
         if ($registo && $registo->exists) {
+            // Aprovada = fechada: ninguém edita (a aprovação deixava de valer). Abre a ficha.
+            if (! $registo->podeSerEditado()) {
+                $this->linhas = [$this->linhaVazia()];
+                session()->flash('erro', 'Esta despesa já foi aprovada e não pode ser alterada.');
+                $this->redirectRoute('despesas.registo.ficha', $registo);
+
+                return;
+            }
+
             $this->registoId = $registo->id;
             $this->matricula = $registo->matricula ?? '';
             $this->departamento = $registo->departamento ?? '';
@@ -230,6 +241,23 @@ class Editor extends Component
             return;
         }
 
+        // Recibo OBRIGATÓRIO em cada linha (processo de validação): sem a imagem do recibo
+        // não há despesa — pendente (acabado de anexar) ou já gravado na despesa da linha.
+        $comReciboGravado = $this->registoId
+            ? Anexo::where('anexavel_type', Despesa::class)
+                ->whereIn('anexavel_id', array_filter(array_column($lancamentos, 'despesa_id')))
+                ->pluck('anexavel_id')->map(fn ($id) => (int) $id)->all()
+            : [];
+        foreach ($lancamentos as $n => $l) {
+            $temPendente = ($this->recibosPendentes[$n] ?? []) !== [];
+            $temGravado = $l['despesa_id'] && in_array((int) $l['despesa_id'], $comReciboGravado, true);
+            if (! $temPendente && ! $temGravado) {
+                $this->addError("linhas.$n.recibos", 'Anexe o recibo (fotografia ou digitalização) na linha '.($n + 1).' — é obrigatório.');
+
+                return;
+            }
+        }
+
         $cabecalho = [
             'matricula' => trim($this->matricula) ?: null,
             'departamento' => trim($this->departamento) ?: null,
@@ -237,6 +265,7 @@ class Editor extends Component
 
         if ($this->registoId) {
             $registo = RegistoDespesa::findOrFail($this->registoId);
+            abort_unless($registo->podeSerEditado(), 403, 'Despesa aprovada — não pode ser alterada.');
             $registo->update($cabecalho);
         } else {
             $registo = RegistoDespesa::create($cabecalho + ['criado_por' => auth()->id()]);
@@ -271,7 +300,19 @@ class Editor extends Component
 
         $registo->despesas()->whereNotIn('id', $mantidas)->delete(); // linhas removidas da grelha
 
-        session()->flash('sucesso', $this->registoId ? 'Registo de despesas atualizado.' : 'Registo de despesas guardado.');
+        // Processo de validação: registo novo → submete (pendente + email a quem criou, ao
+        // aprovador e ao financeiro); rejeitado e corrigido → volta a submeter; pendente
+        // editado → continua pendente, sem novo email.
+        $fluxo = app(FluxoAprovacaoDespesas::class);
+        if (! $this->registoId) {
+            $fluxo->submeter($registo->fresh());
+            session()->flash('sucesso', 'Registo de despesas guardado — enviado para aprovação (email ao aprovador e ao financeiro).');
+        } elseif ($registo->fresh()->estado === EstadoDespesa::Rejeitada) {
+            $fluxo->submeter($registo->fresh(), reenvio: true);
+            session()->flash('sucesso', 'Registo corrigido — volta a aguardar aprovação (email enviado).');
+        } else {
+            session()->flash('sucesso', 'Registo de despesas atualizado.');
+        }
 
         return redirect()->route('despesas');
     }

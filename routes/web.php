@@ -130,6 +130,8 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
     Route::get('/despesas', App\Livewire\Despesas\Listagem::class)->name('despesas');
     Route::get('/despesas/nova', App\Livewire\Despesas\Editor::class)->name('despesas.nova');
     Route::get('/despesas/registo/{registo}/editar', App\Livewire\Despesas\Editor::class)->name('despesas.registo.editar');
+    // Ficha (só leitura) com o processo de validação: estado, recibos, Aprovar/Rejeitar.
+    Route::get('/despesas/registo/{registo}', App\Livewire\Despesas\Ficha::class)->name('despesas.registo.ficha');
 
     // PDF do registo (layout da folha da empresa, logótipo Nexus) — transferível.
     Route::get('/despesas/registo/{registo}/pdf', function (RegistoDespesa $registo) {

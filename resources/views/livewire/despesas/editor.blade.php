@@ -11,7 +11,7 @@
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-6xl">
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ $registoId ? 'Editar registo de despesas' : 'Registo de despesas' }}</h1>
-            <p class="mt-2 text-sm text-texto-medio">Uma linha por despesa: dia, onde (local · serviço), o que é, tipo, valor — e os recibos anexados à própria linha.</p>
+            <p class="mt-2 text-sm text-texto-medio">Uma linha por despesa: dia, onde (local · serviço), o que é, tipo, valor — e o <b>recibo anexado à própria linha (obrigatório)</b>. Ao guardar, a despesa fica pendente de aprovação e é enviado um email ao aprovador e ao financeiro.</p>
 
             <form wire:submit="guardar" class="cartao mt-6 p-4 sm:mt-8 sm:p-8" x-data="scannerRecibo">
                 {{-- ===== Cabeçalho da folha — empilha no telemóvel ===== --}}
@@ -80,7 +80,7 @@
                                     <input wire:model="linhas.{{ $n }}.detalhe" type="text" class="campo-input" placeholder="Ex: Portagem A1, almoço com cliente…">
                                 </div>
                                 <div class="col-span-2">
-                                    <label class="campo-label">Recibos</label>
+                                    <label class="campo-label">Recibos <span class="text-perigo-500">*</span></label>
                                     @include('livewire.despesas._recibos-linha', ['n' => $n, 'linha' => $linha, 'sufixo' => 'm'])
                                 </div>
                             </div>
@@ -102,7 +102,7 @@
                                 <th class="w-44 border-b border-r border-borda px-3 py-2 text-left font-semibold">Tipo <span class="text-perigo-500">*</span></th>
                                 <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">O que é<br><span class="font-normal normal-case text-texto-fraco">(opcional)</span></th>
                                 <th class="w-28 border-b border-r border-borda px-3 py-2 text-right font-semibold">Valor (€) <span class="text-perigo-500">*</span></th>
-                                <th class="w-56 border-b border-borda px-3 py-2 text-left font-semibold">Recibos</th>
+                                <th class="w-56 border-b border-borda px-3 py-2 text-left font-semibold">Recibos <span class="text-perigo-500">*</span></th>
                                 <th class="w-10 border-b border-borda"></th>
                             </tr>
                         </thead>
@@ -172,7 +172,7 @@
 
                 @error('linhas') <p class="mt-2 text-xs text-perigo-500">{{ $message }}</p> @enderror
                 @foreach ($linhas as $n => $linha)
-                    @foreach (['dia', 'descricao', 'detalhe', 'categoria', 'refeicao_tipo', 'valor'] as $campo)
+                    @foreach (['dia', 'descricao', 'detalhe', 'categoria', 'refeicao_tipo', 'valor', 'recibos'] as $campo)
                         @error("linhas.$n.$campo") <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     @endforeach
                 @endforeach
