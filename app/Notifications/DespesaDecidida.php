@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notification;
 
 // Email do processo de validação das despesas: o aprovador aprovou ou rejeitou o registo.
 // Vai aos mesmos destinatários da submissão (quem criou, aprovador, financeiro). Pela fila.
+// Template próprio da app (tema Nexus) — o Blade escapa o texto dos utilizadores (motivo).
 class DespesaDecidida extends Notification implements ShouldQueue
 {
     use Queueable;
@@ -27,24 +28,14 @@ class DespesaDecidida extends Notification implements ShouldQueue
         $r = $this->registo;
         $aprovada = $r['estado'] === 'aprovada';
         $total = number_format($r['total'], 2, ',', ' ').' €';
-        $nome = $notifiable->nome ?? null;
 
-        $mail = (new MailMessage)
+        return (new MailMessage)
             ->subject('Despesa nº '.$r['id'].' · '.$r['colaborador'].' · '.$total.' — '.($aprovada ? 'APROVADA' : 'REJEITADA'))
-            ->greeting($nome ? 'Olá '.$nome.',' : 'Olá,')
-            ->line('A despesa nº '.$r['id'].' de '.$this->semMarkdown($r['colaborador']).' ('.$total.') foi '.($aprovada ? 'APROVADA' : 'REJEITADA')
-                .' por '.$this->semMarkdown((string) ($r['decisor'] ?? '—')).($r['decidido_em'] ? ' em '.$r['decidido_em'] : '').'.');
-
-        if (! $aprovada) {
-            $mail->line('Motivo: '.$this->semMarkdown((string) ($r['motivo'] ?: '—')))
-                ->line('Quem registou a despesa pode corrigi-la e voltar a guardar — fica de novo pendente de aprovação.');
-        }
-
-        return $mail->action('Ver despesa', $r['url']);
-    }
-
-    private function semMarkdown(string $texto): string
-    {
-        return addcslashes($texto, '\\`*_{}[]()#+.!|<>~=-');
+            ->view('emails.despesa', [
+                'modo' => 'decidida',
+                'r' => $r,
+                'nome' => $notifiable->nome ?? null,
+                'reenvio' => false,
+            ]);
     }
 }

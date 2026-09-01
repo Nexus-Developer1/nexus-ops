@@ -90,7 +90,9 @@ class DespesaAprovacaoTest extends TestCase
             return str_contains($html, 'Almoço ACME')
                 && str_contains($html, '14,20')
                 && str_contains($html, route('despesas.registo.ficha', $registo))
-                && str_contains($html, 'aguarda aprovação');
+                && str_contains($html, 'aguarda aprovação')
+                && str_contains($html, 'Nexus Infra')          // template proprio da app (tema verde)
+                && ! str_contains($html, 'Regards');
         });
         Notification::assertSentOnDemand(DespesaSubmetida::class, fn ($n, $canais, $notifiable) => $notifiable->routes['mail'] === 'pgouveia@nxs.pt');
         Notification::assertSentOnDemand(DespesaSubmetida::class, fn ($n, $canais, $notifiable) => $notifiable->routes['mail'] === 'financeiro@nxs.pt');
