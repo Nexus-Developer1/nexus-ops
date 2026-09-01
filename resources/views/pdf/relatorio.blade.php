@@ -4,110 +4,107 @@
     <meta charset="utf-8">
     <style>
         /* ---- Base ------------------------------------------------------------------ */
-        @page { margin: 16mm 14mm 20mm 14mm; }
+        @page { margin: 15mm 14mm 19mm 14mm; }
         * { font-family: 'DejaVu Sans', sans-serif; }
-        body { font-size: 10.5px; color: #1f2937; margin: 0; line-height: 1.35; }
+        body { font-size: 11px; color: #111827; margin: 0; line-height: 1.4; }
         table { width: 100%; border-collapse: collapse; }
         td, th { vertical-align: top; }
 
         /* Rodapé fixo em TODAS as páginas (o dompdf repete os position:fixed) com nº de página. */
-        .rodape-fixo { position: fixed; bottom: -12mm; left: 0; right: 0; height: 8mm; border-top: 1px solid #e5e7eb; padding-top: 4px; font-size: 7.5px; color: #9ca3af; letter-spacing: 0.5px; }
+        .rodape-fixo { position: fixed; bottom: -11mm; left: 0; right: 0; height: 8mm; border-top: 2px solid #15803D; padding-top: 4px; font-size: 8px; color: #4B5563; }
         .rodape-fixo .pagina:after { content: counter(page); }
 
-        /* ---- Cabeçalho + faixa de título ----------------------------------------- */
-        .cabecalho td { vertical-align: middle; padding-bottom: 8px; }
-        .suite { color: #9ca3af; font-size: 7.5px; letter-spacing: 2.5px; margin-top: 3px; }
-        .doc-tipo { color: #6b7280; font-size: 8px; text-transform: uppercase; letter-spacing: 2px; }
-        .num { font-size: 20px; font-weight: bold; color: #111827; line-height: 1.1; }
-        .data { color: #6b7280; font-size: 10px; margin-top: 2px; }
-        .faixa { background-color: #16A34A; color: #ffffff; padding: 10px 14px; margin: 2px 0 10px; }
-        .faixa td { vertical-align: middle; }
-        .faixa-titulo { font-size: 17px; font-weight: bold; letter-spacing: 0.3px; }
-        .faixa-sub { font-size: 9.5px; color: #D1FADF; margin-top: 3px; }
+        /* ---- Cabeçalho ------------------------------------------------------------ */
+        .cabecalho { border-bottom: 3px solid #15803D; padding-bottom: 10px; margin-bottom: 14px; }
+        .cabecalho td { vertical-align: bottom; }
+        .suite { color: #6B7280; font-size: 7.5px; letter-spacing: 2.5px; margin-top: 3px; }
+        .doc-titulo { font-size: 15px; font-weight: bold; color: #111827; line-height: 1.15; }
+        .doc-num { font-size: 11px; color: #15803D; font-weight: bold; margin-top: 3px; }
+        .doc-data { font-size: 10px; color: #4B5563; margin-top: 1px; }
 
-        /* Selos de resultado (faixa + resumo + fichas). */
-        .selo { display: inline-block; font-size: 8.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.8px; padding: 3px 9px; border-radius: 10px; white-space: nowrap; }
-        .selo-conforme { background-color: #ffffff; color: #166534; }
-        .selo-anomalias { background-color: #FEE2E2; color: #B91C1C; }
-        .selo-sem { background-color: #F3F4F6; color: #6b7280; }
-        .ficha-pagina .selo-conforme { background-color: #DCFCE7; }
+        /* Selos de resultado (cabeçalho, resumo e fichas): cheios, sem meios-tons. */
+        .selo { display: inline-block; font-size: 8.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.8px; padding: 3px 9px; border-radius: 3px; white-space: nowrap; color: #ffffff; }
+        .selo-conforme { background-color: #15803D; }
+        .selo-anomalias { background-color: #B91C1C; }
+        .selo-sem { background-color: #6B7280; }
 
-        /* ---- Cartões de informação ------------------------------------------------ */
-        .cartoes { border-collapse: separate; border-spacing: 6px 0; margin: 0 -6px 6px; }
-        .cartao { background-color: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 5px; padding: 7px 10px; }
-        .rot { color: #6b7280; font-size: 7.5px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
-        .val { color: #111827; font-weight: bold; font-size: 11px; }
-        .sub { color: #6b7280; font-size: 9px; margin-top: 2px; }
+        /* ---- Grelha de dados (rótulo | valor) --------------------------------------- */
+        .dados { border: 1px solid #D1D5DB; margin-bottom: 10px; }
+        .dados td { border: 1px solid #D1D5DB; padding: 5px 8px; font-size: 10.5px; }
+        .dados td.r { background-color: #F3F4F6; color: #374151; font-weight: bold; font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.6px; width: 14%; vertical-align: middle; }
+        .dados td.v { font-weight: bold; width: 36%; }
 
         /* ---- Secções e textos ----------------------------------------------------- */
-        h2 { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: #166534; border-bottom: 1px solid #D1FADF; padding-bottom: 3px; margin: 12px 0 6px; }
-        .bloco { border-left: 3px solid #16A34A; padding: 3px 0 3px 10px; margin: 4px 0 8px; }
-        .bloco .rot { margin-bottom: 3px; }
-        .texto { color: #374151; line-height: 1.45; white-space: pre-line; } /* respeita as quebras de linha escritas pelo técnico */
-        .cliente-linha { color: #374151; font-size: 10px; line-height: 1.4; }
+        h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #ffffff; background-color: #15803D; padding: 5px 9px; margin: 14px 0 8px; }
+        .bloco { margin: 0 0 10px; }
+        .bloco .rot { color: #15803D; font-weight: bold; font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; border-bottom: 1px solid #D1D5DB; padding-bottom: 2px; }
+        .texto { color: #1F2937; line-height: 1.5; white-space: pre-line; } /* respeita as quebras de linha escritas pelo técnico */
+        .cliente-linha { color: #1F2937; font-size: 10.5px; line-height: 1.4; }
         .grelha td { padding: 4px 0; width: 50%; }
-        .campo-rotulo { color: #6b7280; font-size: 7.5px; text-transform: uppercase; letter-spacing: 1px; }
+        .campo-rotulo { color: #374151; font-size: 8.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.6px; }
         .campo-valor { color: #111827; font-weight: bold; font-size: 11px; }
 
         /* Resumo dos resultados (1.ª página). */
-        .tab { width: 100%; border-collapse: collapse; }
-        .tab th { background-color: #F3F4F6; color: #374151; font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.6px; text-align: left; padding: 5px 7px; border-bottom: 1px solid #D1D5DB; }
-        .tab td { padding: 6px 7px; border-bottom: 1px solid #E5E7EB; font-size: 10px; }
-        .tab tr:nth-child(even) td { background-color: #FAFAFA; }
-        .tab .mini { color: #6b7280; font-size: 8.5px; }
-        .aviso { background-color: #FFFBEB; border: 1px solid #FDE68A; border-left: 4px solid #F59E0B; padding: 6px 10px; margin: 6px 0; }
-        .aviso .rot { color: #B45309; }
-        .recom { background-color: #ECFDF3; border: 1px solid #A6F4C5; border-left: 4px solid #16A34A; padding: 6px 10px; margin: 6px 0; }
-        .recom .rot { color: #166534; }
-        .lista-item { padding: 2px 0 2px 0; color: #1f2937; }
-        .lista-item .quem { color: #6b7280; }
+        .tab { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        .tab th { background-color: #374151; color: #ffffff; font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.6px; text-align: left; padding: 5px 8px; }
+        .tab td { padding: 6px 8px; border: 1px solid #D1D5DB; font-size: 10.5px; }
+        .tab .mini { color: #4B5563; font-size: 8.5px; }
+        .aviso { border: 1px solid #B91C1C; border-left: 6px solid #B91C1C; padding: 7px 10px; margin: 8px 0; }
+        .aviso .rot { color: #B91C1C; }
+        .recom { border: 1px solid #15803D; border-left: 6px solid #15803D; padding: 7px 10px; margin: 8px 0; }
+        .recom .rot { color: #15803D; }
+        .aviso .rot, .recom .rot { font-weight: bold; font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; }
+        .lista-item { padding: 2px 0; color: #111827; }
+        .lista-item .quem { color: #4B5563; }
 
         /* A informação técnica (checklist legada) começa sempre numa página nova. */
         .pagina-tecnica { page-break-before: always; }
         .item { padding: 3px 0 3px 10px; }
-        .marca-check { color: #16A34A; font-weight: bold; }
-        .marca-vazio { color: #9ca3af; }
-        .etapa-titulo { margin-top: 8px; font-weight: bold; color: #374151; font-size: 11px; }
-        .etapa-contador { color: #9ca3af; font-weight: normal; font-size: 9px; }
-        .item-obs { color: #6b7280; }
+        .marca-check { color: #15803D; font-weight: bold; }
+        .marca-vazio { color: #9CA3AF; }
+        .etapa-titulo { margin-top: 8px; font-weight: bold; color: #111827; font-size: 11px; }
+        .etapa-contador { color: #6B7280; font-weight: normal; font-size: 9px; }
+        .item-obs { color: #4B5563; }
 
         /* ---- Fotos (grelha em tabela, 3/linha — ver pdf/_fotos.blade.php) ---------- */
         .fotos-tab { width: 100%; border-collapse: separate; border-spacing: 0 0; margin-bottom: 6px; }
         .foto-cel { width: 33.33%; padding: 0 6px 6px 0; }
-        .foto { width: 100%; height: 150px; object-fit: cover; border: 1px solid #E5E7EB; border-radius: 4px; }
-
-        /* ---- Fichas de medição (uma por página) ----------------------------------- */
-        .ficha-pagina { page-break-before: always; }
-        .ficha-cab { border-bottom: 2px solid #16A34A; padding-bottom: 8px; margin-bottom: 6px; }
-        .ficha-cab td { vertical-align: bottom; }
-        .ficha-titulo { font-size: 15px; font-weight: bold; color: #111827; margin: 0 0 2px; }
-        .ficha-sub { color: #6b7280; font-size: 9.5px; }
-        .ficha-seccao { background-color: #ECFDF3; border-left: 4px solid #16A34A; color: #166534; font-size: 9.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.8px; padding: 4px 8px; margin: 12px 0 5px; }
-        .ficha-tab { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-        .ficha-tab td, .ficha-tab th { border: 1px solid #E5E7EB; padding: 3.5px 6px; font-size: 9.5px; vertical-align: top; }
+        .foto { width: 100%; height: 150px; object-fit: cover; border: 1px solid #9CA3AF; }
         /* Título de secção + primeiro bloco nunca se separam por uma quebra de página. */
         .junto { page-break-inside: avoid; }
-        .ficha-tab th { background-color: #F3F4F6; color: #374151; font-weight: bold; text-align: left; font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .ficha-tab tr:nth-child(even) td { background-color: #FAFAFA; }
-        .ficha-rot { color: #9ca3af; font-size: 7.5px; text-transform: uppercase; letter-spacing: 0.8px; }
+
+        /* ---- Fichas de medição --------------------------------------------------------
+           Cada ficha começa em página nova… EXCETO a primeira quando o resumo da 1.ª página é
+           curto ou não existe (classe ficha-segue): senão a 1.ª página ficava quase em branco. */
+        .ficha-pagina { page-break-before: always; }
+        .ficha-segue { page-break-before: auto; margin-top: 16px; }
+        .ficha-cab { border-bottom: 3px solid #15803D; padding-bottom: 6px; margin-bottom: 4px; }
+        .ficha-cab td { vertical-align: bottom; }
+        .ficha-titulo { font-size: 15px; font-weight: bold; color: #111827; margin: 0 0 2px; }
+        .ficha-sub { color: #374151; font-size: 10px; }
+        .ficha-seccao { background-color: #15803D; color: #ffffff; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.8px; padding: 4px 9px; margin: 12px 0 5px; }
+        .ficha-tab { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+        .ficha-tab td, .ficha-tab th { border: 1px solid #D1D5DB; padding: 3.5px 6px; font-size: 10px; vertical-align: top; }
+        .ficha-tab th { background-color: #E5E7EB; color: #111827; font-weight: bold; text-align: left; font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .ficha-rot { color: #374151; font-size: 7.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.6px; }
         .cel-num { text-align: center; }
-        .cel-ok { text-align: center; color: #16A34A; font-weight: bold; width: 8%; font-size: 11px; }
-        .cel-nok { text-align: center; color: #dc2626; font-weight: bold; width: 8%; font-size: 11px; }
-        .cel-na { text-align: center; color: #9ca3af; font-weight: bold; width: 8%; font-size: 11px; } /* N/A (ficha SADEI) */
+        .cel-ok { text-align: center; color: #15803D; font-weight: bold; width: 8%; font-size: 12px; }
+        .cel-nok { text-align: center; color: #B91C1C; font-weight: bold; width: 8%; font-size: 12px; }
+        .cel-na { text-align: center; color: #6B7280; font-weight: bold; width: 8%; font-size: 12px; } /* N/A (ficha SADEI) */
         /* Grelha de caixas das medições — espelho do formulário (3 grupos por linha). */
         .med-grid { width: 100%; border-collapse: separate; border-spacing: 4px 3px; margin: 0 -4px; }
         .med-cel { width: 33.33%; vertical-align: top; }
-        .med-caixa { background-color: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 4px; padding: 5px 8px 6px; }
-        .med-titulo { font-size: 8.5px; font-weight: bold; color: #374151; margin-bottom: 4px; }
+        .med-caixa { border: 1px solid #9CA3AF; padding: 5px 8px 6px; }
+        .med-titulo { font-size: 9px; font-weight: bold; color: #111827; margin-bottom: 4px; border-bottom: 1px solid #E5E7EB; padding-bottom: 2px; }
         .med-vals { width: 100%; border-collapse: collapse; }
         .med-vals td { padding: 0 8px 0 0; vertical-align: bottom; }
-        .med-rot { color: #9ca3af; font-size: 7px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .med-val { font-size: 11px; font-weight: bold; color: #111827; border-bottom: 1px solid #D1D5DB; padding: 1px 2px 2px; }
-        .temp-alerta { color: #dc2626; } /* temperatura acima do limite */
-        .legenda-grafico { text-align: center; color: #6b7280; font-size: 8px; margin-top: 2px; }
-        .assin-tab td { border: 1px solid #E5E7EB; padding: 6px 8px; }
-        .assin-area { height: 64px; vertical-align: bottom; text-align: center; border-bottom: 1px solid #9ca3af; }
-        .assin-nome { font-weight: bold; color: #111827; font-size: 10px; }
+        .med-rot { color: #374151; font-size: 7.5px; font-weight: bold; text-transform: uppercase; }
+        .med-val { font-size: 11.5px; font-weight: bold; color: #111827; padding: 1px 2px 2px; }
+        .temp-alerta { color: #B91C1C; } /* temperatura acima do limite */
+        .legenda-grafico { text-align: center; color: #374151; font-size: 8.5px; margin-top: 2px; }
+        .assin-tab td { border: 1px solid #D1D5DB; padding: 6px 8px; }
+        .assin-area { height: 64px; vertical-align: bottom; text-align: center; border-bottom: 1px solid #111827; }
+        .assin-nome { font-weight: bold; color: #111827; font-size: 10.5px; }
     </style>
 </head>
 <body>
@@ -122,6 +119,24 @@
     @php($veredicto = $resultados->contains('anomalias') ? 'anomalias' : ($resultados->isNotEmpty() && $resultados->every(fn ($r) => $r === 'conforme') ? 'conforme' : null))
     @php($rotuloSelo = ['conforme' => 'Conforme', 'anomalias' => 'Com anomalias', 'sem_dados' => 'Sem verificações'])
     @php($marca = fn ($v, $alvo) => ($v ?? null) === $alvo ? (in_array($alvo, ['ko', 'nok'], true) ? '✗' : ($alvo === 'na' ? '–' : '✓')) : '')
+    @php($rotuloEq = fn ($f) => $f->tipo_equipamento === 'incendio' ? 'Deteção de incêndio' : ($f->equipamento?->tipo?->rotulo() ?? 'UPS'))
+    @php($anomalias = $fichas->flatMap(fn ($f) => collect($f->anomalias())->map(fn ($a) => $a + ['quem' => trim($rotuloEq($f).' · '.($f->serie ?: ($f->equipamento?->numero_serie ?? '')), ' ·')])))
+    @php($recomendacoes = $fichas->filter(fn ($f) => trim((string) $f->recomendacao) !== ''))
+    {{-- Extras do equipamento (componentes sempre; cliente final / localização / também cobertos
+         só sem fichas, porque com fichas já estão na tabela de resultados e em cada ficha). --}}
+    @php($eCliFinal = trim((string) ($e->cliente_final ?? '')))
+    @php($eLocaliz = trim((string) ($e->localizacao_instalacao ?? '')))
+    @php($eComponentes = collect($e->atributos['componentes'] ?? [])->filter(fn ($comp) => trim((string) ($comp['designacao'] ?? '')) !== ''))
+    @php($semFichas = $fichas->isEmpty())
+    @php($temExtrasEquipamento = $eComponentes->isNotEmpty() || ($semFichas && ($eCliFinal !== '' || $eLocaliz !== '' || $i->equipamentosCobertos->isNotEmpty())))
+    @php($temTextos = $i->descricao_problema || $i->trabalho_realizado || $i->observacoes)
+    {{-- A 1.ª página ADAPTA-SE ao resumo: estimativa do que ocupa (caracteres de texto + linhas
+         do resultado/anomalias/recomendações/extras). Curto ou inexistente → a primeira ficha
+         segue logo a seguir, na mesma página; grande → começa em página nova. --}}
+    @php($pesoResumo = mb_strlen((string) $i->descricao_problema.(string) $i->trabalho_realizado.(string) $i->observacoes)
+        + 110 * $fichas->count() + 90 * $anomalias->count() + 90 * $recomendacoes->count()
+        + ($temExtrasEquipamento ? 60 + 40 * $eComponentes->count() : 0))
+    @php($primeiraFichaEmPaginaNova = $pesoResumo > 1500)
 
     <div class="rodape-fixo">
         <table>
@@ -141,80 +156,61 @@
                 @if (is_file(public_path('img/nexus-1.png')))
                     <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('img/nexus-1.png'))) }}" alt="NEXUS" style="width: 132px;">
                 @else
-                    <div style="font-size: 22px; font-weight: 800; color: #16a34a;">NEXUS</div>
+                    <div style="font-size: 22px; font-weight: 800; color: #15803D;">NEXUS</div>
                 @endif
                 <div class="suite">TECHNICAL SUITE</div>
             </td>
             <td align="right">
-                <div class="doc-tipo">Relatório nº</div>
-                <div class="num">{{ $relatorio->numero }}</div>
-                <div class="data">{{ $relatorio->data->format('d/m/Y') }}</div>
+                <div class="doc-titulo">Relatório de Intervenção Técnica</div>
+                <div class="doc-num">Nº {{ $relatorio->numero }}@if ($veredicto) &nbsp; <span class="selo selo-{{ $veredicto }}">{{ $rotuloSelo[$veredicto] }}</span>@endif</div>
+                <div class="doc-data">{{ $relatorio->data->format('d/m/Y') }} · Manutenção {{ strtolower($i->tipo->rotulo()) }}@if ($i->contrato) · Contrato {{ $i->contrato->numero }}@endif</div>
             </td>
         </tr>
     </table>
 
-    <div class="faixa">
-        <table>
-            <tr>
-                <td>
-                    <div class="faixa-titulo">Relatório de Intervenção Técnica</div>
-                    <div class="faixa-sub">Manutenção {{ strtolower($i->tipo->rotulo()) }}@if ($i->contrato) · Contrato {{ $i->contrato->numero }}@endif @if ($fichas->isNotEmpty()) · {{ $fichas->count() }} {{ $fichas->count() === 1 ? 'equipamento verificado' : 'equipamentos verificados' }}@endif</div>
-                </td>
-                @if ($veredicto)
-                    <td align="right" style="width: 30%;"><span class="selo selo-{{ $veredicto }}">{{ $rotuloSelo[$veredicto] }}</span></td>
-                @endif
-            </tr>
-        </table>
-    </div>
-
-    {{-- ---- Cliente / Local / Contrato ---------------------------------------------- --}}
+    {{-- ---- Dados: cliente / local / contrato / intervenção ---------------------------- --}}
     {{-- Local: o cliente final (equipamento instalado num cliente do cliente) ou a sede da
          empresa (morada do ERP) — nunca o local da intervenção. --}}
-    @php($eCliFinal = trim((string) ($e->cliente_final ?? '')))
     @php($sede = collect([trim((string) $c?->morada), trim((string) $c?->codpost)])->filter(fn ($s) => $s !== '')->implode(' · '))
-    <table class="cartoes">
-        <tr>
-            <td class="cartao" style="width: 34%;">
-                <div class="rot">Cliente</div>
-                <div class="val">{{ $c?->nome ?? '—' }}</div>
-            </td>
-            <td class="cartao" style="width: 33%;">
-                <div class="rot">Local</div>
-                <div class="val">{{ $eCliFinal !== '' ? $eCliFinal : ($sede !== '' ? $sede : '—') }}</div>
-            </td>
-            @if ($i->contrato)
-                {{-- Relatório no âmbito de um contrato. Individual (sem contrato) → cartão de âmbito. --}}
-                <td class="cartao" style="width: 33%;">
-                    <div class="rot">Contrato</div>
-                    <div class="val">{{ $i->contrato->numero }}</div>
-                    <div class="sub">{{ $i->contrato->tipo->rotulo() }}</div>
-                </td>
-            @else
-                <td class="cartao" style="width: 33%;">
-                    <div class="rot">Âmbito</div>
-                    <div class="val">Intervenção individual</div>
-                    <div class="sub">Fora de contrato de manutenção</div>
-                </td>
-            @endif
-        </tr>
-    </table>
-
-    {{-- ---- Intervenção --------------------------------------------------------------- --}}
     {{-- Principal + colaboradores, sem repetir, para o campo "Técnicos". --}}
     @php($nomesTecnicos = collect([$i->tecnico?->nome])->merge($i->tecnicos->pluck('nome'))->filter()->unique()->implode(', '))
     {{-- Datas + horas ESCRITAS pelo técnico (data_fim é o término real vindo do formulário). --}}
     @php($hIni = $i->hora_inicio ? substr($i->hora_inicio, 0, 5) : null)
     @php($hFim = $i->hora_fim ? substr($i->hora_fim, 0, 5) : null)
-    <table class="cartoes">
+    <table class="dados">
         <tr>
-            <td class="cartao" style="width: 25%;"><div class="rot">Tipo</div><div class="val">{{ $i->tipo->rotulo() }}</div></td>
-            <td class="cartao" style="width: 25%;"><div class="rot">{{ $i->tecnicos->isEmpty() ? 'Técnico' : 'Técnicos' }}</div><div class="val">{{ $nomesTecnicos ?: '—' }}</div></td>
-            <td class="cartao" style="width: 25%;"><div class="rot">Início</div><div class="val">{{ $i->data_inicio?->format('d/m/Y') ?? '—' }}{{ $hIni ? " · $hIni" : '' }}</div></td>
-            <td class="cartao" style="width: 25%;"><div class="rot">Término</div><div class="val">{{ $i->data_fim?->format('d/m/Y') ?? ($i->data_inicio?->format('d/m/Y') ?? '—') }}{{ $hFim ? " · $hFim" : '' }}</div></td>
+            <td class="r">Cliente</td>
+            <td class="v">{{ $c?->nome ?? '—' }}</td>
+            <td class="r">Local</td>
+            <td class="v">{{ $eCliFinal !== '' ? $eCliFinal : ($sede !== '' ? $sede : '—') }}</td>
+        </tr>
+        <tr>
+            @if ($i->contrato)
+                {{-- Relatório no âmbito de um contrato. Individual (sem contrato) → âmbito. --}}
+                <td class="r">Contrato</td>
+                <td class="v">{{ $i->contrato->numero }} <span style="font-weight: normal; color: #4B5563;">· {{ $i->contrato->tipo->rotulo() }}</span></td>
+            @else
+                <td class="r">Âmbito</td>
+                <td class="v">Intervenção individual <span style="font-weight: normal; color: #4B5563;">· fora de contrato</span></td>
+            @endif
+            <td class="r">Tipo</td>
+            <td class="v">{{ $i->tipo->rotulo() }}</td>
+        </tr>
+        <tr>
+            <td class="r">{{ $i->tecnicos->isEmpty() ? 'Técnico' : 'Técnicos' }}</td>
+            <td class="v">{{ $nomesTecnicos ?: '—' }}</td>
+            <td class="r">Início</td>
+            <td class="v">{{ $i->data_inicio?->format('d/m/Y') ?? '—' }}{{ $hIni ? " · $hIni" : '' }}</td>
+        </tr>
+        <tr>
+            <td class="r">Término</td>
+            <td class="v">{{ $i->data_fim?->format('d/m/Y') ?? ($i->data_inicio?->format('d/m/Y') ?? '—') }}{{ $hFim ? " · $hFim" : '' }}</td>
+            <td class="r">Equipamentos</td>
+            <td class="v">{{ $fichas->isNotEmpty() ? $fichas->count() : 1 }}</td>
         </tr>
     </table>
 
-    @if ($i->descricao_problema || $i->trabalho_realizado || $i->observacoes)
+    @if ($temTextos)
         <h2>Descrição da intervenção</h2>
         @if ($i->descricao_problema)
             <div class="bloco"><div class="rot">Problema reportado</div><div class="texto">{{ $i->descricao_problema }}</div></div>
@@ -236,19 +232,17 @@
             <tr><th style="width: 46%;">Equipamento</th><th style="width: 34%;">Local de instalação</th><th>Resultado</th></tr>
             @foreach ($fichas as $f)
                 @php($feq = $f->equipamento)
-                @php($tipoRot = $f->tipo_equipamento === 'incendio' ? 'Deteção de incêndio' : ($feq?->tipo?->rotulo() ?? 'UPS'))
                 @php($nomeEq = trim(($f->marca ?: $feq?->fabricante ?? '').' '.($f->modelo ?: $feq?->modelo ?? '')))
                 @php($locEq = trim((string) ($feq?->localizacao_instalacao ?? '')) ?: (trim((string) ($feq?->local?->morada ?? '')) ?: '—'))
                 @php($res = $f->resultado())
                 <tr>
-                    <td><b>{{ $tipoRot }}</b>@if ($nomeEq !== '') · {{ $nomeEq }}@endif<div class="mini">S/N {{ $f->serie ?: ($feq?->numero_serie ?? '—') }}</div></td>
+                    <td><b>{{ $rotuloEq($f) }}</b>@if ($nomeEq !== '') · {{ $nomeEq }}@endif<div class="mini">S/N {{ $f->serie ?: ($feq?->numero_serie ?? '—') }}</div></td>
                     <td>{{ $locEq }}</td>
                     <td><span class="selo selo-{{ $res === 'sem_dados' ? 'sem' : $res }}">{{ $rotuloSelo[$res] }}</span></td>
                 </tr>
             @endforeach
         </table>
 
-        @php($anomalias = $fichas->flatMap(fn ($f) => collect($f->anomalias())->map(fn ($a) => $a + ['quem' => trim(($f->tipo_equipamento === 'incendio' ? 'Deteção de incêndio' : ($f->equipamento?->tipo?->rotulo() ?? 'UPS')).' · '.($f->serie ?: ($f->equipamento?->numero_serie ?? '')), ' ·')])))
         @if ($anomalias->isNotEmpty())
             <div class="aviso">
                 <div class="rot">Anomalias detetadas ({{ $anomalias->count() }})</div>
@@ -258,7 +252,6 @@
             </div>
         @endif
 
-        @php($recomendacoes = $fichas->filter(fn ($f) => trim((string) $f->recomendacao) !== ''))
         @if ($recomendacoes->isNotEmpty())
             <div class="recom">
                 <div class="rot">Recomendações e próximos passos</div>
@@ -266,7 +259,7 @@
                     <div class="lista-item">
                         {{ $f->recomendacao }}
                         @if ($f->tipo_equipamento !== 'incendio' && $f->prioridade)<span class="quem">· Prioridade {{ strtolower($f->prioridade) }}</span>@endif
-                        @if ($fichas->count() > 1)<span class="quem">({{ $f->tipo_equipamento === 'incendio' ? 'Deteção de incêndio' : ($f->equipamento?->tipo?->rotulo() ?? 'UPS') }} · {{ $f->serie ?: ($f->equipamento?->numero_serie ?? '—') }})</span>@endif
+                        @if ($fichas->count() > 1)<span class="quem">({{ $rotuloEq($f) }} · {{ $f->serie ?: ($f->equipamento?->numero_serie ?? '—') }})</span>@endif
                     </div>
                 @endforeach
             </div>
@@ -275,14 +268,7 @@
 
     {{-- ---- Equipamento: extras (só quando preenchidos) -------------------------------- --}}
     {{-- Identificação do equipamento (S/N, fabricante, tipo) saiu do relatório a pedido da
-         equipa — a ficha de medições já identifica cada equipamento. Ficam só os extras,
-         aqui no resumo (antes ocupavam uma página quase vazia). --}}
-    @php($eLocaliz = trim((string) ($e->localizacao_instalacao ?? '')))
-    @php($eComponentes = collect($e->atributos['componentes'] ?? [])->filter(fn ($comp) => trim((string) ($comp['designacao'] ?? '')) !== ''))
-    {{-- Com fichas, o cliente final, a localização e os "também cobertos" já estão na tabela de
-         resultados e na identificação de cada ficha — aqui ficam só os componentes. --}}
-    @php($semFichas = $fichas->isEmpty())
-    @php($temExtrasEquipamento = $eComponentes->isNotEmpty() || ($semFichas && ($eCliFinal !== '' || $eLocaliz !== '' || $i->equipamentosCobertos->isNotEmpty())))
+         equipa — a ficha de medições já identifica cada equipamento. Ficam só os extras. --}}
     @if ($temExtrasEquipamento)
         <h2>Equipamento</h2>
         <table class="grelha">
@@ -346,7 +332,8 @@
     </div>{{-- /pagina-tecnica --}}
     @endif
 
-    {{-- ===== FICHAS DE MEDIÇÃO — uma por página (contrato e individual) =====
+    {{-- ===== FICHAS DE MEDIÇÃO — uma por página (contrato e individual); a 1.ª segue na
+         página do resumo quando ele é curto (ver $primeiraFichaEmPaginaNova).
          Nota: usar sempre a forma INLINE do PHP (como o resto desta view); um bloco raw
          de PHP partiria a compilação do Blade. --}}
     @if ($fichas->isNotEmpty())
@@ -366,7 +353,7 @@
             @php($mostrarClienteFinal = $cfTexto !== '' || ($fcli && $i->contrato && $fcli->id !== $i->contrato->cliente_id))
             @php($clienteFinalValor = $cfTexto !== '' ? $cfTexto : ($fcli?->nome ?? '—'))
             @php($resFicha = $ficha->resultado())
-            <div class="ficha-pagina">
+            <div class="ficha-pagina{{ $loop->first && ! $primeiraFichaEmPaginaNova ? ' ficha-segue' : '' }}">
                 {{-- Decide pela FICHA (tipo_equipamento gravado) com fallback ao equipamento:
                      imune a equipamentos entretanto apagados (soft delete) e cobre fichas
                      antigas gravadas antes do tipo real ser registado. --}}

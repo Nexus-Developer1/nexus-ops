@@ -144,6 +144,32 @@ class PdfRelatorioDesignTest extends TestCase
         $this->assertStringNotContainsString('>Contrato<', $html);
     }
 
+    // ---- A 1.ª página adapta-se ao resumo ------------------------------------------------
+
+    public function test_primeira_ficha_segue_na_pagina_do_resumo_quando_ele_e_curto_ou_nao_existe(): void
+    {
+        [$r, $i, $ups, $inc] = $this->cenario();
+        FichaMedicao::create(['intervencao_id' => $i->id, 'equipamento_id' => $ups->id, 'tipo_equipamento' => 'ups']);
+        FichaMedicao::create(['intervencao_id' => $i->id, 'equipamento_id' => $inc->id, 'tipo_equipamento' => 'incendio']);
+
+        // Sem textos: a 1.ª ficha segue logo a seguir ao resumo (senão a página ficava em branco);
+        // a 2.ª começa em página nova como sempre.
+        $html = $this->html($r);
+        $this->assertSame(1, substr_count($html, '<div class="ficha-pagina ficha-segue">'));
+        $this->assertSame(1, substr_count($html, '<div class="ficha-pagina">'));
+        $this->assertStringNotContainsString('Descrição da intervenção', $html); // secção omitida sem textos
+
+        // Resumo curto: idem.
+        $i->update(['trabalho_realizado' => 'Limpeza e verificação geral.']);
+        $this->assertSame(1, substr_count($this->html($r), '<div class="ficha-pagina ficha-segue">'));
+
+        // Resumo grande (enche a 1.ª página): a 1.ª ficha passa para página nova.
+        $i->update(['trabalho_realizado' => str_repeat('Medição das tensões e correntes por fase, verificação do equilíbrio de cargas. ', 25)]);
+        $html = $this->html($r);
+        $this->assertStringNotContainsString('<div class="ficha-pagina ficha-segue">', $html);
+        $this->assertSame(2, substr_count($html, '<div class="ficha-pagina">'));
+    }
+
     // ---- Rodapé em todas as páginas + fotos com título colado ----------------------------
 
     public function test_rodape_fixo_com_numero_de_pagina_e_fotos_com_titulo_colado(): void
