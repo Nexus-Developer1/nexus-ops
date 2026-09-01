@@ -20,7 +20,6 @@
         .suite { color: #6B7280; font-size: 7.5px; letter-spacing: 2.5px; margin-top: 3px; }
         .doc-titulo { font-size: 15px; font-weight: bold; color: #111827; line-height: 1.15; }
         .doc-num { font-size: 11px; color: #15803D; font-weight: bold; margin-top: 3px; }
-        .doc-data { font-size: 10px; color: #4B5563; margin-top: 1px; }
 
         /* ---- Grelha de dados (rótulo | valor) --------------------------------------- */
         .dados { border: 1px solid #D1D5DB; margin-bottom: 10px; }
@@ -124,7 +123,7 @@
     <div class="rodape-fixo">
         <table>
             <tr>
-                <td>NEXUS SOLUTIONS OPERATIONS · Relatório {{ $relatorio->numero }}@if ($c) · {{ $c->nome }}@endif</td>
+                <td>NEXUS SOLUTIONS OPERATIONS · Relatório {{ $relatorio->numero }}</td>
                 <td align="right">Documento gerado em {{ now()->format('d/m/Y H:i') }} · Página <span class="pagina"></span></td>
             </tr>
         </table>
@@ -145,8 +144,8 @@
             </td>
             <td align="right">
                 <div class="doc-titulo">Relatório de Intervenção Técnica</div>
+                {{-- Só o nº: a data e o tipo já estão na grelha de dados (Início/Término/Tipo). --}}
                 <div class="doc-num">Nº {{ $relatorio->numero }}</div>
-                <div class="doc-data">{{ $relatorio->data->format('d/m/Y') }} · Manutenção {{ strtolower($i->tipo->rotulo()) }}@if ($i->contrato) · Contrato {{ $i->contrato->numero }}@endif</div>
             </td>
         </tr>
     </table>
@@ -171,7 +170,7 @@
             @if ($i->contrato)
                 {{-- Relatório no âmbito de um contrato. Individual (sem contrato) → âmbito. --}}
                 <td class="r">Contrato</td>
-                <td class="v">{{ $i->contrato->numero }} <span style="font-weight: normal; color: #4B5563;">· {{ $i->contrato->tipo->rotulo() }}</span></td>
+                <td class="v">{{ $i->contrato->numero }}</td>
             @else
                 <td class="r">Âmbito</td>
                 <td class="v">Intervenção individual <span style="font-weight: normal; color: #4B5563;">· fora de contrato</span></td>

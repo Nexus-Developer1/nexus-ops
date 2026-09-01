@@ -171,7 +171,7 @@ class PdfRelatorioDesignTest extends TestCase
 
         $this->assertStringContainsString('class="rodape-fixo"', $html);
         $this->assertStringContainsString('content: counter(page)', $html);
-        $this->assertStringContainsString('Relatório 2026/9600 · ACME Lda', $html);
+        $this->assertStringContainsString('Relatório 2026/9600</td>', $html); // sem o cliente no rodapé
 
         // Título "Fotografias" dentro do bloco que não se parte (com a 1.ª linha de 3 fotos);
         // a 4.ª foto vai numa 2.ª tabela.
