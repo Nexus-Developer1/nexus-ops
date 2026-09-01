@@ -82,16 +82,18 @@
 
     {{-- Verificações periódicas (estado apenas) --}}
     @foreach ($periodicas as $tituloSec => $sec)
-        <div>
+        {{-- Cada verificação é um cartão com barra verde grossa em cima: sem a divisão, as três
+             listas (trimestral, semestral, anual) corriam seguidas e confundiam-se em campo. --}}
+        <div class="overflow-hidden rounded-lg border border-borda border-t-4 border-t-verde-600 bg-superficie">
             {{-- Lembretes de segurança da manutenção (só no editor, não vão para o PDF): a ordem
                  importa — inibir ANTES de tocar no sistema (vermelho, no topo) e repor em automático
                  só DEPOIS da última verificação (verde, no fim da secção). --}}
-            <div class="flex items-center justify-between">
-                <p class="campo-label">{{ $tituloSec }}</p>
+            <div class="flex items-center justify-between gap-3 bg-verde-50 px-3 py-2">
+                <p class="campo-label mb-0">{{ $tituloSec }}</p>
                 <span class="text-xs font-semibold text-perigo-600">Inibir o sistema antes de iniciar</span>
             </div>
             {{-- Uma linha horizontal a separar cada questão (leitura mais fácil em listas longas). --}}
-            <div class="divide-y divide-borda">
+            <div class="divide-y divide-borda px-3">
                 @foreach ($sec['itens'] as $k => $rotulo)
                     <div class="grid grid-cols-1 items-center gap-2 py-2 sm:grid-cols-12" wire:key="sadei-{{ $sec['chave'] }}-{{ $k }}-{{ $prefixo }}">
                         <span class="text-sm text-texto-forte sm:col-span-9">{{ $rotulo }}</span>
@@ -106,7 +108,7 @@
                     </div>
                 @endforeach
             </div>
-            <p class="mt-2 text-right text-xs font-semibold text-verde-700">Repor em automático no fim</p>
+            <p class="border-t border-borda bg-verde-50 px-3 py-2 text-right text-xs font-semibold text-verde-700">Repor em automático no fim</p>
         </div>
     @endforeach
 
