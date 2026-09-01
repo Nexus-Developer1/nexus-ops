@@ -13,7 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 // Redesign do PDF (set. 2026): a 1.ª página diz ao cliente o VEREDICTO sem ler as fichas —
-// selo Conforme / Com anomalias, tabela de resultado por equipamento, lista de anomalias e
+// tabela de equipamentos verificados (sem selo Conforme/Com anomalias — a equipa tirou-o), lista de anomalias e
 // recomendações; rodapé com nº de página em todas as páginas; marcas ✓/✗/– nas fichas.
 class PdfRelatorioDesignTest extends TestCase
 {
@@ -36,9 +36,9 @@ class PdfRelatorioDesignTest extends TestCase
         return view('pdf.relatorio', ['relatorio' => $r->fresh(), 'fotos' => []])->render();
     }
 
-    // ---- Modelo: anomalias() e resultado() ----------------------------------------------
+    // ---- Modelo: anomalias() ----------------------------------------------
 
-    public function test_ficha_ups_lista_as_anomalias_e_da_o_veredicto(): void
+    public function test_ficha_ups_lista_as_anomalias(): void
     {
         [, $i, $ups] = $this->cenario();
 
@@ -49,15 +49,11 @@ class PdfRelatorioDesignTest extends TestCase
         $anomalias = $ficha->anomalias();
         $this->assertSame(['Ventiladores', 'Baterias em funcionamento', 'Temperatura da UPS acima de 25 °C'], array_column($anomalias, 'item'));
         $this->assertSame('Ruído anómalo', $anomalias[0]['nota']);
-        $this->assertSame('anomalias', $ficha->resultado());
 
-        // Tudo OK → conforme; nada marcado → sem dados (não se afirma conformidade do nada).
+        // Tudo OK → sem anomalias.
         $ficha->update(['verificacoes' => ['limpeza' => ['estado' => 'ok', 'nota' => '']], 'baterias_funcionamento' => 'ok', 'temperatura' => 22]);
         $this->assertSame([], $ficha->fresh()->anomalias());
-        $this->assertSame('conforme', $ficha->fresh()->resultado());
 
-        $ficha->update(['verificacoes' => [], 'baterias_funcionamento' => null]);
-        $this->assertSame('sem_dados', $ficha->fresh()->resultado());
     }
 
     public function test_ficha_sadei_lista_os_ko_das_seccoes_cilindros_e_final(): void
@@ -74,11 +70,10 @@ class PdfRelatorioDesignTest extends TestCase
 
         $itens = array_column($ficha->anomalias(), 'item');
         $this->assertSame(['Filtro', 'Cilindro C1', 'Equipamento em modo automático, com a solenoide colocada, e a funcionar corretamente'], $itens);
-        $this->assertSame('anomalias', $ficha->resultado());
 
-        // N/A não é anomalia nem "sem dados".
+        // N/A não é anomalia.
         $ficha->update(['sadei' => ['sensores' => ['outro' => ['estado' => 'na', 'nota' => '']]]]);
-        $this->assertSame('conforme', $ficha->fresh()->resultado());
+        $this->assertSame([], $ficha->fresh()->anomalias());
     }
 
     // ---- 1.ª página: veredicto, resultado por equipamento, anomalias, recomendações -----
@@ -93,13 +88,14 @@ class PdfRelatorioDesignTest extends TestCase
 
         $html = $this->html($r);
 
-        // Selo global na faixa (uma ficha com anomalias chega) + um selo por ficha no resumo.
-        $this->assertStringContainsString('selo-anomalias">Com anomalias', $html);
-        $this->assertStringContainsString('Resultado da intervenção', $html);
+        // Sem selo "Conforme / Com anomalias" em lado nenhum (pedido da equipa).
+        $this->assertStringNotContainsString('Com anomalias', $html);
+        $this->assertStringNotContainsString('Conforme', $html);
+        $this->assertStringNotContainsString('class="selo', $html);
+        $this->assertStringContainsString('Equipamentos verificados', $html);
         $this->assertStringContainsString('<b>UPS</b> · Riello NPW', $html);
         $this->assertStringContainsString('<b>Deteção de incêndio</b>', $html);
         $this->assertStringContainsString('Sala técnica', $html);               // local de instalação
-        $this->assertStringContainsString('selo-conforme">Conforme', $html);    // a ficha SADEI está toda OK
 
         // Anomalias e recomendações listadas, com o equipamento a que pertencem.
         $this->assertStringContainsString('Anomalias detetadas (1)', $html);
@@ -118,7 +114,7 @@ class PdfRelatorioDesignTest extends TestCase
         $this->assertSame(1, substr_count($html, 'cel-nok">✗'));
     }
 
-    public function test_tudo_conforme_da_selo_verde_e_nao_ha_caixa_de_anomalias(): void
+    public function test_tudo_ok_nao_ha_caixa_de_anomalias(): void
     {
         [$r, $i, $ups] = $this->cenario();
         FichaMedicao::create(['intervencao_id' => $i->id, 'equipamento_id' => $ups->id, 'tipo_equipamento' => 'ups',
@@ -126,20 +122,19 @@ class PdfRelatorioDesignTest extends TestCase
 
         $html = $this->html($r);
 
-        $this->assertStringContainsString('selo-conforme">Conforme', $html);
+        $this->assertStringNotContainsString('Conforme', $html);
         $this->assertStringNotContainsString('Com anomalias', $html);
         $this->assertStringNotContainsString('Anomalias detetadas', $html);
         $this->assertStringNotContainsString('Recomendações e próximos passos', $html); // sem recomendação
     }
 
-    public function test_sem_fichas_nao_ha_veredicto_nem_resumo(): void
+    public function test_sem_fichas_nao_ha_resumo(): void
     {
         [$r] = $this->cenario();
 
         $html = $this->html($r);
 
-        $this->assertStringNotContainsString('Resultado da intervenção', $html);
-        $this->assertStringNotContainsString('class="selo', $html);
+        $this->assertStringNotContainsString('Equipamentos verificados', $html);
         $this->assertStringContainsString('Intervenção individual', $html);   // sem contrato → cartão de âmbito
         $this->assertStringNotContainsString('>Contrato<', $html);
     }

@@ -709,45 +709,4 @@ class FichaMedicao extends Model
 
         return $lista;
     }
-
-    /**
-     * Veredicto da ficha para o cliente: 'anomalias' (há KO/NOK), 'conforme' (verificações
-     * feitas, tudo OK) ou 'sem_dados' (nada verificado — não se afirma conformidade do nada).
-     */
-    public function resultado(): string
-    {
-        if ($this->anomalias() !== []) {
-            return 'anomalias';
-        }
-
-        return $this->temVerificacoes() ? 'conforme' : 'sem_dados';
-    }
-
-    /** Há pelo menos um estado (OK/KO/NOK/N/A) marcado pelo técnico? */
-    private function temVerificacoes(): bool
-    {
-        if ($this->tipo_equipamento === 'incendio') {
-            $g = $this->sadei ?? [];
-            if (filled($g['final_automatico'] ?? null)) {
-                return true;
-            }
-            foreach (['central', 'detecao', 'aspiracao', 'sensores', 'trimestral', 'semestral', 'anual', 'cilindros', 'piloto'] as $sec) {
-                foreach ((array) ($g[$sec] ?? []) as $item) {
-                    if (is_array($item) && filled($item['estado'] ?? null)) {
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        foreach ((array) $this->verificacoes as $v) {
-            if (is_array($v) && filled($v['estado'] ?? null)) {
-                return true;
-            }
-        }
-
-        return filled($this->baterias_funcionamento) || filled($this->carga_a_funcionar) || filled($this->ups_modo_normal);
-    }
 }

@@ -22,12 +22,6 @@
         .doc-num { font-size: 11px; color: #15803D; font-weight: bold; margin-top: 3px; }
         .doc-data { font-size: 10px; color: #4B5563; margin-top: 1px; }
 
-        /* Selos de resultado (cabeçalho, resumo e fichas): cheios, sem meios-tons. */
-        .selo { display: inline-block; font-size: 8.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.8px; padding: 3px 9px; border-radius: 3px; white-space: nowrap; color: #ffffff; }
-        .selo-conforme { background-color: #15803D; }
-        .selo-anomalias { background-color: #B91C1C; }
-        .selo-sem { background-color: #6B7280; }
-
         /* ---- Grelha de dados (rótulo | valor) --------------------------------------- */
         .dados { border: 1px solid #D1D5DB; margin-bottom: 10px; }
         .dados td { border: 1px solid #D1D5DB; padding: 5px 8px; font-size: 10.5px; }
@@ -112,11 +106,8 @@
     {{-- local pode ser null (equipamento "por associar" do PHC) — o PDF não pode rebentar. --}}
     @php($c = $e->local?->cliente)
     @php($fichas = $i->fichasMedicao)
-    {{-- Veredicto global: uma ficha com anomalias chega para o relatório ser "com anomalias";
-         "conforme" só quando TODAS as fichas têm verificações e nenhuma tem anomalias. --}}
-    @php($resultados = $fichas->map(fn ($f) => $f->resultado()))
-    @php($veredicto = $resultados->contains('anomalias') ? 'anomalias' : ($resultados->isNotEmpty() && $resultados->every(fn ($r) => $r === 'conforme') ? 'conforme' : null))
-    @php($rotuloSelo = ['conforme' => 'Conforme', 'anomalias' => 'Com anomalias', 'sem_dados' => 'Sem verificações'])
+    {{-- Sem selo "Conforme / Com anomalias" (a equipa não o quer no PDF): o que o técnico marcou
+         KO fica visível na caixa "Anomalias detetadas" e nas próprias fichas. --}}
     @php($marca = fn ($v, $alvo) => ($v ?? null) === $alvo ? (in_array($alvo, ['ko', 'nok'], true) ? '✗' : ($alvo === 'na' ? '–' : '✓')) : '')
     @php($rotuloEq = fn ($f) => $f->tipo_equipamento === 'incendio' ? 'Deteção de incêndio' : ($f->equipamento?->tipo?->rotulo() ?? 'UPS'))
     @php($anomalias = $fichas->flatMap(fn ($f) => collect($f->anomalias())->map(fn ($a) => $a + ['quem' => trim($rotuloEq($f).' · '.($f->serie ?: ($f->equipamento?->numero_serie ?? '')), ' ·')])))
@@ -154,7 +145,7 @@
             </td>
             <td align="right">
                 <div class="doc-titulo">Relatório de Intervenção Técnica</div>
-                <div class="doc-num">Nº {{ $relatorio->numero }}@if ($veredicto) &nbsp; <span class="selo selo-{{ $veredicto }}">{{ $rotuloSelo[$veredicto] }}</span>@endif</div>
+                <div class="doc-num">Nº {{ $relatorio->numero }}</div>
                 <div class="doc-data">{{ $relatorio->data->format('d/m/Y') }} · Manutenção {{ strtolower($i->tipo->rotulo()) }}@if ($i->contrato) · Contrato {{ $i->contrato->numero }}@endif</div>
             </td>
         </tr>
@@ -215,22 +206,20 @@
         @endif
     @endif
 
-    {{-- ---- Resultado por equipamento (só com fichas) --------------------------------- --}}
-    {{-- O cliente vê logo na 1.ª página o veredicto de cada equipamento, as anomalias e as
-         recomendações — sem ter de ler as fichas técnicas que se seguem. --}}
+    {{-- ---- Equipamentos verificados (só com fichas) ---------------------------------- --}}
+    {{-- O cliente vê logo na 1.ª página os equipamentos, as anomalias e as recomendações —
+         sem ter de ler as fichas técnicas que se seguem. --}}
     @if ($fichas->isNotEmpty())
-        <h2>Resultado da intervenção</h2>
+        <h2>Equipamentos verificados</h2>
         <table class="tab">
-            <tr><th style="width: 46%;">Equipamento</th><th style="width: 34%;">Local de instalação</th><th>Resultado</th></tr>
+            <tr><th style="width: 55%;">Equipamento</th><th>Local de instalação</th></tr>
             @foreach ($fichas as $f)
                 @php($feq = $f->equipamento)
                 @php($nomeEq = trim(($f->marca ?: $feq?->fabricante ?? '').' '.($f->modelo ?: $feq?->modelo ?? '')))
                 @php($locEq = trim((string) ($feq?->localizacao_instalacao ?? '')) ?: (trim((string) ($feq?->local?->morada ?? '')) ?: '—'))
-                @php($res = $f->resultado())
                 <tr>
                     <td><b>{{ $rotuloEq($f) }}</b>@if ($nomeEq !== '') · {{ $nomeEq }}@endif<div class="mini">S/N {{ $f->serie ?: ($feq?->numero_serie ?? '—') }}</div></td>
                     <td>{{ $locEq }}</td>
-                    <td><span class="selo selo-{{ $res === 'sem_dados' ? 'sem' : $res }}">{{ $rotuloSelo[$res] }}</span></td>
                 </tr>
             @endforeach
         </table>
@@ -344,7 +333,6 @@
             @php($locDerivado = $locMorada !== '' ? $locMorada : ($locSede !== '' ? $locSede : '—'))
             @php($mostrarClienteFinal = $cfTexto !== '' || ($fcli && $i->contrato && $fcli->id !== $i->contrato->cliente_id))
             @php($clienteFinalValor = $cfTexto !== '' ? $cfTexto : ($fcli?->nome ?? '—'))
-            @php($resFicha = $ficha->resultado())
             <div class="ficha-pagina">
                 {{-- Decide pela FICHA (tipo_equipamento gravado) com fallback ao equipamento:
                      imune a equipamentos entretanto apagados (soft delete) e cobre fichas
@@ -356,7 +344,6 @@
                             <div class="ficha-titulo">{{ $eIncendio ? 'Ficha de Verificações SADEI' : 'Ficha de Medições — UPS' }}</div>
                             <div class="ficha-sub">Relatório {{ $relatorio->numero }} · {{ $ficha->serie ?: ($fe?->numero_serie ?? '—') }}@if (trim(($ficha->marca ?: '').' '.($ficha->modelo ?: '')) !== '') · {{ trim(($ficha->marca ?: '').' '.($ficha->modelo ?: '')) }}@endif</div>
                         </td>
-                        <td align="right" style="width: 30%;"><span class="selo selo-{{ $resFicha === 'sem_dados' ? 'sem' : $resFicha }}">{{ $rotuloSelo[$resFicha] }}</span></td>
                     </tr>
                 </table>
 
