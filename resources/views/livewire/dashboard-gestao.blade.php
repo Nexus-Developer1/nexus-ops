@@ -107,9 +107,18 @@
                 </section>
 
                 <section class="cartao">
-                    <div class="flex items-center justify-between px-6 py-5">
-                        <h2 class="text-lg font-semibold text-texto-forte">Próximos alertas</h2>
-                        <a href="{{ route('alertas') }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">Ver alertas</a>
+                    {{-- Mesmo cabeçalho do cartão da agenda: uma linha, filtro + link à direita. --}}
+                    <div class="flex items-center gap-3 px-6 py-5">
+                        <h2 class="min-w-0 flex-1 truncate text-lg font-semibold text-texto-forte">Próximos alertas</h2>
+                        <div class="flex shrink-0 items-center gap-3">
+                            <select wire:model.live="alertasTecnico" class="campo-select w-40 py-1.5 text-sm" title="Só os alertas atribuídos a">
+                                <option value="">Todos os técnicos</option>
+                                @foreach ($tecnicosAgenda as $t)
+                                    <option value="{{ $t->id }}">{{ $t->nome }}</option>
+                                @endforeach
+                            </select>
+                            <a href="{{ route('alertas') }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">Ver alertas</a>
+                        </div>
                     </div>
                     <ul class="border-t border-borda">
                         @forelse ($proximosAlertas as $a)
@@ -126,7 +135,7 @@
                                 </div>
                             </li>
                         @empty
-                            <li class="px-6 py-8 text-center text-sm text-texto-medio">Sem alertas em aberto — baterias, renovações e SLA em dia.</li>
+                            <li class="px-6 py-8 text-center text-sm text-texto-medio">{{ $alertasTecnico !== '' ? 'Sem alertas atribuídos a este técnico.' : 'Sem alertas em aberto — baterias, renovações e SLA em dia.' }}</li>
                         @endforelse
                     </ul>
                 </section>

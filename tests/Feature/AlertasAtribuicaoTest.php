@@ -162,6 +162,13 @@ class AlertasAtribuicaoTest extends TestCase
         Livewire::actingAs($this->admin)->test(DashboardGestao::class)
             ->assertSee('SO-RUI')->assertSee('SO-JULIO')->assertSee('Rui Pereira');
 
+        // Filtro do cartão de alertas: um técnico escolhido → só os ATRIBUÍDOS a ele.
+        Livewire::actingAs($this->admin)->test(DashboardGestao::class)
+            ->set('alertasTecnico', (string) $this->julio->id)
+            ->assertSee('SO-JULIO')->assertDontSee('SO-RUI')->assertDontSee('EQUIPA-TODA')
+            ->set('alertasTecnico', '')
+            ->assertSee('EQUIPA-TODA');
+
         // Painel: técnico por defeito "os meus"; admin por defeito "todos"; filtros equipa / pessoa.
         Livewire::actingAs($this->julio)->test(Painel::class)
             ->assertSee('SO-JULIO')->assertSee('EQUIPA-TODA')->assertDontSee('SO-RUI')

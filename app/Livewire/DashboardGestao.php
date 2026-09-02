@@ -40,6 +40,10 @@ class DashboardGestao extends Component
     #[\Livewire\Attributes\Session]
     public string $agendaTecnico = ''; // '' = todos | id do utilizador
 
+    // Filtro do cartão "Próximos alertas": só os alertas ATRIBUÍDOS a um técnico.
+    #[\Livewire\Attributes\Session]
+    public string $alertasTecnico = ''; // '' = todos | id do utilizador
+
     // Força a sincronização de TODOS os dados do PHC já (sem esperar pelo agendado das
     // 08h/13h/19h). Corre em background na fila, em modo SILENCIOSO — sem email de
     // resultado (isso é só no agendado); o desfecho aparece no dashboard e fica no log.
@@ -103,13 +107,17 @@ class DashboardGestao extends Component
     {
         // Só o que este utilizador deve ver (equipa + atribuídos a ele; admin vê tudo).
         $listaAlertas = $alertas->recolherPara(auth()->user());
+        // Filtro do cartão: um técnico escolhido → só os alertas atribuídos a ele.
+        $alertasFiltrados = ctype_digit($this->alertasTecnico)
+            ? $listaAlertas->filter(fn ($a) => in_array((int) $this->alertasTecnico, $a['atribuido_a'], true))->values()
+            : $listaAlertas;
 
         return view('livewire.dashboard-gestao', [
             'resumo' => $metricas->resumo(),
             'renovacoes' => $metricas->renovacoesProximas(),
             'numAlertas' => $listaAlertas->count(),
             // Próximos alertas (baterias, renovações, visitas em atraso, SLA) — os mais graves primeiro.
-            'proximosAlertas' => $listaAlertas->take(6),
+            'proximosAlertas' => $alertasFiltrados->take(6),
             // Agenda dos próximos 7 dias (cancelados fora; eventos multi-dia entram se o intervalo
             // tocar a janela). Um evento sai ASSIM QUE ACABA (fim < agora) — com o corte no início
             // do dia, uma reunião das 9h–11h ficava no cartão até à meia-noite (pedido da equipa).
