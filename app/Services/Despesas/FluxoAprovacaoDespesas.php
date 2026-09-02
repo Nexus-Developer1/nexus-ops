@@ -13,9 +13,10 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Notification as Notificador;
 
 // Processo de validação das despesas (pedido da equipa):
-//   guardar → PENDENTE + email a quem criou, ao aprovador e ao financeiro
-//   aprovador aprova/rejeita → email de decisão aos mesmos
-//   rejeitada e corrigida → volta a PENDENTE (novo email); aprovada = fechada, ninguém edita.
+//   guardar → PENDENTE + emails: ao APROVADOR o pedido de aprovação; a quem criou uma
+//   confirmação de submissão; ao financeiro um registo informativo (sem a parte de aprovar)
+//   aprovador aprova/rejeita → email de decisão IGUAL para os três
+//   rejeitada e corrigida → volta a PENDENTE (novos emails); aprovada = fechada, ninguém edita.
 class FluxoAprovacaoDespesas
 {
     // Aprovadores: emails em config(despesas.aprovadores) + administradores (para o fluxo
@@ -42,7 +43,33 @@ class FluxoAprovacaoDespesas
 
         Auditor::registar($reenvio ? 'despesa_resubmetida' : 'despesa_submetida', $registo, ['total' => $registo->total()]);
 
-        $this->notificar($registo, new DespesaSubmetida($this->instantaneo($registo->fresh()), $reenvio));
+        // Cada papel recebe a SUA variante do email; quem acumular papéis (ex.: o aprovador
+        // submete a própria despesa) recebe só a variante mais forte, sem duplicar.
+        $registo->loadMissing('colaborador');
+        $instantaneo = $this->instantaneo($registo->fresh());
+        $criador = $registo->colaborador;
+        $aprovadores = config('despesas.aprovadores', []);
+        $enviados = [];
+
+        $enviar = function (string $email, ?User $conta, string $variante) use (&$enviados, $instantaneo, $reenvio) {
+            $email = strtolower(trim($email));
+            if ($email === '' || in_array($email, $enviados, true)) {
+                return;
+            }
+            $notificacao = new DespesaSubmetida($instantaneo, $reenvio, $variante);
+            $conta ? $conta->notify($notificacao) : Notificador::route('mail', $email)->notify($notificacao);
+            $enviados[] = $email;
+        };
+
+        foreach ($aprovadores as $email) {
+            $enviar($email, $this->contaAtiva($email), 'aprovador');
+        }
+        if ($criador && $criador->ativo && filled($criador->email)) {
+            $enviar($criador->email, $criador, 'criador');
+        }
+        foreach (config('despesas.notificar', []) as $email) {
+            $enviar($email, $this->contaAtiva($email), 'informativo'); // financeiro e afins
+        }
     }
 
     /** @throws AuthorizationException */
@@ -67,13 +94,13 @@ class FluxoAprovacaoDespesas
             'motivo' => $aprovar ? null : trim((string) $motivo),
         ]));
 
-        $this->notificar($registo, new DespesaDecidida($this->instantaneo($registo->fresh())));
+        $this->notificarDecisao($registo, new DespesaDecidida($this->instantaneo($registo->fresh())));
     }
 
-    // Destinatários: quem criou (conta da app) + os emails de config, sem duplicar quando
-    // o criador é um deles. Emails de config com conta ativa notificam a conta; os restantes
-    // (ex.: financeiro@) vão por notificação "on demand".
-    private function notificar(RegistoDespesa $registo, Notification $notificacao): void
+    // Decisão: o MESMO email para quem criou, aprovador e financeiro, sem duplicar quando o
+    // criador é um deles. Emails de config com conta ativa notificam a conta; os restantes
+    // vão por notificação "on demand".
+    private function notificarDecisao(RegistoDespesa $registo, Notification $notificacao): void
     {
         $registo->loadMissing('colaborador');
         $criador = $registo->colaborador;
@@ -84,15 +111,19 @@ class FluxoAprovacaoDespesas
             $enviados[] = strtolower($criador->email);
         }
 
-        foreach (config('despesas.notificar', []) as $email) {
+        foreach (array_unique(array_merge(config('despesas.aprovadores', []), config('despesas.notificar', []))) as $email) {
             if ($email === '' || in_array($email, $enviados, true)) {
                 continue;
             }
-            // Com conta na app → notifica a conta (email tratado pelo nome); sem conta → solto.
-            $conta = User::whereRaw('lower(email) = ?', [$email])->where('ativo', true)->first();
+            $conta = $this->contaAtiva($email);
             $conta ? $conta->notify($notificacao) : Notificador::route('mail', $email)->notify($notificacao);
             $enviados[] = $email;
         }
+    }
+
+    private function contaAtiva(string $email): ?User
+    {
+        return User::whereRaw('lower(email) = ?', [strtolower(trim($email))])->where('ativo', true)->first();
     }
 
     // Instantâneo do registo para o email (vai pela fila — não depende do modelo existir).

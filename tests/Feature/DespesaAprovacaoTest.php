@@ -83,19 +83,42 @@ class DespesaAprovacaoTest extends TestCase
         $this->assertSame(EstadoDespesa::Pendente, $registo->estado);
         $this->assertNotNull($registo->submetido_em);
 
-        // Quem criou (conta) + os dois emails de config (sem conta → "on demand").
+        // Cada papel recebe a SUA variante: criador = confirmação (sem a parte de aprovar);
+        // aprovador = pedido de aprovação; financeiro = informativo.
         Notification::assertSentTo($joao, DespesaSubmetida::class, function (DespesaSubmetida $n) use ($joao, $registo) {
             $html = (string) $n->toMail($joao)->render();
 
-            return str_contains($html, 'Almoço ACME')
+            return $n->variante === 'criador'
+                && str_contains($html, 'Almoço ACME')
                 && str_contains($html, '14,20')
                 && str_contains($html, route('despesas.registo.ficha', $registo))
-                && str_contains($html, 'aguarda aprovação')
+                && str_contains($html, 'A sua despesa foi submetida')
+                && str_contains($html, 'Será avisado(a) por email')
+                && ! str_contains($html, 'a sua aprovação')
+                && ! str_contains($html, 'Ver e aprovar')
                 && str_contains($html, 'Nexus Infra')          // template proprio da app (tema verde)
                 && ! str_contains($html, 'Regards');
         });
-        Notification::assertSentOnDemand(DespesaSubmetida::class, fn ($n, $canais, $notifiable) => $notifiable->routes['mail'] === 'pgouveia@nxs.pt');
-        Notification::assertSentOnDemand(DespesaSubmetida::class, fn ($n, $canais, $notifiable) => $notifiable->routes['mail'] === 'financeiro@nxs.pt');
+        Notification::assertSentOnDemand(DespesaSubmetida::class, function (DespesaSubmetida $n, $canais, $notifiable) {
+            if ($notifiable->routes['mail'] !== 'pgouveia@nxs.pt') {
+                return false;
+            }
+            $html = (string) $n->toMail($notifiable)->render();
+
+            return $n->variante === 'aprovador'
+                && str_contains($html, 'a sua aprovação')
+                && str_contains($html, 'Ver e aprovar despesa');
+        });
+        Notification::assertSentOnDemand(DespesaSubmetida::class, function (DespesaSubmetida $n, $canais, $notifiable) {
+            if ($notifiable->routes['mail'] !== 'financeiro@nxs.pt') {
+                return false;
+            }
+            $html = (string) $n->toMail($notifiable)->render();
+
+            return $n->variante === 'informativo'
+                && str_contains($html, 'Receberá novo email com a decisão')
+                && ! str_contains($html, 'Ver e aprovar');
+        });
         Notification::assertSentOnDemandTimes(DespesaSubmetida::class, 2);
     }
 
@@ -104,7 +127,9 @@ class DespesaAprovacaoTest extends TestCase
         $paulo = $this->aprovador();
         $this->registar($paulo);
 
-        Notification::assertSentTo($paulo, DespesaSubmetida::class);
+        // Aprovador que submete a própria despesa: UMA notificação, na variante mais forte.
+        Notification::assertSentTo($paulo, DespesaSubmetida::class, fn (DespesaSubmetida $n) => $n->variante === 'aprovador');
+        Notification::assertSentToTimes($paulo, DespesaSubmetida::class, 1);
         Notification::assertSentOnDemandTimes(DespesaSubmetida::class, 1); // só o financeiro
         Notification::assertSentOnDemand(DespesaSubmetida::class, fn ($n, $canais, $notifiable) => $notifiable->routes['mail'] === 'financeiro@nxs.pt');
     }

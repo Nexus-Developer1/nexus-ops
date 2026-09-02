@@ -7,8 +7,11 @@
 </head>
 {{-- Email do processo de validação das despesas (submissão e decisão) — mesmo layout dos
      outros emails da app (agenda, MFA): barra de cor, marca, cartão com os dados, botão verde.
-     $modo: 'submetida' | 'decidida'; $r: instantâneo (FluxoAprovacaoDespesas::instantaneo). --}}
+     $modo: 'submetida' | 'decidida'; $variante (só na submissão): 'aprovador' (pedido de
+     aprovação) | 'criador' (confirmação) | 'informativo' (financeiro, sem a parte de aprovar);
+     $r: instantâneo (FluxoAprovacaoDespesas::instantaneo). --}}
 @php
+    $variante = $variante ?? '';
     $aprovada = ($r['estado'] ?? '') === 'aprovada';
     $rejeitada = ($r['estado'] ?? '') === 'rejeitada';
     $cor = $modo === 'decidida' ? ($aprovada ? '#16a34a' : '#dc2626') : '#a16207';
@@ -39,10 +42,16 @@
                                     A despesa nº {{ $r['id'] }} de <strong style="color:#111827;">{{ $r['colaborador'] }}</strong> ({{ $total }}) foi
                                     <strong style="color:{{ $cor }};">{{ $aprovada ? 'APROVADA' : 'REJEITADA' }}</strong>
                                     por <strong style="color:#111827;">{{ $r['decisor'] ?? '—' }}</strong>@if ($r['decidido_em']) em {{ $r['decidido_em'] }}@endif.
+                                @elseif ($variante === 'criador')
+                                    A sua despesa {{ $reenvio ? 'foi corrigida e reenviada' : 'foi submetida' }} e <strong style="color:#111827;">aguarda aprovação</strong>.
+                                    Será avisado(a) por email assim que for aprovada ou rejeitada — não precisa de fazer mais nada.
+                                @elseif ($variante === 'informativo')
+                                    Foi {{ $reenvio ? 'corrigida e reenviada' : 'registada' }} uma despesa de <strong style="color:#111827;">{{ $r['colaborador'] }}</strong>, que <strong style="color:#111827;">aguarda aprovação</strong>.
+                                    Receberá novo email com a decisão do aprovador.
                                 @elseif ($reenvio)
-                                    A despesa nº {{ $r['id'] }} foi corrigida e volta a <strong style="color:#111827;">aguardar aprovação</strong>.
+                                    A despesa nº {{ $r['id'] }} foi corrigida e volta a aguardar <strong style="color:#111827;">a sua aprovação</strong>.
                                 @else
-                                    Foi registada uma despesa que <strong style="color:#111827;">aguarda aprovação</strong>.
+                                    Foi registada uma despesa que aguarda <strong style="color:#111827;">a sua aprovação</strong>.
                                 @endif
                             </p>
 
@@ -76,15 +85,19 @@
 
                             <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 22px;">
                                 <tr><td style="border-radius:10px; background-color:#16a34a;">
-                                    <a href="{{ $r['url'] }}" style="display:inline-block; padding:12px 22px; font-size:14px; font-weight:600; color:#ffffff; text-decoration:none;">Ver despesa</a>
+                                    <a href="{{ $r['url'] }}" style="display:inline-block; padding:12px 22px; font-size:14px; font-weight:600; color:#ffffff; text-decoration:none;">{{ $modo === 'submetida' && $variante === 'aprovador' ? 'Ver e aprovar despesa' : 'Ver despesa' }}</a>
                                 </td></tr>
                             </table>
 
                             <p style="margin:0 0 6px; font-size:12px; line-height:1.6; color:#9ca3af;">
                                 @if ($modo === 'decidida')
                                     Recebe este email porque registou a despesa ou faz parte do circuito de aprovação (aprovador / financeiro).
+                                @elseif ($variante === 'aprovador')
+                                    A aprovação ou rejeição é feita na ficha da despesa. Recebe este email porque é o aprovador das despesas.
+                                @elseif ($variante === 'criador')
+                                    Recebe este email como confirmação da submissão da sua despesa.
                                 @else
-                                    A aprovação ou rejeição é feita na ficha da despesa, pelo aprovador. Recebe este email porque registou a despesa ou faz parte do circuito de aprovação.
+                                    Recebe este email a título informativo, por fazer parte do circuito das despesas.
                                 @endif
                             </p>
                         </td>
