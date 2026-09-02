@@ -14,7 +14,6 @@
             @endif
 
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Relatórios</h1>
-            <p class="mt-2 text-sm text-texto-medio">Folhas de obra das intervenções, prontas a enviar ao cliente.</p>
 
             {{-- Pesquisa + filtros --}}
             <div class="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
