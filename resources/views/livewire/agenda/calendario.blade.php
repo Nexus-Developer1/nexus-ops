@@ -7,7 +7,6 @@
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Agenda</h1>
-                    <p class="mt-2 text-sm text-texto-medio">Arraste para reagendar · selecione um intervalo livre para criar evento.</p>
                 </div>
                 <div class="flex w-full flex-wrap items-center gap-3 sm:w-auto">
                     {{-- Filtro por técnico (pelo nome usado nos eventos). Disponível para todos
