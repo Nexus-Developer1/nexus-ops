@@ -62,9 +62,10 @@
                             @endif
 
                             @if ($tipo !== 'removido')
+                                {{-- Botão "à prova de Outlook" (padding/cor na célula + span branco). --}}
                                 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 22px;">
-                                    <tr><td style="border-radius:10px; background-color:#16a34a;">
-                                        <a href="{{ $url }}" style="display:inline-block; padding:12px 22px; font-size:14px; font-weight:600; color:#ffffff; text-decoration:none;">Abrir a agenda</a>
+                                    <tr><td align="center" bgcolor="#16a34a" style="border-radius:10px; background-color:#16a34a; padding:12px 22px; mso-padding-alt:12px 22px;">
+                                        <a href="{{ $url }}" target="_blank" style="font-size:14px; font-weight:600; color:#ffffff; text-decoration:none; display:inline-block;"><span style="color:#ffffff;">Abrir a agenda</span></a>
                                     </td></tr>
                                 </table>
                             @endif
