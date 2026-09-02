@@ -73,12 +73,13 @@
             {{-- Agenda dos próximos dias + próximos alertas (equipamentos/contratos) --}}
             <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <section class="cartao">
-                    <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
-                        <h2 class="text-lg font-semibold text-texto-forte">Agenda — próximos 7 dias</h2>
-                        {{-- ml-auto: mesmo quando a linha parte (cartão estreito), o filtro fica encostado à direita. --}}
-                        <div class="ml-auto flex items-center gap-3">
+                    {{-- UMA linha sempre: título à esquerda (trunca se faltar espaço), filtro + link
+                         encostados à direita — sem wrap, para não cair para uma 2.ª linha. --}}
+                    <div class="flex items-center gap-3 px-6 py-5">
+                        <h2 class="min-w-0 flex-1 truncate text-lg font-semibold text-texto-forte">Agenda — próximos 7 dias</h2>
+                        <div class="flex shrink-0 items-center gap-3">
                             {{-- Filtro por técnico (principal ou adicional do evento). --}}
-                            <select wire:model.live="agendaTecnico" class="campo-select w-48 py-1.5 text-sm" title="Ver a agenda de um técnico">
+                            <select wire:model.live="agendaTecnico" class="campo-select w-40 py-1.5 text-sm" title="Ver a agenda de um técnico">
                                 <option value="">Todos os técnicos</option>
                                 @foreach ($tecnicosAgenda as $t)
                                     <option value="{{ $t->id }}">{{ $t->nome }}</option>
