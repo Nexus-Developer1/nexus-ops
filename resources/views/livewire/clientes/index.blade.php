@@ -5,10 +5,7 @@
         <div class="mx-auto max-w-6xl">
 
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Clientes</h1>
-            <p class="mt-2 text-sm text-texto-medio">
-                {{ $clientes->total() }} {{ \Illuminate\Support\Str::plural('cliente', $clientes->total()) }} ·
-                sincronizado{{ $clientes->total() === 1 ? '' : 's' }} do ERP (só consulta).
-            </p>
+            <p class="mt-2 text-sm text-texto-medio">{{ $clientes->total() }} {{ \Illuminate\Support\Str::plural('cliente', $clientes->total()) }}</p>
 
             {{-- Pesquisa + ordenação --}}
             <div class="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
