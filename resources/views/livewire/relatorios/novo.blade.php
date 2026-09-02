@@ -308,7 +308,6 @@
                             @if ($tecnicos->isEmpty())
                                 <p class="mt-1.5 text-xs text-texto-fraco">Não há técnicos ativos para selecionar.</p>
                             @else
-                                <p class="mt-1.5 text-xs text-texto-fraco">Seleciona quem esteve na intervenção — pode não ser quem está a redigir o relatório.</p>
                             @endif
                             @error('tecnicoIds') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             @error('tecnicoIds.*') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
