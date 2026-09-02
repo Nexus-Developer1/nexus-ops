@@ -5,7 +5,6 @@
         <div class="mx-auto max-w-6xl">
 
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Dossiers PHC</h1>
-            <p class="mt-2 text-sm text-texto-medio">Propostas e encomendas do PHC · {{ number_format($dossiers->total(), 0, ',', '.') }} {{ \Illuminate\Support\Str::plural('dossiê', $dossiers->total()) }}.</p>
 
             {{-- Filtros --}}
             <div class="mt-8 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
