@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-02
 
-- 🛠️ **Calendário partilhado (Graph): ressincronização diária às 06h30** — o calendário "Agenda Nexus Infra" é só de leitura para a equipa (permissões `read`, confirmadas), mas a mailbox dona (Suporte) conseguiria editá-lo; a passagem diária de `agenda:graph` desfaz qualquer edição/remoção manual feita no Outlook — **a agenda do Nexus Infra é a única fonte de verdade**. Só corre com `MS_GRAPH_CALENDARIO_ATIVO=true`. (A via foi ativada hoje: consentimento concedido, carga inicial de 15 eventos, partilhado com a equipa toda.) Sem migração; `optimize`. `hash`
+- 🛠️ **Calendário partilhado (Graph): ressincronização diária às 06h30** — o calendário "Agenda Nexus Infra" é só de leitura para a equipa (permissões `read`, confirmadas), mas a mailbox dona (Suporte) conseguiria editá-lo; a passagem diária de `agenda:graph` desfaz qualquer edição/remoção manual feita no Outlook — **a agenda do Nexus Infra é a única fonte de verdade**. Só corre com `MS_GRAPH_CALENDARIO_ATIVO=true`. (A via foi ativada hoje: consentimento concedido, carga inicial de 15 eventos, partilhado com a equipa toda.) Sem migração; `optimize`. `aa6aec7`
 
 ## 2026-09-01
 
