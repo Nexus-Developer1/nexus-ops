@@ -6,7 +6,6 @@
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Bom dia, {{ auth()->user()->nome }}</h1>
-                    <p class="mt-2 text-sm text-texto-medio">Resumo da operação · {{ \Illuminate\Support\Carbon::now()->locale('pt')->translatedFormat('l, d \d\e F \d\e Y') }}</p>
                 </div>
                 {{-- Força o sync do PHC já (o agendado corre às 08h/13h/19h). Corre em background. --}}
                 <button type="button" wire:click="sincronizarErp" wire:loading.attr="disabled" wire:target="sincronizarErp"
