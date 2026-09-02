@@ -104,17 +104,9 @@ class Listagem extends Component
             ->orderByDesc('id')
             ->paginate(12);
 
-        // Total por CATEGORIA no período/filtros (combustíveis, refeições, portagens…) —
-        // é o único resumo que fica na página. Ordenado do maior para o menor.
-        $porCategoria = $this->base()
-            ->selectRaw('categoria, sum(valor) as total, count(*) as n')
-            ->groupBy('categoria')
-            ->orderByDesc('total')
-            ->get();
-
+        // (O cartão "Total por categoria" saiu a pedido da equipa — set. 2026.)
         return view('livewire.despesas.listagem', [
             'registos' => $registos,
-            'porCategoria' => $porCategoria,
             'categorias' => Despesa::CATEGORIAS, // categorias fixas (filtro)
             'estados' => EstadoDespesa::cases(),
             // Colaboradores com registos (filtro "atribuídas a determinada pessoa").

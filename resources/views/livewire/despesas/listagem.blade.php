@@ -22,22 +22,6 @@
                 </button>
             @endif
 
-            {{-- Total por categoria no período/filtros — o único resumo da página. --}}
-            @if ($porCategoria->isNotEmpty())
-                <div class="cartao mt-6 p-5">
-                    <div class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Total por categoria</div>
-                    <div class="mt-3 flex flex-wrap gap-x-8 gap-y-2">
-                        @foreach ($porCategoria as $c)
-                            <div class="flex items-baseline gap-2">
-                                <span class="text-sm text-texto-medio">{{ $c->categoria }}</span>
-                                <span class="text-sm font-semibold text-texto-forte">{{ number_format((float) $c->total, 2, ',', '.') }} €</span>
-                                <span class="text-xs text-texto-fraco">({{ $c->n }})</span>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            @endif
-
             {{-- Filtros — largura total no telemóvel, lado a lado no desktop. --}}
             <div class="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
                 <select wire:model.live="periodo" class="campo-select w-full sm:w-40">

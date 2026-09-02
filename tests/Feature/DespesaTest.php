@@ -271,24 +271,15 @@ class DespesaTest extends TestCase
         $this->assertSame(1, $r3->despesas()->count());
     }
 
-    // O único resumo da página é o total POR CATEGORIA no período (mês por defeito). Os
-    // cartões KPI (Total/Nº), o seletor de mês e o export saíram — "muita coisa", a pedido.
-    public function test_total_por_categoria_do_periodo(): void
+    // Página sem resumos: o "Total por categoria" saiu (set. 2026), como antes tinham saído
+    // os cartões KPI (Total/Nº), o seletor de mês e o export — "muita coisa", a pedido.
+    public function test_pagina_sem_resumos_nem_export(): void
     {
         $admin = $this->admin();
         Despesa::create(['data' => now(), 'categoria' => 'Combustíveis', 'descricao' => 'A', 'valor' => 40, 'faturavel' => false]);
-        Despesa::create(['data' => now(), 'categoria' => 'Combustíveis', 'descricao' => 'B', 'valor' => 35, 'faturavel' => false]);
-        Despesa::create(['data' => now(), 'categoria' => 'Refeições', 'descricao' => 'C', 'valor' => 12, 'faturavel' => false]);
-        // Fora do mês atual → não entra por defeito (período = mês).
-        Despesa::create(['data' => now()->subMonths(2), 'categoria' => 'Hotel', 'descricao' => 'D', 'valor' => 999, 'faturavel' => false]);
 
         Livewire::actingAs($admin)->test(Listagem::class)
-            ->assertViewHas('porCategoria', function ($pc) {
-                $comb = $pc->firstWhere('categoria', 'Combustíveis');
-
-                return (float) $comb->total === 75.0 && (int) $comb->n === 2
-                    && $pc->firstWhere('categoria', 'Hotel') === null; // fora do mês
-            })
+            ->assertDontSee('Total por categoria')
             ->assertDontSee('Exportar')      // export removido
             ->assertDontSee('Nº de despesas'); // KPI removido
     }
