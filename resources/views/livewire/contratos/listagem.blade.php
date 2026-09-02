@@ -12,7 +12,6 @@
             <x-toast-sucesso />
 
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Contratos</h1>
-            <p class="mt-2 text-sm text-texto-medio">Âmbito, periodicidade, SLA e faturação — alimentam a agenda de visitas preventivas.</p>
 
             {{-- Aviso de renovações --}}
             @if ($aExpirar > 0)
