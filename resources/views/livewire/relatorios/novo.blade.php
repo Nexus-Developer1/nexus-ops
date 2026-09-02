@@ -195,7 +195,6 @@
                                     @endforelse
                                 </ul>
                             </div>
-                            <p class="mt-1.5 text-xs text-texto-fraco">Atalho: escolhe o equipamento pelo nº de série e o cliente é resolvido automaticamente.</p>
                         </div>
 
                         <div class="sm:col-span-2 flex items-center gap-3 text-xs uppercase tracking-wide text-texto-fraco">
