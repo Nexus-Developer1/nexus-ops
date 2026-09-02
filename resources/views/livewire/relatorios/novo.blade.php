@@ -64,7 +64,6 @@
             <div class="flex items-start justify-between">
                 <div>
                     <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Relatório de Intervenção Técnica</h1>
-                    <p class="mt-2 text-sm text-texto-medio">Os campos marcados com <span class="text-perigo-500">*</span> são obrigatórios para <strong>finalizar</strong> — o rascunho só precisa do equipamento.</p>
                 </div>
                 @php($estadoBadge = \App\Enums\EstadoRelatorio::tryFrom($estadoInicial ?? '') ?? \App\Enums\EstadoRelatorio::Rascunho)
                 <span class="etiqueta {{ $estadoBadge->classesEtiqueta() }} uppercase tracking-wide">{{ $estadoBadge->rotulo() }}</span>
