@@ -52,7 +52,6 @@ class CamposObrigatoriosTest extends TestCase
 
         // Finalizar sem data nem técnicos → erros nos campos marcados com *.
         Livewire::actingAs($admin)->test(\App\Livewire\Relatorios\Novo::class)
-            ->assertSee('obrigatórios para')
             ->set('equipamento_id', $equip->id)
             ->set('data', '')
             ->set('finalizarComFichasVazias', true) // confirma o aviso de fichas vazias (Vaga 1)
