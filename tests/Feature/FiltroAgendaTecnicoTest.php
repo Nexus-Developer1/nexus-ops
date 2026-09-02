@@ -48,7 +48,7 @@ class FiltroAgendaTecnicoTest extends TestCase
         Livewire::actingAs($admin)->test(Calendario::class)
             ->set('tecnicoNome', 'Rui Moreira')
             ->call('eventos', $de, $ate)
-            ->assertReturned(fn ($r) => count($r) === 1 && $r[0]['title'] === 'Ev Rui');
+            ->assertReturned(fn ($r) => count($r) === 1 && $r[0]['title'] === 'Ev Rui · Rui Moreira'); // tipo · técnicos
 
         // Filtrar por um nome sem eventos → nenhum.
         Livewire::actingAs($admin)->test(Calendario::class)
@@ -91,6 +91,6 @@ class FiltroAgendaTecnicoTest extends TestCase
         // Filtrar pelo Paulo (só adicional) traz o evento em que acompanha o Rui.
         $c->set('tecnicoNome', 'Paulo Bento')
             ->call('eventos', '2026-07-01', '2026-07-08')
-            ->assertReturned(fn ($r) => count($r) === 1 && $r[0]['title'] === 'Ev Rui');
+            ->assertReturned(fn ($r) => count($r) === 1 && str_starts_with($r[0]['title'], 'Ev Rui · Rui Moreira'));
     }
 }

@@ -25,7 +25,7 @@ class FonteCalendario
     public function eventos(Carbon $de, Carbon $ate, string $tecnicoNome = ''): array
     {
         $eventos = EventoAgenda::query()
-            ->with(['cliente', 'equipamento', 'tecnicosAdicionais'])
+            ->with(['cliente', 'equipamento', 'tecnico', 'tecnicosAdicionais'])
             ->where('estado', '!=', EstadoEvento::Cancelado->value)
             ->where('inicio', '<', $ate)
             ->where('fim', '>', $de)
@@ -65,7 +65,8 @@ class FonteCalendario
                 // Não arrastável — muda-se no formulário.
                 // O bloco diz o que é E de quem é: "título · cliente" (quem olha para a semana
                 // quer saber onde cada um está sem abrir evento a evento).
-                $titulo = $e->titulo.($e->cliente ? ' · '.$e->cliente->nome : '');
+                // "tipo · cliente · técnicos" (EventoAgenda::resumoCompleto — o mesmo que vai para o Outlook).
+                $titulo = $e->resumoCompleto();
 
                 $bloco = function (string $id, Carbon $de, Carbon $ate, bool $arrastavel) use ($cor, $props, $titulo): array {
                     $base = ['id' => $id, 'title' => $titulo, 'backgroundColor' => $cor, 'borderColor' => $cor, 'extendedProps' => $props];

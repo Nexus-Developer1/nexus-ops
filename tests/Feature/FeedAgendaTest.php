@@ -95,7 +95,7 @@ class FeedAgendaTest extends TestCase
         $this->assertStringContainsString('X-PUBLISHED-TTL:PT1H', $ics);
         $this->assertStringContainsString("UID:agenda-{$e->id}@infra.nexus-solutions.pt", $ics);
         $this->assertStringContainsString('DTSTART;TZID=Europe/Lisbon:20260910T090000', $ics);
-        $this->assertStringContainsString('SUMMARY:Preventiva UPS · ACME', $ics);
+        $this->assertStringContainsString('SUMMARY:Preventiva UPS · ACME · Paulo Bento', $ics); // técnicos no título
         $this->assertStringContainsString('LOCATION:Rua A', $ics);
         $this->assertStringContainsString('Paulo Bento', $ics);
         // Só o essencial: sem contactos nem notas internas.

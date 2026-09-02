@@ -145,7 +145,7 @@ class CalendarioGraph
         ]);
 
         return [
-            'subject' => ($cancelado ? '[CANCELADO] ' : '').trim($e->titulo.($e->cliente ? ' · '.$e->cliente->nome : '')),
+            'subject' => ($cancelado ? '[CANCELADO] ' : '').$e->resumoCompleto(),
             'start' => ['dateTime' => $e->inicio->copy()->setTimezone($tz)->format('Y-m-d\TH:i:s'), 'timeZone' => $tz],
             'end' => ['dateTime' => $e->fim->copy()->setTimezone($tz)->format('Y-m-d\TH:i:s'), 'timeZone' => $tz],
             'location' => ['displayName' => (string) ($e->local?->morada ?: $e->cliente?->nome ?: '')],

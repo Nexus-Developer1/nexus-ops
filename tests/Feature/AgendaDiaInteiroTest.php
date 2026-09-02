@@ -166,7 +166,7 @@ class AgendaDiaInteiroTest extends TestCase
 
         $blocos = collect(app(FonteCalendario::class)->eventos(Carbon::parse('2026-09-07'), Carbon::parse('2026-09-09')));
 
-        $dias = $blocos->where('title', 'Férias')->values();
+        $dias = $blocos->filter(fn ($b) => str_starts_with($b['title'], 'Férias'))->values(); // título leva o técnico
         $this->assertCount(2, $dias);
         $this->assertSame([$ferias->id.':0', $ferias->id.':1'], $dias->pluck('id')->all());
         $this->assertTrue($dias[0]['allDay']);
@@ -176,7 +176,7 @@ class AgendaDiaInteiroTest extends TestCase
         $this->assertSame('2026-09-09', $dias[1]['end']);
         $this->assertFalse($dias[0]['editable']);
 
-        $visita = $blocos->firstWhere('title', 'Visita');
+        $visita = $blocos->first(fn ($b) => str_starts_with($b['title'], 'Visita'));
         $this->assertArrayNotHasKey('allDay', $visita);
         $this->assertSame('2026-09-07T09:00:00', $visita['start']);
         $this->assertArrayNotHasKey('editable', $visita); // arrastável como sempre

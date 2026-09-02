@@ -84,7 +84,7 @@ class CalendarioGraphTest extends TestCase
         $this->assertSame('EV-NOVO', $e->fresh()->graph_event_id);
         Http::assertSent(fn ($r) => $r->method() === 'POST'
             && str_contains($r->url(), '/calendars/'.self::CAL.'/events')
-            && $r['subject'] === 'Preventiva UPS · ACME'
+            && $r['subject'] === 'Preventiva UPS · ACME · Paulo Bento' // tipo · cliente · técnicos
             && $r['start']['timeZone'] === 'Europe/Lisbon'
             && $r['start']['dateTime'] === '2026-09-10T09:00:00'
             && $r['location']['displayName'] === 'Rua A, Porto'
@@ -100,7 +100,7 @@ class CalendarioGraphTest extends TestCase
 
         app(CalendarioGraph::class)->espelhar($e->fresh());
 
-        Http::assertSent(fn ($r) => $r->method() === 'PATCH' && str_ends_with($r->url(), '/events/EV-EXISTENTE') && $r['subject'] === 'Corretiva · ACME');
+        Http::assertSent(fn ($r) => $r->method() === 'PATCH' && str_ends_with($r->url(), '/events/EV-EXISTENTE') && $r['subject'] === 'Corretiva · ACME · Paulo Bento');
         Http::assertNotSent(fn ($r) => $r->method() === 'POST' && str_contains($r->url(), '/events'));
     }
 

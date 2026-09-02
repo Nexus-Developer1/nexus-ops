@@ -56,7 +56,9 @@ class GeradorIcs
     {
         $tz = new DateTimeZone(self::TZ);
 
-        $evento = Event::create($e['titulo'])
+        // Mesmo título do feed/calendário partilhado: tipo · cliente · técnicos.
+        $titulo = implode(' · ', array_filter([trim((string) $e['titulo']), $e['cliente'] ?? null, $e['tecnicos_nomes'] ?? null]));
+        $evento = Event::create($titulo)
             ->uniqueIdentifier(self::uid((int) $e['id']))
             ->startsAt(Carbon::parse($e['inicio'])->setTimezone($tz))
             ->endsAt(Carbon::parse($e['fim'])->setTimezone($tz))
@@ -141,9 +143,11 @@ class GeradorIcs
 
     // ---- conteúdo -------------------------------------------------------------------------
 
+    // Título no Outlook: "tipo · cliente · técnicos" (os nomes dos técnicos têm de se ver
+    // sem abrir o evento — pedido da equipa).
     private function resumo(EventoAgenda $e): string
     {
-        return trim($e->titulo.($e->cliente ? ' · '.$e->cliente->nome : ''));
+        return $e->resumoCompleto();
     }
 
     // Só o essencial — nada de notas internas, contactos ou faturação.

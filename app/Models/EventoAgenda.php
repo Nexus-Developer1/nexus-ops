@@ -177,6 +177,18 @@ class EventoAgenda extends Model
     }
 
     // Nomes a mostrar: principal (conta ligada ou nome em texto livre) + adicionais.
+    // Resumo do evento como aparece no BLOCO do calendário e no TÍTULO no Outlook (feed,
+    // convites, calendário partilhado): "tipo · cliente · técnicos" — quem olha para a
+    // semana vê logo o quê, para quem e quem vai (pedido da equipa, set. 2026).
+    public function resumoCompleto(): string
+    {
+        return implode(' · ', array_filter([
+            trim((string) $this->titulo),
+            $this->cliente?->nome,
+            $this->tecnico_label,
+        ]));
+    }
+
     public function getTecnicoLabelAttribute(): ?string
     {
         $nomes = array_values(array_unique(array_filter(array_merge(

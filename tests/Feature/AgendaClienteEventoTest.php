@@ -180,6 +180,6 @@ class AgendaClienteEventoTest extends TestCase
 
         $blocos = Livewire::actingAs($this->admin)->test(Calendario::class)
             ->call('eventos', '2026-08-09', '2026-08-12')
-            ->assertReturned(fn ($r) => count($r) === 1 && $r[0]['title'] === 'Serviço · Câmara de Évora');
+            ->assertReturned(fn ($r) => count($r) === 1 && str_starts_with($r[0]['title'], 'Serviço · Câmara de Évora')); // + técnicos, se houver
     }
 }
