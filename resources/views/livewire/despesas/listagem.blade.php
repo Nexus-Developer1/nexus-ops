@@ -12,7 +12,6 @@
             <x-toast-sucesso />
 
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Despesas</h1>
-            <p class="mt-2 text-sm text-texto-medio">Custos de deslocação/serviço dos técnicos · {{ $periodo === 'mes' ? 'mês atual' : 'todo o período' }}.</p>
 
             {{-- Processo de validação: atalho para as pendentes de aprovação. --}}
             @if ($pendentes > 0)

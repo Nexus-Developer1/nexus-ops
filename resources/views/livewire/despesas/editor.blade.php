@@ -11,7 +11,6 @@
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-6xl">
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ $registoId ? 'Editar registo de despesas' : 'Registo de despesas' }}</h1>
-            <p class="mt-2 text-sm text-texto-medio">Uma linha por despesa: dia, onde (local · serviço), o que é, tipo, valor — e o <b>recibo anexado à própria linha (obrigatório)</b>. Ao guardar, a despesa fica pendente de aprovação e é enviado um email ao aprovador e ao financeiro.</p>
 
             <form wire:submit="guardar" class="cartao mt-6 p-4 sm:mt-8 sm:p-8" x-data="scannerRecibo">
                 {{-- ===== Cabeçalho da folha — empilha no telemóvel ===== --}}
@@ -165,9 +164,6 @@
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
                         Linha
                     </button>
-                    <p class="text-xs text-texto-fraco">
-                        Campos com <span class="text-perigo-500">*</span> são obrigatórios · a) Refeições: A - almoço / J - jantar (com colegas, indicar o nome em "O que é") · b) Outras: especificar em "O que é".
-                    </p>
                 </div>
 
                 @error('linhas') <p class="mt-2 text-xs text-perigo-500">{{ $message }}</p> @enderror
