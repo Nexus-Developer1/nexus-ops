@@ -109,8 +109,6 @@
             <p class="text-sm text-texto-medio">Pesquisa em cima e adiciona os equipamentos que vais medir nesta visita.</p>
         @elseif ($fonteEscolhida)
             <p class="text-sm text-texto-medio">Este {{ $rotuloFonte }} não tem equipamentos {{ $ehContrato ? 'cobertos' : 'associados' }}.</p>
-        @else
-            <p class="text-sm text-texto-medio">Escolhe um {{ $rotuloFonte }} para carregar os equipamentos.</p>
         @endif
         @error('equipamento_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
     </div>
