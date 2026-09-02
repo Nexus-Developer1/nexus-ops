@@ -48,7 +48,8 @@ class Painel extends Component
     public function render(ServicoAlertas $servico)
     {
         $eu = auth()->user();
-        $modo = $this->atribuido !== '' ? $this->atribuido : ($eu->ehAdmin() ? 'todos' : 'meus');
+        // Por defeito TODOS (o mesmo que o dashboard); "os meus" é opção explícita.
+        $modo = $this->atribuido !== '' ? $this->atribuido : 'todos';
         $alertas = $servico->recolher()->filter(fn ($a) => match (true) {
             $modo === 'todos' => true,
             $modo === 'equipa' => $a['atribuido_a'] === [],

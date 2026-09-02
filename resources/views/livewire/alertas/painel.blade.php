@@ -35,8 +35,8 @@
             <div class="mt-6 flex flex-wrap items-center gap-3">
                 <label class="text-sm text-texto-medio">Atribuído a</label>
                 <select wire:model.live="atribuido" class="campo-select w-56">
-                    <option value="">{{ auth()->user()->ehAdmin() ? 'Todos' : 'Os meus (equipa + atribuídos a mim)' }}</option>
-                    @if (auth()->user()->ehAdmin())<option value="meus">Os meus (equipa + atribuídos a mim)</option>@else<option value="todos">Todos</option>@endif
+                    <option value="">Todos</option>
+                    <option value="meus">Os meus (equipa + atribuídos a mim)</option>
                     <option value="equipa">Equipa completa (sem atribuição)</option>
                     @foreach ($equipa as $u)
                         <option value="{{ $u->id }}">{{ $u->nome }}</option>

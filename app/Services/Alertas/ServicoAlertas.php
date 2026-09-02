@@ -68,13 +68,9 @@ class ServicoAlertas
         return AlertaConcluido::with('utilizador')->orderByDesc('concluido_em')->limit($limite)->get();
     }
 
-    // Alertas que um utilizador deve ver: os da equipa (sem atribuição) + os atribuídos a ele.
-    // Administradores veem tudo (gerem a operação).
-    public function recolherPara(User $utilizador): Collection
-    {
-        return $this->recolher()->filter(fn ($a) => self::visivelPara($a, $utilizador))->values();
-    }
-
+    // "Os meus" alertas de um utilizador: os da equipa (sem atribuição) + os atribuídos a ele;
+    // administradores contam sempre. (Todos VEEM tudo — isto é o critério do filtro "os meus"
+    // do painel e dos testes, não de visibilidade.)
     /** @param array<string, mixed> $alerta */
     public static function visivelPara(array $alerta, User $utilizador): bool
     {

@@ -105,8 +105,9 @@ class DashboardGestao extends Component
 
     public function render(ServicoMetricas $metricas, ServicoAlertas $alertas)
     {
-        // Só o que este utilizador deve ver (equipa + atribuídos a ele; admin vê tudo).
-        $listaAlertas = $alertas->recolherPara(auth()->user());
+        // TODOS os alertas em aberto — o mesmo critério da página de Alertas, para os números
+        // baterem certo em todo o lado; a atribuição é etiqueta/filtro, não visibilidade.
+        $listaAlertas = $alertas->recolher();
         // Filtro do cartão: um técnico escolhido → só os alertas atribuídos a ele.
         $alertasFiltrados = ctype_digit($this->alertasTecnico)
             ? $listaAlertas->filter(fn ($a) => in_array((int) $this->alertasTecnico, $a['atribuido_a'], true))->values()
