@@ -56,8 +56,9 @@ class GeradorEventoDeRelatorio
 
             $dados = [
                 'tipo' => TipoEvento::Intervencao,
-                'titulo' => 'Intervenção · '.(trim($equipamento->fabricante.' '.$equipamento->modelo)
-                    ?: ($equipamento->numero_serie ?? '—')),
+                // Só o TIPO: o equipamento fica ligado em equipamento_id (o bloco e o Outlook já
+                // mostram tipo · cliente · técnicos — o modelo da UPS no título só o atulhava).
+                'titulo' => 'Intervenção',
                 'estado' => EstadoEvento::Planeado,
                 'inicio' => $inicio,
                 'fim' => $fim,
