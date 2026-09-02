@@ -42,10 +42,9 @@ class Vaga1GestaoTest extends TestCase
         // Alerta de um tipo que ANTES ficava fora das contagens (visita programada vencida).
         $contrato->alertasVisita()->create(['data' => now()->subDay()->toDateString(), 'texto' => 'Agendar visita']);
 
+        // (Os cartões-resumo por tipo saíram — set. 2026; o alerta aparece na lista.)
         Livewire::actingAs($this->admin())->test(Painel::class)
-            ->assertSee('Visitas programadas')
-            ->assertViewHas('contagens', fn ($c) => ($c['visita_programada'] ?? 0) === 1)
-            // O "Todos" é a soma real das contagens — bate com a lista completa.
+            ->assertSee('Agendar visita')
             ->assertViewHas('alertas', fn ($a) => $a->count() === 1);
     }
 

@@ -14,6 +14,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-01
 
+- 🧹 **Página de Alertas mais limpa** — a pedido da equipa: saem o subtítulo e os cartões-resumo por tipo (que também eram o filtro por tipo, removido com eles); ficam o filtro "Atribuído a", o "Mostrar concluídos" e a lista. Também saíram os subtítulos das páginas Relatórios, Dossiers PHC, Despesas (listagem e editor, incluindo a nota de rodapé dos campos) e Agenda.
 - 🐛 **Alertas: números diferentes entre o dashboard e a página de Alertas** — reportado pela equipa (dashboard mostrava 1, página mostrava 3): o dashboard filtrava por "equipa + atribuídos a mim" e a página abria em "Todos" — dois critérios. Uniformizado: **toda a gente vê todos os alertas** nos dois sítios; a atribuição é etiqueta, filtro ("Os meus", uma pessoa) e destino dos emails. `recolherPara()` sai (ficou sem uso).
 - 🧰 **Dashboard: filtro por técnico também no cartão "Próximos alertas"** — igual ao da agenda (canto superior direito, uma linha): escolher um técnico mostra só os alertas **atribuídos** a ele; "Todos os técnicos" volta à vista normal (equipa + atribuídos a quem está a ver). O KPI "Alertas em aberto" não muda com o filtro.
 - 🧹 **Despesas: sai o cartão "Total por categoria" + limpeza dos dados de teste** — a pedido da equipa: a listagem fica sem resumos (o cartão saiu, como antes tinham saído os KPIs e o export); e as despesas de teste em produção foram apagadas de vez (registos, linhas, recibos no storage e histórico de alertas de despesa).

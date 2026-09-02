@@ -4,33 +4,9 @@
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-5xl">
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Alertas</h1>
-            <p class="mt-2 text-sm text-texto-medio">Renovações, baterias, visitas em atraso e SLA em risco — o que precisa de atenção. Trataste de um? Dá-o como concluído e sai daqui, do dashboard e do email.</p>
 
             <x-toast-sucesso />
 
-            {{-- Resumo por tipo (filtros) — dinâmico: os 4 tipos base aparecem sempre; os
-                 restantes (visitas/manutenções programadas, backup) só quando têm alertas.
-                 Assim o "Todos" bate SEMPRE com a lista (Vaga 1). --}}
-            @php
-                $rotulos = [
-                    'renovacao' => 'Renovações',
-                    'bateria' => 'Baterias',
-                    'visita_atraso' => 'Visitas em atraso',
-                    'sla' => 'SLA em risco',
-                    'visita_programada' => 'Visitas programadas',
-                    'manutencao_programada' => 'Manutenções programadas',
-                    'evento_programado' => 'Alertas de eventos',
-                    'backup' => 'Backups',
-                    'despesa_aprovacao' => 'Despesas por aprovar',
-                    'proposta_intervencao' => 'Propostas de intervenção',
-                ];
-                $cartoes = [['tipo' => '', 'rotulo' => 'Todos', 'n' => array_sum($contagens)]];
-                foreach ($rotulos as $t => $r) {
-                    if (($contagens[$t] ?? 0) > 0 || in_array($t, ['renovacao', 'bateria', 'visita_atraso', 'sla'], true)) {
-                        $cartoes[] = ['tipo' => $t, 'rotulo' => $r, 'n' => $contagens[$t] ?? 0];
-                    }
-                }
-            @endphp
             {{-- Atribuição: quem deve tratar do alerta (equipa completa ou uma pessoa). --}}
             <div class="mt-6 flex flex-wrap items-center gap-3">
                 <label class="text-sm text-texto-medio">Atribuído a</label>
@@ -48,15 +24,6 @@
                 </label>
             </div>
 
-            <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-                @foreach ($cartoes as $c)
-                    <button wire:click="filtrar('{{ $c['tipo'] }}')"
-                        class="cartao p-4 text-left transition {{ $tipo === $c['tipo'] ? 'ring-2 ring-verde-500' : 'hover:bg-fundo' }}">
-                        <div class="text-2xl font-semibold text-texto-forte">{{ $c['n'] }}</div>
-                        <div class="mt-1 text-xs font-medium text-texto-medio">{{ $c['rotulo'] }}</div>
-                    </button>
-                @endforeach
-            </div>
 
             {{-- Lista de alertas --}}
             <div class="cartao mt-6 overflow-hidden">

@@ -108,8 +108,7 @@ class AlertasPropostaIntervencaoTest extends TestCase
         $chave = $this->propostas()->first()['chave'];
 
         Livewire::actingAs($admin)->test(Painel::class)
-            ->assertSee('Propostas de intervenção')
-            ->assertSee('Propor nova intervenção · Riello NPW')
+            ->assertSee('Propor nova intervenção · Riello NPW') // o cartão-resumo por tipo saiu; o alerta está na lista
             ->call('concluir', $chave)
             ->assertDontSee('Propor nova intervenção · Riello NPW');
 

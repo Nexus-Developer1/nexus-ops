@@ -15,9 +15,6 @@ class Painel extends Component
 {
     use ApenasEquipa;
 
-    #[Url]
-    public string $tipo = '';
-
     // Atribuição: '' = por defeito (admin: todos; técnico: os meus) | meus | equipa | todos | id.
     #[Url]
     public string $atribuido = '';
@@ -40,11 +37,6 @@ class Painel extends Component
         session()->flash('sucesso', 'Alerta reaberto.');
     }
 
-    public function filtrar(string $tipo): void
-    {
-        $this->tipo = $tipo;
-    }
-
     public function render(ServicoAlertas $servico)
     {
         $eu = auth()->user();
@@ -58,18 +50,9 @@ class Painel extends Component
             default => true,
         })->values();
 
-        // Contagens DINÂMICAS por tipo (Vaga 1): a lista fixa de 4 tipos fazia o cartão
-        // "Todos" não bater com a lista quando havia visitas/manutenções programadas ou
-        // alertas de backup — o gestor via "6" num painel com 10 linhas.
-        $contagens = $alertas->countBy('tipo')->all();
-
-        if ($this->tipo) {
-            $alertas = $alertas->where('tipo', $this->tipo)->values();
-        }
-
+        // (Os cartões-resumo por tipo e o filtro por tipo saíram a pedido da equipa — set. 2026.)
         return view('livewire.alertas.painel', [
             'alertas' => $alertas,
-            'contagens' => $contagens,
             'modo' => $modo,
             'listaConcluidos' => $this->concluidos ? $servico->concluidos() : collect(),
             'equipa' => User::where('ativo', true)
