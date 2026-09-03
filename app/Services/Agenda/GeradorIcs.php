@@ -78,7 +78,7 @@ class GeradorIcs
 
         $organizador = (string) (config('services.microsoft_graph.sender') ?: config('mail.from.address'));
 
-        return $this->comConvite($ics, $cancelar ? 'CANCEL' : 'REQUEST', $organizador, $tecnico);
+        return $this->comConvite($ics, $cancelar ? 'CANCEL' : 'REQUEST', $organizador, $tecnico, $cancelar ? [] : $e);
     }
 
     /** Feed de subscrição de um utilizador (ver regras no topo). */
@@ -179,8 +179,48 @@ class GeradorIcs
         return implode("\n", $linhas);
     }
 
+    /**
+     * A MESMA descrição, em HTML, para o X-ALT-DESC. O Outlook mostra o corpo do evento a
+     * partir desta propriedade quando ela existe (o DESCRIPTION normal é texto simples e não
+     * aceita formatação nenhuma) — é assim que o nome dos TÉCNICOS sai a negrito no evento
+     * que fica no calendário de cada um. Os outros clientes ignoram-na e usam o DESCRIPTION.
+     *
+     * @param  array<string, mixed>  $e
+     */
+    private function descricaoHtml(array $e): string
+    {
+        $linhas = array_filter([
+            ($e['tecnicos_nomes'] ?? '') !== '' ? 'Técnicos: <strong>'.e($e['tecnicos_nomes']).'</strong>' : null,
+            ($e['cliente'] ?? null) ? 'Cliente: <strong>'.e($e['cliente']).'</strong>' : null,
+            ($e['equipamento'] ?? null) ? 'Equipamento: '.e($e['equipamento']) : null,
+            ($e['contrato'] ?? null) ? 'Contrato: '.e($e['contrato']) : null,
+            ($e['notas'] ?? null) ? 'Notas:<br>'.nl2br(e((string) $e['notas'])) : null,
+            '<a href="'.route('agenda').'">Abrir a agenda</a>',
+        ]);
+
+        return '<html><body>'.implode('<br>', $linhas).'</body></html>';
+    }
+
+    // Dobra uma linha do ICS aos 73 octetos (RFC 5545: máximo 75, continuação começa por um
+    // espaço). Conta BYTES e nunca parte um caracter acentuado ao meio.
+    private function dobrar(string $linha): string
+    {
+        $saida = '';
+        $atual = '';
+        foreach (mb_str_split($linha) as $c) {
+            if (strlen($atual) + strlen($c) > 73) {
+                $saida .= ($saida === '' ? '' : "\r\n ").$atual;
+                $atual = '';
+            }
+            $atual .= $c;
+        }
+
+        return $saida.($saida === '' ? '' : "\r\n ").$atual;
+    }
+
     // Acrescenta METHOD ao VCALENDAR e ORGANIZER/ATTENDEE ao VEVENT gerados pelo spatie.
-    private function comConvite(string $ics, string $metodo, string $organizador, User $tecnico): string
+    /** @param array<string, mixed> $e */
+    private function comConvite(string $ics, string $metodo, string $organizador, User $tecnico, array $e = []): string
     {
         $organizadorLinha = 'ORGANIZER;CN='.$this->escapar('Nexus Infra').':mailto:'.$organizador;
         $attendee = 'ATTENDEE;CN='.$this->escapar($tecnico->nome).';ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:'.$tecnico->email;
@@ -193,7 +233,22 @@ class GeradorIcs
             $ics = preg_replace('/^(UID:[^\r\n]*\r?\n)/m', "$1SEQUENCE:0\r\n", $ics, 1);
         }
 
-        return preg_replace('/^BEGIN:VEVENT\r?\n/m', "BEGIN:VEVENT\r\n{$organizadorLinha}\r\n{$attendee}\r\n", $ics, 1);
+        $ics = preg_replace('/^BEGIN:VEVENT\r?\n/m', "BEGIN:VEVENT\r\n{$organizadorLinha}\r\n{$attendee}\r\n", $ics, 1);
+
+        // Corpo em HTML para o Outlook (negrito nos técnicos). Vai antes do DESCRIPTION.
+        if ($e !== []) {
+            $alt = $this->dobrar('X-ALT-DESC;FMTTYPE=text/html:'.$this->escaparTexto($this->descricaoHtml($e)));
+            $ics = preg_replace('/^DESCRIPTION[;:]/m', $alt."\r\nDESCRIPTION:", $ics, 1);
+        }
+
+        return $ics;
+    }
+
+    // Escape de um valor TEXT do ICS (RFC 5545). Ao contrário do escapar() dos nomes, mantém
+    // as aspas — sem elas os atributos do HTML do X-ALT-DESC ficavam partidos.
+    private function escaparTexto(string $texto): string
+    {
+        return str_replace(['\\', ';', ',', "\r\n", "\n"], ['\\\\', '\\;', '\\,', '\\n', '\\n'], $texto);
     }
 
     private function escapar(string $texto): string

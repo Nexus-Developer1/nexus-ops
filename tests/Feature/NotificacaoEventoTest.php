@@ -94,6 +94,35 @@ class NotificacaoEventoTest extends TestCase
 
     // O Outlook (motor do Word) ignora border-radius/padding do <a>: o botao e desenhado em
     // VML so para ele, e em HTML normal para os restantes clientes.
+    // O convite que fica no calendario de cada tecnico vem do ICS, e o DESCRIPTION do ICS e
+    // texto simples. O Outlook mostra o X-ALT-DESC (HTML) quando existe: e ai que os tecnicos
+    // saem a negrito no evento do calendario pessoal.
+    public function test_convite_leva_descricao_html_com_os_tecnicos_a_negrito(): void
+    {
+        $this->criar([$this->paulo->id, $this->daniel->id]);
+        $n = \Illuminate\Support\Facades\Notification::sent($this->paulo, EventoAgendaNotificacao::class)->first();
+        $ics = $n->toMail($this->paulo)->rawAttachments[0]['data'];
+
+        $this->assertStringContainsString('X-ALT-DESC;FMTTYPE=text/html:', $ics);
+        // As linhas do ICS sao dobradas aos 75 octetos: junta-as antes de procurar o negrito.
+        $junto = str_replace(["\r\n ", "\n "], '', $ics);
+        $this->assertStringContainsString('<strong>Daniel Ribeiro\, Paulo Bento</strong>', $junto);
+        $this->assertStringContainsString('DESCRIPTION:', $ics);   // continua a haver a versao em texto
+        // A propria X-ALT-DESC (e as suas continuacoes) tem de respeitar os 75 octetos do RFC.
+        $linhas = explode("\r\n", $ics);
+        $i = 0;
+        while ($i < count($linhas) && ! str_starts_with($linhas[$i], 'X-ALT-DESC')) {
+            $i++;
+        }
+        $this->assertLessThan(count($linhas), $i);
+        for (; $i < count($linhas); $i++) {
+            if ($i > 0 && ! str_starts_with($linhas[$i], 'X-ALT-DESC') && ! str_starts_with($linhas[$i], ' ')) {
+                break;
+            }
+            $this->assertLessThanOrEqual(75, strlen($linhas[$i]), 'Linha do ICS acima dos 75 octetos: '.$linhas[$i]);
+        }
+    }
+
     public function test_botao_do_email_tem_versao_para_outlook(): void
     {
         $this->criar([$this->paulo->id]);
