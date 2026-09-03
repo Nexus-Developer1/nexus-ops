@@ -92,6 +92,21 @@ class NotificacaoEventoTest extends TestCase
         Notification::assertNothingSent();
     }
 
+    // O Outlook (motor do Word) ignora border-radius/padding do <a>: o botao e desenhado em
+    // VML so para ele, e em HTML normal para os restantes clientes.
+    public function test_botao_do_email_tem_versao_para_outlook(): void
+    {
+        $this->criar([$this->paulo->id]);
+        $n = \Illuminate\Support\Facades\Notification::sent($this->paulo, EventoAgendaNotificacao::class)->first();
+        $html = (string) $n->toMail($this->paulo)->render();
+
+        $this->assertStringContainsString('<!--[if mso]>', $html);
+        $this->assertStringContainsString('v:roundrect', $html);
+        $this->assertStringContainsString('<!--[if !mso]>', $html);   // versao normal para os outros
+        $this->assertSame(2, substr_count($html, 'Abrir a agenda'));  // uma em cada versao
+        $this->assertStringContainsString('fillcolor="#16a34a"', $html);
+    }
+
     public function test_quem_faz_a_acao_tambem_recebe(): void
     {
         // O Paulo cria um evento para si e para o Daniel: os DOIS são avisados (o autor

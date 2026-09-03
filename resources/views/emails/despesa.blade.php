@@ -83,13 +83,7 @@
                                 </td></tr>
                             </table>
 
-                            {{-- Botão "à prova de Outlook": padding e cor na CÉLULA (o Outlook ignora
-                                 padding/border-radius no <a>) + <span> branco (senão o link visitado fica roxo). --}}
-                            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 22px;">
-                                <tr><td align="center" bgcolor="#16a34a" style="border-radius:10px; background-color:#16a34a; padding:12px 22px; mso-padding-alt:12px 22px;">
-                                    <a href="{{ $r['url'] }}" target="_blank" style="font-size:14px; font-weight:600; color:#ffffff; text-decoration:none; display:inline-block;"><span style="color:#ffffff;">{{ $modo === 'submetida' && $variante === 'aprovador' ? 'Ver e aprovar despesa' : 'Ver despesa' }}</span></a>
-                                </td></tr>
-                            </table>
+@include('emails._botao', ['url' => $r['url'], 'texto' => $modo === 'submetida' && $variante === 'aprovador' ? 'Ver e aprovar despesa' : 'Ver despesa', 'cor' => $modo === 'decidida' ? $cor : '#16a34a'])
 
                             <p style="margin:0 0 6px; font-size:12px; line-height:1.6; color:#9ca3af;">
                                 @if ($modo === 'decidida')

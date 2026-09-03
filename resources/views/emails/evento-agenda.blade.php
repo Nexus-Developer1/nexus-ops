@@ -62,12 +62,7 @@
                             @endif
 
                             @if ($tipo !== 'removido')
-                                {{-- Botão "à prova de Outlook" (padding/cor na célula + span branco). --}}
-                                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 22px;">
-                                    <tr><td align="center" bgcolor="#16a34a" style="border-radius:10px; background-color:#16a34a; padding:12px 22px; mso-padding-alt:12px 22px;">
-                                        <a href="{{ $url }}" target="_blank" style="font-size:14px; font-weight:600; color:#ffffff; text-decoration:none; display:inline-block;"><span style="color:#ffffff;">Abrir a agenda</span></a>
-                                    </td></tr>
-                                </table>
+                                @include('emails._botao', ['url' => $url, 'texto' => 'Abrir a agenda'])
                             @endif
 
                             <p style="margin:0 0 6px; font-size:12px; line-height:1.6; color:#9ca3af;">Recebe este email porque está associado(a) ao evento na agenda do Nexus Infra. O evento também está no seu calendário (iCal).</p>
