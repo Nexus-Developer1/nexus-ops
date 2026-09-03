@@ -8,6 +8,7 @@ use App\Enums\EstadoIntervencao;
 use App\Enums\TipoEquipamento;
 use App\Enums\TipoEvento;
 use App\Enums\TipoIntervencao;
+use App\Models\AlertaConcluido;
 use App\Models\Contrato;
 use App\Models\ContratoAlertaVisita;
 use App\Models\Equipamento;
@@ -16,11 +17,11 @@ use App\Models\EventoAgenda;
 use App\Models\EventoAlerta;
 use App\Models\Intervencao;
 use App\Models\RegistoDespesa;
-use App\Models\AlertaConcluido;
 use App\Models\User;
 use App\Services\Auditor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 // Recolhe os alertas proativos da operação (CLAUDE.md §6/§9): baterias a vencer,
 // renovações de contrato, visitas planeadas em atraso e SLA em risco.
@@ -113,7 +114,7 @@ class ServicoAlertas
     {
         // Atribuídas aos aprovadores com conta (config despesas.aprovadores); sem nenhum → equipa.
         $aprovadores = User::where('ativo', true)
-            ->whereIn(\Illuminate\Support\Facades\DB::raw('lower(email)'), config('despesas.aprovadores', []))
+            ->whereIn(DB::raw('lower(email)'), config('despesas.aprovadores', []))
             ->orderBy('nome')->get(['id', 'nome']);
 
         return RegistoDespesa::query()

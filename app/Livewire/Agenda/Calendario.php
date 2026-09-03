@@ -13,8 +13,8 @@ use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\User;
-use App\Notifications\AcessoAgendaOutlook;
 use App\Services\Agenda\AgendadorEvento;
+use App\Services\Agenda\CalendarioGraph;
 use App\Services\Agenda\ConversorVisita;
 use App\Services\Agenda\FonteCalendario;
 use App\Services\Agenda\NotificadorAgenda;
@@ -23,7 +23,6 @@ use App\Services\Auditor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -40,11 +39,11 @@ class Calendario extends Component
     public string $tecnicoNome = '';
 
     /**
-     * Envia (ou reenvia) para o PRÓPRIO o email com o acesso à agenda no Outlook.
+     * (Re)envia ao PRÓPRIO o convite de partilha do calendário no Outlook — o email nativo
+     * da Microsoft ("You're invited to share this calendar"), que é o que dá acesso a sério;
+     * um link para o feed ICS não funciona (equipa, set. 2026).
      *
-     * O URL do feed é o segredo — quem o tiver vê a agenda dessa pessoa —, por isso o
-     * destinatário é sempre o email da conta autenticada, nunca um endereço escolhido.
-     * Se ainda não houver token, é criado aqui (antes só um admin o podia gerar à mão).
+     * O destinatário é sempre o email da conta autenticada, nunca um endereço escolhido.
      */
     public function enviarAcessoOutlook(): void
     {
@@ -64,16 +63,36 @@ class Calendario extends Component
         }
         RateLimiter::hit($chave, 600);
 
-        if (! $user->agenda_feed_token) {
-            // 48 caracteres alfanuméricos (~285 bits): o URL é o segredo, tem de ser inadivinhável.
-            $user->forceFill(['agenda_feed_token' => Str::random(48)])->save();
-            Auditor::registar('agenda.feed_gerado', $user);
+        $calendario = app(CalendarioGraph::class);
+        if (! $calendario->ativo()) {
+            session()->flash('erro_acesso', 'A ligação ao calendário do Outlook está desligada — fale com um administrador.');
+
+            return;
         }
 
-        $user->notify(new AcessoAgendaOutlook(route('agenda.feed', $user->agenda_feed_token)));
-        Auditor::registar('agenda.acesso_enviado', $user, ['email' => $user->email]);
+        try {
+            $r = $calendario->reenviarConvitePartilha($user);
+        } catch (\Throwable $e) {
+            report($e);
+            session()->flash('erro_acesso', 'Não foi possível falar com o Outlook agora. Tente daqui a pouco.');
 
-        session()->flash('sucesso', 'Acesso enviado para '.$user->email.'. Veja a caixa de entrada (e o spam).');
+            return;
+        }
+
+        if ($r['estado'] === 'falhou') {
+            session()->flash('erro_acesso', 'O Outlook recusou o convite: '.$r['erro']);
+
+            return;
+        }
+
+        if ($r['estado'] === 'dono') {
+            session()->flash('erro_acesso', 'Esta conta é a dona do calendário — já o tem no Outlook, sem precisar de convite.');
+
+            return;
+        }
+
+        Auditor::registar('agenda.acesso_enviado', $user, ['email' => $user->email, 'estado' => $r['estado']]);
+        session()->flash('sucesso', 'Convite de partilha enviado para '.$user->email.'. Abra o email "You\'re invited to share this calendar" e carregue em Aceitar.');
     }
 
     public function mount(): void

@@ -106,6 +106,48 @@ class CalendarioGraph
         return $resultado;
     }
 
+    /**
+     * (Re)envia a UMA pessoa o convite de partilha do calendário — o email nativo do Outlook
+     * ("You're invited to share this calendar"), o único que dá acesso a sério: o link do
+     * feed ICS não serve para isto.
+     *
+     * O Outlook só envia o convite quando a permissão é CRIADA, por isso reenviar obriga a
+     * remover a permissão que exista e a criá-la de novo.
+     *
+     * @return array{estado: string, erro: string|null}
+     */
+    public function reenviarConvitePartilha(User $u): array
+    {
+        $caminho = $this->caminhoCalendario().'/calendarPermissions';
+        $email = mb_strtolower((string) $u->email);
+
+        if ($email === mb_strtolower((string) config('services.microsoft_graph.sender'))) {
+            return ['estado' => 'dono', 'erro' => null]; // a mailbox dona não se convida a si mesma
+        }
+
+        $existente = collect($this->graph->get($caminho)->json('value') ?? [])
+            ->first(fn ($p) => mb_strtolower((string) ($p['emailAddress']['address'] ?? '')) === $email);
+
+        if ($existente && ($existente['id'] ?? null)) {
+            $this->graph->delete($caminho.'/'.$existente['id']);
+        }
+
+        $r = $this->graph->post($caminho, [
+            'emailAddress' => ['address' => $u->email, 'name' => $u->nome],
+            'role' => 'read',
+            'isRemovable' => true,
+            'isInsideOrganization' => true,
+        ]);
+
+        if ($r->failed()) {
+            Log::warning('Graph: falha a reenviar o convite de partilha.', ['email' => $u->email, 'status' => $r->status(), 'erro' => $r->json('error.message')]);
+
+            return ['estado' => 'falhou', 'erro' => (string) ($r->json('error.message') ?? 'erro '.$r->status())];
+        }
+
+        return ['estado' => $existente ? 'reenviado' : 'enviado', 'erro' => null];
+    }
+
     // Partilha o calendário (leitura) com a equipa ativa — quem tiver email no M365 passa a vê-lo
     // no Outlook sem configurar nada. Idempotente: quem já tem permissão é saltado.
     /** @return array{partilhado: list<string>, ja_tinha: list<string>, falhou: list<string>} */

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Mail\Transport\GraphTransport;
 use App\Models\User;
+use App\Services\Despesas\FluxoAprovacaoDespesas;
 use App\Services\Erp\ErpSyncDriver;
 use App\Services\Erp\FakeErpDriver;
 use App\Services\Erp\NullErpDriver;
@@ -73,7 +74,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('gerir-feeds-agenda', fn (User $utilizador) => $utilizador->ehAdmin());
 
         // Processo de validação das despesas: aprovadores de config (pgouveia@nxs.pt) + admins.
-        Gate::define('aprovar-despesas', fn (User $utilizador) => \App\Services\Despesas\FluxoAprovacaoDespesas::podeAprovar($utilizador));
+        Gate::define('aprovar-despesas', fn (User $utilizador) => FluxoAprovacaoDespesas::podeAprovar($utilizador));
 
         // Política de passwords (Vaga 1): min 10 + letras + números; em produção verifica
         // ainda contra fugas conhecidas (HIBP, k-anonymity — só sai um prefixo do hash).

@@ -4,8 +4,6 @@ namespace App\Livewire\Despesas;
 
 use App\Enums\EstadoDespesa;
 use App\Livewire\Concerns\ApenasEquipa;
-use App\Models\Anexo;
-use App\Models\Despesa;
 use App\Models\RegistoDespesa;
 use App\Services\Despesas\FluxoAprovacaoDespesas;
 use Illuminate\Support\Facades\Gate;

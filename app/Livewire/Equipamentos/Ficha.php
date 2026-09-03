@@ -3,6 +3,7 @@
 namespace App\Livewire\Equipamentos;
 
 use App\Enums\EstadoIntervencao;
+use App\Enums\PapelUtilizador;
 use App\Enums\TipoIntervencao;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Livewire\Concerns\ComponentesComArtigos;
@@ -10,10 +11,12 @@ use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Models\Local;
+use App\Models\User;
 use App\Services\Auditor;
 use App\Services\GeradorQrEquipamento;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -106,8 +109,8 @@ class Ficha extends Component
             'alertasManutencao.*.data' => ['required', 'date'],
             'alertasManutencao.*.texto' => ['required', 'string', 'max:255'],
             // Atribuição: equipa completa ('') ou uma conta ATIVA da equipa (técnico/admin).
-            'alertasManutencao.*.user_id' => ['nullable', \Illuminate\Validation\Rule::exists('utilizadores', 'id')
-                ->where('ativo', true)->whereIn('papel', [\App\Enums\PapelUtilizador::Tecnico->value, \App\Enums\PapelUtilizador::Admin->value])],
+            'alertasManutencao.*.user_id' => ['nullable', Rule::exists('utilizadores', 'id')
+                ->where('ativo', true)->whereIn('papel', [PapelUtilizador::Tecnico->value, PapelUtilizador::Admin->value])],
         ]);
 
         $this->equipamento->alertasManutencao()->delete();
@@ -418,8 +421,8 @@ class Ficha extends Component
 
         return view('livewire.equipamentos.ficha', [
             // Contas da equipa (técnicos e admins) para atribuir alertas.
-            'equipaAlertas' => \App\Models\User::where('ativo', true)
-                ->whereIn('papel', [\App\Enums\PapelUtilizador::Tecnico->value, \App\Enums\PapelUtilizador::Admin->value])
+            'equipaAlertas' => User::where('ativo', true)
+                ->whereIn('papel', [PapelUtilizador::Tecnico->value, PapelUtilizador::Admin->value])
                 ->orderBy('nome')->get(['id', 'nome']),
             'intervencoes' => $intervencoes,
             'contratos' => $contratos,

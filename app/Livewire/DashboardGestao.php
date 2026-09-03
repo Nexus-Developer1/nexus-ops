@@ -3,9 +3,9 @@
 namespace App\Livewire;
 
 use App\Enums\EstadoEvento;
+use App\Enums\PapelUtilizador;
 use App\Jobs\SincronizarErp;
 use App\Livewire\Concerns\ApenasEquipa;
-use App\Enums\PapelUtilizador;
 use App\Models\EventoAgenda;
 use App\Models\User;
 use App\Services\Alertas\ServicoAlertas;

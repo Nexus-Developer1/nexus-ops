@@ -3,12 +3,14 @@
 namespace App\Livewire\Contratos;
 
 use App\Enums\EstadoContrato;
+use App\Enums\PapelUtilizador;
 use App\Enums\TipoContrato;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\ModeloFaturacao;
+use App\Models\User;
 use App\Services\Auditor;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -236,8 +238,8 @@ class Editor extends Component
             'alertasVisita.*.data' => ['required', 'date'],
             'alertasVisita.*.texto' => ['required', 'string', 'max:255'],
             // Atribuição: equipa completa ('') ou uma conta ATIVA da equipa (técnico/admin).
-            'alertasVisita.*.user_id' => ['nullable', \Illuminate\Validation\Rule::exists('utilizadores', 'id')
-                ->where('ativo', true)->whereIn('papel', [\App\Enums\PapelUtilizador::Tecnico->value, \App\Enums\PapelUtilizador::Admin->value])],
+            'alertasVisita.*.user_id' => ['nullable', Rule::exists('utilizadores', 'id')
+                ->where('ativo', true)->whereIn('papel', [PapelUtilizador::Tecnico->value, PapelUtilizador::Admin->value])],
         ];
     }
 
@@ -383,8 +385,8 @@ class Editor extends Component
 
         return view('livewire.contratos.editor', [
             // Contas da equipa (técnicos e admins) para atribuir alertas.
-            'equipaAlertas' => \App\Models\User::where('ativo', true)
-                ->whereIn('papel', [\App\Enums\PapelUtilizador::Tecnico->value, \App\Enums\PapelUtilizador::Admin->value])
+            'equipaAlertas' => User::where('ativo', true)
+                ->whereIn('papel', [PapelUtilizador::Tecnico->value, PapelUtilizador::Admin->value])
                 ->orderBy('nome')->get(['id', 'nome']),
             'clientesFiltrados' => $clientesFiltrados,
             'equipamentos' => $equipamentos,
