@@ -77,6 +77,8 @@ class PdfFichaMedicaoTest extends TestCase
         // Secções e valores medidos presentes (sem inventar).
         $this->assertStringContainsString('Medições elétricas', $html);
         $this->assertStringContainsString('Teste de descarga', $html);
+        // A tabela dos tempos não sai no PDF (só o gráfico) — set. 2026.
+        $this->assertStringNotContainsString('<th>Tempo</th>', $html);
         $this->assertStringContainsString('231.40', $html);
         $this->assertStringContainsString('55.00', $html);
         $this->assertStringContainsString('acesso livre', $html);

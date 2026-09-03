@@ -462,20 +462,9 @@
                 </table>
 
                 <div class="ficha-seccao">Teste de descarga de baterias</div>
-                <table class="ficha-tab">
-                    <tr>
-                        <th>Tempo</th>
-                        @foreach (\App\Models\FichaMedicao::COLS_DESCARGA as $ck => $crot)<th class="cel-num">{{ $crot }}</th>@endforeach
-                    </tr>
-                    @foreach (\App\Models\FichaMedicao::LINHAS_DESCARGA as $lk => $lrot)
-                        <tr>
-                            <td>{{ $lrot }}</td>
-                            @foreach (array_keys(\App\Models\FichaMedicao::COLS_DESCARGA) as $ck)
-                                <td class="cel-num">{{ $ficha->teste_descarga[$lk][$ck] ?? '' }}</td>
-                            @endforeach
-                        </tr>
-                    @endforeach
-                </table>
+                {{-- A TABELA dos tempos não sai no PDF (pedido da equipa, set. 2026): o que o
+                     cliente lê é o gráfico. Os valores continuam a preencher-se no editor (à
+                     mão ou pelo ficheiro do carregador) — é deles que a curva é desenhada. --}}
                 {{-- Gráfico das tensões Vbat+/Vbat− ao longo do teste. O componente gera SVG puro
                      (o editor mostra-o inline), mas o dompdf NÃO desenha SVG inline — despejava
                      só os rótulos numa linha. Como IMAGEM (data URI svg+xml) desenha certinho.
