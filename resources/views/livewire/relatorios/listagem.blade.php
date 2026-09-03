@@ -68,7 +68,8 @@
                                     <div class="text-xs text-texto-fraco">{{ $r->intervencao->equipamento->numero_serie }}</div>
                                 </td>
                                 <td class="px-6 py-4 text-texto-medio">{{ $r->intervencao->tipo->rotulo() }}</td>
-                                <td class="px-6 py-4 text-texto-medio">{{ $r->intervencao->tecnico?->nome ?? '—' }}</td>
+                                {{-- TODOS os técnicos da intervenção (principal + colaboradores), não só quem redigiu. --}}
+                                <td class="px-6 py-4 text-texto-medio">{{ $r->intervencao->tecnicosLabel() ?? '—' }}</td>
                                 <td class="px-6 py-4 text-texto-medio">{{ $r->data->translatedFormat('d M Y') }}</td>
                                 <td class="px-6 py-4"><span class="etiqueta {{ $r->estado->classesEtiqueta() }}">{{ $r->estado->rotulo() }}</span></td>
                                 <td class="px-6 py-4">

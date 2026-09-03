@@ -91,7 +91,7 @@ class Ficha extends Component
                 ->get(),
             // Relatórios feitos no âmbito do contrato (mais recentes primeiro).
             'relatorios' => $this->contrato->relatorios()
-                ->with('intervencao.equipamento', 'intervencao.tecnico')
+                ->with('intervencao.equipamento', 'intervencao.tecnico', 'intervencao.tecnicos')
                 ->orderByDesc('data')
                 ->get(),
         ]);

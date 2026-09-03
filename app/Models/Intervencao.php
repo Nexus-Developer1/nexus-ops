@@ -82,6 +82,22 @@ class Intervencao extends Model
         return $this->belongsToMany(User::class, 'intervencao_tecnicos', 'intervencao_id', 'user_id');
     }
 
+    /**
+     * TODOS os técnicos que estiveram na intervenção — principal + colaboradores, sem
+     * repetir. É o que as listagens de relatórios mostram (o PDF já fazia o mesmo): a
+     * coluna "Técnico" mostrava só quem redigiu o relatório e escondia quem lá esteve.
+     */
+    public function tecnicosLabel(): ?string
+    {
+        $nomes = collect([$this->tecnico?->nome])
+            ->merge($this->tecnicos->pluck('nome'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        return $nomes->isEmpty() ? null : $nomes->implode(', ');
+    }
+
     public function contrato(): BelongsTo
     {
         return $this->belongsTo(Contrato::class);

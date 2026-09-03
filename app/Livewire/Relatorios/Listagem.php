@@ -123,7 +123,7 @@ class Listagem extends Component
     public function render()
     {
         $query = Relatorio::query()
-            ->with('intervencao.equipamento.local.cliente', 'intervencao.tecnico')
+            ->with('intervencao.equipamento.local.cliente', 'intervencao.tecnico', 'intervencao.tecnicos')
             ->when($this->estado, fn ($q) => $q->where('estado', $this->estado))
             ->when($this->tipo === 'contrato', fn ($q) => $q->whereHas('intervencao', fn ($q) => $q->whereNotNull('contrato_id')))
             ->when($this->tipo === 'individual', fn ($q) => $q->whereHas('intervencao', fn ($q) => $q->whereNull('contrato_id')))

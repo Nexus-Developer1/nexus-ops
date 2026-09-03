@@ -187,7 +187,7 @@
                                 <td class="px-6 py-3.5 font-medium text-texto-forte">{{ $r->numero ?? 'Rascunho' }}</td>
                                 <td class="px-6 py-3.5 text-texto-medio">{{ $r->data?->translatedFormat('d M Y') ?? '—' }}</td>
                                 <td class="px-6 py-3.5 text-texto-medio">{{ $r->intervencao?->equipamento?->numero_serie ?? '—' }}</td>
-                                <td class="px-6 py-3.5 text-texto-medio">{{ $r->intervencao?->tecnico?->nome ?? '—' }}</td>
+                                <td class="px-6 py-3.5 text-texto-medio">{{ $r->intervencao?->tecnicosLabel() ?? '—' }}</td>
                                 <td class="px-6 py-3.5"><span class="etiqueta {{ $r->estado->classesEtiqueta() }}">{{ $r->estado->rotulo() }}</span></td>
                                 <td class="px-6 py-3.5">
                                     <div class="flex items-center justify-end gap-1">
