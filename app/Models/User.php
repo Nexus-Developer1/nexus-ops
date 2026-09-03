@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PapelUtilizador;
 use App\Services\Agenda\FonteCalendario;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -23,6 +24,7 @@ class User extends Authenticatable
         'email',
         'password',
         'papel',
+        'faz_servicos',
         'cliente_id',
         'ativo',
     ];
@@ -80,6 +82,20 @@ class User extends Authenticatable
     }
 
     // Eventos da agenda em que esta conta é técnico ADICIONAL (pivot evento_tecnicos).
+    /**
+     * Quem entra nas listas de TÉCNICOS: os técnicos e os administradores que também vão
+     * a serviços (`faz_servicos`).
+     *
+     * O papel manda nas permissões; esta é outra pergunta — "pode ser escolhido para um
+     * serviço?". Antes eram a mesma coisa, e quem administrava e também trabalhava em
+     * campo não aparecia sequer como opção num evento (equipa, set. 2026).
+     */
+    public function scopeFazServicos(Builder $q): Builder
+    {
+        return $q->where(fn (Builder $w) => $w->where('papel', PapelUtilizador::Tecnico)
+            ->orWhere(fn (Builder $a) => $a->where('papel', PapelUtilizador::Admin)->where('faz_servicos', true)));
+    }
+
     /**
      * Cor desta pessoa na agenda — guardada, para não mudar de um dia para o outro.
      *

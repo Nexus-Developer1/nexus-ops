@@ -162,7 +162,7 @@ class FonteCalendario
     {
         // Técnicos ativos + qualquer conta que apareça em eventos (um administrador que
         // vá a serviços tem de ter cor própria na legenda, como toda a gente).
-        $contas = User::where('papel', PapelUtilizador::Tecnico)->where('ativo', true)->pluck('nome');
+        $contas = User::fazServicos()->where('ativo', true)->pluck('nome');
 
         $principais = EventoAgenda::query()
             ->whereNotNull('tecnico_nome')

@@ -83,7 +83,7 @@ class CalendarioGraph
             ->filter()->all();
 
         $resultado = ['criadas' => [], 'ja_tinha' => [], 'falhou' => []];
-        $equipa = User::query()->where('papel', PapelUtilizador::Tecnico)
+        $equipa = User::query()->fazServicos()
             ->where('ativo', true)->orderBy('id')->get();
 
         foreach ($equipa as $i => $u) {

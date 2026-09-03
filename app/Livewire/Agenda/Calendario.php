@@ -476,7 +476,7 @@ class Calendario extends Component
         // tenta casá-lo com uma conta (é o caso normal: os nomes escritos eram os dos técnicos).
         $principal = $evento->tecnico_id
             ?? ($evento->tecnico_nome
-                ? User::where('papel', PapelUtilizador::Tecnico)->where('ativo', true)
+                ? User::fazServicos()->where('ativo', true)
                     ->whereRaw('lower(nome) = ?', [mb_strtolower(trim($evento->tecnico_nome))])
                     ->value('id')
                 : null);
@@ -675,10 +675,12 @@ class Calendario extends Component
             // OBRIGATÓRIO (pedido da equipa): um evento sem ninguém atribuído não aparece na
             // agenda de nenhum técnico, não gera convite nem alerta — passava despercebido.
             'formTecnicoIds' => ['array', 'min:1'],
+            // Técnicos e administradores que também vão a serviços (faz_servicos).
             'formTecnicoIds.*' => ['integer',
                 Rule::exists('utilizadores', 'id')
-                    ->where('papel', PapelUtilizador::Tecnico->value)
-                    ->where('ativo', true)],
+                    ->where('ativo', true)
+                    ->where(fn ($q) => $q->where('papel', PapelUtilizador::Tecnico->value)
+                        ->orWhere(fn ($a) => $a->where('papel', PapelUtilizador::Admin->value)->where('faz_servicos', true)))],
             'formClienteId' => ['nullable', 'exists:clientes,id'],
             'formEquipamentoId' => ['nullable', 'exists:equipamentos,id'],
             'formEquipamentosExtra' => ['array', 'max:50'],
@@ -724,7 +726,7 @@ class Calendario extends Component
         $tecnicosEscolhidos = $this->formTecnicoIds === []
             ? collect()
             : User::whereIn('id', array_map('intval', $this->formTecnicoIds))
-                ->where('papel', PapelUtilizador::Tecnico)
+                ->fazServicos()
                 ->where('ativo', true)
                 ->orderBy('nome')
                 ->get();
@@ -843,8 +845,9 @@ class Calendario extends Component
 
     public function render(FonteCalendario $fonte)
     {
-        // Contas de técnico — checkboxes do formulário de evento (1 ou mais técnicos).
-        $tecnicos = User::where('papel', PapelUtilizador::Tecnico)
+        // Quem pode ir a um serviço — checkboxes do formulário de evento (1 ou mais):
+        // técnicos e administradores que também fazem serviços.
+        $tecnicos = User::fazServicos()
             ->where('ativo', true)
             ->orderBy('nome')
             ->get()
