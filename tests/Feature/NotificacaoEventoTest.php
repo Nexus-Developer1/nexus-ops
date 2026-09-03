@@ -78,6 +78,7 @@ class NotificacaoEventoTest extends TestCase
                 && $n->autor === 'Admin'
                 && str_contains($n->evento['tecnicos_nomes'], 'Paulo Bento');
         });
+        // O admin não é técnico do evento — só recebem os técnicos associados.
         Notification::assertNotSentTo($this->admin, EventoAgendaNotificacao::class);
         // Vai pela fila (o Graph nunca entra no caminho do clique).
         $this->assertContains(ShouldQueue::class, class_implements(EventoAgendaNotificacao::class));
@@ -91,9 +92,10 @@ class NotificacaoEventoTest extends TestCase
         Notification::assertNothingSent();
     }
 
-    public function test_quem_faz_a_acao_nao_recebe(): void
+    public function test_quem_faz_a_acao_tambem_recebe(): void
     {
-        // O Paulo cria um evento para si e para o Daniel: só o Daniel é avisado.
+        // O Paulo cria um evento para si e para o Daniel: os DOIS são avisados (o autor
+        // também quer o convite no Outlook) — pedido da equipa, set. 2026.
         Livewire::actingAs($this->paulo)->test(Calendario::class)
             ->call('abrirCriacao', '2026-09-04', '2026-09-04')
             ->set('formTitulo', 'Visita')
@@ -104,8 +106,7 @@ class NotificacaoEventoTest extends TestCase
             ->call('criarEvento')
             ->assertHasNoErrors();
 
-        Notification::assertSentTo($this->daniel, EventoAgendaNotificacao::class);
-        Notification::assertNotSentTo($this->paulo, EventoAgendaNotificacao::class);
+        Notification::assertSentTo([$this->daniel, $this->paulo], EventoAgendaNotificacao::class);
     }
 
     public function test_editar_avisa_alterado_a_quem_fica_criado_a_quem_entra_removido_a_quem_sai(): void

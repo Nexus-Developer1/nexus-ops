@@ -337,7 +337,7 @@
                                      (aqui ou por arrasto na agenda) ou removido. A escolha fica guardada no evento. --}}
                                 <label class="mt-3 flex cursor-pointer items-center gap-3 rounded-lg border border-borda px-4 py-3 text-sm text-texto-forte">
                                     <input type="checkbox" wire:model="formNotificar" class="h-5 w-5 rounded border-borda text-verde-600 focus:ring-verde-500">
-                                    <span>Avisar os técnicos por email <span class="block text-xs font-normal text-texto-fraco">ao criar, alterar ou remover este evento (quem faz a ação não recebe)</span></span>
+                                    <span>Avisar os técnicos por email <span class="block text-xs font-normal text-texto-fraco">ao criar, alterar ou remover este evento (todos os técnicos associados, incluindo quem faz a ação)</span></span>
                                 </label>
                                 @error('formTecnicoIds') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                                 @error('formTecnicoIds.*') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror

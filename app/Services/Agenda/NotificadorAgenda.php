@@ -119,7 +119,8 @@ class NotificadorAgenda
     /** @param list<int> $ids */
     private function enviar(array $ids, EventoAgendaNotificacao $notificacao): void
     {
-        $ids = array_values(array_diff($ids, [(int) auth()->id()]));
+        // TODOS os técnicos associados recebem — INCLUINDO quem fez a ação (pedido da equipa,
+        // set. 2026): quem cria o evento para si próprio também quer o convite no Outlook.
         if ($ids === []) {
             return;
         }
