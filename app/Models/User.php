@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PapelUtilizador;
+use App\Services\Agenda\FonteCalendario;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -79,6 +80,28 @@ class User extends Authenticatable
     }
 
     // Eventos da agenda em que esta conta é técnico ADICIONAL (pivot evento_tecnicos).
+    /**
+     * Cor desta pessoa na agenda — guardada, para não mudar de um dia para o outro.
+     *
+     * Atribuída à primeira utilização: a primeira cor da paleta que mais ninguém tenha.
+     * Esgotadas as cores (mais de 12 pessoas), reparte-se pela paleta de forma
+     * determinística — pelo id, que nunca muda.
+     */
+    public function corAgenda(): string
+    {
+        if ($this->cor_agenda) {
+            return $this->cor_agenda;
+        }
+
+        $usadas = static::whereNotNull('cor_agenda')->where('id', '!=', $this->id)->pluck('cor_agenda')->all();
+        $livres = array_values(array_diff(FonteCalendario::PALETA, $usadas));
+        $cor = $livres[0] ?? FonteCalendario::PALETA[$this->id % count(FonteCalendario::PALETA)];
+
+        $this->forceFill(['cor_agenda' => $cor])->save();
+
+        return $cor;
+    }
+
     public function eventosAdicionais(): BelongsToMany
     {
         return $this->belongsToMany(EventoAgenda::class, 'evento_tecnicos', 'user_id', 'evento_agenda_id');

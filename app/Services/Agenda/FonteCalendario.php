@@ -14,7 +14,16 @@ use Illuminate\Support\Carbon;
 class FonteCalendario
 {
     // Paleta de cores por técnico (legenda + eventos).
-    private const PALETA = ['#16a34a', '#2563eb', '#9333ea', '#ea580c', '#0891b2', '#db2777'];
+    // Paleta das cores da agenda: 12 tons bem separados, todos escuros o suficiente para o
+    // texto branco dos blocos. Eram 6 — com 7 pessoas na equipa começavam a repetir-se.
+    // A ORDEM não pode mudar: as 6 primeiras são as cores que os técnicos já tinham.
+    public const PALETA = [
+        '#16a34a', '#2563eb', '#9333ea', '#ea580c', '#0891b2', '#db2777',
+        '#ca8a04', '#4f46e5', '#0f766e', '#be123c', '#65a30d', '#86198f',
+    ];
+
+    // Cor de quem ainda não tem ninguém atribuído.
+    public const COR_SEM_TECNICO = '#94a3b8';
 
     // Mapa nome→cor calculado uma vez por pedido (lazy).
     private ?array $coresTecnicos = null;
@@ -108,40 +117,40 @@ class FonteCalendario
         return $de->isSameDay($ate) && $de->format('H:i') === '00:00' && $ate->format('H:i') === '23:59';
     }
 
+    /**
+     * Cor de um técnico, pelo NOME (é assim que os eventos o guardam).
+     *
+     * A cor vive na CONTA (utilizadores.cor_agenda) e é atribuída uma única vez: não muda
+     * quando alguém entra, sai ou passa a administrador, e não se repete entre pessoas.
+     * Antes vinha da posição numa lista recalculada a cada pedido — mudava sozinha e
+     * repetia-se (equipa, set. 2026).
+     */
     public function corTecnico(?string $nome): string
     {
         $nome = trim((string) $nome);
         if ($nome === '') {
-            return '#94a3b8'; // por atribuir
+            return self::COR_SEM_TECNICO; // por atribuir
         }
 
-        // Cor pela posição numa lista ESTÁVEL: contas de técnico por id (ids nunca mudam;
-        // contas novas entram no FIM, sem mexer nas cores de quem já existe), seguidas dos
-        // nomes legados (só texto) por ordem alfabética. Distintas até 6 técnicos.
-        $this->coresTecnicos ??= (function (): array {
-            $contas = User::where('papel', PapelUtilizador::Tecnico)
-                ->orderBy('id')
-                ->pluck('nome')
-                ->map(fn (string $n) => trim($n));
+        // Mapa nome→cor de TODA a equipa (técnicos e administradores: também vão a
+        // serviços), incluindo contas inativas — os eventos antigos continuam lá.
+        $this->coresTecnicos ??= User::whereIn('papel', [PapelUtilizador::Tecnico, PapelUtilizador::Admin])
+            ->orderBy('id')
+            ->get()
+            ->mapWithKeys(fn (User $u) => [trim($u->nome) => $u->corAgenda()])
+            ->all();
 
-            $legados = EventoAgenda::query()
-                ->whereNotNull('tecnico_nome')
-                ->where('tecnico_nome', '!=', '')
-                ->distinct()
-                ->orderBy('tecnico_nome')
-                ->pluck('tecnico_nome')
-                ->map(fn (string $n) => trim($n))
-                ->reject(fn (string $n) => $contas->contains($n));
+        if (isset($this->coresTecnicos[$nome])) {
+            return $this->coresTecnicos[$nome];
+        }
 
-            return $contas->concat($legados)
-                ->unique()
-                ->values()
-                ->mapWithKeys(fn (string $n, int $i) => [$n => self::PALETA[$i % count(self::PALETA)]])
-                ->all();
-        })();
+        // Nome só de texto, sem conta (eventos legados): determinístico pelo nome, mas
+        // escolhido entre as cores que NINGUÉM tem — senão ia bater na cor de uma pessoa
+        // real e voltavam as cores repetidas.
+        $livres = array_values(array_diff(self::PALETA, $this->coresTecnicos));
+        $livres = $livres ?: self::PALETA;
 
-        // Nome fora da lista (não devia acontecer): fallback determinístico por hash.
-        return $this->coresTecnicos[$nome] ?? self::PALETA[abs(crc32($nome)) % count(self::PALETA)];
+        return $livres[abs(crc32($nome)) % count($livres)];
     }
 
     // Técnicos + cor respetiva — filtro e legenda do calendário. Entram TODAS as contas de
@@ -151,6 +160,8 @@ class FonteCalendario
     /** @return array<int, array{nome: string, cor: string}> */
     public function legenda(): array
     {
+        // Técnicos ativos + qualquer conta que apareça em eventos (um administrador que
+        // vá a serviços tem de ter cor própria na legenda, como toda a gente).
         $contas = User::where('papel', PapelUtilizador::Tecnico)->where('ativo', true)->pluck('nome');
 
         $principais = EventoAgenda::query()
