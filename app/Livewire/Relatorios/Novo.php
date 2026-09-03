@@ -1107,6 +1107,11 @@ class Novo extends Component
             // Relatório: garante o rascunho-base (ponto único, à prova de corrida) e ajusta.
             $relatorio = $intervencao->garantirRascunho();
             $relatorio->estado = $finalizar ? EstadoRelatorio::Finalizado : EstadoRelatorio::Rascunho;
+            // A data do relatório SEGUE a data da intervenção escrita no formulário (mudar a
+            // data da intervenção passa a corrigir também a do relatório).
+            if ($intervencao->data_inicio) {
+                $relatorio->data = $intervencao->data_inicio->toDateString();
+            }
             if ($finalizar && blank($relatorio->numero)) {
                 // Atribui o número (MAX+1) e grava com retry à prova de corrida.
                 $gerador->atribuirNumeroEGravar($relatorio);

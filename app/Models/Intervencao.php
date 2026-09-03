@@ -116,7 +116,11 @@ class Intervencao extends Model
     {
         return $this->relatorio()->firstOrCreate([], [
             'estado' => EstadoRelatorio::Rascunho,
-            'data' => now(),
+            // A data do relatório é a data da INTERVENÇÃO. Um relatório pré-criado a partir
+            // da agenda ficava com o dia em que NASCEU o rascunho (o dia do agendamento),
+            // e era essa a data que a listagem e o PDF mostravam. now() só quando a
+            // intervenção ainda não tem data marcada.
+            'data' => $this->data_inicio ?? now(),
         ]);
     }
 
