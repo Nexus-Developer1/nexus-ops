@@ -16,21 +16,54 @@
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Equipamentos</h1>
             <p class="mt-2 text-sm text-texto-medio">{{ $equipamentos->total() }} {{ \Illuminate\Support\Str::plural('equipamento', $equipamentos->total()) }} registado{{ $equipamentos->total() === 1 ? '' : 's' }}.</p>
 
-            {{-- Filtros em DUAS linhas (pesquisa+ordenação / filtros), com quebra natural:
-                 numa só linha os 6 controlos esmagavam-se — a pesquisa colapsava e o botão
-                 "Por associar" partia o texto em três. --}}
-            <div class="mt-8 space-y-3">
-                {{-- Linha 1: pesquisa (procura sempre em TODOS os clientes) + ordenação. --}}
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <div class="relative w-full sm:max-w-md">
-                        <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                        <input wire:model.live.debounce.400ms="pesquisa" type="text" class="campo-input pl-10" placeholder="Pesquisar por nº de série, modelo ou cliente...">
+            {{-- Filtros num CARTÃO só (pedido da equipa, set. 2026: antes andavam soltos em duas
+                 linhas, com larguras diferentes e o "Ordenar:" a flutuar à direita). Pesquisa em
+                 cima, e por baixo os controlos em colunas IGUAIS, cada um com o seu rótulo. --}}
+            <div class="cartao mt-8 p-4 sm:p-5">
+                {{-- Pesquisa: procura sempre em TODOS os clientes. --}}
+                <div class="relative">
+                    <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <input wire:model.live.debounce.400ms="pesquisa" type="text" class="campo-input pl-10" placeholder="Pesquisar por nº de série, modelo ou cliente...">
+                </div>
+
+                {{-- flex-1 com largura mínima: todos ficam da MESMA largura e passam à linha
+                     seguinte inteiros (o filtro de família só existe com famílias do PHC). --}}
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="tipo" class="campo-label">Tipo</label>
+                        <select id="tipo" wire:model.live="tipo" class="campo-select">
+                            <option value="">Todos</option>
+                            @foreach ($tipos as $t)
+                                <option value="{{ $t->value }}">{{ $t->rotulo() }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
-                    {{-- Ordenação encostada à direita no desktop. --}}
-                    <div class="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
-                        <label for="ordenar" class="shrink-0 text-sm text-texto-medio">Ordenar:</label>
-                        <select id="ordenar" wire:model.live="ordenar" class="campo-select w-full sm:w-52">
+                    @if ($familias->isNotEmpty())
+                        <div class="min-w-[11rem] flex-1">
+                            <label for="familia" class="campo-label">Família</label>
+                            <select id="familia" wire:model.live="familia" class="campo-select">
+                                <option value="">Todas</option>
+                                @foreach ($familias as $f)
+                                    <option value="{{ $f }}">{{ $f }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
+
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="banco" class="campo-label">Banco de baterias</label>
+                        <select id="banco" wire:model.live="banco" class="campo-select">
+                            <option value="">Todos</option>
+                            <option value="com">Com banco associado</option>
+                            <option value="sem">Sem banco associado</option>
+                            <option value="banco">Só bancos associados a UPS</option>
+                        </select>
+                    </div>
+
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="ordenar" class="campo-label">Ordenar</label>
+                        <select id="ordenar" wire:model.live="ordenar" class="campo-select">
                             @foreach ($ordenacoes as $valor => $rotulo)
                                 <option value="{{ $valor }}">{{ $rotulo }}</option>
                             @endforeach
@@ -38,35 +71,15 @@
                     </div>
                 </div>
 
-                {{-- Linha 2: filtros — flex-wrap para passarem à linha seguinte em vez de encolher. --}}
-                <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                    {{-- Tipo de equipamento --}}
-                    <select wire:model.live="tipo" class="campo-select w-full sm:w-auto sm:min-w-[11rem]">
-                        <option value="">Todos os tipos</option>
-                        @foreach ($tipos as $t)
-                            <option value="{{ $t->value }}">{{ $t->rotulo() }}</option>
-                        @endforeach
-                    </select>
-
-                    {{-- Filtro por família (nome, vindo do PHC) — só aparece quando há famílias sincronizadas. --}}
-                    @if ($familias->isNotEmpty())
-                        <select wire:model.live="familia" class="campo-select w-full sm:w-auto sm:min-w-[11rem]">
-                            <option value="">Todas as famílias</option>
-                            @foreach ($familias as $f)
-                                <option value="{{ $f }}">{{ $f }}</option>
-                            @endforeach
-                        </select>
-                    @endif
-
-                    {{-- Filtro por banco de baterias associado (equipamento→equipamento). --}}
-                    <select wire:model.live="banco" class="campo-select w-full sm:w-auto sm:min-w-[13rem]">
-                        <option value="">Banco de baterias: todos</option>
-                        <option value="com">Com banco associado</option>
-                        <option value="sem">Sem banco associado</option>
-                        <option value="banco">Só bancos associados a UPS</option>
-                    </select>
-
-                </div>
+                {{-- Só quando há alguma coisa filtrada: repõe a lista como ela abre. --}}
+                @if ($this->temFiltros())
+                    <div class="mt-3 flex justify-end border-t border-borda pt-3">
+                        <button type="button" wire:click="limparFiltros" class="inline-flex items-center gap-1.5 text-sm font-medium text-texto-medio hover:text-texto-forte">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            Limpar filtros
+                        </button>
+                    </div>
+                @endif
             </div>
 
             {{-- Tabela --}}

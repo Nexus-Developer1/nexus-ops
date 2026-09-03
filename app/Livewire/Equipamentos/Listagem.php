@@ -89,6 +89,19 @@ class Listagem extends Component
         $this->resetPage();
     }
 
+    // Repõe a lista como ela abre de origem (a ordenação não é um filtro — fica).
+    public function limparFiltros(): void
+    {
+        $this->reset(['pesquisa', 'tipo', 'familia', 'banco']);
+        $this->resetPage();
+    }
+
+    /** Há algum filtro (ou pesquisa) ativo? — mostra o "Limpar filtros". */
+    public function temFiltros(): bool
+    {
+        return $this->pesquisa !== '' || $this->tipo !== '' || $this->familia !== '' || $this->banco !== '';
+    }
+
     public function render()
     {
         $equipamentos = Equipamento::query()
