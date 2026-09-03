@@ -72,7 +72,7 @@ class AgendaPesquisaClienteTest extends TestCase
             ->set('formTitulo', 'Visita')
             ->set('formInicio', '2026-09-07T09:00')
             ->set('formFim', '2026-09-07T10:00')
-            ->call('criarEvento')
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('eventos_agenda', ['titulo' => 'Visita', 'equipamento_id' => $equip->id, 'cliente_id' => $cliente->id]);

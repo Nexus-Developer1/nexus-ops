@@ -86,7 +86,7 @@ class AgendaClienteEventoTest extends TestCase
     {
         $this->modal()
             ->call('selecionarCliente', $this->acme->id)
-            ->call('criarEvento')->assertHasNoErrors();
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
 
         $e = EventoAgenda::where('titulo', 'Serviço')->firstOrFail();
         $this->assertSame($this->acme->id, $e->cliente_id);
@@ -99,7 +99,7 @@ class AgendaClienteEventoTest extends TestCase
             ->call('selecionarEquipamento', $this->bt1->id)
             ->assertSet('formClienteId', $this->beta->id)
             ->assertSee('BETA Lda')
-            ->call('criarEvento')->assertHasNoErrors();
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
 
         $e = EventoAgenda::where('titulo', 'Serviço')->firstOrFail();
         $this->assertSame($this->beta->id, $e->cliente_id);
@@ -130,7 +130,7 @@ class AgendaClienteEventoTest extends TestCase
     public function test_editar_traz_o_cliente_e_num_convertido_fica_trancado(): void
     {
         // Evento sem equipamento, só com cliente → editar mostra o cliente e deixa mudar.
-        $this->modal()->call('selecionarCliente', $this->acme->id)->call('criarEvento')->assertHasNoErrors();
+        $this->modal()->call('selecionarCliente', $this->acme->id)->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
         $e = EventoAgenda::where('titulo', 'Serviço')->firstOrFail();
         Livewire::actingAs($this->admin)->test(Calendario::class)
             ->call('selecionar', $e->id)->call('abrirEdicao')
@@ -146,7 +146,7 @@ class AgendaClienteEventoTest extends TestCase
             ->set('formTitulo', 'Preventiva')
             ->set('formInicio', '2026-09-08T09:00')->set('formFim', '2026-09-08T11:00')
             ->call('selecionarEquipamento', $this->ac1->id)
-            ->call('criarEvento')->assertHasNoErrors();
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
         $f = EventoAgenda::where('titulo', 'Preventiva')->firstOrFail();
         $this->assertNotNull($f->intervencao_id);
         Livewire::actingAs($this->admin)->test(Calendario::class)
@@ -176,7 +176,7 @@ class AgendaClienteEventoTest extends TestCase
 
     public function test_bloco_do_calendario_mostra_titulo_e_cliente(): void
     {
-        $this->modal()->call('selecionarEquipamento', $this->ac1->id)->call('criarEvento')->assertHasNoErrors();
+        $this->modal()->call('selecionarEquipamento', $this->ac1->id)->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
 
         $blocos = Livewire::actingAs($this->admin)->test(Calendario::class)
             ->call('eventos', '2026-08-09', '2026-08-12')

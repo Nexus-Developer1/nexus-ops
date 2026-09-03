@@ -51,7 +51,7 @@ class AgendaNotasEventoTest extends TestCase
             ->set('formTitulo', 'Serviço')
             ->set('formInicio', '2026-09-08T09:00')->set('formFim', '2026-09-08T11:00')
             ->set('formNotas', '  '.self::NOTAS.'  ')
-            ->call('criarEvento')->assertHasNoErrors();
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
 
         $e = EventoAgenda::where('titulo', 'Serviço')->firstOrFail();
         $this->assertSame(self::NOTAS, $e->notas); // aparado
@@ -103,7 +103,7 @@ class AgendaNotasEventoTest extends TestCase
             ->set('formTitulo', 'Preventiva')
             ->set('formInicio', '2026-09-08T09:00')->set('formFim', '2026-09-08T11:00')
             ->call('selecionarEquipamento', $ups->id)
-            ->call('criarEvento')->assertHasNoErrors();
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
         $e = EventoAgenda::where('titulo', 'Preventiva')->firstOrFail();
         $this->assertNotNull($e->intervencao_id);
 
@@ -122,6 +122,6 @@ class AgendaNotasEventoTest extends TestCase
             ->set('formTitulo', 'Serviço')
             ->set('formInicio', '2026-09-08T09:00')->set('formFim', '2026-09-08T11:00')
             ->set('formNotas', str_repeat('x', 5001))
-            ->call('criarEvento')->assertHasErrors(['formNotas' => 'max']);
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasErrors(['formNotas' => 'max']);
     }
 }

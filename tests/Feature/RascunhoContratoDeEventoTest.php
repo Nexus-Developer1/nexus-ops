@@ -69,7 +69,7 @@ class RascunhoContratoDeEventoTest extends TestCase
             ->set('formFim', $fim->format('Y-m-d\TH:i'))
             ->set('formContratoId', $contrato->id)
             ->set('formCobertura', 'incluida')
-            ->call('criarEvento')
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')
             ->assertHasNoErrors();
 
         $interv = Intervencao::firstOrFail();
@@ -103,7 +103,7 @@ class RascunhoContratoDeEventoTest extends TestCase
             ->set('formFim', (clone $inicio)->setTime(11, 30)->format('Y-m-d\TH:i'))
             ->set('formContratoId', $contrato->id)
             ->set('formCobertura', 'incluida')
-            ->call('criarEvento')
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')
             ->assertHasNoErrors();
 
         $interv = Intervencao::firstOrFail();
@@ -132,7 +132,7 @@ class RascunhoContratoDeEventoTest extends TestCase
             ->set('formEquipamentoId', $e1->id)
             ->set('formInicio', $inicio->format('Y-m-d\TH:i'))
             ->set('formFim', (clone $inicio)->setTime(10, 0)->format('Y-m-d\TH:i'))
-            ->call('criarEvento')
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')
             ->assertHasNoErrors();
 
         $interv = Intervencao::firstOrFail();

@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Enums\PapelUtilizador;
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\VerificarCodigo;
 use App\Models\Cliente;
@@ -38,6 +39,16 @@ abstract class TestCase extends BaseTestCase
         }
 
         return $app;
+    }
+
+    // Técnico pronto a escolher no modal da agenda (o campo Técnicos passou a obrigatório
+    // em set. 2026). Reutiliza sempre a mesma conta dentro do teste.
+    protected function tecnicoDeTeste(): User
+    {
+        return User::firstOrCreate(
+            ['email' => 'tecnico-de-teste@nexus.pt'],
+            ['nome' => 'Técnico de teste', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true],
+        );
     }
 
     // Equipamento pronto a usar num evento da agenda. Cria cliente + local se não vierem.

@@ -321,7 +321,7 @@
                             {{-- Técnicos: CONTAS de utilizador (mesma lista do relatório), 1 ou mais. Ligar
                                  a conta ativa o feed iCal e as notificações. --}}
                             <div>
-                                <label class="campo-label">Técnicos</label>
+                                <label class="campo-label">Técnicos <span class="text-perigo-500">*</span></label>
                                 <div class="space-y-1 rounded-lg border border-borda px-4 py-3">
                                     @forelse ($tecnicos as $t)
                                         {{-- py-2 + h-5: alvo de toque confortável no telemóvel (linha inteira clicável). --}}

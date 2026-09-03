@@ -78,7 +78,7 @@ class AgendaEquipamentosExtraTest extends TestCase
 
         $c->call('removerEquipamentoExtra', $this->ups3->id)
             ->assertSet('formEquipamentosExtra', [$this->ups2->id])
-            ->call('criarEvento')->assertHasNoErrors();
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
 
         $e = EventoAgenda::where('titulo', 'Serviço')->firstOrFail();
         $this->assertSame($this->ups1->id, $e->equipamento_id);
@@ -94,7 +94,7 @@ class AgendaEquipamentosExtraTest extends TestCase
             ->call('selecionarEquipamento', $this->ups1->id)
             ->call('selecionarEquipamento', $this->ups2->id)
             ->call('selecionarEquipamento', $this->ups3->id)
-            ->call('criarEvento')->assertHasNoErrors();
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
 
         $e = EventoAgenda::where('titulo', 'Serviço')->firstOrFail();
         $this->assertNotNull($e->intervencao_id);
@@ -108,7 +108,7 @@ class AgendaEquipamentosExtraTest extends TestCase
         $this->modal()
             ->call('selecionarEquipamento', $this->ups1->id)
             ->call('selecionarEquipamento', $this->ups2->id)
-            ->call('criarEvento')->assertHasNoErrors();
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
         $e = EventoAgenda::where('titulo', 'Serviço')->firstOrFail();
 
         // Reabrir: o principal fica trancado ao relatório; os adicionais vêm dos cobertos.
@@ -123,7 +123,7 @@ class AgendaEquipamentosExtraTest extends TestCase
         $c->call('selecionarEquipamento', $this->ups3->id)
             ->assertSet('formEquipamentoId', $this->ups1->id) // num convertido nunca troca o principal
             ->call('removerEquipamentoExtra', $this->ups2->id)
-            ->call('criarEvento')->assertHasNoErrors();
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
 
         $this->assertSame([$this->ups3->id], $e->intervencao->equipamentosCobertos()->pluck('equipamentos.id')->all());
         $this->assertSame([$this->ups3->id], $e->fresh()->equipamentosAdicionais()->pluck('equipamentos.id')->all());
@@ -134,7 +134,7 @@ class AgendaEquipamentosExtraTest extends TestCase
     // os outros equipamentos para acrescentar.
     public function test_em_edicao_a_caixa_esta_vazia_e_a_pesquisa_encontra_para_acrescentar(): void
     {
-        $this->modal()->call('selecionarEquipamento', $this->ups1->id)->call('criarEvento')->assertHasNoErrors();
+        $this->modal()->call('selecionarEquipamento', $this->ups1->id)->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
         $e = EventoAgenda::where('titulo', 'Serviço')->firstOrFail();
 
         Livewire::actingAs($this->admin)->test(Calendario::class)
@@ -165,7 +165,7 @@ class AgendaEquipamentosExtraTest extends TestCase
             ->assertSet('formEquipamentosExtra', []);
 
         // Convertido: o principal é do relatório e não sai pela agenda.
-        $this->modal()->call('selecionarEquipamento', $this->ups1->id)->call('criarEvento')->assertHasNoErrors();
+        $this->modal()->call('selecionarEquipamento', $this->ups1->id)->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
         $e = EventoAgenda::where('titulo', 'Serviço')->firstOrFail();
         Livewire::actingAs($this->admin)->test(Calendario::class)
             ->call('selecionar', $e->id)->call('abrirEdicao')
@@ -179,7 +179,7 @@ class AgendaEquipamentosExtraTest extends TestCase
         $this->modal()
             ->call('selecionarEquipamento', $this->ups1->id)
             ->call('selecionarEquipamento', $this->alheio->id)
-            ->call('criarEvento')
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')
             ->assertHasErrors('formEquipamentoId');
 
         $this->assertNull(EventoAgenda::where('titulo', 'Serviço')->first());

@@ -126,7 +126,7 @@ class SaldoVisitasFase1Test extends TestCase
             ->set('formFim', $d->copy()->addHour()->format('Y-m-d\TH:i'))
             ->set('formContratoId', $c->id)
             ->set('formCobertura', 'incluida')
-            ->call('criarEvento')->assertHasNoErrors();
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
 
         $e = EventoAgenda::where('contrato_id', $c->id)->firstOrFail();
         $this->assertSame('incluida', $e->cobertura);
@@ -144,7 +144,7 @@ class SaldoVisitasFase1Test extends TestCase
             ->set('formFim', $d->copy()->addHour()->format('Y-m-d\TH:i'))
             ->set('formContratoId', null)
             ->set('formCobertura', 'incluida') // enviada, mas sem contrato deve ser ignorada
-            ->call('criarEvento')->assertHasNoErrors();
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
 
         $e = EventoAgenda::where('titulo', 'Reunião')->firstOrFail();
         $this->assertNull($e->contrato_id);
@@ -163,7 +163,7 @@ class SaldoVisitasFase1Test extends TestCase
             ->set('formFim', $d->copy()->addHour()->format('Y-m-d\TH:i'))
             ->set('formContratoId', $c->id)   // hook põe 'incluida'
             ->set('formCobertura', null)       // forçar vazio → required_with falha
-            ->call('criarEvento')->assertHasErrors('formCobertura');
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasErrors('formCobertura');
     }
 
     // ---- Saldo (Ficha) ----

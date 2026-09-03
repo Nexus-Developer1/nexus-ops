@@ -119,7 +119,7 @@ class SyncRelatorioEventoTest extends TestCase
             ->set('formEquipamentoId', $equip->id)
             ->set('formInicio', $inicio->format('Y-m-d\TH:i'))
             ->set('formFim', $fim->format('Y-m-d\TH:i'))
-            ->call('criarEvento')
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')
             ->assertHasNoErrors();
 
         $this->assertDatabaseCount('eventos_agenda', 1);

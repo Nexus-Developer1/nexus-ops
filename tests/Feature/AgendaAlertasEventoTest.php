@@ -40,7 +40,7 @@ class AgendaAlertasEventoTest extends TestCase
             ->call('adicionarAlerta')
             ->set('formAlertas.0.data', $dataAlerta)
             ->set('formAlertas.0.texto', $texto)
-            ->call('criarEvento')->assertHasNoErrors();
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
 
         return EventoAgenda::where('titulo', 'Serviço')->firstOrFail();
     }

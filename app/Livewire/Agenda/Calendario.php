@@ -612,7 +612,9 @@ class Calendario extends Component
             'formAlertas.*.data' => ['required', 'date'],
             'formAlertas.*.texto' => ['required', 'string', 'max:255'],
             // Técnicos = contas ativas com papel técnico (mesma regra dos colaboradores no relatório).
-            'formTecnicoIds' => ['array'],
+            // OBRIGATÓRIO (pedido da equipa): um evento sem ninguém atribuído não aparece na
+            // agenda de nenhum técnico, não gera convite nem alerta — passava despercebido.
+            'formTecnicoIds' => ['array', 'min:1'],
             'formTecnicoIds.*' => ['integer',
                 Rule::exists('utilizadores', 'id')
                     ->where('papel', PapelUtilizador::Tecnico->value)
@@ -631,6 +633,8 @@ class Calendario extends Component
             'formHorasDias' => ['array', 'max:32'],
             'formHorasDias.*.inicio' => ['required', 'date_format:H:i'],
             'formHorasDias.*.fim' => ['required', 'date_format:H:i'],
+        ], [
+            'formTecnicoIds.min' => 'Escolha pelo menos um técnico para o evento.',
         ]);
 
         // Cada dia tem de ter fim depois do início (as horas são dentro do próprio dia).

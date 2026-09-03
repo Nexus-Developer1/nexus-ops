@@ -52,7 +52,7 @@ class AgendaDiaInteiroTest extends TestCase
             $this->assertSame('23:59', $linha['fim']);
         }
 
-        $c->call('criarEvento')->assertHasNoErrors();
+        $c->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
 
         $e = EventoAgenda::where('titulo', 'Férias')->firstOrFail();
         $this->assertSame('2026-09-07 00:00:00', $e->inicio->format('Y-m-d H:i:s'));

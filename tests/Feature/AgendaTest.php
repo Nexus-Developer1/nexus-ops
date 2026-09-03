@@ -281,7 +281,7 @@ class AgendaTest extends TestCase
             ->set('formEquipamentoId', $equip->id)
             ->set('formInicio', '2026-07-06T10:00')
             ->set('formFim', '2026-07-06T11:00')
-            ->call('criarEvento')
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')
             ->assertHasNoErrors();
 
         // Equipamento escolhido → evento herda local_id e cliente_id (equipamento → local → cliente).
@@ -308,7 +308,7 @@ class AgendaTest extends TestCase
             ->set('formEquipamentoId', $equip->id)
             ->set('formInicio', $inicio->format('Y-m-d\TH:i'))
             ->set('formFim', $fim->format('Y-m-d\TH:i'))
-            ->call('criarEvento')
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')
             ->assertHasNoErrors();
 
         $evento = EventoAgenda::where('titulo', 'Inspeção')->firstOrFail();
@@ -344,7 +344,7 @@ class AgendaTest extends TestCase
             ->set('formTitulo', 'Reunião')
             ->set('formInicio', now()->addWeek()->format('Y-m-d\TH:i'))
             ->set('formFim', now()->addWeek()->addHour()->format('Y-m-d\TH:i'))
-            ->call('criarEvento')
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')
             ->assertHasNoErrors();
 
         $this->assertDatabaseCount('intervencoes', 0);
@@ -366,7 +366,7 @@ class AgendaTest extends TestCase
             ->set('formEquipamentoId', $equip->id)
             ->set('formInicio', (clone $passado)->setTime(10, 0)->format('Y-m-d\TH:i'))
             ->set('formFim', (clone $passado)->setTime(11, 0)->format('Y-m-d\TH:i'))
-            ->call('criarEvento')
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')
             ->assertHasNoErrors();
 
         // O evento foi mesmo criado (para garantir que testamos o gancho, não a validação).
@@ -578,6 +578,9 @@ class AgendaTest extends TestCase
             ->set('formTitulo', 'Serviço (adiado)')
             ->set('formInicio', '2026-07-07T14:00')
             ->set('formFim', '2026-07-07T15:30')
+            // Evento antigo sem ninguém atribuído: ao editar tem de se escolher um técnico
+            // (o campo passou a obrigatório em set. 2026).
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])
             ->call('criarEvento')
             ->assertHasNoErrors();
 
