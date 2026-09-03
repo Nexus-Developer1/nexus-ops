@@ -13,13 +13,17 @@ use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\User;
+use App\Notifications\AcessoAgendaOutlook;
 use App\Services\Agenda\AgendadorEvento;
 use App\Services\Agenda\ConversorVisita;
 use App\Services\Agenda\FonteCalendario;
 use App\Services\Agenda\NotificadorAgenda;
 use App\Services\Agenda\SincronizadorAgenda;
+use App\Services\Auditor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -34,6 +38,43 @@ class Calendario extends Component
     // não pela conta. Vazio = todos.
     #[Url]
     public string $tecnicoNome = '';
+
+    /**
+     * Envia (ou reenvia) para o PRÓPRIO o email com o acesso à agenda no Outlook.
+     *
+     * O URL do feed é o segredo — quem o tiver vê a agenda dessa pessoa —, por isso o
+     * destinatário é sempre o email da conta autenticada, nunca um endereço escolhido.
+     * Se ainda não houver token, é criado aqui (antes só um admin o podia gerar à mão).
+     */
+    public function enviarAcessoOutlook(): void
+    {
+        $user = auth()->user();
+        if (! $user?->email) {
+            session()->flash('erro_acesso', 'A sua conta não tem email associado — fale com um administrador.');
+
+            return;
+        }
+
+        // Travão contra cliques repetidos (e contra usar isto para inundar a caixa de correio).
+        $chave = 'acesso-agenda:'.$user->id;
+        if (RateLimiter::tooManyAttempts($chave, 3)) {
+            session()->flash('erro_acesso', 'Já enviámos o acesso há pouco. Tente daqui a '.RateLimiter::availableIn($chave).' segundos.');
+
+            return;
+        }
+        RateLimiter::hit($chave, 600);
+
+        if (! $user->agenda_feed_token) {
+            // 48 caracteres alfanuméricos (~285 bits): o URL é o segredo, tem de ser inadivinhável.
+            $user->forceFill(['agenda_feed_token' => Str::random(48)])->save();
+            Auditor::registar('agenda.feed_gerado', $user);
+        }
+
+        $user->notify(new AcessoAgendaOutlook(route('agenda.feed', $user->agenda_feed_token)));
+        Auditor::registar('agenda.acesso_enviado', $user, ['email' => $user->email]);
+
+        session()->flash('sucesso', 'Acesso enviado para '.$user->email.'. Veja a caixa de entrada (e o spam).');
+    }
 
     public function mount(): void
     {

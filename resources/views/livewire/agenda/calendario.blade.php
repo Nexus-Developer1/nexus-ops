@@ -17,8 +17,26 @@
                             <option value="{{ $t['nome'] }}">{{ $t['nome'] }}</option>
                         @endforeach
                     </select>
+
+                    {{-- Manda para o PRÓPRIO (o email da conta com sessão iniciada) o endereço de
+                         subscrição da agenda no Outlook. Nunca pergunta o destinatário: o URL é o
+                         segredo do feed. --}}
+                    <button type="button" wire:click="enviarAcessoOutlook" wire:loading.attr="disabled" wire:target="enviarAcessoOutlook"
+                            class="botao-secundario w-full sm:w-auto"
+                            title="Enviar para o seu email o acesso a esta agenda no Outlook">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        <span wire:loading.remove wire:target="enviarAcessoOutlook">Acesso no Outlook</span>
+                        <span wire:loading wire:target="enviarAcessoOutlook">A enviar...</span>
+                    </button>
                 </div>
             </div>
+
+            @if (session('erro_acesso'))
+                <div class="mt-6 flex items-center gap-2 rounded-lg border border-perigo-200 bg-perigo-100 px-4 py-3 text-sm font-medium text-perigo-600">
+                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    {{ session('erro_acesso') }}
+                </div>
+            @endif
 
             {{-- Confirmação (ex.: rascunho de relatório gerado a partir do evento) --}}
             <x-toast-sucesso />
