@@ -60,6 +60,14 @@ class SincronizarAgendaGraph extends Command
                 $this->warn('Falhou: '.implode(', ', $r['falhou']));
             }
 
+            // Cor por técnico (categorias) — é o que destaca o evento na grelha do Outlook.
+            $c = $calendario->garantirCategorias();
+            $this->info('Categorias criadas: '.(implode(', ', $c['criadas']) ?: '—'));
+            $this->line('Já existiam: '.(implode(', ', $c['ja_tinha']) ?: '—'));
+            if ($c['falhou']) {
+                $this->warn('Categorias falhadas: '.implode(', ', $c['falhou']));
+            }
+
             return self::SUCCESS;
         }
 

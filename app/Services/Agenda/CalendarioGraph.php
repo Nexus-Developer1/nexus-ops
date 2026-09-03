@@ -68,6 +68,44 @@ class CalendarioGraph
         }
     }
 
+    /**
+     * Garante uma categoria COLORIDA por técnico na mailbox de serviço — sem isto o Outlook
+     * mostra a categoria sem cor e o evento não se destaca. Idempotente: quem já lá está é
+     * saltado; a cor é estável (pelo id do utilizador), para o mesmo técnico ter sempre a
+     * mesma cor na agenda.
+     *
+     * @return array{criadas: list<string>, ja_tinha: list<string>, falhou: list<string>}
+     */
+    public function garantirCategorias(): array
+    {
+        $existentes = collect($this->graph->get($this->caminhoUtilizador().'/outlook/masterCategories')->json('value') ?? [])
+            ->map(fn ($c) => mb_strtolower((string) ($c['displayName'] ?? '')))
+            ->filter()->all();
+
+        $resultado = ['criadas' => [], 'ja_tinha' => [], 'falhou' => []];
+        $equipa = User::query()->where('papel', PapelUtilizador::Tecnico)
+            ->where('ativo', true)->orderBy('id')->get();
+
+        foreach ($equipa as $i => $u) {
+            if (in_array(mb_strtolower($u->nome), $existentes, true)) {
+                $resultado['ja_tinha'][] = $u->nome;
+
+                continue;
+            }
+            // preset0..preset23 são as 24 cores do Outlook; a partir do id, sempre a mesma.
+            $r = $this->graph->post($this->caminhoUtilizador().'/outlook/masterCategories', [
+                'displayName' => $u->nome,
+                'color' => 'preset'.($u->id % 24),
+            ]);
+            $resultado[$r->successful() ? 'criadas' : 'falhou'][] = $u->nome;
+            if ($r->failed()) {
+                Log::warning('Graph: falha a criar a categoria do técnico.', ['tecnico' => $u->nome, 'status' => $r->status(), 'erro' => $r->json('error.message')]);
+            }
+        }
+
+        return $resultado;
+    }
+
     // Partilha o calendário (leitura) com a equipa ativa — quem tiver email no M365 passa a vê-lo
     // no Outlook sem configurar nada. Idempotente: quem já tem permissão é saltado.
     /** @return array{partilhado: list<string>, ja_tinha: list<string>, falhou: list<string>} */
@@ -132,16 +170,20 @@ class CalendarioGraph
     {
         $tz = GeradorIcs::TZ;
         $cancelado = $e->trashed() || $e->estado->value === 'cancelado';
+        // Corpo em HTML (era texto simples) para o nome dos TÉCNICOS sair a negrito e em
+        // destaque — pedido da equipa. O assunto do evento não aceita formatação nenhuma
+        // (o Outlook desenha-o sempre em texto simples), por isso a evidência na grelha
+        // faz-se pela COR da categoria (uma por técnico, ver garantirCategorias()).
         $linhas = array_filter([
-            $e->tecnico_label ? 'Técnicos: '.$e->tecnico_label : null,
-            $e->cliente ? 'Cliente: '.$e->cliente->nome : null,
-            $e->equipamento ? 'Equipamento: '.trim(($e->equipamento->numero_serie ?? '').' · '.trim(($e->equipamento->fabricante ?? '').' '.($e->equipamento->modelo ?? '')), ' ·') : null,
-            $e->contrato ? 'Contrato: '.$e->contrato->numero : null,
-            $e->local?->designacao ? 'Local: '.$e->local->designacao : null,
-            'Estado: '.$e->estado->value,
-            $e->notas ? "\nNotas:\n".$e->notas : null,
+            $e->tecnico_label ? '<span style="font-size:15px;">Técnicos: <strong>'.e($e->tecnico_label).'</strong></span>' : null,
+            $e->cliente ? 'Cliente: <strong>'.e($e->cliente->nome).'</strong>' : null,
+            $e->equipamento ? 'Equipamento: '.e(trim(($e->equipamento->numero_serie ?? '').' · '.trim(($e->equipamento->fabricante ?? '').' '.($e->equipamento->modelo ?? '')), ' ·')) : null,
+            $e->contrato ? 'Contrato: '.e($e->contrato->numero) : null,
+            $e->local?->designacao ? 'Local: '.e($e->local->designacao) : null,
+            'Estado: '.e($e->estado->value),
+            $e->notas ? '<br>Notas:<br>'.nl2br(e($e->notas)) : null,
             '',
-            'Agenda: '.route('agenda'),
+            '<a href="'.route('agenda').'">Abrir a agenda</a>',
         ]);
 
         return [
@@ -149,10 +191,16 @@ class CalendarioGraph
             'start' => ['dateTime' => $e->inicio->copy()->setTimezone($tz)->format('Y-m-d\TH:i:s'), 'timeZone' => $tz],
             'end' => ['dateTime' => $e->fim->copy()->setTimezone($tz)->format('Y-m-d\TH:i:s'), 'timeZone' => $tz],
             'location' => ['displayName' => (string) ($e->local?->morada ?: $e->cliente?->nome ?: '')],
-            'body' => ['contentType' => 'text', 'content' => implode("\n", $linhas)],
+            'body' => ['contentType' => 'html', 'content' => '<div style="font-family:Segoe UI,Arial,sans-serif; font-size:14px; color:#111827;">'.implode('<br>', $linhas).'</div>'],
             'showAs' => $cancelado ? 'free' : 'busy',
             'isReminderOn' => false,
-            'categories' => array_values(array_filter([$e->tipo?->value === 'visita_preventiva' ? 'Preventiva' : null])),
+            // Uma categoria por TÉCNICO (além do tipo): é o que dá cor ao evento na grelha do
+            // Outlook — o "em evidência" possível num calendário. As cores vivem na lista de
+            // categorias da mailbox de serviço (garantirCategorias()).
+            'categories' => array_values(array_filter(array_merge(
+                [$e->tipo?->value === 'visita_preventiva' ? 'Preventiva' : null],
+                $e->tecnico_label ? array_map('trim', explode(',', $e->tecnico_label)) : [],
+            ))),
             // Identificação estável (o mesmo UID dos convites) — útil para reconciliar à mão.
             'transactionId' => GeradorIcs::uid($e->id),
         ];

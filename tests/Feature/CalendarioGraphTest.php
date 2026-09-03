@@ -92,6 +92,26 @@ class CalendarioGraphTest extends TestCase
             && $r['transactionId'] === 'agenda-'.$e->id.'@infra.nexus-solutions.pt');
     }
 
+    // O assunto do evento não aceita formatação (o Outlook desenha-o em texto simples): o
+    // destaque do técnico faz-se a NEGRITO no corpo (HTML) e pela COR da categoria.
+    public function test_tecnico_sai_a_negrito_no_corpo_e_como_categoria(): void
+    {
+        $this->fakeGraph();
+        $e = $this->evento();
+
+        app(CalendarioGraph::class)->espelhar($e);
+
+        Http::assertSent(function ($r) {
+            if ($r->method() !== 'POST' || ! str_contains($r->url(), '/events')) {
+                return false;
+            }
+
+            return $r['body']['contentType'] === 'html'
+                && str_contains($r['body']['content'], '<strong>Paulo Bento</strong>')
+                && $r['categories'] === ['Paulo Bento'];   // a categoria é o que dá cor na grelha
+        });
+    }
+
     public function test_alterar_faz_patch_no_mesmo_id(): void
     {
         $this->fakeGraph();
