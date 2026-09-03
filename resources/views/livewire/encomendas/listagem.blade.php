@@ -19,6 +19,12 @@
                     <option value="aberta">Em aberto</option>
                     <option value="fechada">Fechadas</option>
                 </select>
+                {{-- Resultado da conferência com o PHC feita a cada sync. --}}
+                <select wire:model.live="phc" class="campo-select w-full sm:w-52">
+                    <option value="">Tudo o que veio do PHC</option>
+                    <option value="ausente">Já não existe no PHC</option>
+                    <option value="alterado">Alterado no PHC (7 dias)</option>
+                </select>
                 <select wire:model.live="ano" class="campo-select w-full sm:w-32">
                     <option value="">Todos os anos</option>
                     @foreach ($anos as $a)
@@ -78,6 +84,12 @@
                                 <td class="whitespace-nowrap px-6 py-3.5 text-right font-medium text-texto-forte">{{ $d->total_debito !== null ? number_format((float) $d->total_debito, 2, ',', ' ').' €' : '—' }}</td>
                                 <td class="whitespace-nowrap px-6 py-3.5">
                                     <span class="etiqueta {{ $d->fechada ? 'bg-fundo text-texto-medio' : 'bg-verde-50 text-verde-700' }}">{{ $d->fechada ? 'Fechada' : 'Em aberto' }}</span>
+                                    {{-- Apurado no sync: o dossiê já não vem do PHC, ou mudou lá. --}}
+                                    @if ($d->ausenteDoErp())
+                                        <span class="etiqueta bg-perigo-100 text-perigo-600" title="Já não existe no PHC desde {{ $d->ausente_do_erp_em->translatedFormat('d M Y H:i') }} — continua aqui para consulta">Fora do PHC</span>
+                                    @elseif ($d->alterado_erp_em && $d->alterado_erp_em->gte(now()->subDays(7)))
+                                        <span class="etiqueta bg-aviso-100 text-aviso-500" title="Alterado no PHC a {{ $d->alterado_erp_em->translatedFormat('d M Y H:i') }}: {{ implode(' · ', $d->alteracoesLegiveis()) }}">Alterado</span>
+                                    @endif
                                 </td>
                             </tr>
                         @empty

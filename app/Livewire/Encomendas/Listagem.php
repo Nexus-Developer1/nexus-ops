@@ -30,7 +30,17 @@ class Listagem extends Component
     #[Session]
     public string $ano = '';
 
+    // Conferência com o PHC: '' | 'ausente' (já não existe lá) | 'alterado' (mudou lá
+    // nos últimos 7 dias). Alimentado pelo sync — ver SincronizarDossiersErp.
+    #[Session]
+    public string $phc = '';
+
     public function updatingPesquisa(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingPhc(): void
     {
         $this->resetPage();
     }
@@ -57,6 +67,8 @@ class Listagem extends Component
             ->when($this->estado === 'aberta', fn ($q) => $q->where('fechada', false))
             ->when($this->estado === 'fechada', fn ($q) => $q->where('fechada', true))
             ->when($this->ano !== '', fn ($q) => $q->where('ano', (int) $this->ano))
+            ->when($this->phc === 'ausente', fn ($q) => $q->whereNotNull('ausente_do_erp_em'))
+            ->when($this->phc === 'alterado', fn ($q) => $q->where('alterado_erp_em', '>=', now()->subDays(7)))
             ->when($this->pesquisa !== '', function ($q) {
                 $termo = '%'.$this->pesquisa.'%';
                 $q->where(function ($q) use ($termo) {
