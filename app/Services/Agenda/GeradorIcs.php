@@ -6,7 +6,6 @@ use App\Models\EventoAgenda;
 use App\Models\User;
 use DateTimeZone;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use Spatie\IcalendarGenerator\Components\Calendar;
 use Spatie\IcalendarGenerator\Components\Event;
 use Spatie\IcalendarGenerator\Enums\EventStatus;
@@ -34,12 +33,6 @@ class GeradorIcs
     public const DOMINIO_UID = 'infra.nexus-solutions.pt';
 
     public const TZ = 'Europe/Lisbon';
-
-    public const FEED_DIAS_ATRAS = 30;
-
-    public const FEED_DIAS_FRENTE = 90;
-
-    public const FEED_CANCELADOS_DIAS = 30;
 
     public static function uid(int $eventoId): string
     {
@@ -86,66 +79,6 @@ class GeradorIcs
         return $this->comConvite($ics, $cancelar ? 'CANCEL' : 'REQUEST', $organizador, $tecnico, $cancelar ? [] : $e);
     }
 
-    /** Feed de subscrição de um utilizador (ver regras no topo). */
-    public function feed(User $subscritor): string
-    {
-        $tz = new DateTimeZone(self::TZ);
-
-        $calendario = Calendar::create('Nexus Infra · Agenda')
-            ->productIdentifier('-//Nexus Infra//Agenda//PT')
-            ->refreshInterval(60); // REFRESH-INTERVAL;VALUE=DURATION:PT1H + X-PUBLISHED-TTL:PT1H
-
-        foreach ($this->eventosDoFeed($subscritor) as $e) {
-            $cancelado = $e->trashed() || $e->estado->value === 'cancelado';
-
-            $evento = Event::create($this->resumo($e))
-                ->uniqueIdentifier(self::uid($e->id))
-                ->startsAt($e->inicio->copy()->setTimezone($tz))
-                ->endsAt($e->fim->copy()->setTimezone($tz))
-                ->sequence((int) $e->ical_sequence + ($e->trashed() ? 1 : 0))
-                ->status($cancelado ? EventStatus::Cancelled : EventStatus::Confirmed)
-                ->description($this->descricaoFeed($e));
-
-            if ($e->local?->morada || $e->cliente?->nome) {
-                $evento->address((string) ($e->local?->morada ?: $e->cliente?->nome));
-            }
-
-            $calendario->event($evento);
-        }
-
-        // O spatie escreve a duração em minutos (PT60M); PT1H é o mesmo valor ISO 8601 e é a
-        // forma que a documentação do Outlook mostra — normaliza-se para não haver dúvidas.
-        return str_replace(['DURATION:PT60M', 'X-PUBLISHED-TTL:PT60M'], ['DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H'], $calendario->get());
-    }
-
-    /**
-     * Eventos do feed: janela temporal, apagados recentes incluídos (para irem como CANCELLED),
-     * sem os eventos em que o subscritor é convidado. Eager loading do que o VEVENT usa.
-     *
-     * @return Collection<int, EventoAgenda>
-     */
-    public function eventosDoFeed(User $subscritor)
-    {
-        return EventoAgenda::query()
-            ->paraFeed()
-            ->with(['cliente', 'local', 'tecnico', 'tecnicosAdicionais'])
-            // Agrupado: sem os parênteses o OR saltava a janela temporal e o filtro dos apagados.
-            ->where(fn ($q) => $q->where('tecnico_id', '!=', $subscritor->id)->orWhereNull('tecnico_id'))
-            ->whereDoesntHave('tecnicosAdicionais', fn ($q) => $q->whereKey($subscritor->id))
-            ->orderBy('inicio')
-            ->get();
-    }
-
-    /** Instante da última mudança relevante para o feed (ETag / Last-Modified / cache). */
-    public function ultimaAlteracao(): ?Carbon
-    {
-        $max = EventoAgenda::query()->paraFeed()
-            ->selectRaw('greatest(max(updated_at), max(coalesce(deleted_at, updated_at))) as m')
-            ->value('m');
-
-        return $max ? Carbon::parse($max) : null;
-    }
-
     // ---- conteúdo -------------------------------------------------------------------------
 
     // Título no Outlook: "siglas · tipo · cliente · técnicos" (as siglas à frente para se ver
@@ -153,20 +86,6 @@ class GeradorIcs
     private function resumo(EventoAgenda $e): string
     {
         return $e->resumoOutlook();
-    }
-
-    // Só o essencial — nada de notas internas, contactos ou faturação.
-    private function descricaoFeed(EventoAgenda $e): string
-    {
-        $linhas = array_filter([
-            $e->tecnico_label ? 'Técnicos: '.$e->tecnico_label : null,
-            $e->cliente ? 'Cliente: '.$e->cliente->nome : null,
-            $e->local?->designacao ? 'Local: '.$e->local->designacao : null,
-            $e->estado ? 'Estado: '.$e->estado->value : null,
-            $e->notas ? "Notas:\n".$e->notas : null,
-        ]);
-
-        return implode("\n", $linhas);
     }
 
     /** @param array<string, mixed> $e */

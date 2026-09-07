@@ -1,11 +1,13 @@
 # Agenda no Outlook — manual interno
 
-A agenda do Nexus Infra chega ao Outlook por duas vias. **Cada pessoa usa uma, não as duas** — o feed de cada um já exclui os eventos em que essa pessoa é convidada, por isso ninguém vê nada a dobrar.
+A agenda do Nexus Infra chega ao Outlook por duas vias, que se completam.
 
 | Via | Para quem | Como chega | Quando |
 |---|---|---|---|
 | **Convites por email** | Técnicos associados a eventos | Email com convite iCalendar (Aceitar / Recusar) — o evento entra no calendário; alterações atualizam-no; remoções cancelam-no | Imediato |
-| **Feed de subscrição** | Quem quer ver a agenda geral (coordenação, ecrã, chefia) | Calendário "Nexus Infra" subscrito no Outlook, só leitura | Atualiza de hora a hora (o Outlook decide, 1h–24h) |
+| **Calendário partilhado** | Toda a equipa | Calendário "Agenda Nexus Infra" partilhado a partir da mailbox `Suporte@nxs.pt` (Microsoft Graph), só de leitura | Segundos |
+
+> O **feed ICS de subscrição** (URLs por token, página "Feeds da agenda") foi **removido em 2026-09-04**: exigia a porta 443 aberta ao exterior, nunca chegou a ser usado e o calendário partilhado faz o mesmo melhor.
 
 ## 1. Convites por email (técnicos)
 
@@ -17,46 +19,7 @@ Não há nada a configurar. Quando alguém cria um evento na agenda com a opçã
 
 Se um convite não atualizar o evento existente, o mais provável é o Outlook estar a mostrar uma versão antiga: abra o email mais recente e aceite — a versão mais recente ganha sempre.
 
-## 2. Feed de subscrição (só leitura)
-
-### Obter o URL
-
-1. Peça a um administrador do Nexus Infra para ir a **Feeds da agenda** (menu lateral, só admin) e carregar em **Gerar feed** ao lado do seu nome.
-2. Copie o URL (botão **Copiar**). Trate-o como uma palavra-passe — quem o tiver vê a agenda.
-
-### Outlook novo (Windows/Mac) e Outlook na Web
-
-1. Abra o **Calendário**.
-2. **Adicionar calendário** → **Subscrever a partir da Web**.
-3. Cole o URL do feed.
-4. Nome do calendário: **Nexus Infra**. Escolha uma cor. **Importar**.
-
-### Outlook clássico (Windows)
-
-1. **Ficheiro** → **Definições da Conta** → **Definições da Conta…**
-2. Separador **Calendários da Internet** → **Novo…**
-3. Cole o URL do feed → **Adicionar** → nome **Nexus Infra** → **OK**.
-
-### O que aparece no feed
-
-- Eventos dos **últimos 30 dias** e dos **próximos 90** (não o histórico todo).
-- Título = tipo de evento · cliente; local; técnicos; estado.
-- Eventos **removidos** ficam riscados durante 30 dias e depois desaparecem.
-- **Não** aparecem: notas internas, contactos, dados de faturação — nem os eventos em que o próprio subscritor é convidado (esses chegam por convite).
-
-### Se deixar de atualizar
-
-- O Outlook atualiza feeds subscritos por si, mas pode demorar até 24 h. Para forçar: botão direito no calendário → **Atualizar**.
-- Se o URL foi **regenerado ou revogado** na página Feeds da agenda, o antigo deixa de funcionar de imediato: remova o calendário no Outlook e subscreva o URL novo.
-- Se perder o URL, peça ao administrador para **Regenerar** — o anterior é invalidado.
-
-## 3. Para administradores
-
-- **Feeds da agenda** (menu lateral): lista da equipa com o URL de cada um, **Gerar feed**, **Regenerar** (invalida o URL antigo) e **Revogar** (deixa de haver feed). Cada ação fica na auditoria.
-- Quem sai da empresa: **Revogar** o feed (a desativação da conta também o desliga — o endpoint só responde a contas ativas).
-- O feed é servido em `https://infra.nexus-solutions.pt:9443/agenda/feed/<token>.ics` — hostname público de propósito: o Outlook novo e o Web fazem o pedido a partir dos servidores da Microsoft, não do PC. **Enquanto a porta 443 externa não estiver aberta na firewall, o Outlook novo/Web e o Exchange Online não conseguem chegar ao feed** — usar a via 4.
-
-## 4. Calendário partilhado no Microsoft 365 (a via sem porta aberta)
+## 2. Calendário partilhado no Microsoft 365
 
 Em vez de o Outlook ir buscar um feed, **a app escreve os eventos num calendário "Agenda Nexus Infra" na mailbox `Suporte@nxs.pt`** e partilha-o (leitura) com a equipa. Aparece no Outlook de todos como calendário partilhado normal, **em tempo real**, sem configurar nada nos PCs. A ligação é do servidor para a Microsoft (como o email) — não precisa de porta aberta.
 

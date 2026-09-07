@@ -33,7 +33,6 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
-        'agenda_feed_token', // token do feed ICS: é o segredo do URL de subscrição
     ];
 
     /** @return array<string, string> */

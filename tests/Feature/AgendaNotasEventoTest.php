@@ -7,7 +7,6 @@ use App\Livewire\Agenda\Calendario;
 use App\Models\EventoAgenda;
 use App\Models\User;
 use App\Notifications\EventoAgendaNotificacao;
-use App\Services\Agenda\GeradorIcs;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
@@ -89,10 +88,6 @@ class AgendaNotasEventoTest extends TestCase
             ->set('formNotas', 'Levar baterias novas')
             ->call('criarEvento')->assertHasNoErrors();
         Notification::assertSentTo($this->paulo, EventoAgendaNotificacao::class, fn ($n) => $n->tipo === 'alterado' && $n->evento['notas'] === 'Levar baterias novas');
-
-        // Feed iCal de quem não é convidado leva as notas.
-        $coord = User::create(['nome' => 'Coord', 'email' => 'c@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
-        $this->assertStringContainsString('Levar baterias novas', self::desdobrar(app(GeradorIcs::class)->feed($coord)));
     }
 
     public function test_num_evento_convertido_as_notas_continuam_editaveis(): void

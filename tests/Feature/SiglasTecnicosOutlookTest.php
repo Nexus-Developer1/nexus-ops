@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
-// No Outlook (convites, feed e calendário partilhado) o título leva as SIGLAS dos técnicos à
+// No Outlook (convites e calendário partilhado) o título leva as SIGLAS dos técnicos à
 // frente — inicial do nome + inicial do apelido — para se ver de quem é o evento sem o abrir.
 // Na agenda da própria app o bloco mantém-se sem siglas (lá a cor identifica o técnico).
 class SiglasTecnicosOutlookTest extends TestCase
@@ -49,10 +49,8 @@ class SiglasTecnicosOutlookTest extends TestCase
         $evento->tecnicosAdicionais()->sync([$daniel->id]);
         $evento->refresh()->load('cliente', 'tecnico', 'tecnicosAdicionais');
 
-        // Calendário partilhado (Graph) e feed iCal.
+        // Título do calendário partilhado (Graph).
         $this->assertSame('PB/DR · serviço · NU BOYANA PORTUGAL LDA · Paulo Bento, Daniel Ribeiro', $evento->resumoOutlook());
-        $coord = User::create(['nome' => 'Coord', 'email' => 'c@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
-        $this->assertStringContainsString('SUMMARY:PB/DR · serviço', self::desdobrar(app(GeradorIcs::class)->feed($coord)));
 
         // Convite (parte do instantâneo, não do modelo) — mesmo título.
         $ics = app(GeradorIcs::class)->convite(NotificadorAgenda::instantaneo($evento), 0, $paulo);
