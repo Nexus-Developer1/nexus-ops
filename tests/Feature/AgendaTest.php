@@ -613,4 +613,36 @@ class AgendaTest extends TestCase
                 return count($cores) === 2 && $cores['Davide Fonseca'] !== $cores['Rui Moreira'];
             });
     }
+
+    // Tipos de evento entram sempre com MAIÚSCULA inicial ("serviço" → "Serviço") — no lookup
+    // e no título do evento; o resto do texto fica como escrito (siglas não são mexidas).
+    public function test_tipo_de_evento_fica_com_maiuscula_inicial(): void
+    {
+        Notification::fake();
+        $tec = $this->tecnico();
+        $admin = $this->admin();
+
+        Livewire::actingAs($admin)->test(Calendario::class)
+            ->set('formTitulo', '  serviço   de   emergência ')
+            ->set('formTecnicoIds', [$tec->id])
+            ->set('formEquipamentoId', $this->equipamentoDeTeste()->id)
+            ->set('formInicio', '2026-07-06T10:00')
+            ->set('formFim', '2026-07-06T11:00')
+            ->set('formNotificar', false)
+            ->call('criarEvento')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('eventos_agenda', ['titulo' => 'Serviço de emergência']);
+        $this->assertDatabaseHas('assuntos_evento', ['nome' => 'Serviço de emergência']);
+
+        // "Adicionar «x»" no combobox capitaliza da mesma maneira.
+        Livewire::actingAs($admin)->test(Calendario::class)
+            ->call('adicionarAssunto', 'inspeção anual')
+            ->assertSet('formTitulo', 'Inspeção anual');
+        $this->assertDatabaseHas('assuntos_evento', ['nome' => 'Inspeção anual']);
+
+        // Siglas mantêm-se como foram escritas.
+        Livewire::actingAs($admin)->test(Calendario::class)->call('adicionarAssunto', 'UPS Riello');
+        $this->assertDatabaseHas('assuntos_evento', ['nome' => 'UPS Riello']);
+    }
 }

@@ -27,10 +27,20 @@ class AssuntoEvento extends Model
         return preg_replace('/\s+/', ' ', $valor);
     }
 
-    // Mantém o nome_normalizado sempre coerente com o nome.
+    // Maiúscula inicial ("serviço" → "Serviço"); o resto do texto fica como foi escrito
+    // (siglas como "UPS Riello" não são mexidas). Pedido do Davide, set. 2026.
+    public static function comMaiuscula(string $valor): string
+    {
+        $valor = trim(preg_replace('/\s+/', ' ', $valor));
+
+        return $valor === '' ? '' : mb_strtoupper(mb_substr($valor, 0, 1)).mb_substr($valor, 1);
+    }
+
+    // Mantém o nome com maiúscula inicial e o nome_normalizado coerente com ele.
     protected static function booted(): void
     {
         static::saving(function (self $assunto) {
+            $assunto->nome = static::comMaiuscula((string) $assunto->nome);
             $assunto->nome_normalizado = static::normalizar((string) $assunto->nome);
         });
     }

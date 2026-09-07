@@ -634,7 +634,7 @@ class Calendario extends Component
     // seleciona-o. Idempotente: se já existir (sem acentos/maiúsculas), reutiliza.
     public function adicionarAssunto(string $nome): bool
     {
-        $nome = trim(preg_replace('/\s+/', ' ', $nome));
+        $nome = AssuntoEvento::comMaiuscula($nome);
 
         if ($nome === '') {
             $this->addError('novoAssunto', 'Indique o assunto do evento.');
@@ -734,7 +734,7 @@ class Calendario extends Component
         $adicionaisIds = $tecnicosEscolhidos->skip(1)->pluck('id')->values()->all();
 
         // O tipo de evento (texto livre) fica guardado para sugestões futuras (cresce com o uso).
-        $titulo = trim(preg_replace('/\s+/', ' ', $this->formTitulo));
+        $titulo = AssuntoEvento::comMaiuscula($this->formTitulo);
         if ($titulo !== '') {
             AssuntoEvento::firstOrCreate(
                 ['nome_normalizado' => AssuntoEvento::normalizar($titulo)],
