@@ -92,6 +92,7 @@ class ServicoAlertas
     private function todos(): Collection
     {
         return collect([
+            ...$this->certificadoAExpirar(),
             ...$this->backupEmAtraso(),
             ...$this->baterias(),
             ...$this->renovacoes(),
@@ -204,6 +205,40 @@ class ServicoAlertas
     // Vigia de backups (opt-in por config): o scripts/backup.sh toca um marcador no fim de
     // cada backup BEM SUCEDIDO; marcador em falta ou velho = o backup deixou de correr — e
     // um backup morto só se descobre no dia em que faz falta. Alerta sempre ALTA.
+    /**
+     * Certificado HTTPS a chegar ao fim.
+     *
+     * Quando expira, TODA a gente (equipa e clientes) apanha o aviso de "site não seguro"
+     * do browser. A renovação aqui é manual, por isso alguém tem de se lembrar — este
+     * alerta é esse alguém. A chave inclui a data de expiração: renovado o certificado,
+     * é outro alerta, e um "concluído" antigo não esconde o aviso seguinte.
+     */
+    private function certificadoAExpirar(): array
+    {
+        $dias = app(CertificadoTls::class)->diasParaExpirar();
+
+        if ($dias === null || $dias > (int) config('alertas.certificado_dias')) {
+            return []; // sem HTTPS a vigiar, ou ainda com folga
+        }
+
+        $expira = now()->addDays($dias);
+
+        return [[
+            'tipo' => 'certificado',
+            'chave' => 'certificado:'.$expira->toDateString(),
+            'severidade' => $dias <= 7 ? 'alta' : 'media',
+            'titulo' => $dias < 0
+                ? 'Certificado HTTPS EXPIRADO'
+                : 'Certificado HTTPS expira em '.$dias.' '.($dias === 1 ? 'dia' : 'dias'),
+            'descricao' => $dias < 0
+                ? 'O site está a dar aviso de insegurança a toda a gente. Renovar o certificado com urgência.'
+                : 'Expira a '.$expira->translatedFormat('d M Y').'. A renovação deste servidor é MANUAL '
+                    .'(validação por DNS) — é preciso alguém a fazê-la antes dessa data.',
+            'url' => route('alertas'),
+            'data' => $expira,
+        ]];
+    }
+
     private function backupEmAtraso(): array
     {
         if (! config('alertas.backup_vigia')) {

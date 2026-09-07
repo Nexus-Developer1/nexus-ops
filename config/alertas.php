@@ -16,6 +16,11 @@ return [
     // concluída num equipamento a partir dos quais se avisa para propor ao cliente.
     'proposta_meses' => env('ALERTAS_PROPOSTA_MESES', 10),
 
+    // Vigia do certificado HTTPS: a partir de quantos dias para a expiração se avisa.
+    // A renovação deste servidor é manual (validação por DNS à mão) e falhava em
+    // silêncio — 21 dias dão folga para tratar disso sem pressa.
+    'certificado_dias' => env('ALERTAS_CERTIFICADO_DIAS', 21),
+
     'backup_vigia' => env('ALERTAS_BACKUP_VIGIA', false),
     'backup_max_horas' => env('ALERTAS_BACKUP_MAX_HORAS', 26),
 ];
