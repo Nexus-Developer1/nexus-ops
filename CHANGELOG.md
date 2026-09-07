@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-04
 
-- 🧰 **Outlook: siglas dos técnicos à frente do título** — no calendário partilhado, nos convites e no feed, o título passa a começar pelas **siglas de quem vai** (inicial do nome + inicial do apelido: "Paulo Bento" → **PB**; vários técnicos → **PB/DR**), antes do tipo: `PB/DR · serviço · NU BOYANA PORTUGAL LDA · Paulo Bento, Daniel Ribeiro`. Num bloco estreito do Outlook, onde não há as cores da agenda, vê-se logo de quem é o evento sem o abrir. Os nomes por extenso continuam no fim; eventos sem técnico ficam como estavam. Na agenda da app o bloco **não** muda (lá a cor já identifica o técnico). Requer `optimize` + ressincronização do calendário (feita no deploy). +3 testes, 3 atualizados (638 no total). `hash`
+- 🧰 **Outlook: siglas dos técnicos à frente do título** — no calendário partilhado, nos convites e no feed, o título passa a começar pelas **siglas de quem vai** (inicial do nome + inicial do apelido: "Paulo Bento" → **PB**; vários técnicos → **PB/DR**), antes do tipo: `PB/DR · serviço · NU BOYANA PORTUGAL LDA · Paulo Bento, Daniel Ribeiro`. Num bloco estreito do Outlook, onde não há as cores da agenda, vê-se logo de quem é o evento sem o abrir. Os nomes por extenso continuam no fim; eventos sem técnico ficam como estavam. Na agenda da app o bloco **não** muda (lá a cor já identifica o técnico). Requer `optimize` + ressincronização do calendário (feita no deploy). +3 testes, 3 atualizados (638 no total). `67da732`
 
 - 🎨 **Equipamentos do cliente: chips das famílias ao lado da pesquisa** — a pesquisa e o filtro por família ficam na mesma linha (os chips à direita da caixa; em ecrã estreito passam para baixo). Requer build. `7db1949`
 
