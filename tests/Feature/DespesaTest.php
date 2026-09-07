@@ -10,6 +10,7 @@ use App\Models\RegistoDespesa;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
@@ -27,7 +28,7 @@ class DespesaTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        \Illuminate\Support\Carbon::setTestNow('2026-08-10 10:00:00');
+        Carbon::setTestNow('2026-08-10 10:00:00');
     }
 
     private function admin(): User

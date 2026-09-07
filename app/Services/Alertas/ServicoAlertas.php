@@ -287,8 +287,11 @@ class ServicoAlertas
     // mesma mecânica — 7 dias antes (média), alta ao vencer. Eventos cancelados não alertam.
     private function eventosProgramados(): array
     {
+        // SÓ a partir do dia programado (sem antecipação — o dia é escolhido à mão no evento,
+        // ao contrário dos alertas de contrato/equipamento que antecipam 7 dias). Fica visível
+        // até ser concluído; severidade sempre alta porque quando aparece já é o dia.
         return EventoAlerta::query()
-            ->whereDate('data', '<=', now()->addDays(7))
+            ->whereDate('data', '<=', now())
             ->whereHas('evento', fn ($q) => $q->where('estado', '!=', EstadoEvento::Cancelado->value))
             ->with(['evento.cliente', 'evento.tecnico', 'evento.tecnicosAdicionais'])
             ->orderBy('data')
@@ -296,7 +299,7 @@ class ServicoAlertas
             ->map(fn (EventoAlerta $a) => [
                 'tipo' => 'evento_programado',
                 'chave' => 'evento_programado:'.$a->id,
-                'severidade' => $a->data->isPast() || $a->data->isToday() ? 'alta' : 'media',
+                'severidade' => 'alta',
                 'titulo' => $a->texto.' · '.$a->evento->titulo,
                 'descricao' => ($a->evento->cliente?->nome ? $a->evento->cliente->nome.' · ' : '')
                     .'evento a '.$a->evento->inicio->translatedFormat('d M Y')

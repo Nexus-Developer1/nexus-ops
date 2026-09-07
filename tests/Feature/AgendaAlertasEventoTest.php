@@ -15,8 +15,8 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 // Alertas programados num evento (data + texto à escolha): gerem-se no modal do evento e entram
-// no painel de alertas / email diário pelo ServicoAlertas — média a partir de 7 dias antes, alta
-// quando a data chega/passa; cancelar o evento cala-os; apagar o evento apaga-os (cascade).
+// no painel de alertas / email diário pelo ServicoAlertas — SÓ a partir do dia
+// programado (sem antecipação), sempre alta; cancelar o evento cala-os; apagar o evento apaga-os (cascade).
 class AgendaAlertasEventoTest extends TestCase
 {
     use RefreshDatabase;
@@ -68,30 +68,25 @@ class AgendaAlertasEventoTest extends TestCase
             ->call('criarEvento')->assertHasErrors('formAlertas.0.texto');
     }
 
-    public function test_entra_no_servico_de_alertas_com_o_texto_escolhido(): void
+    public function test_dispara_so_no_dia_programado_com_o_texto_escolhido(): void
     {
-        $this->criarComAlerta('2026-09-05', 'Levar baterias novas'); // a 4 dias → média
+        $this->criarComAlerta('2026-09-05', 'Levar baterias novas'); // hoje é 01/09 → ainda nada
 
+        // Antes do dia: não aparece (sem antecipação — o dia foi escolhido à mão).
+        $this->assertNull(app(ServicoAlertas::class)->recolher()->firstWhere('tipo', 'evento_programado'));
+
+        // No dia: aparece, alta, com o texto escolhido.
+        Carbon::setTestNow('2026-09-05 08:00:00');
         $alertas = app(ServicoAlertas::class)->recolher()->where('tipo', 'evento_programado')->values();
         $this->assertCount(1, $alertas);
-        $this->assertSame('media', $alertas[0]['severidade']);
+        $this->assertSame('alta', $alertas[0]['severidade']);
         $this->assertSame('Levar baterias novas · Serviço', $alertas[0]['titulo']);
         $this->assertStringContainsString('evento a 10 set 2026', $alertas[0]['descricao']);
-
-        // Ao chegar a data passa a ALTA.
-        Carbon::setTestNow('2026-09-05 08:00:00');
-        $this->assertSame('alta', app(ServicoAlertas::class)->recolher()->firstWhere('tipo', 'evento_programado')['severidade']);
-    }
-
-    public function test_alerta_a_mais_de_7_dias_ainda_nao_aparece(): void
-    {
-        $this->criarComAlerta('2026-09-09'); // hoje é 01/09 → a 8 dias
-        $this->assertNull(app(ServicoAlertas::class)->recolher()->firstWhere('tipo', 'evento_programado'));
     }
 
     public function test_evento_cancelado_cala_e_apagado_apaga(): void
     {
-        $e = $this->criarComAlerta('2026-09-02');
+        $e = $this->criarComAlerta('2026-09-01'); // hoje — o alerta está a disparar
         $this->assertNotNull(app(ServicoAlertas::class)->recolher()->firstWhere('tipo', 'evento_programado'));
 
         $e->update(['estado' => 'cancelado']);

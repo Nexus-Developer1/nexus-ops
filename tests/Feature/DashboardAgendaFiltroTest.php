@@ -8,6 +8,7 @@ use App\Models\Cliente;
 use App\Models\EventoAgenda;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -20,7 +21,7 @@ class DashboardAgendaFiltroTest extends TestCase
     // Um evento sai do cartão assim que acaba; o que ainda decorre fica.
     public function test_evento_de_hoje_ja_terminado_sai_do_cartao(): void
     {
-        \Illuminate\Support\Carbon::setTestNow(now()->setTime(17, 0));
+        Carbon::setTestNow(now()->setTime(17, 0));
         $admin = User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         $base = ['tipo' => 'outro', 'estado' => 'planeado', 'cliente_id' => $cliente->id, 'tecnico_id' => $admin->id]; // 'outro': uma visita passada viraria alerta "em atraso" no outro cartão

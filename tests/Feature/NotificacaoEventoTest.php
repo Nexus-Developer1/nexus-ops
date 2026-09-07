@@ -100,7 +100,7 @@ class NotificacaoEventoTest extends TestCase
     public function test_convite_leva_descricao_html_com_os_tecnicos_a_negrito(): void
     {
         $this->criar([$this->paulo->id, $this->daniel->id]);
-        $n = \Illuminate\Support\Facades\Notification::sent($this->paulo, EventoAgendaNotificacao::class)->first();
+        $n = Notification::sent($this->paulo, EventoAgendaNotificacao::class)->first();
         $ics = $n->toMail($this->paulo)->rawAttachments[0]['data'];
 
         $this->assertStringContainsString('X-ALT-DESC;FMTTYPE=text/html:', $ics);
@@ -126,7 +126,7 @@ class NotificacaoEventoTest extends TestCase
     public function test_botao_do_email_tem_versao_para_outlook(): void
     {
         $this->criar([$this->paulo->id]);
-        $n = \Illuminate\Support\Facades\Notification::sent($this->paulo, EventoAgendaNotificacao::class)->first();
+        $n = Notification::sent($this->paulo, EventoAgendaNotificacao::class)->first();
         $html = (string) $n->toMail($this->paulo)->render();
 
         $this->assertStringContainsString('<!--[if mso]>', $html);

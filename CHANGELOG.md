@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-04
+
+- 🧰 **Alertas dos eventos disparam SÓ no dia programado** — os alertas criados no evento (data + texto) apareciam no painel e no email diário a partir de 7 dias antes (a mecânica herdada dos alertas de contrato/equipamento); o Davide escolhe o dia à mão, por isso a antecipação não faz sentido aqui. Passam a aparecer **apenas a partir do dia escolhido**, sempre com severidade alta, e ficam visíveis até serem concluídos. Contratos/equipamentos mantêm os 7 dias de antecipação. Sem migração; `optimize`. 2 testes ajustados. `hash`
+
 ## 2026-09-02
 
 - 🛠️ **Calendário partilhado: ressincronização passa a HORÁRIA** — a equipa só tem leitura, mas quem abrir a mailbox Suporte (a dona) consegue tecnicamente editar; tirar-lhe a escrita é impossível (é com ela que a app escreve). A passagem de `agenda:graph` passa de diária (06h30) a **de hora a hora**: qualquer edição manual no Outlook é desfeita no máximo em ~1 hora. `ebe62a6`

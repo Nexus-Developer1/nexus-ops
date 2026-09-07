@@ -79,7 +79,7 @@ class AlertasAtribuicaoTest extends TestCase
         $evento = EventoAgenda::create(['tipo' => 'visita_preventiva', 'titulo' => 'Serviço', 'estado' => 'planeado', 'tecnico_id' => $this->rui->id,
             'inicio' => now()->addDays(3), 'fim' => now()->addDays(3)->addHours(2)]);
         $evento->tecnicosAdicionais()->attach($this->julio->id);
-        $evento->alertas()->create(['data' => now()->addDay()->toDateString(), 'texto' => 'Levar baterias']);
+        $evento->alertas()->create(['data' => now()->toDateString(), 'texto' => 'Levar baterias']); // no próprio dia — só aí dispara
 
         $alerta = $this->servico()->recolher()->firstWhere('tipo', 'evento_programado');
         $this->assertEqualsCanonicalizing([$this->rui->id, $this->julio->id], $alerta['atribuido_a']);
