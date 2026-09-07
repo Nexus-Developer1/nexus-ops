@@ -3,7 +3,6 @@
 namespace App\Livewire;
 
 use App\Enums\EstadoEvento;
-use App\Enums\PapelUtilizador;
 use App\Jobs\SincronizarErp;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\EventoAgenda;
@@ -134,9 +133,8 @@ class DashboardGestao extends Component
                 ->orderBy('inicio')
                 ->limit(8)
                 ->get(),
-            // Contas da equipa (técnicos e admins) para o filtro da agenda.
-            'tecnicosAgenda' => User::where('ativo', true)
-                ->whereIn('papel', [PapelUtilizador::Tecnico->value, PapelUtilizador::Admin->value])
+            // Quem pode aparecer num evento — o filtro não deve oferecer quem não pode.
+            'tecnicosAgenda' => User::selecionavel()
                 ->orderBy('nome')
                 ->get(['id', 'nome']),
         ]);

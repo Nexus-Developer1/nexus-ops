@@ -56,6 +56,7 @@ class Painel extends Component
             'modo' => $modo,
             'listaConcluidos' => $this->concluidos ? $servico->concluidos() : collect(),
             'equipa' => User::where('ativo', true)
+                ->whereNotNull('password')   // convite por aceitar → ainda não se atribui nada
                 ->whereIn('papel', [PapelUtilizador::Tecnico->value, PapelUtilizador::Admin->value])
                 ->orderBy('nome')->get(['id', 'nome']),
         ]);

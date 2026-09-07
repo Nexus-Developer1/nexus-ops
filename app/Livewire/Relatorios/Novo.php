@@ -212,7 +212,7 @@ class Novo extends Component
                 $intervencao->tecnicos()->pluck('utilizadores.id')->all(),
             ));
             $this->tecnicoIds = User::whereIn('id', $ids)
-                ->fazServicos()
+                ->selecionavel()
                 ->where('ativo', true)
                 ->pluck('id')->all();
 
@@ -633,6 +633,7 @@ class Novo extends Component
             'tecnicoIds.*' => [
                 'integer',
                 Rule::exists('utilizadores', 'id')
+                    ->whereNotNull('password')   // convite ainda por aceitar → não é escolhível
                     ->where(fn ($q) => $q->where('papel', PapelUtilizador::Tecnico->value)
                         ->orWhere(fn ($a) => $a->where('papel', PapelUtilizador::Admin->value)->where('faz_servicos', true)))
                     ->where('ativo', true),
@@ -1042,7 +1043,7 @@ class Novo extends Component
             $tecnicosEscolhidos = $this->tecnicoIds === []
                 ? []
                 : User::whereIn('id', array_map('intval', $this->tecnicoIds))
-                    ->fazServicos()
+                    ->selecionavel()
                     ->where('ativo', true)
                     ->orderBy('nome')
                     ->pluck('id')->all();
@@ -1420,7 +1421,7 @@ class Novo extends Component
 
         // Técnicos disponíveis (lidos a cada render → refletem quem for entrando).
         $tecnicos = User::query()
-            ->fazServicos()
+            ->selecionavel()
             ->where('ativo', true)
             ->orderBy('nome')
             ->get(['id', 'nome']);

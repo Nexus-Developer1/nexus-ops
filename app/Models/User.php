@@ -82,6 +82,25 @@ class User extends Authenticatable
 
     // Eventos da agenda em que esta conta é técnico ADICIONAL (pivot evento_tecnicos).
     /**
+     * Quem pode SER ESCOLHIDO para um serviço, um relatório ou um alerta.
+     *
+     * É o âmbito a usar em qualquer lista de escolha: além de fazer serviços, a conta tem
+     * de estar ativa e a pessoa tem de ter ACEITE o convite. Quem foi convidado e ainda
+     * não definiu a palavra-passe não entrou uma única vez na aplicação — aparecia na
+     * lista como se estivesse disponível (equipa, set. 2026).
+     */
+    public function scopeSelecionavel(Builder $q): Builder
+    {
+        return $q->fazServicos()->where('ativo', true)->whereNotNull('password');
+    }
+
+    /** Convidado mas ainda sem palavra-passe definida — nunca entrou. */
+    public function convitePendente(): bool
+    {
+        return $this->password === null;
+    }
+
+    /**
      * Quem entra nas listas de TÉCNICOS: os técnicos e os administradores que também vão
      * a serviços (`faz_servicos`).
      *

@@ -422,6 +422,7 @@ class Ficha extends Component
         return view('livewire.equipamentos.ficha', [
             // Contas da equipa (técnicos e admins) para atribuir alertas.
             'equipaAlertas' => User::where('ativo', true)
+                ->whereNotNull('password')
                 ->whereIn('papel', [PapelUtilizador::Tecnico->value, PapelUtilizador::Admin->value])
                 ->orderBy('nome')->get(['id', 'nome']),
             'intervencoes' => $intervencoes,

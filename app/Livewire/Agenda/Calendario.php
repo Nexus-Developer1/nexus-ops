@@ -678,6 +678,7 @@ class Calendario extends Component
             // Técnicos e administradores que também vão a serviços (faz_servicos).
             'formTecnicoIds.*' => ['integer',
                 Rule::exists('utilizadores', 'id')
+                    ->whereNotNull('password')   // convite ainda por aceitar → não é escolhível
                     ->where('ativo', true)
                     ->where(fn ($q) => $q->where('papel', PapelUtilizador::Tecnico->value)
                         ->orWhere(fn ($a) => $a->where('papel', PapelUtilizador::Admin->value)->where('faz_servicos', true)))],
@@ -726,8 +727,7 @@ class Calendario extends Component
         $tecnicosEscolhidos = $this->formTecnicoIds === []
             ? collect()
             : User::whereIn('id', array_map('intval', $this->formTecnicoIds))
-                ->fazServicos()
-                ->where('ativo', true)
+                ->selecionavel()
                 ->orderBy('nome')
                 ->get();
         $tecnico = $tecnicosEscolhidos->first();
@@ -847,8 +847,7 @@ class Calendario extends Component
     {
         // Quem pode ir a um serviço — checkboxes do formulário de evento (1 ou mais):
         // técnicos e administradores que também fazem serviços.
-        $tecnicos = User::fazServicos()
-            ->where('ativo', true)
+        $tecnicos = User::selecionavel()
             ->orderBy('nome')
             ->get()
             ->map(fn (User $t) => ['id' => $t->id, 'nome' => $t->nome]);
