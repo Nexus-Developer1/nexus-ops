@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-04
 
-- 🎨 **Equipamentos do cliente: chips das famílias ao lado da pesquisa** — a pesquisa e o filtro por família ficam na mesma linha (os chips à direita da caixa; em ecrã estreito passam para baixo). Requer build. `hash`
+- 🎨 **Equipamentos do cliente: chips das famílias ao lado da pesquisa** — a pesquisa e o filtro por família ficam na mesma linha (os chips à direita da caixa; em ecrã estreito passam para baixo). Requer build. `7db1949`
 
 - 🧰 **Equipamentos do cliente: filtro por família e linha que abre a ficha** — na lista de equipamentos de um cliente (Clientes → Ver todos) há agora **chips por família PHC** (só as famílias que esse cliente tem, com contagem — clicar filtra, reclicar limpa; o filtro fica no URL) e cada linha passa a **abrir a ficha do equipamento**: o nome é link e há uma seta no fim da linha (URL com o mastamp, como sempre). A família aparece também por baixo do nome, ao lado do tipo. Requer build; sem migração. +3 testes (636 no total). `7963364`
 
