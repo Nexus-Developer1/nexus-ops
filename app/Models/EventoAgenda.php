@@ -189,6 +189,38 @@ class EventoAgenda extends Model
         ]));
     }
 
+    // Siglas dos técnicos: inicial do nome + inicial do apelido ("Paulo Bento" → "PB";
+    // "Rui Pedro Moreira" → "RM"; um só nome → a inicial; vários técnicos → "PB/DR"). Vão à
+    // frente do título no Outlook,
+    // onde o bloco é estreito e as cores da agenda não existem (pedido do Davide, set. 2026).
+    public static function siglas(?string $nomes): ?string
+    {
+        $siglas = collect(explode(',', (string) $nomes))
+            ->map(fn (string $n) => preg_split('/\s+/u', trim($n), -1, PREG_SPLIT_NO_EMPTY) ?: [])
+            ->filter()
+            ->map(function (array $partes) {
+                $inicial = fn (string $p) => mb_strtoupper(mb_substr($p, 0, 1));
+
+                return count($partes) === 1
+                    ? $inicial($partes[0])
+                    : $inicial($partes[0]).$inicial(end($partes));
+            })
+            ->unique()
+            ->values();
+
+        return $siglas->isEmpty() ? null : $siglas->implode('/');
+    }
+
+    // Título no Outlook (convites, feed e calendário partilhado): as SIGLAS à frente —
+    // "PB · serviço · cliente · técnicos".
+    public function resumoOutlook(): string
+    {
+        return implode(' · ', array_filter([
+            self::siglas($this->tecnico_label),
+            $this->resumoCompleto(),
+        ]));
+    }
+
     public function getTecnicoLabelAttribute(): ?string
     {
         $nomes = array_values(array_unique(array_filter(array_merge(

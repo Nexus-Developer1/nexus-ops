@@ -229,7 +229,7 @@ class CalendarioGraph
         ]);
 
         return [
-            'subject' => ($cancelado ? '[CANCELADO] ' : '').$e->resumoCompleto(),
+            'subject' => ($cancelado ? '[CANCELADO] ' : '').$e->resumoOutlook(),
             'start' => ['dateTime' => $e->inicio->copy()->setTimezone($tz)->format('Y-m-d\TH:i:s'), 'timeZone' => $tz],
             'end' => ['dateTime' => $e->fim->copy()->setTimezone($tz)->format('Y-m-d\TH:i:s'), 'timeZone' => $tz],
             'location' => ['displayName' => (string) ($e->local?->morada ?: $e->cliente?->nome ?: '')],
