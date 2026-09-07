@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-07
+
+- 🛠️ **Calendário partilhado: a Suporte pode alterar no Outlook (sai a ressincronização horária)** — a `Suporte@nxs.pt` é a dona do calendário e sempre pôde editá-lo; o que desfazia essas alterações era a passagem horária de `agenda:graph` posta a 02-09. Foi **retirada do scheduler**: o que se altera no Outlook a partir da mailbox de suporte **fica**. A equipa continua só com leitura, e cada evento continua a ser espelhado quando muda na app (observer + fila) — pelo que uma alteração feita no Outlook é substituída se depois esse evento for mexido na agenda, e o que se faz no Outlook não volta para a app. Para repor tudo a partir da agenda corre-se à mão `php artisan agenda:graph`. Sem migração; `optimize`. `hash`
+
 ## 2026-09-04
 
 - 🧹 **Página "Feeds da agenda" removida (e o feed ICS com ela)** — a via do feed de subscrição saiu por completo: página e menu, endpoint `/agenda/feed/{token}.ics`, controlador, Gate `gerir-feeds-agenda`, o gerador do feed e a coluna `utilizadores.agenda_feed_token` (migração). Já não era usada — exigia a porta 443 aberta ao exterior (nunca aberta) e o **calendário partilhado do M365** faz o mesmo melhor, a par dos convites por email, que se mantêm intactos. Sem a página não haveria como revogar tokens, por isso o único que existia (dev@nxs.pt) desaparece com a coluna. Manual `docs/agenda-outlook.md` reescrito para as duas vias atuais. **Requer migração**, build e `optimize`. −12 testes (627 no total). `8b9afaf`

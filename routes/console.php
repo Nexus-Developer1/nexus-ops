@@ -49,14 +49,8 @@ Schedule::command('alertas:verificar')
     ->withoutOverlapping()
     ->onOneServer();
 
-// Calendário partilhado no M365 (Graph): ressincroniza a janela [-30, +90] de HORA a hora.
-// A equipa só tem leitura, mas a mailbox dona (Suporte) consegue tecnicamente editar — tirar-lhe
-// a escrita é impossível (o calendário vive nela e é com ela que a app escreve). Esta passagem
-// horária desfaz qualquer edição/remoção manual no Outlook no máximo em ~1h: a agenda do
-// Nexus Infra é a única fonte de verdade (pedido do Davide, 2026-09-02). Só corre com a via ligada.
-Schedule::command('agenda:graph')
-    ->timezone('Europe/Lisbon')
-    ->hourly()
-    ->withoutOverlapping()
-    ->onOneServer()
-    ->when(fn () => (bool) config('services.microsoft_graph.calendario_ativo'));
+// Calendário partilhado no M365 (Graph): NÃO há ressincronização periódica — a mailbox dona
+// (Suporte@nxs.pt) pode alterar o calendário no Outlook e essas alterações ficam (pedido do
+// Davide, 2026-09-07; a passagem horária de 02-09, que as desfazia, foi retirada). Cada evento
+// continua a ser espelhado quando muda na app (observer + fila). Para repor tudo a partir da
+// agenda — depois de um engano ou de a fila falhar — corre-se à mão: `php artisan agenda:graph`.
