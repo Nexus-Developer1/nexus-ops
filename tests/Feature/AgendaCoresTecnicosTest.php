@@ -39,6 +39,42 @@ class AgendaCoresTecnicosTest extends TestCase
         $this->assertNotContains(FonteCalendario::COR_SEM_TECNICO, $cores->all());
     }
 
+    // Reportado pela equipa: dois tecnicos com a mesma cor na legenda. A paleta nao estava
+    // cheia -- estava a ser gasta com contas que NUNCA aparecem na agenda (a de suporte,
+    // um administrativo), e as pessoas reais e que ficavam a repetir.
+    public function test_contas_que_nao_aparecem_nao_gastam_cores(): void
+    {
+        // Duas contas de secretaria, que nunca vao a servicos.
+        $suporte = $this->pessoa('Suporte', PapelUtilizador::Admin);
+        $administrativo = $this->pessoa('Administrativo', PapelUtilizador::Admin);
+
+        // Uma equipa do tamanho da paleta inteira.
+        $equipa = collect(range(1, count(FonteCalendario::PALETA)))
+            ->map(fn (int $i) => $this->pessoa('Tecnico '.$i));
+
+        $cores = $equipa->map(fn (User $u) => $this->fonte()->corTecnico($u->nome));
+
+        $this->assertCount($equipa->count(), $cores->unique(), 'Ha cores repetidas: '.$cores->implode(', '));
+
+        // E as contas de secretaria continuam SEM cor: nao gastaram nenhuma.
+        $this->assertNull($suporte->fresh()->cor_agenda);
+        $this->assertNull($administrativo->fresh()->cor_agenda);
+    }
+
+    // Com mais gente do que cores alguma tem de repetir -- mas a que repete e a MENOS usada,
+    // nunca deixando cores por usar (era o que dava a mesma cor a dois tecnicos).
+    public function test_com_a_paleta_cheia_repete_a_menos_usada(): void
+    {
+        $equipa = collect(range(1, count(FonteCalendario::PALETA) + 2))
+            ->map(fn (int $i) => $this->pessoa('Tecnico '.$i));
+
+        $cores = $equipa->map(fn (User $u) => $this->fonte()->corTecnico($u->nome));
+
+        // Todas as cores da paleta foram usadas antes de qualquer uma repetir.
+        $this->assertCount(count(FonteCalendario::PALETA), $cores->unique());
+        $this->assertSame(2, $cores->count() - $cores->unique()->count());
+    }
+
     public function test_a_cor_nao_muda_quando_a_equipa_muda(): void
     {
         $ana = $this->pessoa('Ana');

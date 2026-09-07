@@ -7,6 +7,7 @@ use App\Enums\PapelUtilizador;
 use App\Models\EventoAgenda;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 // Fonte de dados do FullCalendar: eventos no formato do calendário, e as cores
 // por técnico (partilhadas entre eventos e legenda). Extraído do componente Calendario —
@@ -25,8 +26,11 @@ class FonteCalendario
     // Cor de quem ainda não tem ninguém atribuído.
     public const COR_SEM_TECNICO = '#94a3b8';
 
-    // Mapa nome→cor calculado uma vez por pedido (lazy).
-    private ?array $coresTecnicos = null;
+    // Cores já resolvidas neste pedido (nome→cor) e as contas da equipa, para não repetir
+    // consultas nem atribuir cores a quem não aparece.
+    private array $coresTecnicos = [];
+
+    private ?Collection $contas = null;
 
     // Eventos que se SOBREPÕEM à janela visível (não só os que começam dentro
     // dela — um evento iniciado antes e a acabar lá dentro também aparece).
@@ -132,22 +136,25 @@ class FonteCalendario
             return self::COR_SEM_TECNICO; // por atribuir
         }
 
-        // Mapa nome→cor de TODA a equipa (técnicos e administradores: também vão a
-        // serviços), incluindo contas inativas — os eventos antigos continuam lá.
-        $this->coresTecnicos ??= User::whereIn('papel', [PapelUtilizador::Tecnico, PapelUtilizador::Admin])
+        // Contas da equipa (técnicos e administradores — também vão a serviços), incluindo
+        // inativas: os eventos antigos continuam a mostrar quem lá esteve.
+        $this->contas ??= User::whereIn('papel', [PapelUtilizador::Tecnico, PapelUtilizador::Admin])
             ->orderBy('id')
             ->get()
-            ->mapWithKeys(fn (User $u) => [trim($u->nome) => $u->corAgenda()])
-            ->all();
+            ->keyBy(fn (User $u) => trim($u->nome));
 
-        if (isset($this->coresTecnicos[$nome])) {
-            return $this->coresTecnicos[$nome];
+        // A cor só é atribuída a QUEM APARECE. Antes pedia-se a cor de toda a equipa de uma
+        // vez, e contas que nunca vão a serviços (a de suporte, um administrativo) gastavam
+        // uma cor da paleta — deixando pessoas reais a repetir cores.
+        if ($conta = $this->contas->get($nome)) {
+            return $this->coresTecnicos[$nome] ??= $conta->corAgenda();
         }
 
         // Nome só de texto, sem conta (eventos legados): determinístico pelo nome, mas
         // escolhido entre as cores que NINGUÉM tem — senão ia bater na cor de uma pessoa
         // real e voltavam as cores repetidas.
-        $livres = array_values(array_diff(self::PALETA, $this->coresTecnicos));
+        $jaUsadas = User::whereNotNull('cor_agenda')->pluck('cor_agenda')->all();
+        $livres = array_values(array_diff(self::PALETA, $jaUsadas));
         $livres = $livres ?: self::PALETA;
 
         return $livres[abs(crc32($nome)) % count($livres)];

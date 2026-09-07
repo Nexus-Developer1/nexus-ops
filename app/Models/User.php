@@ -110,7 +110,13 @@ class User extends Authenticatable
 
         $usadas = static::whereNotNull('cor_agenda')->where('id', '!=', $this->id)->pluck('cor_agenda')->all();
         $livres = array_values(array_diff(FonteCalendario::PALETA, $usadas));
-        $cor = $livres[0] ?? FonteCalendario::PALETA[$this->id % count(FonteCalendario::PALETA)];
+
+        // Esgotadas as cores (mais gente do que a paleta), repete-se a MENOS usada — o
+        // `id % n` que estava aqui podia dar a mesma cor a duas pessoas tendo outras por
+        // usar, que foi o que aconteceu ao Rui Bessa e ao Rui Sousa (set. 2026).
+        $cor = $livres[0] ?? collect(FonteCalendario::PALETA)
+            ->sortBy(fn (string $c) => count(array_keys($usadas, $c)))
+            ->first();
 
         $this->forceFill(['cor_agenda' => $cor])->save();
 
