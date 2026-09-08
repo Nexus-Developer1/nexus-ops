@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -105,7 +106,10 @@ class Calendario extends Component
     // para travar enganos/abusos que tornariam o técnico inagendável (14.ª revisão).
     private const MAX_DIAS_EVENTO = 31;
 
-    // Detalhe de um evento (clique num evento).
+    // Detalhe de um evento (clique num evento). Definido só pelo servidor: #[Locked] impede o
+    // browser de trocar o id a meio (revisão de segurança, set. 2026 — igual ao editor de
+    // relatórios).
+    #[Locked]
     public ?int $eventoSelecionadoId = null;
 
     // Modal de criação/edição de evento próprio (o texto livre vai para o título).
@@ -114,8 +118,12 @@ class Calendario extends Component
     // pertencem ao relatório e ficam trancados no formulário; as datas propagam-se.
     public bool $modalCriar = false;
 
+    #[Locked]
     public ?int $editandoId = null;
 
+    // Também só do servidor: se o browser o virasse para false, destrancava equipamento e
+    // contrato de um evento que já tem relatório — e o relatório ficava dessincronizado.
+    #[Locked]
     public bool $editandoConvertido = false;
 
     public string $formTitulo = '';
