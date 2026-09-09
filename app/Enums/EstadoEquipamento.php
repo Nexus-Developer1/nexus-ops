@@ -29,8 +29,9 @@ enum EstadoEquipamento: string
     public function classesEtiqueta(): string
     {
         return match ($this) {
-            // Contorno, sem cor de fundo: lê-se como «ainda por preencher», não como um estado.
-            self::PorDefinir => 'bg-white text-texto-fraco ring-1 ring-inset ring-borda',
+            // Cinzento cheio: tem de SALTAR À VISTA (é o que falta preencher). Mais escuro
+            // que o «Inativo», que é o cinzento apagado de um estado já decidido.
+            self::PorDefinir => 'bg-slate-200 text-slate-700',
             self::Operacional => 'bg-verde-50 text-verde-700',
             self::Degradado => 'bg-aviso-100 text-aviso-500',
             self::Critico => 'bg-perigo-100 text-perigo-600',

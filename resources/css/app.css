@@ -91,7 +91,7 @@
 
     /* ---- Etiquetas / badges de estado ---- */
     .etiqueta {
-        @apply inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium;
+        @apply inline-flex items-center whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium;
     }
 
     /* ---- Cartoes colapsaveis ---- */
