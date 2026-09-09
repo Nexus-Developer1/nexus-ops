@@ -192,7 +192,7 @@
                             </div>
                         </div>
                     @empty
-                        <p class="text-sm text-texto-medio">Sem bancos de baterias. Usa "Banco" para adicionar (a próxima troca mais próxima alimenta os alertas de manutenção).</p>
+                        <p class="text-sm text-texto-medio">Sem bancos de baterias.</p>
                     @endforelse
                 </div>
             </section>

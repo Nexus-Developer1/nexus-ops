@@ -229,7 +229,7 @@
                                     </div>
                                 </div>
                             @empty
-                                <p class="text-sm text-texto-medio">Sem bancos de baterias. Usa "Banco" para adicionar (a próxima troca mais próxima alimenta os alertas de manutenção).</p>
+                                <p class="text-sm text-texto-medio">Sem bancos de baterias.</p>
                             @endforelse
                             <div class="mt-4 flex justify-end">
                                 <button wire:click="guardarBanco" wire:loading.attr="disabled" wire:target="guardarBanco" class="botao-primario">Guardar bancos</button>
