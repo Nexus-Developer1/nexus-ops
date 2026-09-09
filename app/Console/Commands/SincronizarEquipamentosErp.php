@@ -153,7 +153,9 @@ class SincronizarEquipamentosErp extends Command
         $equip->hash_sync = $hash;
 
         if (! $equip->exists) {
-            // CRIAÇÃO: preenche tudo o que o ERP fornece + os fixos (Riello/UPS/operacional).
+            // CRIAÇÃO: preenche tudo o que o ERP fornece + os fixos (Riello/UPS). O ESTADO fica
+            // «por definir»: o PHC não o traz e o sync não tem como o saber — é quem for ao
+            // local que o marca na ficha (set. 2026).
             $equip->fill([
                 'local_id' => $localId,
                 'tipo' => TipoEquipamento::Ups,
@@ -161,7 +163,7 @@ class SincronizarEquipamentosErp extends Command
                 'modelo' => $equipErp->modelo,
                 'numero_serie' => $equipErp->numeroSerie,
                 'data_instalacao' => $equipErp->dataInstalacao,
-                'estado' => EstadoEquipamento::Operacional,
+                'estado' => EstadoEquipamento::PorDefinir,
                 'familia' => $equipErp->familia,
                 'faminome' => $equipErp->faminome,
                 'qr_code' => $equipErp->idErp,

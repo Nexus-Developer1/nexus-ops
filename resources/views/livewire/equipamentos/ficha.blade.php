@@ -23,7 +23,16 @@
                             <div class="flex flex-wrap items-center gap-3">
                                 <h2 class="text-lg font-semibold text-texto-forte">Identificação</h2>
                                 <span class="etiqueta {{ $equipamento->tipo->classesEtiqueta() }}">{{ $equipamento->tipo->rotulo() }}</span>
+                                {{-- Estado: o PHC não o traz, por isso começa «Por definir» e é marcado aqui,
+                                     por quem vê o equipamento. Grava assim que se escolhe (não há botão). --}}
                                 <span class="etiqueta {{ $equipamento->estado->classesEtiqueta() }}">{{ $equipamento->estado->rotulo() }}</span>
+                                <select wire:model.live="estado" aria-label="Definir o estado do equipamento"
+                                    title="Definir o estado do equipamento"
+                                    class="campo-select w-auto py-1 pl-2.5 pr-8 text-xs font-medium text-texto-medio">
+                                    @foreach ($estados as $e)
+                                        <option value="{{ $e->value }}">{{ $e->rotulo() }}</option>
+                                    @endforeach
+                                </select>
                                 @if ($descricaoTipo = $equipamento->atributos['tipo_descricao'] ?? null)
                                     <span class="text-sm text-texto-medio">{{ $descricaoTipo }}</span>
                                 @endif

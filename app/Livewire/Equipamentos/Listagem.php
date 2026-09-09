@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Equipamentos;
 
+use App\Enums\EstadoEquipamento;
 use App\Enums\TipoEquipamento;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Equipamento;
@@ -29,6 +30,11 @@ class Listagem extends Component
     // Filtro por família do artigo (faminome, vem do PHC) — ex.: ver só UPS, esconder "Peças".
     #[Session]
     public string $familia = '';
+
+    // Filtro por estado ('' = todos). Serve sobretudo para separar os que alguém já viu
+    // («Operacional», «Degradado»…) dos que continuam «Por definir».
+    #[Session]
+    public string $estado = '';
 
     // Filtro por banco de baterias associado: '' | 'com' | 'sem' | 'banco'.
     #[Session]
@@ -79,6 +85,11 @@ class Listagem extends Component
         $this->resetPage();
     }
 
+    public function updatingEstado(): void
+    {
+        $this->resetPage();
+    }
+
     public function updatingBanco(): void
     {
         $this->resetPage();
@@ -92,14 +103,15 @@ class Listagem extends Component
     // Repõe a lista como ela abre de origem (a ordenação não é um filtro — fica).
     public function limparFiltros(): void
     {
-        $this->reset(['pesquisa', 'tipo', 'familia', 'banco']);
+        $this->reset(['pesquisa', 'tipo', 'familia', 'estado', 'banco']);
         $this->resetPage();
     }
 
     /** Há algum filtro (ou pesquisa) ativo? — mostra o "Limpar filtros". */
     public function temFiltros(): bool
     {
-        return $this->pesquisa !== '' || $this->tipo !== '' || $this->familia !== '' || $this->banco !== '';
+        return $this->pesquisa !== '' || $this->tipo !== '' || $this->familia !== ''
+            || $this->estado !== '' || $this->banco !== '';
     }
 
     public function render()
@@ -112,6 +124,7 @@ class Listagem extends Component
             // A pesquisa de texto procura sempre em TODOS — série, modelo ou nome do cliente.)
             ->when($this->tipo, fn ($q) => $q->where('tipo', $this->tipo))
             ->when($this->familia, fn ($q) => $q->where('faminome', $this->familia))
+            ->when($this->estado, fn ($q) => $q->where('estado', $this->estado))
             // 'com'/'sem' banco associado (exclui os próprios bancos); 'banco' = só bancos associados a um UPS.
             ->when($this->banco === 'com', fn ($q) => $q->whereHas('equipamentosAssociados'))
             ->when($this->banco === 'sem', fn ($q) => $q->whereNull('equipamento_pai_id')->whereDoesntHave('equipamentosAssociados'))
@@ -153,6 +166,7 @@ class Listagem extends Component
         return view('livewire.equipamentos.listagem', [
             'equipamentos' => $equipamentos,
             'tipos' => TipoEquipamento::cases(),
+            'estados' => EstadoEquipamento::cases(),
             'familias' => $familias,
             'ordenacoes' => $this->ordenacoes(),
         ]);

@@ -7,6 +7,9 @@ export default {
     content: [
         './resources/views/**/*.blade.php',
         './app/Livewire/**/*.php',
+        // Os enums devolvem as classes das etiquetas de estado (rotulo/classesEtiqueta):
+        // sem isto, uma cor so usada por um enum nao chegava a ser gerada.
+        './app/Enums/**/*.php',
     ],
     theme: {
         extend: {

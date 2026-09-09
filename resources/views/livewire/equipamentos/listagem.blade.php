@@ -52,6 +52,16 @@
                     @endif
 
                     <div class="min-w-[11rem] flex-1">
+                        <label for="estado" class="campo-label">Estado</label>
+                        <select id="estado" wire:model.live="estado" class="campo-select">
+                            <option value="">Todos</option>
+                            @foreach ($estados as $e)
+                                <option value="{{ $e->value }}">{{ $e->rotulo() }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="min-w-[11rem] flex-1">
                         <label for="banco" class="campo-label">Banco de baterias</label>
                         <select id="banco" wire:model.live="banco" class="campo-select">
                             <option value="">Todos</option>

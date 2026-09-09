@@ -39,11 +39,12 @@ class SincronizarEquipamentosErpTest extends TestCase
         $this->artisan('erp:sincronizar-equipamentos', ['--limit' => 8])->assertSuccessful();
 
         $this->assertSame(6, Equipamento::count());
-        // Todos os importados são Riello/UPS/operacional — nada de outra marca entrou —
-        // e trazem a data de criação no PHC (ordena os "mais recentes" pela ordem do PHC).
+        // Todos os importados são Riello/UPS — nada de outra marca entrou — e trazem a data
+        // de criação no PHC (ordena os "mais recentes" pela ordem do PHC). O ESTADO nasce
+        // «por definir»: o PHC não o traz e o sync não o pode inventar (set. 2026).
         $this->assertTrue(Equipamento::get()->every(fn ($e) => $e->fabricante === 'Riello'
             && $e->tipo === TipoEquipamento::Ups
-            && $e->estado === EstadoEquipamento::Operacional
+            && $e->estado === EstadoEquipamento::PorDefinir
             && $e->criado_erp_em !== null));
     }
 

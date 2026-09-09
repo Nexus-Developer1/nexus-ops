@@ -51,7 +51,8 @@ class Novo extends Component
 
     public string $localizacao_instalacao = '';
 
-    public string $estado = 'operacional';
+    // Nasce «por definir»: o estado é uma leitura de quem vê o equipamento, não um default.
+    public string $estado = 'por_definir';
 
     public string $data_instalacao = '';
 

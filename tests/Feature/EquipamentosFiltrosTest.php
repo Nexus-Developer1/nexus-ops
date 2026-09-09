@@ -13,8 +13,8 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 // Barra de filtros da listagem de equipamentos (reorganizada em set. 2026): pesquisa + Tipo,
-// Família, Banco de baterias e Ordenar, cada um com rótulo, e "Limpar filtros" só quando há
-// alguma coisa filtrada.
+// Família, Estado, Banco de baterias e Ordenar, cada um com rótulo, e "Limpar filtros" só
+// quando há alguma coisa filtrada.
 class EquipamentosFiltrosTest extends TestCase
 {
     use RefreshDatabase;
@@ -41,7 +41,7 @@ class EquipamentosFiltrosTest extends TestCase
         $c = Livewire::actingAs($this->admin())->test(Listagem::class);
 
         // Rótulos por cima de cada controlo (era o que faltava para se perceber o que filtra o quê).
-        $c->assertSee('Tipo')->assertSee('Família')->assertSee('Banco de baterias')->assertSee('Ordenar')
+        $c->assertSee('Tipo')->assertSee('Família')->assertSee('Estado')->assertSee('Banco de baterias')->assertSee('Ordenar')
             ->assertSee('SN-UPS')->assertSee('SN-INC')
             ->assertDontSee('Limpar filtros'); // sem filtros → não aparece
 
@@ -57,6 +57,7 @@ class EquipamentosFiltrosTest extends TestCase
             ->set('pesquisa', 'SN-INC')
             ->set('tipo', 'incendio')
             ->set('familia', 'Incêndio')
+            ->set('estado', 'operacional')
             ->set('banco', 'sem')
             ->set('ordenar', 'serie_asc')
             ->assertSee('Limpar filtros')
@@ -64,6 +65,7 @@ class EquipamentosFiltrosTest extends TestCase
             ->assertSet('pesquisa', '')
             ->assertSet('tipo', '')
             ->assertSet('familia', '')
+            ->assertSet('estado', '')
             ->assertSet('banco', '')
             ->assertSet('ordenar', 'serie_asc')   // ordenação não é filtro — fica
             ->assertSee('SN-UPS')->assertSee('SN-INC')

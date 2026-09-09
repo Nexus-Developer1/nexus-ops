@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Equipamentos;
 
+use App\Enums\EstadoEquipamento;
 use App\Enums\EstadoIntervencao;
 use App\Enums\PapelUtilizador;
 use App\Enums\TipoIntervencao;
@@ -29,6 +30,10 @@ class Ficha extends Component
     public Equipamento $equipamento;
 
     public string $notas = '';
+
+    // Estado do equipamento, alterável ali mesmo no cabeçalho da ficha. Nasce «por definir»
+    // (o PHC não o traz) e é quem vai ao local que o marca.
+    public string $estado = '';
 
     // Identificação editável: cliente final (texto livre) e localização física da instalação.
     public string $clienteFinal = '';
@@ -72,6 +77,7 @@ class Ficha extends Component
         }
 
         $this->notas = $equipamento->notas ?? '';
+        $this->estado = $equipamento->estado->value;
         $this->clienteFinal = $equipamento->cliente_final ?? '';
         $this->localizacaoInstalacao = $equipamento->localizacao_instalacao ?? '';
 
@@ -174,6 +180,19 @@ class Ficha extends Component
     }
 
     // Guarda as notas livres do equipamento.
+    // Grava assim que se escolhe no seletor do cabeçalho (sem botão «guardar»: é um campo só).
+    public function updatedEstado(string $valor): void
+    {
+        abort_if(auth()->user()->ehCliente(), 403);
+
+        $this->validate(['estado' => ['required', Rule::enum(EstadoEquipamento::class)]]);
+
+        $this->equipamento->update(['estado' => $valor]);
+        $this->equipamento = $this->equipamento->fresh()->load('local.cliente');
+
+        session()->flash('sucesso', 'Estado atualizado para «'.$this->equipamento->estado->rotulo().'».');
+    }
+
     public function guardarNotas(): void
     {
         abort_if(auth()->user()->ehCliente(), 403);
@@ -420,6 +439,7 @@ class Ficha extends Component
             ->get();
 
         return view('livewire.equipamentos.ficha', [
+            'estados' => EstadoEquipamento::cases(),
             // Contas da equipa (técnicos e admins) para atribuir alertas.
             'equipaAlertas' => User::where('ativo', true)
                 ->whereNotNull('password')
