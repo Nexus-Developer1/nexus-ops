@@ -143,8 +143,6 @@
                                             </li>
                                         @endforeach
                                     </ul>
-                                @else
-                                    <p class="text-sm text-texto-medio">Nenhum banco de baterias associado a este equipamento.</p>
                                 @endif
 
                                 @unless (auth()->user()->ehCliente())

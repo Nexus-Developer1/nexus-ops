@@ -32,6 +32,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-01
 
+- 🎨 **Banco de baterias: a mensagem de «nenhum» aparecia duas vezes** — o cartão tem dois blocos (associar um banco existente, em cima; bancos que fazem parte do equipamento, em baixo) e cada um dizia à sua maneira que não havia nenhum. Sai a de cima: o rótulo da caixa de pesquisa já diz o que ali se faz.
 - 🎨 **Bancos de baterias: fica só «Sem bancos de baterias»** — sai a explicação que vinha a seguir («Usa "Banco" para adicionar…»), na ficha do equipamento e no ecrã de novo equipamento. Mantive a frase curta: sem ela, a secção ficaria vazia com o botão «Guardar bancos» solto.
 - 🎨 **Ficha do equipamento: sai o texto de ajuda dos alertas** — a linha sob o título *Alertas* («Programa avisos com o texto que quiseres…») desaparece, na continuação da limpeza dos textos de ajuda pedida pela equipa. Fica só o título e o botão «+ Alerta».
 - 🎨 **Ficha do equipamento: menos ruído no cliente associado** — sai a designação do local ao lado do nome do cliente («Instalação principal», que se repete em quase todos e já aparece no campo *Localização da instalação* logo abaixo) e o texto de ajuda por baixo da caixa de pesquisa. A confirmação ao mudar de cliente mantém-se — só deixou de estar anunciada.
