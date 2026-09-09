@@ -261,7 +261,7 @@
                                     </button>
                                 </div>
                             @empty
-                                <p class="text-sm text-texto-medio">Sem componentes. Usa "+ Componente" para os listar (cilindro, detetores, baterias, botoneiras…).</p>
+                                <p class="text-sm text-texto-medio">Sem componentes.</p>
                             @endforelse
                             <div class="mt-4 flex justify-end">
                                 <button wire:click="guardarComponentes" wire:loading.attr="disabled" wire:target="guardarComponentes" class="botao-primario">Guardar componentes</button>

@@ -32,6 +32,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-01
 
+- 🎨 **Componentes sem nenhum: fica só «Sem componentes»** — sai a explicação do botão e a lista de exemplos (cilindro, detetores, baterias…), na ficha do equipamento e no ecrã de novo equipamento.
 - 🎨 **Alertas sem nenhum: fica só «Sem alertas»** — sai a explicação do botão «+ Alerta» e a nota sobre a troca de baterias. Aplicado nos dois sítios onde aparecia: ficha do equipamento e editor de contratos.
 - 🎨 **Banco de baterias: a mensagem de «nenhum» aparecia duas vezes** — o cartão tem dois blocos (associar um banco existente, em cima; bancos que fazem parte do equipamento, em baixo) e cada um dizia à sua maneira que não havia nenhum. Sai a de cima: o rótulo da caixa de pesquisa já diz o que ali se faz.
 - 🎨 **Bancos de baterias: fica só «Sem bancos de baterias»** — sai a explicação que vinha a seguir («Usa "Banco" para adicionar…»), na ficha do equipamento e no ecrã de novo equipamento. Mantive a frase curta: sem ela, a secção ficaria vazia com o botão «Guardar bancos» solto.

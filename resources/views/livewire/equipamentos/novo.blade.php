@@ -225,7 +225,7 @@
                             </button>
                         </div>
                     @empty
-                        <p class="text-sm text-texto-medio">Sem componentes. Usa "+ Componente" para adicionar (cilindro, detetores, baterias, botoneiras…).</p>
+                        <p class="text-sm text-texto-medio">Sem componentes.</p>
                     @endforelse
                 </div>
             </section>
