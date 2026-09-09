@@ -32,6 +32,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-01
 
+- 🎨 **Ficha do equipamento: sai o texto de ajuda dos alertas** — a linha sob o título *Alertas* («Programa avisos com o texto que quiseres…») desaparece, na continuação da limpeza dos textos de ajuda pedida pela equipa. Fica só o título e o botão «+ Alerta».
 - 🎨 **Ficha do equipamento: menos ruído no cliente associado** — sai a designação do local ao lado do nome do cliente («Instalação principal», que se repete em quase todos e já aparece no campo *Localização da instalação* logo abaixo) e o texto de ajuda por baixo da caixa de pesquisa. A confirmação ao mudar de cliente mantém-se — só deixou de estar anunciada.
 - 🔒 **Agenda: ids do evento bloqueados ao browser** — da revisão de segurança ao código. `$eventoSelecionadoId`, `$editandoId` e `$editandoConvertido` são definidos só pelo servidor (ao clicar num evento / abrir a edição), mas eram propriedades públicas do Livewire: um browser manipulado podia trocar o id a meio de uma edição ou destrancar o equipamento e o contrato de um evento já convertido em relatório. Passam a `#[Locked]`, como já estava no editor de relatórios. Nada muda para quem usa a agenda.
 - 🎨 **Novo relatório: sai o texto por baixo das datas** — a linha "Início e término — deixe o término vazio se for no mesmo dia" desaparece, na sequência da limpeza dos textos de ajuda pedida pela equipa. Os campos mantêm os rótulos de acessibilidade.
