@@ -180,17 +180,35 @@ class Ficha extends Component
     }
 
     // Guarda as notas livres do equipamento.
-    // Grava assim que se escolhe no seletor do cabeçalho (sem botão «guardar»: é um campo só).
-    public function updatedEstado(string $valor): void
+    // Escolher no seletor NÃO grava: só quando o estado escolhido difere do gravado é que
+    // aparece o botão «Guardar estado» na barra de cima (pedido da equipa, set. 2026 — dá
+    // para mudar de ideias antes de confirmar).
+    public function estadoPorGuardar(): bool
+    {
+        return $this->estado !== '' && $this->estado !== $this->equipamento->estado->value;
+    }
+
+    // Grava o estado e volta à lista de equipamentos (é de lá que se anda a percorrer as
+    // fichas para as marcar, uma a uma).
+    public function guardarEstado()
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
         $this->validate(['estado' => ['required', Rule::enum(EstadoEquipamento::class)]]);
 
-        $this->equipamento->update(['estado' => $valor]);
+        $this->equipamento->update(['estado' => $this->estado]);
         $this->equipamento = $this->equipamento->fresh()->load('local.cliente');
 
-        session()->flash('sucesso', 'Estado atualizado para «'.$this->equipamento->estado->rotulo().'».');
+        session()->flash('sucesso', $this->rotuloDoEquipamento().': estado «'.$this->equipamento->estado->rotulo().'».');
+
+        return $this->redirect(route('ativos'), navigate: true);
+    }
+
+    // Como o equipamento aparece na mensagem de confirmação (série, ou modelo se não tiver).
+    private function rotuloDoEquipamento(): string
+    {
+        return $this->equipamento->numero_serie
+            ?: ($this->equipamento->modelo ?: 'Equipamento #'.$this->equipamento->id);
     }
 
     public function guardarNotas(): void

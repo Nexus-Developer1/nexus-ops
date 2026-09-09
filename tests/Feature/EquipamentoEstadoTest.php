@@ -17,7 +17,8 @@ use Tests\TestCase;
 
 // Estado do equipamento (set. 2026): deixa de nascer «operacional» por defeito — o PHC não
 // traz o estado e ninguém o tinha confirmado. Nasce «Por definir» e é marcado na ficha, por
-// quem vê o equipamento; a listagem tem um filtro por estado para separar uns dos outros.
+// quem vê o equipamento — escolher no seletor não grava: só o botão «Guardar estado» da
+// barra de cima, que a seguir devolve à lista. A listagem tem um filtro por estado.
 class EquipamentoEstadoTest extends TestCase
 {
     use RefreshDatabase;
@@ -58,22 +59,39 @@ class EquipamentoEstadoTest extends TestCase
             ->assertSee('Operacional');                    // uma das opções por onde escolher
     }
 
-    public function test_escolher_o_estado_na_ficha_grava_logo(): void
+    public function test_escolher_nao_grava_ate_se_carregar_em_guardar(): void
     {
         $admin = $this->admin();
         $equipamento = $this->equipamento('SN-2');
 
-        Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $equipamento])
-            ->set('estado', 'operacional')   // wire:model.live → grava sem botão
-            ->assertHasNoErrors();
+        $c = Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $equipamento])
+            ->assertDontSee('Guardar estado')          // sem alterações, sem botão
+            ->set('estado', 'operacional')
+            ->assertSee('Guardar estado')              // aparece na barra de cima
+            ->assertSee('Por guardar');                // e junto ao seletor
+
+        // Escolher NÃO grava — só o botão o faz.
+        $this->assertSame(EstadoEquipamento::PorDefinir, $equipamento->fresh()->estado);
+
+        // Guardar: grava e volta à lista de equipamentos.
+        $c->call('guardarEstado')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('ativos'));
 
         $this->assertSame(EstadoEquipamento::Operacional, $equipamento->fresh()->estado);
+    }
 
-        // E volta atrás para «por definir» se tiver sido enganado.
-        Livewire::actingAs($admin)->test(Ficha::class, ['equipamento' => $equipamento->fresh()])
-            ->set('estado', 'por_definir');
+    public function test_voltar_a_escolher_o_estado_gravado_faz_o_botao_desaparecer(): void
+    {
+        $equipamento = $this->equipamento('SN-4', 'operacional');
 
-        $this->assertSame(EstadoEquipamento::PorDefinir, $equipamento->fresh()->estado);
+        Livewire::actingAs($this->admin())->test(Ficha::class, ['equipamento' => $equipamento])
+            ->set('estado', 'critico')
+            ->assertSee('Guardar estado')
+            ->set('estado', 'operacional')   // mudou de ideias
+            ->assertDontSee('Guardar estado');
+
+        $this->assertSame(EstadoEquipamento::Operacional, $equipamento->fresh()->estado);
     }
 
     public function test_estado_forjado_e_recusado(): void
@@ -82,6 +100,7 @@ class EquipamentoEstadoTest extends TestCase
 
         Livewire::actingAs($this->admin())->test(Ficha::class, ['equipamento' => $equipamento])
             ->set('estado', 'inventado')
+            ->call('guardarEstado')
             ->assertHasErrors('estado');
 
         $this->assertSame(EstadoEquipamento::PorDefinir, $equipamento->fresh()->estado);

@@ -1,5 +1,14 @@
 <div>
     <x-topbar :breadcrumb="['Equipamentos', $equipamento->numero_serie ?? 'Equipamento']">
+        {{-- Só aparece com uma alteração de estado por gravar: guarda e volta à lista de
+             equipamentos (é de lá que se anda a percorrer as fichas para as marcar). --}}
+        @if ($this->estadoPorGuardar())
+            <button wire:click="guardarEstado" wire:loading.attr="disabled" wire:target="guardarEstado" class="botao-primario">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                <span wire:loading.remove wire:target="guardarEstado">Guardar estado</span>
+                <span wire:loading wire:target="guardarEstado">A guardar…</span>
+            </button>
+        @endif
         <a href="{{ route('equipamentos.associar', $equipamento) }}" wire:navigate class="botao-secundario">Alterar local</a>
         <button wire:click="novaIntervencao" class="botao-primario">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
@@ -33,6 +42,9 @@
                                         <option value="{{ $e->value }}">{{ $e->rotulo() }}</option>
                                     @endforeach
                                 </select>
+                                @if ($this->estadoPorGuardar())
+                                    <span class="etiqueta bg-aviso-100 text-aviso-500">Por guardar</span>
+                                @endif
                                 @if ($descricaoTipo = $equipamento->atributos['tipo_descricao'] ?? null)
                                     <span class="text-sm text-texto-medio">{{ $descricaoTipo }}</span>
                                 @endif
