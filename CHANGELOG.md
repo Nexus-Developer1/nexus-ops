@@ -32,6 +32,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-01
 
+- 🎨 **Ficha do dossiê: menos texto** — saem o «em direto do PHC» ao lado do título *Linhas* e o «· arraste os títulos para trocar a ordem» junto aos botões das colunas. O botão **Repor** fica, que é ação e não explicação. Um teste que verificava o texto antigo passou a verificar o título da secção.
 - 🎨 **Componentes sem nenhum: fica só «Sem componentes»** — sai a explicação do botão e a lista de exemplos (cilindro, detetores, baterias…), na ficha do equipamento e no ecrã de novo equipamento.
 - 🎨 **Alertas sem nenhum: fica só «Sem alertas»** — sai a explicação do botão «+ Alerta» e a nota sobre a troca de baterias. Aplicado nos dois sítios onde aparecia: ficha do equipamento e editor de contratos.
 - 🎨 **Banco de baterias: a mensagem de «nenhum» aparecia duas vezes** — o cartão tem dois blocos (associar um banco existente, em cima; bancos que fazem parte do equipamento, em baixo) e cada um dizia à sua maneira que não havia nenhum. Sai a de cima: o rótulo da caixa de pesquisa já diz o que ali se faz.

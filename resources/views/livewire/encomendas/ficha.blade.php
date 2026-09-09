@@ -36,7 +36,6 @@
             {{-- Linhas do dossiê — LIDAS AO VIVO do PHC (não sincronizadas). --}}
             <div class="mt-6 flex flex-wrap items-center justify-between gap-2">
                 <h2 class="text-lg font-semibold text-texto-forte">Linhas</h2>
-                <span class="text-xs text-texto-fraco">em direto do PHC</span>
             </div>
 
             {{-- Escolher COLUNAS: um botão por coluna (ligar/desligar). Arrastar os títulos
@@ -54,7 +53,6 @@
                             {{ $rotulo }}
                         </button>
                     @endforeach
-                    <span class="ml-1 text-xs text-texto-fraco">· arraste os títulos para trocar a ordem</span>
                     <button type="button" wire:click="reporColunas" class="text-xs font-medium text-texto-medio hover:text-verde-700">Repor</button>
                 </div>
             @endunless

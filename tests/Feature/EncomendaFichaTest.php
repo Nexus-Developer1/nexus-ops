@@ -43,7 +43,7 @@ class EncomendaFichaTest extends TestCase
         Livewire::actingAs($this->admin())->test(Ficha::class, ['dossier' => $dossier])
             ->assertSee('Proposta 42/2025')
             ->assertSee('ACME Lda')
-            ->assertSee('em direto do PHC')
+            ->assertSee('Linhas')   // o "em direto do PHC" saiu na limpeza dos textos de ajuda
             // O Fake devolve linhas determinísticas para qualquer bostamp.
             ->assertViewHas('linhas', fn ($l) => count($l) >= 1)
             ->assertSee('UPS Riello NPW 2000VA');
