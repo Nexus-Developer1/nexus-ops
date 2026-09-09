@@ -66,7 +66,6 @@
                                 {{-- Sem local = veio do PHC sem cliente na fatura — está "por associar" (pesquisar abaixo). --}}
                                 @if ($equipamento->local)
                                     <span class="font-medium text-texto-forte">{{ $equipamento->local->cliente->nome }}</span>
-                                    <span class="text-xs text-texto-fraco">· {{ $equipamento->local->designacao }}</span>
                                 @else
                                     <span class="etiqueta bg-aviso-100 text-aviso-500">Sem cliente — por associar</span>
                                     <span class="text-xs text-texto-fraco">A fatura no PHC não tem o cliente associado — pesquisa abaixo para o definir.</span>
@@ -91,7 +90,6 @@
                                     </ul>
                                 @endif
                             </div>
-                            <p class="mt-1.5 text-xs text-texto-fraco">Ao escolher, é pedida confirmação antes de atualizar a ficha.</p>
                         </div>
                         <div class="grid grid-cols-1 gap-x-8 gap-y-6 border-t border-borda px-6 py-6 sm:grid-cols-2">
                             <div>
