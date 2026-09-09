@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
 use App\Livewire\Agenda\Calendario;
-use App\Livewire\Auth\EsqueciPassword;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Livewire\Equipamentos\Novo as EquipamentoNovo;
 use App\Models\Cliente;
@@ -17,8 +16,8 @@ use Symfony\Component\Finder\Finder;
 use Tests\TestCase;
 
 // Endurecimentos de segurança (revisão 2026-07-16): o trait ApenasEquipa barra o papel cliente
-// em TODAS as requisições ao componente (não só via middleware da rota), e o "esqueci password"
-// não revela se um email existe.
+// em TODAS as requisições ao componente (não só via middleware da rota), e os cabeçalhos de
+// segurança vêm da própria aplicação.
 class SegurancaHardeningTest extends TestCase
 {
     use RefreshDatabase;
@@ -37,8 +36,8 @@ class SegurancaHardeningTest extends TestCase
             'papel' => PapelUtilizador::Cliente, 'cliente_id' => $c->id, 'ativo' => true]);
     }
 
-    // Descobre TODOS os componentes de equipa (tudo em app/Livewire exceto Auth/*, Portal/* e os
-    // traits em Concerns/*). É a lista que TEM de estar coberta pelo trait ApenasEquipa.
+    // Descobre TODOS os componentes de equipa (tudo em app/Livewire exceto Portal/* e os traits
+    // em Concerns/*). É a lista que TEM de estar coberta pelo trait ApenasEquipa.
     /** @return list<class-string> */
     private function componentesDeEquipa(): array
     {
@@ -49,7 +48,7 @@ class SegurancaHardeningTest extends TestCase
             $rel = str_replace(['/', '\\'], '\\', Str::of($ficheiro->getRealPath())
                 ->after($dir.DIRECTORY_SEPARATOR)->beforeLast('.php')->toString());
 
-            if (Str::startsWith($rel, ['Auth\\', 'Portal\\', 'Concerns\\'])) {
+            if (Str::startsWith($rel, ['Portal\\', 'Concerns\\'])) {
                 continue;
             }
 
@@ -97,15 +96,6 @@ class SegurancaHardeningTest extends TestCase
         // O técnico renderiza normalmente — o guard só barra clientes.
         Livewire::test(EquipamentoNovo::class)->assertOk();
         Livewire::test(Calendario::class)->assertOk();
-    }
-
-    public function test_esqueci_password_mostra_mensagem_neutra_para_email_inexistente(): void
-    {
-        Livewire::test(EsqueciPassword::class)
-            ->set('email', 'ninguem@inexistente.pt')
-            ->call('enviarLink')
-            ->assertHasNoErrors()
-            ->assertSet('estado', 'Se existir uma conta com esse email, enviámos um link para redefinir a palavra-passe.');
     }
 
     // Os cabeçalhos de segurança vêm agora da app (middleware versionado), não só do Apache.

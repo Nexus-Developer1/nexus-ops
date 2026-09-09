@@ -3,7 +3,6 @@
 use App\Enums\EstadoRelatorio;
 use App\Livewire\Agenda\Calendario;
 use App\Livewire\Alertas\Painel;
-use App\Livewire\Auth\Login;
 use App\Livewire\Clientes\Contratos;
 use App\Livewire\Clientes\Detalhe;
 use App\Livewire\Clientes\Equipamentos;
@@ -39,8 +38,9 @@ Route::get('/', fn () => redirect()->route('dashboard'));
 // Estes endereços já não mostram ecrãs: encaminham para o portal. Ficam aqui
 // porque há links antigos em circulação (emails de convite, favoritos) e
 // porque `route('login')` é para onde o Laravel manda quem não tem sessão.
-// Os componentes Livewire de autenticação continuam no sítio, sem uso, para
-// se poder voltar atrás sem os reescrever.
+// Os ecrãs locais (login, MFA, convite, reposição de palavra-passe) foram
+// apagados em set. 2026 — estavam sem uso desde que o portal passou a ser a
+// única porta de entrada; o histórico do git guarda-os.
 Route::middleware('guest')->group(function () {
     $portal = fn (string $caminho = '') => rtrim(config('app.portal_url'), '/').$caminho;
 

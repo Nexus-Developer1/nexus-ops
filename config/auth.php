@@ -99,16 +99,6 @@ return [
             'expire' => 60,
             'throttle' => 60,
         ],
-
-        // Broker dedicado aos CONVITES: reutiliza o mecanismo de reset (mesma tabela, token
-        // imprevisível, uso único) mas com validade maior (3 dias) — adequada a um convite,
-        // sem alargar a validade curta do reset normal.
-        'invites' => [
-            'provider' => 'users',
-            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
-            'expire' => 60 * 24 * 3,
-            'throttle' => 0,
-        ],
     ],
 
     /*
@@ -123,21 +113,5 @@ return [
     */
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Verificação em duas etapas (código por email)
-    |--------------------------------------------------------------------------
-    |
-    | Ligado: quem acerta na palavra-passe recebe ainda um código de seis
-    | algarismos por email e só entra depois de o introduzir.
-    |
-    | Desligado (MFA_ACTIVA=false), entra-se apenas com email e palavra-passe.
-    | Foi essa a opção tomada para esta suite. Para voltar atrás basta pôr
-    | MFA_ACTIVA=true no ficheiro .env — o código todo continua aqui.
-    |
-    */
-
-    'mfa_activa' => env('MFA_ACTIVA', true),
 
 ];

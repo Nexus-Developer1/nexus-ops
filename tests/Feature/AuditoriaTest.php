@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
 use App\Livewire\Auditoria\Listagem;
-use App\Livewire\Auth\Login;
 use App\Livewire\Equipamentos\Ficha;
 use App\Models\Auditoria;
 use App\Models\Cliente;
@@ -26,18 +25,6 @@ class AuditoriaTest extends TestCase
     private function admin(): User
     {
         return User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
-    }
-
-    public function test_login_falhado_fica_registado(): void
-    {
-        Livewire::test(Login::class)
-            ->set('email', 'atacante@x.pt')
-            ->set('password', 'errada')
-            ->call('autenticar');
-
-        $registo = Auditoria::where('acao', 'login_falhado')->firstOrFail();
-        $this->assertSame('atacante@x.pt', $registo->detalhe['email']);
-        $this->assertNull($registo->user_id); // anónimo — sem sessão iniciada
     }
 
     public function test_mudar_cliente_do_equipamento_fica_registado(): void

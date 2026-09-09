@@ -82,13 +82,13 @@ class TecnicoTest extends TestCase
         $this->actingAs($tec)->get('/relatorios')->assertOk();
     }
 
-    public function test_login_de_tecnico_aterra_no_dashboard_como_admin(): void
+    public function test_tecnico_autenticado_aterra_no_dashboard_como_admin(): void
     {
-        // Técnico = espelho do admin → aterra no dashboard (já não no painel).
+        // Técnico = espelho do admin → aterra no dashboard (já não no painel). O login
+        // é feito no portal da suite; aqui garante-se o destino de quem chega com sessão.
         $tec = $this->tecnico('t@nexus.pt');
-        $tec->update(['password' => 'segredo123']);
 
-        $this->loginComMfa('t@nexus.pt', 'segredo123')
-            ->assertRedirect(route('dashboard'));
+        $this->actingAs($tec)->get('/')->assertRedirect(route('dashboard'));
+        $this->actingAs($tec)->get(route('dashboard'))->assertOk();
     }
 }

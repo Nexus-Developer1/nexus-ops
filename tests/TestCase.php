@@ -3,18 +3,12 @@
 namespace Tests;
 
 use App\Enums\PapelUtilizador;
-use App\Livewire\Auth\Login;
-use App\Livewire\Auth\VerificarCodigo;
 use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\Local;
 use App\Models\User;
-use App\Notifications\CodigoMfaNotification;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
-use Illuminate\Support\Facades\Notification;
-use Livewire\Features\SupportTesting\Testable;
-use Livewire\Livewire;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -72,33 +66,5 @@ abstract class TestCase extends BaseTestCase
         preg_match_all('#data:image/svg\+xml;base64,([A-Za-z0-9+/=]+)#', $html, $m);
 
         return implode("\n", array_map('base64_decode', $m[1]));
-    }
-
-    // Completa o login de duas etapas (MFA): faz a 1.ª etapa (email+password), captura o
-    // código enviado por email e submete-o na 2.ª etapa. Devolve o componente
-    // VerificarCodigo já depois de `verificar`, para o teste encadear as suas asserções
-    // (ex.: ->assertRedirect(...)). Usa Notification::fake para ler o código em claro.
-    protected function loginComMfa(string $email, string $password): Testable
-    {
-        Notification::fake();
-
-        Livewire::test(Login::class)
-            ->set('email', $email)
-            ->set('password', $password)
-            ->call('autenticar')
-            ->assertRedirect(route('mfa.verificar'));
-
-        $user = User::whereRaw('lower(email) = ?', [strtolower(trim($email))])->firstOrFail();
-
-        $codigo = null;
-        Notification::assertSentTo($user, CodigoMfaNotification::class, function ($notificacao) use (&$codigo) {
-            $codigo = $notificacao->codigo;
-
-            return true;
-        });
-
-        return Livewire::test(VerificarCodigo::class)
-            ->set('codigo', $codigo)
-            ->call('verificar');
     }
 }

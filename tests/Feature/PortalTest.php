@@ -105,12 +105,13 @@ class PortalTest extends TestCase
         $this->assertSame(0, Equipamento::count());
     }
 
-    public function test_login_de_cliente_aterra_no_portal(): void
+    public function test_cliente_autenticado_aterra_no_portal(): void
     {
+        // O login é feito no portal da suite; o que se garante aqui é o destino —
+        // uma conta de cliente que entre na aplicação é sempre encaminhada para o portal.
         [, $user] = $this->clienteComRelatorio('A');
-        $user->update(['password' => 'segredo123']);
 
-        $this->loginComMfa($user->email, 'segredo123')
-            ->assertRedirect(route('portal.dashboard'));
+        $this->actingAs($user)->get('/')->assertRedirect(route('dashboard'));
+        $this->actingAs($user)->get(route('dashboard'))->assertRedirect(route('portal.dashboard'));
     }
 }
