@@ -305,7 +305,7 @@
                                     </button>
                                 </div>
                             @empty
-                                <p class="text-sm text-texto-medio">Sem alertas programados. Usa "+ Alerta" para marcar a data e o texto do aviso (a troca de baterias já alerta sozinha pela data da ficha).</p>
+                                <p class="text-sm text-texto-medio">Sem alertas.</p>
                             @endforelse
                             <div class="mt-4 flex justify-end">
                                 <button wire:click="guardarAlertasManutencao" wire:loading.attr="disabled" wire:target="guardarAlertasManutencao" class="botao-primario">Guardar alertas</button>

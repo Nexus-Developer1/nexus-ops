@@ -315,7 +315,7 @@
                             </div>
                         </div>
                     @empty
-                        <p class="text-sm text-texto-medio">Sem alertas programados. Usa "+ Alerta" para marcar a data e o texto do aviso.</p>
+                        <p class="text-sm text-texto-medio">Sem alertas.</p>
                     @endforelse
                 </div>
             </section>
