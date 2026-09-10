@@ -144,14 +144,11 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
     })->name('despesas.editar');
 });
 
-// ---- Gestão de utilizadores (ÚNICA área exclusiva do admin) ----
-// Middleware admin,tecnico para o técnico CHEGAR ao componente e levar um 403 real do Gate
-// 'gerir-utilizadores' (o middleware papel:admin redirecionaria, não daria 403). A guarda
-// verdadeira é o abort_unless(Gate) no componente.
+// ---- Gestão de utilizadores ----
+// Já não há ecrã local: quem manda nas permissões é o PORTAL, e é ele que decide o que
+// cada pessoa pode ver quando lá chega. Aqui só fica o encaminhamento (favoritos antigos
+// e o nome da rota, que ainda é usado), aberto a admins e técnicos.
 Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
-    // A gestao de pessoas passou para o portal, onde tambem se decide a que
-    // modulos cada uma entra — eram as duas metades da mesma tarefa. O endereco
-    // fica porque ha favoritos antigos, e porque o nome da rota ainda e usado.
     Route::get('/utilizadores/adicionar', fn () => redirect()->away(
         rtrim(config('app.portal_url'), '/').'/gestao/utilizadores'
     ))->name('utilizadores.adicionar');

@@ -68,8 +68,6 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
-        Gate::define('gerir-utilizadores', fn (User $utilizador) => $utilizador->ehAdmin());
-
         // Processo de validação das despesas: aprovadores de config (pgouveia@nxs.pt) + admins.
         Gate::define('aprovar-despesas', fn (User $utilizador) => FluxoAprovacaoDespesas::podeAprovar($utilizador));
 
