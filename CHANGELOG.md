@@ -32,6 +32,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-01
 
+- 🎨 **Novo relatório: sai o texto por baixo do «Pedido do cliente em»** — a linha «É a partir daqui que conta o tempo de resposta do SLA.» sob a caixa da data (só aparece nas corretivas). O campo continua a nascer preenchido e a valer exatamente o mesmo para o relógio do SLA. Requer `optimize`.
+
 - 🧰 **Estado do equipamento: passa a haver um botão «Guardar estado»** — pedido da equipa. Escolher no seletor da ficha já **não grava logo**: enquanto a escolha for diferente do que está gravado, aparece o botão **Guardar estado** na barra de cima (à esquerda do «Alterar local») e uma etiqueta amarela **«Por guardar»** ao lado do seletor. Carregar no botão grava e **devolve à lista de equipamentos** — que é de onde se anda a percorrer as fichas para as ir marcando — com a confirmação em baixo («SN-1234: estado «Operacional».»). Mudar de ideias e voltar a escolher o estado que já lá estava faz o botão desaparecer, sem gravar nada. Requer build e `optimize`. +1 teste, 2 reescritos (616 no total).
 
 - 🎨 **Etiqueta «Por definir» a cinzento cheio (e sempre numa linha)** — a primeira versão era só contorno branco e, numa coluna estreita, o texto ainda partia em duas linhas: passava despercebida e parecia um erro de desenho. Passa a **cinzento cheio** (`slate-200`/`slate-700`), mais escuro que o «Inativo» — salta à vista, que é o ponto: é o que falta preencher. De caminho, **nenhuma etiqueta da aplicação volta a partir em duas linhas** (`whitespace-nowrap` na classe base) — vale para estados, tipos e famílias em qualquer tabela. Requer build.

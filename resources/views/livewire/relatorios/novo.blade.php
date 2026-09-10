@@ -249,7 +249,6 @@
                                 <div class="mt-3">
                                     <label class="campo-label">Pedido do cliente em</label>
                                     <input wire:model="pedido_em" type="datetime-local" class="campo-input">
-                                    <p class="mt-1 text-xs text-texto-fraco">É a partir daqui que conta o tempo de resposta do SLA.</p>
                                     @error('pedido_em') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                                 </div>
                             @endif
