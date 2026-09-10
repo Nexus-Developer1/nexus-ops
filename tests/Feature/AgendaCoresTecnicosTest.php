@@ -136,6 +136,16 @@ class AgendaCoresTecnicosTest extends TestCase
 
     // ---- As cores da app SAO as do Outlook ----
 
+    // Duas pessoas com cores diferentes na app nao podem cair na MESMA categoria do Outlook
+    // (foi o que aconteceu a SAT e ao Tiago Pinto, os dois em turquesa escuro).
+    public function test_cores_diferentes_nunca_dao_a_mesma_categoria(): void
+    {
+        $presets = array_map([FonteCalendario::class, 'presetOutlook'], FonteCalendario::PALETA);
+
+        $this->assertSame(count($presets), count(array_unique($presets)),
+            'Ha cores da paleta a cair na mesma categoria: '.implode(', ', $presets));
+    }
+
     // Cada cor da paleta E uma categoria do Outlook: a volta tem de dar exatamente a mesma cor
     // (se nao der, a app esta a desenhar um tom que o Outlook nao tem).
     public function test_a_paleta_e_feita_das_cores_das_categorias_do_outlook(): void
