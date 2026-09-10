@@ -13,6 +13,7 @@ use Throwable;
 //   php artisan agenda:graph --verificar   permissões do token + acesso ao calendário (sem escrever)
 //   php artisan agenda:graph               espelha os eventos da janela [-30, +90] dias (idempotente)
 //   php artisan agenda:graph --partilhar   partilha (leitura) o calendário com a equipa ativa
+//   php artisan agenda:graph --papeis      dá ESCRITA a quem está em `agenda_editores`
 //
 // Depois do consentimento de admin a Calendars.ReadWrite e de MS_GRAPH_CALENDARIO_ATIVO=true, a
 // sequência é: --verificar → (sem opções) → --partilhar. A partir daí o observer trata do resto.
@@ -21,6 +22,7 @@ class SincronizarAgendaGraph extends Command
     protected $signature = 'agenda:graph
         {--verificar : Só diagnostica: permissões e acesso ao calendário}
         {--partilhar : Partilha o calendário (leitura) com a equipa ativa}
+        {--papeis : Acerta o papel de quem edita o calendário (config agenda_editores)}
         {--dias-atras=30 : Janela para trás (dias)}
         {--dias-frente=90 : Janela para a frente (dias)}';
 
@@ -52,6 +54,13 @@ class SincronizarAgendaGraph extends Command
             return self::SUCCESS;
         }
 
+        // Só os papéis: quem está em `agenda_editores` passa a poder editar no Outlook.
+        if ($this->option('papeis')) {
+            $this->papeis($calendario);
+
+            return self::SUCCESS;
+        }
+
         if ($this->option('partilhar')) {
             $r = $calendario->partilharComEquipa();
             $this->info('Partilhado com: '.(implode(', ', $r['partilhado']) ?: '—'));
@@ -59,6 +68,9 @@ class SincronizarAgendaGraph extends Command
             if ($r['falhou']) {
                 $this->warn('Falhou: '.implode(', ', $r['falhou']));
             }
+
+            // Quem edita (config) fica com escrita, mesmo que já tivesse leitura.
+            $this->papeis($calendario);
 
             // Cor por técnico (categorias) — é o que destaca o evento na grelha do Outlook.
             $c = $calendario->garantirCategorias();
@@ -105,5 +117,22 @@ class SincronizarAgendaGraph extends Command
         $this->info("Concluído: {$criados} criados, {$atualizados} atualizados, {$erros} erros.");
 
         return $erros > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    // Escrita no calendário para as contas de `agenda_editores` (as outras não são tocadas).
+    private function papeis(CalendarioGraph $calendario): void
+    {
+        $editores = $calendario->editores();
+        $this->line('Podem editar (config): '.(implode(', ', $editores) ?: '—'));
+
+        $p = $calendario->garantirPapeis();
+        $this->info('Passaram a poder editar: '.(implode(', ', $p['atualizados']) ?: '—'));
+        $this->line('Já podiam: '.(implode(', ', $p['ja_tinham']) ?: '—'));
+        if ($p['sem_partilha']) {
+            $this->warn('Sem o calendário partilhado (correr --partilhar primeiro): '.implode(', ', $p['sem_partilha']));
+        }
+        if ($p['falhou']) {
+            $this->warn('Falhou: '.implode(', ', $p['falhou']));
+        }
     }
 }

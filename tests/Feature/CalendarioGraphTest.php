@@ -246,6 +246,62 @@ class CalendarioGraphTest extends TestCase
         Http::assertNotSent(fn ($req) => $req->method() === 'POST' && str_ends_with($req->url(), '/calendarPermissions') && in_array($req['emailAddress']['address'], ['inativo@nxs.pt', 'cli@x.pt'], true));
     }
 
+    // ---- Quem pode EDITAR o calendário (config agenda_editores) ----
+
+    public function test_quem_esta_na_lista_de_editores_e_partilhado_com_escrita(): void
+    {
+        config(['services.microsoft_graph.agenda_editores' => 'dev@nxs.pt']);
+        User::create(['nome' => 'Dev', 'email' => 'dev@nxs.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
+        User::create(['nome' => 'Paulo Bento', 'email' => 'paulo@nxs.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+        $this->fakeGraph([
+            'graph.microsoft.com/v1.0/users/*/calendars/'.self::CAL.'/calendarPermissions' => Http::sequence()
+                ->push(['value' => []])
+                ->push(['id' => 'perm-1'], 201)
+                ->push(['id' => 'perm-2'], 201),
+        ]);
+
+        app(CalendarioGraph::class)->partilharComEquipa();
+
+        // O dev entra com escrita; o resto da equipa continua só com leitura.
+        Http::assertSent(fn ($req) => $req->method() === 'POST' && str_ends_with($req->url(), '/calendarPermissions')
+            && $req['emailAddress']['address'] === 'dev@nxs.pt' && $req['role'] === 'write');
+        Http::assertSent(fn ($req) => $req->method() === 'POST' && str_ends_with($req->url(), '/calendarPermissions')
+            && $req['emailAddress']['address'] === 'paulo@nxs.pt' && $req['role'] === 'read');
+    }
+
+    public function test_garantir_papeis_promove_quem_ja_tinha_leitura_e_nao_toca_nos_outros(): void
+    {
+        config(['services.microsoft_graph.agenda_editores' => 'dev@nxs.pt']);
+        $this->fakeGraph([
+            'graph.microsoft.com/v1.0/users/*/calendars/'.self::CAL.'/calendarPermissions/*' => Http::response(['id' => 'perm-dev', 'role' => 'write']),
+            'graph.microsoft.com/v1.0/users/*/calendars/'.self::CAL.'/calendarPermissions' => Http::response(['value' => [
+                ['id' => 'perm-dev', 'emailAddress' => ['address' => 'dev@nxs.pt'], 'role' => 'read'],
+                ['id' => 'perm-paulo', 'emailAddress' => ['address' => 'paulo@nxs.pt'], 'role' => 'read'],
+            ]]),
+        ]);
+
+        $r = app(CalendarioGraph::class)->garantirPapeis();
+
+        $this->assertSame(['dev@nxs.pt'], $r['atualizados']);
+        $this->assertSame([], $r['falhou']);
+        Http::assertSent(fn ($req) => $req->method() === 'PATCH' && str_ends_with($req->url(), '/calendarPermissions/perm-dev') && $req['role'] === 'write');
+        // As permissões afinadas à mão de outras pessoas ficam como estão.
+        Http::assertNotSent(fn ($req) => $req->method() === 'PATCH' && str_ends_with($req->url(), '/calendarPermissions/perm-paulo'));
+    }
+
+    public function test_garantir_papeis_avisa_quem_ainda_nao_tem_o_calendario_partilhado(): void
+    {
+        config(['services.microsoft_graph.agenda_editores' => 'dev@nxs.pt']);
+        $this->fakeGraph([
+            'graph.microsoft.com/v1.0/users/*/calendars/'.self::CAL.'/calendarPermissions' => Http::response(['value' => []]),
+        ]);
+
+        $r = app(CalendarioGraph::class)->garantirPapeis();
+
+        $this->assertSame(['dev@nxs.pt'], $r['sem_partilha']);
+        Http::assertNotSent(fn ($req) => $req->method() === 'PATCH');
+    }
+
     // ---- Comando ----
 
     public function test_comando_verificar_falha_sem_permissao_e_passa_com_ela(): void

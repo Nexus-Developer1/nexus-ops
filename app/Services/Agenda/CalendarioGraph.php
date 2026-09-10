@@ -106,6 +106,63 @@ class CalendarioGraph
         return $resultado;
     }
 
+    // Contas com ESCRITA no calendário partilhado (config `agenda_editores`); toda a restante
+    // equipa fica com leitura. Emails em minúsculas, sem espaços.
+    /** @return list<string> */
+    public function editores(): array
+    {
+        return collect(explode(',', (string) config('services.microsoft_graph.agenda_editores')))
+            ->map(fn ($e) => mb_strtolower(trim($e)))
+            ->filter()->unique()->values()->all();
+    }
+
+    // 'write' = pode criar/alterar eventos no Outlook; 'read' = só vê.
+    public function papelPartilha(string $email): string
+    {
+        return in_array(mb_strtolower(trim($email)), $this->editores(), true) ? 'write' : 'read';
+    }
+
+    /**
+     * Acerta o PAPEL de quem já tem o calendário partilhado — só das contas da lista de
+     * editores (as outras não são tocadas de propósito: permissões afinadas à mão ficam
+     * como estão). Um PATCH ao papel não reenvia convite nenhum; quem já aceitou a
+     * partilha passa simplesmente a poder editar.
+     *
+     * @return array{atualizados: list<string>, ja_tinham: list<string>, sem_partilha: list<string>, falhou: list<string>}
+     */
+    public function garantirPapeis(): array
+    {
+        $caminho = $this->caminhoCalendario().'/calendarPermissions';
+        $permissoes = collect($this->graph->get($caminho)->json('value') ?? []);
+        $r = ['atualizados' => [], 'ja_tinham' => [], 'sem_partilha' => [], 'falhou' => []];
+
+        foreach ($this->editores() as $email) {
+            if ($email === mb_strtolower((string) config('services.microsoft_graph.sender'))) {
+                continue; // a mailbox dona já pode tudo
+            }
+
+            $p = $permissoes->first(fn ($p) => mb_strtolower((string) ($p['emailAddress']['address'] ?? '')) === $email);
+            if (! $p || ! ($p['id'] ?? null)) {
+                $r['sem_partilha'][] = $email; // ainda não tem o calendário partilhado
+
+                continue;
+            }
+            if (($p['role'] ?? '') === 'write') {
+                $r['ja_tinham'][] = $email;
+
+                continue;
+            }
+
+            $resp = $this->graph->patch($caminho.'/'.$p['id'], ['role' => 'write']);
+            $r[$resp->successful() ? 'atualizados' : 'falhou'][] = $email;
+            if ($resp->failed()) {
+                Log::warning('Graph: falha a dar escrita no calendário da agenda.', ['email' => $email, 'status' => $resp->status(), 'erro' => $resp->json('error.message')]);
+            }
+        }
+
+        return $r;
+    }
+
     /**
      * (Re)envia a UMA pessoa o convite de partilha do calendário — o email nativo do Outlook
      * ("You're invited to share this calendar"), o único que dá acesso a sério: o link do
@@ -134,7 +191,7 @@ class CalendarioGraph
 
         $r = $this->graph->post($caminho, [
             'emailAddress' => ['address' => $u->email, 'name' => $u->nome],
-            'role' => 'read',
+            'role' => $this->papelPartilha((string) $u->email),
             'isRemovable' => true,
             'isInsideOrganization' => true,
         ]);
@@ -173,7 +230,7 @@ class CalendarioGraph
             }
             $r = $this->graph->post($this->caminhoCalendario().'/calendarPermissions', [
                 'emailAddress' => ['address' => $u->email, 'name' => $u->nome],
-                'role' => 'read',
+                'role' => $this->papelPartilha((string) $u->email),
                 'isRemovable' => true,
                 'isInsideOrganization' => true,
             ]);

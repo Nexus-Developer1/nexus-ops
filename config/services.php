@@ -50,6 +50,12 @@ return [
         // à permissão Calendars.ReadWrite — sem ela cada chamada dá 403.
         'calendario_ativo' => (bool) env('MS_GRAPH_CALENDARIO_ATIVO', false),
         'calendario_agenda' => env('MS_GRAPH_CALENDARIO_AGENDA', 'Agenda Nexus Infra'),
+
+        // Quem pode EDITAR o calendário partilhado no próprio Outlook (lista de emails
+        // separados por vírgula). A equipa fica com leitura; estas contas ficam com
+        // escrita. Atenção: o que se editar no Outlook é substituído se depois esse
+        // evento for mexido na agenda da app — a app é a fonte de verdade.
+        'agenda_editores' => env('MS_GRAPH_AGENDA_EDITORES', 'dev@nxs.pt'),
     ],
 
 ];
