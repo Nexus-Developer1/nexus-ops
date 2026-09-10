@@ -699,6 +699,12 @@ document.addEventListener('alpine:init', () => {
                         const faixas = cores.map((c, i) => `${c} ${largura * i}% ${largura * (i + 1)}%`).join(', ');
                         info.el.style.background = `linear-gradient(to right, ${faixas})`;
                         info.el.style.borderColor = cores[0];
+                        // Texto pela cor da PRIMEIRA faixa (categorias claras do Outlook
+                        // — o roxo claro, os cinzentos — pedem texto escuro).
+                        const texto = (info.event.extendedProps.textos || [])[0];
+                        if (/^#[0-9a-f]{6}$/i.test(texto || '')) {
+                            info.el.style.color = texto;
+                        }
                     }
                 },
                 eventDrop: (info) => this.aoMover(info),

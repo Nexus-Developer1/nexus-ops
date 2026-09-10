@@ -136,6 +136,36 @@ class AgendaCoresTecnicosTest extends TestCase
 
     // ---- As cores da app SAO as do Outlook ----
 
+    // Cada cor da paleta E uma categoria do Outlook: a volta tem de dar exatamente a mesma cor
+    // (se nao der, a app esta a desenhar um tom que o Outlook nao tem).
+    public function test_a_paleta_e_feita_das_cores_das_categorias_do_outlook(): void
+    {
+        foreach (FonteCalendario::PALETA as $cor) {
+            $preset = FonteCalendario::presetOutlook($cor);
+            $this->assertSame($cor, FonteCalendario::CORES_OUTLOOK[$preset],
+                "A cor $cor nao e a de nenhuma categoria do Outlook (mais proxima: $preset)");
+        }
+    }
+
+    // Uma cor afinada a mao (tirada do Outlook de alguem) tem de cair na categoria certa.
+    public function test_cor_afinada_a_mao_cai_na_categoria_mais_proxima(): void
+    {
+        $this->assertSame('preset8', FonteCalendario::presetOutlook('#b3a3e0'));   // roxo claro
+        $this->assertSame('preset12', FonteCalendario::presetOutlook('#c1c5c0'));  // cinzento
+        $this->assertSame('preset20', FonteCalendario::presetOutlook('#1f6e7b'));  // turquesa escuro
+        $this->assertSame('preset14', FonteCalendario::presetOutlook(null));       // sem cor
+    }
+
+    // As categorias claras do Outlook (roxo claro, cinzentos) com o texto branco de sempre eram
+    // ilegiveis: o texto passa a escuro quando o fundo e claro.
+    public function test_texto_do_bloco_acompanha_a_cor_do_fundo(): void
+    {
+        $this->assertSame('#1e293b', FonteCalendario::textoSobre('#c1c5c0')); // cinzento claro
+        $this->assertSame('#1e293b', FonteCalendario::textoSobre('#b3a3e0')); // roxo claro
+        $this->assertSame('#ffffff', FonteCalendario::textoSobre('#1f6e7b')); // turquesa escuro
+        $this->assertSame('#ffffff', FonteCalendario::textoSobre(FonteCalendario::COR_SEM_COR));
+    }
+
     public function test_cada_cor_da_paleta_tem_a_sua_categoria_do_outlook(): void
     {
         $presets = [];

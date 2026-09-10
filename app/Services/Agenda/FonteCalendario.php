@@ -25,26 +25,40 @@ class FonteCalendario
     // (podem sair um fio mais claros/escuros no Outlook, mas é sempre o mesmo tom).
     // A ORDEM não pode mudar: mantém o tom que cada pessoa já tinha.
     public const PALETA = [
-        '#107c10', '#0078d4', '#5c2d91', '#ca5010', '#038387', '#c30052',
-        '#986f0b', '#1c3f95', '#005e5e', '#a4262c', '#6b7d0c', '#6b0036',
+        '#22b14c', '#3a96dd', '#5c2d91', '#c25a21', '#1f6e7b', '#e2318c',
+        '#986f0b', '#1c3f95', '#2f9e9e', '#a4262c', '#6b7d0c', '#b3a3e0',
     ];
 
-    // Cor → categoria do Outlook. `preset14` (preto) é a de quem não anda em serviços:
-    // não gasta cor da paleta e no Outlook fica preto, sem se confundir com um técnico.
-    public const PRESETS_OUTLOOK = [
-        '#107c10' => 'preset4',   // verde
-        '#0078d4' => 'preset7',   // azul
-        '#5c2d91' => 'preset23',  // roxo escuro
-        '#ca5010' => 'preset16',  // laranja escuro
-        '#038387' => 'preset5',   // turquesa
-        '#c30052' => 'preset9',   // framboesa
-        '#986f0b' => 'preset18',  // mostarda
-        '#1c3f95' => 'preset22',  // azul escuro
-        '#005e5e' => 'preset20',  // turquesa escuro
-        '#a4262c' => 'preset15',  // vermelho escuro
-        '#6b7d0c' => 'preset21',  // azeitona
-        '#6b0036' => 'preset24',  // framboesa escura
-        self::COR_SEM_COR => 'preset14', // preto — sem cor de técnico
+    // As 25 categorias do Outlook e a cor com que o Outlook as desenha. Serve nos dois
+    // sentidos: a cor de cada pessoa na app é uma destas, e a categoria que se cria no
+    // M365 é a que corresponde à cor. Os valores foram tirados das próprias etiquetas do
+    // Outlook (a Microsoft não os publica) — daí serem aproximados ao pixel, não oficiais.
+    public const CORES_OUTLOOK = [
+        'preset0' => '#d0454c',   // vermelho
+        'preset1' => '#e8730c',   // laranja
+        'preset2' => '#eab785',   // pêssego
+        'preset3' => '#f5d435',   // amarelo
+        'preset4' => '#22b14c',   // verde
+        'preset5' => '#2f9e9e',   // turquesa
+        'preset6' => '#a8a400',   // azeitona
+        'preset7' => '#3a96dd',   // azul
+        'preset8' => '#b3a3e0',   // roxo claro
+        'preset9' => '#e2318c',   // framboesa
+        'preset10' => '#808c94',  // aço
+        'preset11' => '#4a5c6a',  // aço escuro
+        'preset12' => '#c1c5c0',  // cinzento
+        'preset13' => '#8a8886',  // cinzento escuro
+        'preset14' => '#000000',  // preto
+        'preset15' => '#a4262c',  // vermelho escuro
+        'preset16' => '#c25a21',  // laranja escuro
+        'preset17' => '#7a4526',  // castanho escuro
+        'preset18' => '#986f0b',  // mostarda
+        'preset19' => '#0b6a0b',  // verde escuro
+        'preset20' => '#1f6e7b',  // turquesa escuro
+        'preset21' => '#6b7d0c',  // azeitona escura
+        'preset22' => '#1c3f95',  // azul escuro
+        'preset23' => '#5c2d91',  // roxo escuro
+        'preset24' => '#6b0036',  // framboesa escura
     ];
 
     // Cor de quem ainda não tem ninguém atribuído.
@@ -54,10 +68,53 @@ class FonteCalendario
     // ficam a PRETO em vez de gastarem uma cor da paleta.
     public const COR_SEM_COR = '#000000';
 
-    // Categoria do Outlook correspondente a uma cor da agenda (preto se não for da paleta).
+    // Categoria do Outlook correspondente a uma cor da agenda: a de cor igual, ou — se a
+    // cor tiver sido afinada à mão — a mais próxima (distância no espaço RGB).
     public static function presetOutlook(?string $cor): string
     {
-        return self::PRESETS_OUTLOOK[mb_strtolower(trim((string) $cor))] ?? 'preset14';
+        $alvo = self::rgb((string) $cor);
+        if ($alvo === null) {
+            return 'preset14'; // sem cor → preto
+        }
+
+        $melhor = 'preset14';
+        $menor = PHP_INT_MAX;
+        foreach (self::CORES_OUTLOOK as $preset => $hex) {
+            $c = self::rgb($hex);
+            $d = ($c[0] - $alvo[0]) ** 2 + ($c[1] - $alvo[1]) ** 2 + ($c[2] - $alvo[2]) ** 2;
+            if ($d < $menor) {
+                $menor = $d;
+                $melhor = $preset;
+            }
+        }
+
+        return $melhor;
+    }
+
+    // Cor do TEXTO por cima de um bloco desta cor: as categorias claras do Outlook (o roxo
+    // claro, os cinzentos) ficavam ilegíveis com o branco de sempre.
+    public static function textoSobre(?string $cor): string
+    {
+        $c = self::rgb((string) $cor);
+        if ($c === null) {
+            return '#ffffff';
+        }
+
+        // Luminância relativa (WCAG, sem a correção gama — chega para escolher preto/branco).
+        $l = (0.299 * $c[0] + 0.587 * $c[1] + 0.114 * $c[2]) / 255;
+
+        return $l > 0.6 ? '#1e293b' : '#ffffff';
+    }
+
+    /** @return array{0: int, 1: int, 2: int}|null */
+    private static function rgb(string $hex): ?array
+    {
+        $hex = ltrim(mb_strtolower(trim($hex)), '#');
+        if (! preg_match('/^[0-9a-f]{6}$/', $hex)) {
+            return null;
+        }
+
+        return [hexdec(substr($hex, 0, 2)), hexdec(substr($hex, 2, 2)), hexdec(substr($hex, 4, 2))];
     }
 
     // Cores já resolvidas neste pedido (nome→cor) e as contas da equipa, para não repetir
@@ -102,6 +159,7 @@ class FonteCalendario
                     'tipo' => $e->tipo->value,
                     'estado' => $e->estado->value,
                     'cores' => $cores->all(),
+                    'textos' => $cores->map(fn (string $c) => self::textoSobre($c))->all(),
                 ];
 
                 $segmentos = $e->segmentos();
@@ -116,7 +174,8 @@ class FonteCalendario
                 $titulo = $e->resumoCompleto();
 
                 $bloco = function (string $id, Carbon $de, Carbon $ate, bool $arrastavel) use ($cor, $props, $titulo): array {
-                    $base = ['id' => $id, 'title' => $titulo, 'backgroundColor' => $cor, 'borderColor' => $cor, 'extendedProps' => $props];
+                    $base = ['id' => $id, 'title' => $titulo, 'backgroundColor' => $cor, 'borderColor' => $cor,
+                        'textColor' => self::textoSobre($cor), 'extendedProps' => $props];
 
                     if (self::diaInteiro($de, $ate)) {
                         return $base + [
