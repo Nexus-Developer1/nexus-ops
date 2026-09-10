@@ -133,4 +133,32 @@ class AgendaCoresTecnicosTest extends TestCase
         $this->assertSame(['Ana', 'Bruno'], $legenda->pluck('nome')->all());
         $this->assertCount(2, $legenda->pluck('cor')->unique());
     }
+
+    // ---- As cores da app SAO as do Outlook ----
+
+    public function test_cada_cor_da_paleta_tem_a_sua_categoria_do_outlook(): void
+    {
+        $presets = [];
+        foreach (FonteCalendario::PALETA as $cor) {
+            $preset = FonteCalendario::presetOutlook($cor);
+            $this->assertMatchesRegularExpression('/^preset\d{1,2}$/', $preset, "Sem categoria do Outlook: $cor");
+            $this->assertNotSame('preset14', $preset, "A cor $cor nao pode cair no preto (sem cor)");
+            $presets[] = $preset;
+        }
+
+        // Uma categoria por cor: duas pessoas com cores diferentes nunca ficam iguais no Outlook.
+        $this->assertSame(count($presets), count(array_unique($presets)));
+    }
+
+    public function test_quem_nao_anda_em_servicos_fica_a_preto_dos_dois_lados(): void
+    {
+        $ana = $this->pessoa('Ana');
+        $ana->forceFill(['cor_agenda' => FonteCalendario::COR_SEM_COR])->save();
+
+        // A cor guardada nao e recalculada (nao volta a apanhar uma cor da paleta)...
+        $this->assertSame(FonteCalendario::COR_SEM_COR, $ana->fresh()->corAgenda());
+        $this->assertSame(FonteCalendario::COR_SEM_COR, $this->fonte()->corTecnico('Ana'));
+        // ...e no Outlook e a categoria PRETA.
+        $this->assertSame('preset14', FonteCalendario::presetOutlook(FonteCalendario::COR_SEM_COR));
+    }
 }

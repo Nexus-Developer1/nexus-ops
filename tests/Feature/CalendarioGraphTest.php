@@ -9,6 +9,7 @@ use App\Models\EventoAgenda;
 use App\Models\Local;
 use App\Models\User;
 use App\Services\Agenda\CalendarioGraph;
+use App\Services\Agenda\FonteCalendario;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -244,6 +245,61 @@ class CalendarioGraphTest extends TestCase
         $this->assertSame(['paulo@nxs.pt'], $r['ja_tinha']);
         Http::assertSent(fn ($req) => $req->method() === 'POST' && str_ends_with($req->url(), '/calendarPermissions') && $req['emailAddress']['address'] === 'chefe@nxs.pt' && $req['role'] === 'read');
         Http::assertNotSent(fn ($req) => $req->method() === 'POST' && str_ends_with($req->url(), '/calendarPermissions') && in_array($req['emailAddress']['address'], ['inativo@nxs.pt', 'cli@x.pt'], true));
+    }
+
+    // ---- Categorias (a cor do Outlook e a MESMA da agenda da app) ----
+
+    public function test_categoria_do_tecnico_nasce_com_a_cor_da_agenda(): void
+    {
+        $u = User::create(['nome' => 'Ana Silva', 'email' => 'ana@nxs.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+        $u->forceFill(['cor_agenda' => FonteCalendario::PALETA[1]])->save(); // azul
+        $this->fakeGraph([
+            'graph.microsoft.com/v1.0/users/*/outlook/masterCategories' => Http::sequence()
+                ->push(['value' => []])
+                ->push(['id' => 'cat-1'], 201),
+        ]);
+
+        $r = app(CalendarioGraph::class)->garantirCategorias();
+
+        $this->assertSame(['Ana Silva'], $r['criadas']);
+        Http::assertSent(fn ($req) => $req->method() === 'POST' && str_ends_with($req->url(), '/masterCategories')
+            && $req['displayName'] === 'Ana Silva'
+            && $req['color'] === FonteCalendario::presetOutlook(FonteCalendario::PALETA[1]));
+    }
+
+    public function test_categoria_com_a_cor_errada_e_acertada_sem_criar_outra(): void
+    {
+        $u = User::create(['nome' => 'Ana Silva', 'email' => 'ana@nxs.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+        $u->forceFill(['cor_agenda' => FonteCalendario::PALETA[1]])->save();
+        $this->fakeGraph([
+            'graph.microsoft.com/v1.0/users/*/outlook/masterCategories/*' => Http::response(['id' => 'cat-1']),
+            'graph.microsoft.com/v1.0/users/*/outlook/masterCategories' => Http::response(['value' => [
+                ['id' => 'cat-1', 'displayName' => 'Ana Silva', 'color' => 'preset3'], // cor antiga (id % 24)
+            ]]),
+        ]);
+
+        $r = app(CalendarioGraph::class)->garantirCategorias();
+
+        $this->assertSame(['Ana Silva'], $r['acertadas']);
+        $this->assertSame([], $r['criadas']);
+        Http::assertSent(fn ($req) => $req->method() === 'PATCH' && str_ends_with($req->url(), '/masterCategories/cat-1')
+            && $req['color'] === FonteCalendario::presetOutlook(FonteCalendario::PALETA[1]));
+    }
+
+    public function test_quem_nao_anda_em_servicos_fica_com_a_categoria_preta(): void
+    {
+        $u = User::create(['nome' => 'Davide Fonseca', 'email' => 'dev@nxs.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
+        $u->forceFill(['cor_agenda' => FonteCalendario::COR_SEM_COR])->save();
+        $this->fakeGraph([
+            'graph.microsoft.com/v1.0/users/*/outlook/masterCategories' => Http::sequence()
+                ->push(['value' => []])
+                ->push(['id' => 'cat-preta'], 201),
+        ]);
+
+        app(CalendarioGraph::class)->garantirCategorias();
+
+        Http::assertSent(fn ($req) => $req->method() === 'POST' && str_ends_with($req->url(), '/masterCategories')
+            && $req['displayName'] === 'Davide Fonseca' && $req['color'] === 'preset14');
     }
 
     // ---- Quem pode EDITAR o calendário (config agenda_editores) ----

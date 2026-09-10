@@ -70,36 +70,47 @@ class CalendarioGraph
 
     /**
      * Garante uma categoria COLORIDA por técnico na mailbox de serviço — sem isto o Outlook
-     * mostra a categoria sem cor e o evento não se destaca. Idempotente: quem já lá está é
-     * saltado; a cor é estável (pelo id do utilizador), para o mesmo técnico ter sempre a
-     * mesma cor na agenda.
+     * mostra a categoria sem cor e o evento não se destaca.
      *
-     * @return array{criadas: list<string>, ja_tinha: list<string>, falhou: list<string>}
+     * A cor é a MESMA da agenda da app: a categoria sai de `cor_agenda` (ver
+     * FonteCalendario::presetOutlook). Idempotente e corretivo — a quem já tem categoria
+     * com outra cor, acerta-a; quem não anda em serviços fica a preto.
+     *
+     * @return array{criadas: list<string>, ja_tinha: list<string>, acertadas: list<string>, falhou: list<string>}
      */
     public function garantirCategorias(): array
     {
         $existentes = collect($this->graph->get($this->caminhoUtilizador().'/outlook/masterCategories')->json('value') ?? [])
-            ->map(fn ($c) => mb_strtolower((string) ($c['displayName'] ?? '')))
-            ->filter()->all();
+            ->filter(fn ($c) => ($c['displayName'] ?? '') !== '')
+            ->keyBy(fn ($c) => mb_strtolower((string) $c['displayName']));
 
-        $resultado = ['criadas' => [], 'ja_tinha' => [], 'falhou' => []];
+        $resultado = ['criadas' => [], 'ja_tinha' => [], 'acertadas' => [], 'falhou' => []];
         $equipa = User::query()->fazServicos()
             ->where('ativo', true)->orderBy('id')->get();
 
-        foreach ($equipa as $i => $u) {
-            if (in_array(mb_strtolower($u->nome), $existentes, true)) {
-                $resultado['ja_tinha'][] = $u->nome;
+        foreach ($equipa as $u) {
+            $preset = FonteCalendario::presetOutlook($u->corAgenda());
+            $atual = $existentes->get(mb_strtolower($u->nome));
 
-                continue;
+            if ($atual) {
+                if (($atual['color'] ?? '') === $preset) {
+                    $resultado['ja_tinha'][] = $u->nome;
+
+                    continue;
+                }
+                // Categoria com a cor errada (as primeiras saíram de `id % 24`): acerta-a.
+                $r = $this->graph->patch($this->caminhoUtilizador().'/outlook/masterCategories/'.$atual['id'], ['color' => $preset]);
+                $resultado[$r->successful() ? 'acertadas' : 'falhou'][] = $u->nome;
+            } else {
+                $r = $this->graph->post($this->caminhoUtilizador().'/outlook/masterCategories', [
+                    'displayName' => $u->nome,
+                    'color' => $preset,
+                ]);
+                $resultado[$r->successful() ? 'criadas' : 'falhou'][] = $u->nome;
             }
-            // preset0..preset23 são as 24 cores do Outlook; a partir do id, sempre a mesma.
-            $r = $this->graph->post($this->caminhoUtilizador().'/outlook/masterCategories', [
-                'displayName' => $u->nome,
-                'color' => 'preset'.($u->id % 24),
-            ]);
-            $resultado[$r->successful() ? 'criadas' : 'falhou'][] = $u->nome;
+
             if ($r->failed()) {
-                Log::warning('Graph: falha a criar a categoria do técnico.', ['tecnico' => $u->nome, 'status' => $r->status(), 'erro' => $r->json('error.message')]);
+                Log::warning('Graph: falha a acertar a categoria do técnico.', ['tecnico' => $u->nome, 'status' => $r->status(), 'erro' => $r->json('error.message')]);
             }
         }
 

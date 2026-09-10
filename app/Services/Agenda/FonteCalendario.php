@@ -15,16 +15,50 @@ use Illuminate\Support\Collection;
 class FonteCalendario
 {
     // Paleta de cores por técnico (legenda + eventos).
-    // Paleta das cores da agenda: 12 tons bem separados, todos escuros o suficiente para o
-    // texto branco dos blocos. Eram 6 — com 7 pessoas na equipa começavam a repetir-se.
-    // A ORDEM não pode mudar: as 6 primeiras são as cores que os técnicos já tinham.
+    //
+    // São as CORES DAS CATEGORIAS DO OUTLOOK (set. 2026): cada tom corresponde a uma
+    // categoria do M365 (ver PRESETS_OUTLOOK), para a mesma pessoa ter a mesma cor na
+    // agenda da app e no calendário partilhado. Antes eram tons próprios e a categoria do
+    // Outlook saía de `id % 24` — verde aqui, rosa lá.
+    //
+    // A Microsoft não publica o hex de cada preset; estes são a aproximação usada pela app
+    // (podem sair um fio mais claros/escuros no Outlook, mas é sempre o mesmo tom).
+    // A ORDEM não pode mudar: mantém o tom que cada pessoa já tinha.
     public const PALETA = [
-        '#16a34a', '#2563eb', '#9333ea', '#ea580c', '#0891b2', '#db2777',
-        '#ca8a04', '#4f46e5', '#0f766e', '#be123c', '#65a30d', '#86198f',
+        '#107c10', '#0078d4', '#5c2d91', '#ca5010', '#038387', '#c30052',
+        '#986f0b', '#1c3f95', '#005e5e', '#a4262c', '#6b7d0c', '#6b0036',
+    ];
+
+    // Cor → categoria do Outlook. `preset14` (preto) é a de quem não anda em serviços:
+    // não gasta cor da paleta e no Outlook fica preto, sem se confundir com um técnico.
+    public const PRESETS_OUTLOOK = [
+        '#107c10' => 'preset4',   // verde
+        '#0078d4' => 'preset7',   // azul
+        '#5c2d91' => 'preset23',  // roxo escuro
+        '#ca5010' => 'preset16',  // laranja escuro
+        '#038387' => 'preset5',   // turquesa
+        '#c30052' => 'preset9',   // framboesa
+        '#986f0b' => 'preset18',  // mostarda
+        '#1c3f95' => 'preset22',  // azul escuro
+        '#005e5e' => 'preset20',  // turquesa escuro
+        '#a4262c' => 'preset15',  // vermelho escuro
+        '#6b7d0c' => 'preset21',  // azeitona
+        '#6b0036' => 'preset24',  // framboesa escura
+        self::COR_SEM_COR => 'preset14', // preto — sem cor de técnico
     ];
 
     // Cor de quem ainda não tem ninguém atribuído.
     public const COR_SEM_TECNICO = '#94a3b8';
+
+    // Contas que aparecem na equipa mas não andam em serviços (o Davide, o Rui Moreira):
+    // ficam a PRETO em vez de gastarem uma cor da paleta.
+    public const COR_SEM_COR = '#000000';
+
+    // Categoria do Outlook correspondente a uma cor da agenda (preto se não for da paleta).
+    public static function presetOutlook(?string $cor): string
+    {
+        return self::PRESETS_OUTLOOK[mb_strtolower(trim((string) $cor))] ?? 'preset14';
+    }
 
     // Cores já resolvidas neste pedido (nome→cor) e as contas da equipa, para não repetir
     // consultas nem atribuir cores a quem não aparece.

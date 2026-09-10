@@ -14,6 +14,7 @@ use Throwable;
 //   php artisan agenda:graph               espelha os eventos da janela [-30, +90] dias (idempotente)
 //   php artisan agenda:graph --partilhar   partilha (leitura) o calendário com a equipa ativa
 //   php artisan agenda:graph --papeis      dá ESCRITA a quem está em `agenda_editores`
+//   php artisan agenda:graph --categorias  acerta a cor de cada técnico (igual à da agenda)
 //
 // Depois do consentimento de admin a Calendars.ReadWrite e de MS_GRAPH_CALENDARIO_ATIVO=true, a
 // sequência é: --verificar → (sem opções) → --partilhar. A partir daí o observer trata do resto.
@@ -23,6 +24,7 @@ class SincronizarAgendaGraph extends Command
         {--verificar : Só diagnostica: permissões e acesso ao calendário}
         {--partilhar : Partilha o calendário (leitura) com a equipa ativa}
         {--papeis : Acerta o papel de quem edita o calendário (config agenda_editores)}
+        {--categorias : Acerta a cor da categoria de cada técnico (igual à cor da agenda)}
         {--dias-atras=30 : Janela para trás (dias)}
         {--dias-frente=90 : Janela para a frente (dias)}';
 
@@ -54,6 +56,13 @@ class SincronizarAgendaGraph extends Command
             return self::SUCCESS;
         }
 
+        // Só as cores: a categoria de cada técnico fica igual à cor dele na agenda da app.
+        if ($this->option('categorias')) {
+            $this->categorias($calendario);
+
+            return self::SUCCESS;
+        }
+
         // Só os papéis: quem está em `agenda_editores` passa a poder editar no Outlook.
         if ($this->option('papeis')) {
             $this->papeis($calendario);
@@ -73,12 +82,7 @@ class SincronizarAgendaGraph extends Command
             $this->papeis($calendario);
 
             // Cor por técnico (categorias) — é o que destaca o evento na grelha do Outlook.
-            $c = $calendario->garantirCategorias();
-            $this->info('Categorias criadas: '.(implode(', ', $c['criadas']) ?: '—'));
-            $this->line('Já existiam: '.(implode(', ', $c['ja_tinha']) ?: '—'));
-            if ($c['falhou']) {
-                $this->warn('Categorias falhadas: '.implode(', ', $c['falhou']));
-            }
+            $this->categorias($calendario);
 
             return self::SUCCESS;
         }
@@ -133,6 +137,18 @@ class SincronizarAgendaGraph extends Command
         }
         if ($p['falhou']) {
             $this->warn('Falhou: '.implode(', ', $p['falhou']));
+        }
+    }
+
+    // Categoria (cor) de cada técnico no Outlook, sempre igual à cor dele na agenda da app.
+    private function categorias(CalendarioGraph $calendario): void
+    {
+        $c = $calendario->garantirCategorias();
+        $this->info('Categorias criadas: '.(implode(', ', $c['criadas']) ?: '—'));
+        $this->info('Cores acertadas: '.(implode(', ', $c['acertadas']) ?: '—'));
+        $this->line('Já estavam certas: '.(implode(', ', $c['ja_tinha']) ?: '—'));
+        if ($c['falhou']) {
+            $this->warn('Categorias falhadas: '.implode(', ', $c['falhou']));
         }
     }
 }
