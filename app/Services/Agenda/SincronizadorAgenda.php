@@ -36,8 +36,12 @@ class SincronizadorAgenda
             return null;
         }
 
-        // Só visitas futuras — eventos passados são registo histórico, não trabalho a preparar.
-        if (! $evento->inicio->isFuture()) {
+        // Enquanto a visita não estiver TERMINADA há mais de 48 horas. Antes exigia-se que o
+        // INÍCIO estivesse no futuro, e isso deixava de fora o caso real (set. 2026): um
+        // evento criado sem equipamento, e o equipamento — registado à mão a meio da visita —
+        // associado ao evento já a decorrer. Nessa altura o relatório é precisamente o que
+        // falta criar. Eventos antigos continuam a ser registo histórico e não geram nada.
+        if ($evento->fim->lessThan(now()->subDays(2))) {
             return null;
         }
 

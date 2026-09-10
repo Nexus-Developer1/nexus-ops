@@ -9,6 +9,7 @@ use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\Intervencao;
 use App\Models\Local;
+use App\Models\Relatorio;
 use App\Models\User;
 use App\Services\Agenda\ConversorVisita;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -101,6 +102,35 @@ class AgendaEquipamentosExtraTest extends TestCase
         $i = $e->intervencao;
         $this->assertSame($this->ups1->id, $i->equipamento_id);
         $this->assertEqualsCanonicalizing([$this->ups2->id, $this->ups3->id], $i->equipamentosCobertos()->pluck('equipamentos.id')->all());
+    }
+
+    // Pedido da equipa (set. 2026): se a meio da visita for preciso registar um equipamento novo
+    // e junta-lo ao evento, ele entra no relatorio QUE JA EXISTE -- nao nasce um segundo.
+    public function test_equipamento_criado_a_meio_entra_no_relatorio_ja_existente(): void
+    {
+        // Visita com um equipamento -> nasce o rascunho.
+        $this->modal()
+            ->call('selecionarEquipamento', $this->ups1->id)
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
+
+        $e = EventoAgenda::where('titulo', 'Serviço')->firstOrFail();
+        $relatorioId = $e->intervencao->relatorio->id;
+        $this->assertSame(1, Relatorio::count());
+
+        // A meio da visita aparece outro equipamento do mesmo cliente (registado a mao).
+        $novo = Equipamento::create(['local_id' => $this->ups1->local_id, 'tipo' => 'ups',
+            'estado' => 'por_definir', 'fabricante' => 'SALICRU', 'modelo' => 'SLC-1000', 'numero_serie' => 'AC-NOVO']);
+
+        Livewire::actingAs($this->admin)->test(Calendario::class)
+            ->call('selecionar', $e->id)
+            ->call('abrirEdicao')
+            ->call('selecionarEquipamento', $novo->id)
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])->call('criarEvento')->assertHasNoErrors();
+
+        // Continua a haver UM relatorio -- o mesmo -- e o equipamento novo esta coberto por ele.
+        $this->assertSame(1, Relatorio::count());
+        $this->assertSame($relatorioId, $e->fresh()->intervencao->relatorio->id);
+        $this->assertSame([$novo->id], $e->fresh()->intervencao->equipamentosCobertos()->pluck('equipamentos.id')->all());
     }
 
     public function test_editar_evento_convertido_sincroniza_os_cobertos_do_relatorio(): void

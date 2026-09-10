@@ -76,6 +76,54 @@ class AgendaRefactorTest extends TestCase
         $this->assertSame(0, Intervencao::count());
     }
 
+    // O caso real (set. 2026): evento criado SEM equipamento; a meio da visita o tecnico regista
+    // o equipamento a mao e associa-o ao evento. E ai que o rascunho tem de nascer -- a regra
+    // antiga (so eventos com INICIO no futuro) deixava a visita sem relatorio.
+    public function test_equipamento_associado_com_a_visita_a_decorrer_gera_rascunho(): void
+    {
+        [$cliente, $equip] = $this->contexto();
+
+        // Visita a decorrer: comecou ha uma hora, acaba daqui a uma.
+        $evento = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Serviço', 'estado' => 'planeado',
+            'inicio' => now()->subHour(), 'fim' => now()->addHour(), 'cliente_id' => $cliente->id]);
+
+        // Sem equipamento ainda nao ha ambito.
+        $this->assertNull(app(SincronizadorAgenda::class)->eventoGravado($evento));
+
+        // O equipamento e associado a meio da visita.
+        $evento->update(['equipamento_id' => $equip->id]);
+        $relatorio = app(SincronizadorAgenda::class)->eventoGravado($evento->fresh());
+
+        $this->assertNotNull($relatorio);
+        $this->assertSame('rascunho', $relatorio->estado->value);
+        $this->assertSame($evento->fresh()->intervencao_id, $relatorio->intervencao_id);
+    }
+
+    public function test_visita_acabada_ha_pouco_ainda_gera_o_rascunho_em_falta(): void
+    {
+        [$cliente, $equip] = $this->contexto();
+
+        // Acabou ha 3 horas (o equipamento so foi registado depois de sair do cliente).
+        $evento = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Serviço', 'estado' => 'planeado',
+            'inicio' => now()->subHours(5), 'fim' => now()->subHours(3),
+            'equipamento_id' => $equip->id, 'cliente_id' => $cliente->id]);
+
+        $this->assertNotNull(app(SincronizadorAgenda::class)->eventoGravado($evento));
+    }
+
+    public function test_visita_antiga_continua_a_ser_registo_historico(): void
+    {
+        [$cliente, $equip] = $this->contexto();
+
+        // Acabou ha 5 dias: mexer nela (corrigir umas notas) nao pode fazer nascer relatorios.
+        $evento = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Antiga', 'estado' => 'planeado',
+            'inicio' => now()->subDays(5)->setTime(9, 0), 'fim' => now()->subDays(5)->setTime(11, 0),
+            'equipamento_id' => $equip->id, 'cliente_id' => $cliente->id]);
+
+        $this->assertNull(app(SincronizadorAgenda::class)->eventoGravado($evento));
+        $this->assertSame(0, Intervencao::count());
+    }
+
     public function test_backfill_liga_eventos_legados_a_conta_do_tecnico(): void
     {
         $cliente = Cliente::create(['nome' => 'C', 'ativo' => true]);
