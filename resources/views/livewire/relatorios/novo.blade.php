@@ -411,7 +411,9 @@
                                     <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
                                         @foreach ($anexosDoEquip as $ax)
                                             <div class="relative aspect-square overflow-hidden rounded-xl bg-zinc-800" wire:key="ax-{{ $ax->id }}">
-                                                <img src="{{ route('anexos.ver', $ax) }}" class="h-full w-full object-cover">
+                                                <img src="{{ route('anexos.ver', $ax) }}" alt="{{ $ax->nome_ficheiro }}" title="Ver maior"
+                                                    @click="$dispatch('ver-foto', { src: @js(route('anexos.ver', $ax)), legenda: @js($ax->nome_ficheiro) })"
+                                                    class="h-full w-full cursor-zoom-in object-cover">
                                                 <button type="button" @click="window.preservarScroll()" wire:click="removerAnexoExistente({{ $ax->id }})" wire:confirm="Remover esta foto?" class="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-black/60 text-white transition hover:bg-perigo-500">
                                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                                                 </button>
@@ -426,7 +428,9 @@
                                     <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
                                         @foreach ($novasDoEquip as $indice => $foto)
                                             <div class="relative aspect-square overflow-hidden rounded-xl bg-zinc-800" wire:key="foto-nova-{{ $e->id }}-{{ $indice }}">
-                                                <img src="{{ $foto->temporaryUrl() }}" class="h-full w-full object-cover">
+                                                <img src="{{ $foto->temporaryUrl() }}" alt="{{ $foto->getClientOriginalName() }}" title="Ver maior"
+                                                    @click="$dispatch('ver-foto', { src: @js($foto->temporaryUrl()), legenda: @js($foto->getClientOriginalName()) })"
+                                                    class="h-full w-full cursor-zoom-in object-cover">
                                                 <button type="button" @click="window.preservarScroll()" wire:click="removerFotoNova({{ $e->id }}, {{ $indice }})" class="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-black/60 text-white transition hover:bg-perigo-500" title="Remover">
                                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                                                 </button>
@@ -445,7 +449,9 @@
                                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                             @foreach ($anexosGerais as $ax)
                                                 <div class="relative aspect-square overflow-hidden rounded-xl bg-zinc-800" wire:key="ax-{{ $ax->id }}">
-                                                    <img src="{{ route('anexos.ver', $ax) }}" class="h-full w-full object-cover">
+                                                    <img src="{{ route('anexos.ver', $ax) }}" alt="{{ $ax->nome_ficheiro }}" title="Ver maior"
+                                                        @click="$dispatch('ver-foto', { src: @js(route('anexos.ver', $ax)), legenda: @js($ax->nome_ficheiro) })"
+                                                        class="h-full w-full cursor-zoom-in object-cover">
                                                     <button type="button" @click="window.preservarScroll()" wire:click="removerAnexoExistente({{ $ax->id }})" wire:confirm="Remover esta foto?" class="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-black/60 text-white transition hover:bg-perigo-500">
                                                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                                                     </button>

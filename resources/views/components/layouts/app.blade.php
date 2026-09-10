@@ -44,6 +44,9 @@
         </div>
     </div>
 
+    {{-- Ampliação de fotografias: qualquer página dispara `ver-foto`. --}}
+    <x-lightbox />
+
     @livewireScripts
 </body>
 </html>
