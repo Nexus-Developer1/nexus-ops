@@ -172,9 +172,16 @@ class GeradorIcs
 
     // Escape de um valor TEXT do ICS (RFC 5545). Ao contrário do escapar() dos nomes, mantém
     // as aspas — sem elas os atributos do HTML do X-ALT-DESC ficavam partidos.
+    //
+    // Todas as quebras de linha (CRLF, CR sozinho, LF) passam primeiro a LF e só depois a \n —
+    // como a biblioteca já faz no DESCRIPTION. Um CR sozinho escapava ao escape e, num assunto
+    // ou numas notas forjadas, abria uma LINHA NOVA no convite (ex.: um ATTENDEE ou um URL a
+    // mais). Revisão de segurança, set. 2026.
     private function escaparTexto(string $texto): string
     {
-        return str_replace(['\\', ';', ',', "\r\n", "\n"], ['\\\\', '\\;', '\\,', '\\n', '\\n'], $texto);
+        $texto = str_replace(["\r\n", "\r"], "\n", $texto);
+
+        return str_replace(['\\', ';', ',', "\n"], ['\\\\', '\\;', '\\,', '\\n'], $texto);
     }
 
     private function escapar(string $texto): string
