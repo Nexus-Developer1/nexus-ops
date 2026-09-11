@@ -71,9 +71,14 @@
 
             {{-- Editar um relatório JÁ ENVIADO: aviso claro — a versão do cliente só muda ao reenviar. --}}
             @if ($estadoInicial === \App\Enums\EstadoRelatorio::Enviado->value)
-                <div class="mt-5 flex items-center gap-2 rounded-lg border border-aviso-200 bg-aviso-100/60 px-4 py-3 text-sm font-medium text-aviso-500">
-                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008v.008H12v-.008zM21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Este relatório já foi enviado ao cliente. Ao gravar, ele <strong class="mx-1">deixa de estar visível no portal do cliente</strong> até ser <strong class="mx-1">reenviado</strong> depois de finalizar (a cópia que seguiu por email mantém-se na caixa dele).
+                {{-- O texto vai num <p> só: solto dentro do flex, cada pedaço (texto e <strong>)
+                     virava uma coluna e partia linhas por conta própria. --}}
+                <div class="mt-5 flex items-start gap-2.5 rounded-lg border border-aviso-200 bg-aviso-100/60 px-4 py-3 text-sm text-aviso-500">
+                    <svg class="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008v.008H12v-.008zM21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <p class="leading-relaxed">
+                        Este relatório já foi enviado ao cliente. Ao gravar, <strong>deixa de estar visível no portal do cliente</strong>
+                        até ser <strong>reenviado</strong> depois de finalizar. A cópia que seguiu por email mantém-se na caixa dele.
+                    </p>
                 </div>
             @endif
 
