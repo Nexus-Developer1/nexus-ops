@@ -103,7 +103,6 @@
                     </button>
                 @endforeach
             </div>
-            <p class="mt-1.5 text-xs text-texto-fraco">Clica num equipamento (aqui ou no separador em cima) para preencher a sua ficha. Podes remover os que não interessam dentro de cada ficha.</p>
         @elseif ($faixaEquipamentos === 'pesquisa')
             <p class="text-sm text-texto-medio">Pesquisa em cima e adiciona os equipamentos que vais medir nesta visita.</p>
         @elseif ($fonteEscolhida)
