@@ -76,6 +76,27 @@
         background-size: 1.05rem;
     }
 
+    /* Campos de DATA e HORA nativos. O iPhone (e alguns Android) dá-lhes uma largura mínima
+       própria que não encolhe, uma aparência sua e uma altura menor quando estão vazios.
+       Lado a lado numa grelha de metades, num ecrã estreito não cabiam e passavam uns por
+       cima dos outros — num telemóvel largo ficava direito, noutro não (set. 2026).
+       Aqui: podem encolher até à célula, perdem o aspeto nativo (ficam iguais aos outros
+       campos), têm sempre a mesma altura e o valor alinhado à esquerda. */
+    input[type="date"].campo-input,
+    input[type="time"].campo-input,
+    input[type="datetime-local"].campo-input {
+        min-width: 0;
+        -webkit-appearance: none;
+        appearance: none;
+        min-height: 2.875rem; /* = py-3 + text-sm + borda, a altura dos outros campos */
+        padding-left: 0.75rem;  /* um pouco menos que os outros (1rem): em metade de um */
+        padding-right: 0.75rem; /* ecrã estreito, a data e o ícone precisam da folga */
+    }
+
+    input.campo-input::-webkit-date-and-time-value {
+        text-align: left;
+    }
+
     /* ---- Botoes ---- */
     .botao {
         @apply inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold transition;
