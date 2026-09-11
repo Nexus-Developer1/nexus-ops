@@ -403,23 +403,35 @@
                     </table>
                 @endif
 
-                {{-- Medições elétricas: espelho EXATO do formulário — grelha de caixas (3 por
-                     linha), cada uma com o título do grupo e os valores por baixo dos rótulos. --}}
+                {{-- Medições elétricas em 4 FILAS com sentido (pedido da equipa, set. 2026):
+                     1.ª entrada, 2.ª saída, 3.ª carga e correntes, 4.ª baterias e temperatura.
+                     A Frequência aparece na 1.ª E na 2.ª fila — é o mesmo valor, lido ao lado
+                     das tensões de entrada e das de saída. --}}
                 <div class="ficha-seccao">Medições elétricas</div>
-                @php($gruposE = [
-                    ['Entrada — Tensão L-N (V)', ['L1' => 've_ln_l1', 'L2' => 've_ln_l2', 'L3' => 've_ln_l3']],
-                    ['Entrada — Tensão L-L (V)', ['L1-L2' => 've_ll_l1l2', 'L1-L3' => 've_ll_l1l3', 'L2-L3' => 've_ll_l2l3']],
-                    ['Carga (%)', ['L1' => 'carga_l1', 'L2' => 'carga_l2', 'L3' => 'carga_l3']],
-                    ['Frequência (Hz)', ['Hz' => 'frequencia']],
-                    ['Saída — Tensão L-N (V)', ['L1' => 'vs_ln_l1', 'L2' => 'vs_ln_l2', 'L3' => 'vs_ln_l3']],
-                    ['Saída — Tensão L-L (V)', ['L1-L2' => 'vs_ll_l1l2', 'L1-L3' => 'vs_ll_l1l3', 'L2-L3' => 'vs_ll_l2l3']],
-                    ['Saída — Corrente (A)', ['L1' => 'is_l1', 'L2' => 'is_l2', 'L3' => 'is_l3']],
-                    ['Saída — Corrente de pico (A)', ['L1' => 'ispico_l1', 'L2' => 'ispico_l2', 'L3' => 'ispico_l3']],
-                    // Temperatura separada das baterias: é a temperatura NA UPS, não a das baterias.
-                    ['Baterias', ['Vbat +' => 'vbat_pos', 'Vbat −' => 'vbat_neg']],
-                    ['Temperatura UPS', ['Temp (°C)' => 'temperatura']],
+                @php($freq = ['Frequência (Hz)', ['Hz' => 'frequencia']])
+                @php($filasE = [
+                    [
+                        ['Entrada — Tensão L-N (V)', ['L1' => 've_ln_l1', 'L2' => 've_ln_l2', 'L3' => 've_ln_l3']],
+                        ['Entrada — Tensão L-L (V)', ['L1-L2' => 've_ll_l1l2', 'L1-L3' => 've_ll_l1l3', 'L2-L3' => 've_ll_l2l3']],
+                        $freq,
+                    ],
+                    [
+                        ['Saída — Tensão L-N (V)', ['L1' => 'vs_ln_l1', 'L2' => 'vs_ln_l2', 'L3' => 'vs_ln_l3']],
+                        ['Saída — Tensão L-L (V)', ['L1-L2' => 'vs_ll_l1l2', 'L1-L3' => 'vs_ll_l1l3', 'L2-L3' => 'vs_ll_l2l3']],
+                        $freq,
+                    ],
+                    [
+                        ['Carga (%)', ['L1' => 'carga_l1', 'L2' => 'carga_l2', 'L3' => 'carga_l3']],
+                        ['Saída — Corrente (A)', ['L1' => 'is_l1', 'L2' => 'is_l2', 'L3' => 'is_l3']],
+                        ['Saída — Corrente de pico (A)', ['L1' => 'ispico_l1', 'L2' => 'ispico_l2', 'L3' => 'ispico_l3']],
+                    ],
+                    [
+                        // Temperatura separada das baterias: é a temperatura NA UPS, não a das baterias.
+                        ['Baterias', ['Vbat +' => 'vbat_pos', 'Vbat −' => 'vbat_neg']],
+                        ['Temperatura UPS', ['Temp (°C)' => 'temperatura']],
+                    ],
                 ])
-                @foreach (array_chunk($gruposE, 3) as $linhaGrupos)
+                @foreach ($filasE as $linhaGrupos)
                     <table class="med-grid">
                         <tr>
                             @foreach ($linhaGrupos as [$titulo, $campos])

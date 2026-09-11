@@ -7,19 +7,30 @@
 @php
     use App\Models\FichaMedicao;
 
-    // Grupos de valores elétricos (rótulo do grupo → [campo => rótulo curto]).
-    $eletricos = [
-        'Entrada — Tensão L-N (V)' => ['ve_ln_l1' => 'L1', 've_ln_l2' => 'L2', 've_ln_l3' => 'L3'],
-        'Entrada — Tensão L-L (V)' => ['ve_ll_l1l2' => 'L1-L2', 've_ll_l1l3' => 'L1-L3', 've_ll_l2l3' => 'L2-L3'],
-        'Carga (%)' => ['carga_l1' => 'L1', 'carga_l2' => 'L2', 'carga_l3' => 'L3'],
-        'Frequência (Hz)' => ['frequencia' => 'Hz'],
-        'Saída — Tensão L-N (V)' => ['vs_ln_l1' => 'L1', 'vs_ln_l2' => 'L2', 'vs_ln_l3' => 'L3'],
-        'Saída — Tensão L-L (V)' => ['vs_ll_l1l2' => 'L1-L2', 'vs_ll_l1l3' => 'L1-L3', 'vs_ll_l2l3' => 'L2-L3'],
-        'Saída — Corrente (A)' => ['is_l1' => 'L1', 'is_l2' => 'L2', 'is_l3' => 'L3'],
-        'Saída — Corrente de pico (A)' => ['ispico_l1' => 'L1', 'ispico_l2' => 'L2', 'ispico_l3' => 'L3'],
-        // Temperatura separada das baterias: é a temperatura NA UPS, não a das baterias.
-        'Baterias' => ['vbat_pos' => 'Vbat +', 'vbat_neg' => 'Vbat −'],
-        'Temperatura UPS' => ['temperatura' => 'Temp (°C)'],
+    // Valores elétricos em 4 FILAS (as mesmas do PDF — pedido da equipa, set. 2026):
+    // 1.ª entrada, 2.ª saída, 3.ª carga e correntes, 4.ª baterias e temperatura.
+    // (rótulo do grupo → [campo => rótulo curto]). No PDF a Frequência repete-se na 2.ª
+    // fila; aqui preenche-se UMA vez — duas caixas para o mesmo valor só confundiam.
+    $filasEletricas = [
+        [
+            'Entrada — Tensão L-N (V)' => ['ve_ln_l1' => 'L1', 've_ln_l2' => 'L2', 've_ln_l3' => 'L3'],
+            'Entrada — Tensão L-L (V)' => ['ve_ll_l1l2' => 'L1-L2', 've_ll_l1l3' => 'L1-L3', 've_ll_l2l3' => 'L2-L3'],
+            'Frequência (Hz)' => ['frequencia' => 'Hz'],
+        ],
+        [
+            'Saída — Tensão L-N (V)' => ['vs_ln_l1' => 'L1', 'vs_ln_l2' => 'L2', 'vs_ln_l3' => 'L3'],
+            'Saída — Tensão L-L (V)' => ['vs_ll_l1l2' => 'L1-L2', 'vs_ll_l1l3' => 'L1-L3', 'vs_ll_l2l3' => 'L2-L3'],
+        ],
+        [
+            'Carga (%)' => ['carga_l1' => 'L1', 'carga_l2' => 'L2', 'carga_l3' => 'L3'],
+            'Saída — Corrente (A)' => ['is_l1' => 'L1', 'is_l2' => 'L2', 'is_l3' => 'L3'],
+            'Saída — Corrente de pico (A)' => ['ispico_l1' => 'L1', 'ispico_l2' => 'L2', 'ispico_l3' => 'L3'],
+        ],
+        [
+            // Temperatura separada das baterias: é a temperatura NA UPS, não a das baterias.
+            'Baterias' => ['vbat_pos' => 'Vbat +', 'vbat_neg' => 'Vbat −'],
+            'Temperatura UPS' => ['temperatura' => 'Temp (°C)'],
+        ],
     ];
 @endphp
 
@@ -73,8 +84,10 @@
         {{-- Valores elétricos --}}
         <div>
             <p class="mb-2 text-sm font-semibold text-texto-forte">Medições elétricas</p>
+            <div class="space-y-4">
+            @foreach ($filasEletricas as $fila)
             <div class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach ($eletricos as $grupo => $campos)
+                @foreach ($fila as $grupo => $campos)
                     <div class="rounded-lg border border-borda bg-white px-3 py-2.5">
                         <p class="mb-1.5 text-xs font-medium text-texto-medio">{{ $grupo }}</p>
                         <div class="grid gap-2 {{ count($campos) === 1 ? 'grid-cols-1' : 'grid-cols-3' }}">
@@ -95,6 +108,8 @@
                         </div>
                     </div>
                 @endforeach
+            </div>
+            @endforeach
             </div>
         </div>
 

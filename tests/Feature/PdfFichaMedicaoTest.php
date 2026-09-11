@@ -145,6 +145,36 @@ class PdfFichaMedicaoTest extends TestCase
         $this->assertStringNotContainsString('null', $html);                      // contrato nulo não vira "null"
     }
 
+    // Medicoes eletricas em 4 filas (pedido da equipa, set. 2026): 1.a entrada, 2.a saida,
+    // 3.a carga e correntes, 4.a baterias e temperatura. A Frequencia sai na 1.a E na 2.a fila.
+    public function test_pdf_medicoes_eletricas_em_quatro_filas(): void
+    {
+        [, , $e1] = $this->contexto();
+        $interv = Intervencao::create(['equipamento_id' => $e1->id, 'tipo' => 'preventiva', 'estado' => 'concluida']);
+        $relatorio = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/9310', 'data' => now(), 'estado' => EstadoRelatorio::Finalizado]);
+
+        FichaMedicao::create([
+            'intervencao_id' => $interv->id, 'equipamento_id' => $e1->id, 'tipo_equipamento' => 'ups',
+            've_ln_l1' => '231.40', 'frequencia' => '50.01', 'temperatura' => '23.00',
+        ]);
+
+        $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
+        $bloco = substr($html, strpos($html, 'Medições elétricas'), strpos($html, 'Verificações') - strpos($html, 'Medições elétricas'));
+
+        // Ordem das caixas, fila a fila.
+        $this->assertMatchesRegularExpression('/'.implode('.*', array_map(fn ($t) => preg_quote($t, '/'), [
+            'Entrada — Tensão L-N (V)', 'Entrada — Tensão L-L (V)', 'Frequência (Hz)',
+            'Saída — Tensão L-N (V)', 'Saída — Tensão L-L (V)', 'Frequência (Hz)',
+            'Carga (%)', 'Saída — Corrente (A)', 'Saída — Corrente de pico (A)',
+            'Baterias', 'Temperatura UPS',
+        ])).'/s', $bloco);
+
+        // 4 filas; a frequencia (mesmo valor) aparece duas vezes.
+        $this->assertSame(4, substr_count($bloco, '<table class="med-grid">'));
+        $this->assertSame(2, substr_count($bloco, 'Frequência (Hz)'));
+        $this->assertSame(2, substr_count($bloco, '50.01'));
+    }
+
     // "Local de instalação" da ficha mostra a MORADA onde o equipamento está — nunca o
     // nome do local (ex.: "Instalação principal"); sem morada no local, cai na sede do cliente.
     public function test_ficha_local_de_instalacao_mostra_a_morada_e_nao_o_nome_do_local(): void
