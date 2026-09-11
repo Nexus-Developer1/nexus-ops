@@ -562,11 +562,19 @@ class Novo extends Component
             return collect();
         }
 
-        return $this->equipamentosCandidatos()
+        $lista = $this->equipamentosCandidatos()
             ->with('local.cliente') // a lista mostra ONDE está instalado (localInstalacao())
             ->orderBy('numero_serie')
             ->limit(self::MAX_LISTA_CHECKBOXES)
             ->get(['id', 'numero_serie', 'fabricante', 'modelo', 'local_id', 'localizacao_instalacao']);
+
+        // Os MARCADOS primeiro (pedido da equipa, set. 2026): com 30 ou 40 linhas, o que está
+        // selecionado ficava perdido a meio da lista e obrigava a percorrê-la toda para
+        // confirmar. Dentro de cada grupo mantém-se a ordem por nº de série.
+        $anexados = array_filter(array_merge([$this->equipamento_id], $this->equipamentosCobertos));
+        [$marcados, $restantes] = $lista->partition(fn ($e) => in_array($e->id, $anexados, true));
+
+        return $marcados->concat($restantes)->values();
     }
 
     // Nomes amigáveis nas mensagens de validação.

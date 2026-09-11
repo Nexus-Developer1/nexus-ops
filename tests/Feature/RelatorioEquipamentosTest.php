@@ -283,6 +283,31 @@ class RelatorioEquipamentosTest extends TestCase
             ->assertSet('equipamentosCobertos', []);
     }
 
+    // Pedido da equipa (set. 2026): os equipamentos MARCADOS aparecem em primeiro lugar na lista
+    // (com 30 ou 40 linhas, o que estava selecionado perdia-se a meio). Dentro de cada grupo a
+    // ordem continua a ser por numero de serie.
+    public function test_faixa_lista_mostra_os_marcados_primeiro(): void
+    {
+        [$admin] = $this->cenario();
+        $cliente = $this->clienteComN(20);
+        $porSerie = Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $cliente->id))
+            ->orderBy('numero_serie')->pluck('id', 'numero_serie');
+
+        $c = Livewire::actingAs($admin)->test(Novo::class)->call('selecionarCliente', $cliente->id);
+
+        // Sem nada marcado: ordem por serie.
+        $c->assertSeeInOrder(['WF-0001', 'WF-0002', 'WF-0015']);
+
+        // Marca a 15 e a 7 (por esta ordem): sobem as duas para o topo, e entre elas manda a serie.
+        $c->call('alternarEquipamento', $porSerie['WF-0015'])
+            ->call('alternarEquipamento', $porSerie['WF-0007'])
+            ->assertSeeInOrder(['WF-0007', 'WF-0015', 'WF-0001', 'WF-0002']);
+
+        // Desmarca a 15: volta para o sitio dela, a 7 fica sozinha no topo.
+        $c->call('alternarEquipamento', $porSerie['WF-0015'])
+            ->assertSeeInOrder(['WF-0007', 'WF-0001', 'WF-0014', 'WF-0015', 'WF-0016']);
+    }
+
     public function test_faixa_lista_selecionar_todos_anexa_todos_e_limpar(): void
     {
         [$admin] = $this->cenario();
