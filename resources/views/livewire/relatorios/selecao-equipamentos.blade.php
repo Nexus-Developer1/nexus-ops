@@ -76,7 +76,6 @@
                 @endforelse
             </ul>
         </div>
-        <p class="mt-1.5 text-xs text-texto-fraco">Este {{ $rotuloFonte }} tem muitos equipamentos — pesquisa e adiciona só os que vais medir nesta visita (não são anexados todos automaticamente).</p>
     </div>
 @endif
 

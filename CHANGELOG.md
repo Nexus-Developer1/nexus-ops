@@ -32,6 +32,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-01
 
+- 🎨 **Novo relatório: sai o texto por baixo de «Adicionar equipamento»** — a linha «Este cliente tem muitos equipamentos — pesquisa e adiciona só os que vais medir…», que aparecia sob a caixa de pesquisa nos clientes com mais de 50 equipamentos. A pesquisa funciona igual. Requer `optimize`.
+
 - 🐛 **Datas e horas sobrepostas em alguns telemóveis** — reportado pela equipa: no relatório, as duas datas e as duas horas ficavam umas por cima das outras nuns telemóveis e direitas noutros. Causa: são campos nativos do telemóvel, e o iPhone e alguns Android dão-lhes uma largura mínima própria que não encolhe — lado a lado, cada um em metade de um ecrã estreito, não cabiam e invadiam o do lado. Correção **para toda a aplicação** (todos os campos de data/hora: relatório, agenda, contratos, despesas, equipamentos): passam a poder encolher até à sua célula, perdem o aspeto nativo e ficam iguais aos outros campos, com a mesma altura mesmo vazios e o valor alinhado à esquerda. No relatório, em ecrãs com menos de 380px as datas e as horas passam a uma por linha. Verificado a 360, 390 e 412px (Android pequeno, iPhone, Samsung/Pixel). Requer build.
 
 - 🐛 **Aviso amarelo do relatório enviado estava desformatado** — reportado pela equipa. Ao editar um relatório já enviado, a faixa «Este relatório já foi enviado ao cliente…» saía partida em colunas estreitas, cada uma a quebrar linhas por conta própria: a caixa é flexível e cada pedaço de texto e cada negrito viravam um bloco separado. O texto passa a ir num parágrafo só, que corre normalmente de uma ponta à outra, com o ícone alinhado à primeira linha. Requer build e `optimize`.
