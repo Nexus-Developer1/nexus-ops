@@ -9,19 +9,18 @@
 
     // Valores elétricos em 4 FILAS (as mesmas do PDF — pedido da equipa, set. 2026):
     // 1.ª entrada, 2.ª saída, 3.ª carga e correntes, 4.ª baterias e temperatura.
-    // (rótulo do grupo → [campo => rótulo curto]). A Frequência aparece na 1.ª E na 2.ª
-    // fila, como no PDF: as duas caixas estão ligadas ao MESMO campo (wire:model), por
-    // isso escrever numa preenche a outra na hora — é um só valor.
+    // (rótulo do grupo → [campo => rótulo curto]). A frequência de ENTRADA fica na 1.ª fila
+    // e a de SAÍDA na 2.ª — são medições diferentes (em bateria a saída não segue a rede).
     $filasEletricas = [
         [
             'Entrada — Tensão L-N (V)' => ['ve_ln_l1' => 'L1', 've_ln_l2' => 'L2', 've_ln_l3' => 'L3'],
             'Entrada — Tensão L-L (V)' => ['ve_ll_l1l2' => 'L1-L2', 've_ll_l1l3' => 'L1-L3', 've_ll_l2l3' => 'L2-L3'],
-            'Frequência (Hz)' => ['frequencia' => 'Hz'],
+            'Entrada — Frequência (Hz)' => ['frequencia' => 'Hz'],
         ],
         [
             'Saída — Tensão L-N (V)' => ['vs_ln_l1' => 'L1', 'vs_ln_l2' => 'L2', 'vs_ln_l3' => 'L3'],
             'Saída — Tensão L-L (V)' => ['vs_ll_l1l2' => 'L1-L2', 'vs_ll_l1l3' => 'L1-L3', 'vs_ll_l2l3' => 'L2-L3'],
-            'Frequência (Hz)' => ['frequencia' => 'Hz'],
+            'Saída — Frequência (Hz)' => ['frequencia_saida' => 'Hz'],
         ],
         [
             'Carga (%)' => ['carga_l1' => 'L1', 'carga_l2' => 'L2', 'carga_l3' => 'L3'],

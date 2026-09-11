@@ -405,20 +405,18 @@
 
                 {{-- Medições elétricas em 4 FILAS com sentido (pedido da equipa, set. 2026):
                      1.ª entrada, 2.ª saída, 3.ª carga e correntes, 4.ª baterias e temperatura.
-                     A Frequência aparece na 1.ª E na 2.ª fila — é o mesmo valor, lido ao lado
-                     das tensões de entrada e das de saída. --}}
+                     Frequência de ENTRADA na 1.ª fila e de SAÍDA na 2.ª: medições diferentes. --}}
                 <div class="ficha-seccao">Medições elétricas</div>
-                @php($freq = ['Frequência (Hz)', ['Hz' => 'frequencia']])
                 @php($filasE = [
                     [
                         ['Entrada — Tensão L-N (V)', ['L1' => 've_ln_l1', 'L2' => 've_ln_l2', 'L3' => 've_ln_l3']],
                         ['Entrada — Tensão L-L (V)', ['L1-L2' => 've_ll_l1l2', 'L1-L3' => 've_ll_l1l3', 'L2-L3' => 've_ll_l2l3']],
-                        $freq,
+                        ['Entrada — Frequência (Hz)', ['Hz' => 'frequencia']],
                     ],
                     [
                         ['Saída — Tensão L-N (V)', ['L1' => 'vs_ln_l1', 'L2' => 'vs_ln_l2', 'L3' => 'vs_ln_l3']],
                         ['Saída — Tensão L-L (V)', ['L1-L2' => 'vs_ll_l1l2', 'L1-L3' => 'vs_ll_l1l3', 'L2-L3' => 'vs_ll_l2l3']],
-                        $freq,
+                        ['Saída — Frequência (Hz)', ['Hz' => 'frequencia_saida']],
                     ],
                     [
                         ['Carga (%)', ['L1' => 'carga_l1', 'L2' => 'carga_l2', 'L3' => 'carga_l3']],

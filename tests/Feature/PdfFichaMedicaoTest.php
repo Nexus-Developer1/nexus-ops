@@ -146,7 +146,8 @@ class PdfFichaMedicaoTest extends TestCase
     }
 
     // Medicoes eletricas em 4 filas (pedido da equipa, set. 2026): 1.a entrada, 2.a saida,
-    // 3.a carga e correntes, 4.a baterias e temperatura. A Frequencia sai na 1.a E na 2.a fila.
+    // 3.a carga e correntes, 4.a baterias e temperatura. Frequencia de ENTRADA na 1.a fila e de
+    // SAIDA na 2.a — medicoes diferentes, cada uma com o seu valor.
     public function test_pdf_medicoes_eletricas_em_quatro_filas(): void
     {
         [, , $e1] = $this->contexto();
@@ -155,7 +156,7 @@ class PdfFichaMedicaoTest extends TestCase
 
         FichaMedicao::create([
             'intervencao_id' => $interv->id, 'equipamento_id' => $e1->id, 'tipo_equipamento' => 'ups',
-            've_ln_l1' => '231.40', 'frequencia' => '50.01', 'temperatura' => '23.00',
+            've_ln_l1' => '231.40', 'frequencia' => '50.01', 'frequencia_saida' => '49.87', 'temperatura' => '23.00',
         ]);
 
         $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
@@ -163,16 +164,16 @@ class PdfFichaMedicaoTest extends TestCase
 
         // Ordem das caixas, fila a fila.
         $this->assertMatchesRegularExpression('/'.implode('.*', array_map(fn ($t) => preg_quote($t, '/'), [
-            'Entrada — Tensão L-N (V)', 'Entrada — Tensão L-L (V)', 'Frequência (Hz)',
-            'Saída — Tensão L-N (V)', 'Saída — Tensão L-L (V)', 'Frequência (Hz)',
+            'Entrada — Tensão L-N (V)', 'Entrada — Tensão L-L (V)', 'Entrada — Frequência (Hz)', '50.01',
+            'Saída — Tensão L-N (V)', 'Saída — Tensão L-L (V)', 'Saída — Frequência (Hz)', '49.87',
             'Carga (%)', 'Saída — Corrente (A)', 'Saída — Corrente de pico (A)',
             'Baterias', 'Temperatura UPS',
         ])).'/s', $bloco);
 
-        // 4 filas; a frequencia (mesmo valor) aparece duas vezes.
+        // 4 filas; cada frequencia aparece uma vez, com o seu proprio valor.
         $this->assertSame(4, substr_count($bloco, '<table class="med-grid">'));
-        $this->assertSame(2, substr_count($bloco, 'Frequência (Hz)'));
-        $this->assertSame(2, substr_count($bloco, '50.01'));
+        $this->assertSame(1, substr_count($bloco, '50.01'));
+        $this->assertSame(1, substr_count($bloco, '49.87'));
     }
 
     // "Local de instalação" da ficha mostra a MORADA onde o equipamento está — nunca o

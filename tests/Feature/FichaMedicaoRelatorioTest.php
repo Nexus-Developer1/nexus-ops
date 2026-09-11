@@ -303,10 +303,33 @@ class FichaMedicaoRelatorioTest extends TestCase
         $resp->assertSee('Medições elétricas'); // conteúdo da ficha-ups (só existe no componente)
         $resp->assertSee('Teste de descarga');
 
-        // Frequência na 1.ª E na 2.ª fila (como no PDF): duas caixas por equipamento, ligadas
-        // ao MESMO campo — escrever numa preenche a outra. Dois equipamentos → quatro caixas.
-        $this->assertSame(2, substr_count($resp->getContent(), 'wire:model="fichas.'.$e1->id.'.frequencia"'));
-        $this->assertSame(2, substr_count($resp->getContent(), 'wire:model="fichas.'.$e2->id.'.frequencia"'));
+        // Frequência de ENTRADA (1.ª fila) e de SAÍDA (2.ª fila): campos DIFERENTES — preencher
+        // uma não mexe na outra. Uma caixa de cada, por equipamento.
+        foreach ([$e1, $e2] as $e) {
+            $this->assertSame(1, substr_count($resp->getContent(), 'wire:model="fichas.'.$e->id.'.frequencia"'));
+            $this->assertSame(1, substr_count($resp->getContent(), 'wire:model="fichas.'.$e->id.'.frequencia_saida"'));
+        }
+    }
+
+    // Frequencia de entrada e de saida sao medicoes DIFERENTES (pedido da equipa, set. 2026):
+    // preencher uma nao mexe na outra, e cada uma grava-se na sua coluna.
+    public function test_frequencia_de_entrada_e_de_saida_gravam_se_separadas(): void
+    {
+        [$admin, $contrato, $e1] = $this->cenarioContrato();
+
+        Livewire::actingAs($admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contrato->id)->call('selecionarTodosEquipamentos')
+            ->set('data', now()->toDateString())
+            ->set("fichas.{$e1->id}.frequencia", '50.00')
+            ->set("fichas.{$e1->id}.frequencia_saida", '49.80')
+            ->assertSet("fichas.{$e1->id}.frequencia", '50.00') // a de saida nao escreveu por cima
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $ficha = FichaMedicao::where('equipamento_id', $e1->id)->firstOrFail();
+        $this->assertSame('50.00', (string) $ficha->frequencia);
+        $this->assertSame('49.80', (string) $ficha->frequencia_saida);
     }
 
     public function test_finalizar_contrato_com_ficha_gera_relatorio_e_pdf(): void

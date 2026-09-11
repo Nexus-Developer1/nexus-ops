@@ -32,6 +32,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-01
 
+- 🐛 **Frequência de entrada e de saída passam a ser campos separados** — reportado pela equipa: as duas caixas de frequência do relatório (1.ª e 2.ª fila) estavam ligadas ao mesmo campo, por isso preencher uma escrevia na outra. Mas são **medições diferentes** (em bateria ou num conversor, a saída não segue a rede). Passa a haver a **frequência de saída** à parte (`fichas_medicao.frequencia_saida`); a coluna que já existia fica como a de **entrada**, que é o que sempre foi lido nela. As caixas passam a chamar-se «Entrada — Frequência (Hz)» e «Saída — Frequência (Hz)», no formulário e no PDF. As fichas antigas ficam com a de saída vazia. **Requer migração**, `optimize` e reinício do worker. +1 teste, 2 ajustados (644 no total).
+
 - 🎨 **Novo relatório: sai o texto por baixo de «Equipamentos do relatório»** — a linha «Clica num equipamento (aqui ou no separador em cima) para preencher a sua ficha…». Os chips continuam a abrir a ficha de cada equipamento. Requer `optimize`.
 
 - 🎨 **Novo relatório: sai o texto por baixo de «Adicionar equipamento»** — a linha «Este cliente tem muitos equipamentos — pesquisa e adiciona só os que vais medir…», que aparecia sob a caixa de pesquisa nos clientes com mais de 50 equipamentos. A pesquisa funciona igual. Requer `optimize`.

@@ -22,7 +22,7 @@ class FichaMedicao extends Model
         've_ln_l1', 've_ln_l2', 've_ln_l3',
         've_ll_l1l2', 've_ll_l1l3', 've_ll_l2l3',
         'carga_l1', 'carga_l2', 'carga_l3',
-        'frequencia',
+        'frequencia', 'frequencia_saida', // entrada / saída — medições diferentes
         'vs_ln_l1', 'vs_ln_l2', 'vs_ln_l3',
         'vs_ll_l1l2', 'vs_ll_l1l3', 'vs_ll_l2l3',
         'is_l1', 'is_l2', 'is_l3',
@@ -106,7 +106,7 @@ class FichaMedicao extends Model
         've_ln_l1', 've_ln_l2', 've_ln_l3',
         've_ll_l1l2', 've_ll_l1l3', 've_ll_l2l3',
         'carga_l1', 'carga_l2', 'carga_l3',
-        'frequencia',
+        'frequencia', 'frequencia_saida', // entrada / saída — medições diferentes
         'vs_ln_l1', 'vs_ln_l2', 'vs_ln_l3',
         'vs_ll_l1l2', 'vs_ll_l1l3', 'vs_ll_l2l3',
         'is_l1', 'is_l2', 'is_l3',
