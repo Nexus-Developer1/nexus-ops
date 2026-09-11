@@ -302,6 +302,11 @@ class FichaMedicaoRelatorioTest extends TestCase
         $resp->assertSee($e2->numero_serie);   // separador/aba do coberto
         $resp->assertSee('Medições elétricas'); // conteúdo da ficha-ups (só existe no componente)
         $resp->assertSee('Teste de descarga');
+
+        // Frequência na 1.ª E na 2.ª fila (como no PDF): duas caixas por equipamento, ligadas
+        // ao MESMO campo — escrever numa preenche a outra. Dois equipamentos → quatro caixas.
+        $this->assertSame(2, substr_count($resp->getContent(), 'wire:model="fichas.'.$e1->id.'.frequencia"'));
+        $this->assertSame(2, substr_count($resp->getContent(), 'wire:model="fichas.'.$e2->id.'.frequencia"'));
     }
 
     public function test_finalizar_contrato_com_ficha_gera_relatorio_e_pdf(): void
