@@ -32,6 +32,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-01
 
+- 🧰 **Relatórios: coluna «Cliente final / Local»** — pedido da equipa. A listagem de relatórios ganha uma coluna, a seguir a «Cliente / Equipamento», com o **cliente final** e o **local de instalação** do equipamento do relatório. O local segue a mesma regra do PDF: o que estiver na ficha do equipamento; sem ele, a morada do local ou da sede do cliente. Sem cliente final preenchido aparece «—». A tabela passa a rolar na horizontal em ecrãs estreitos em vez de esmagar as colunas. Requer build e `optimize`. +2 testes (643 no total).
+
 - 🧰 **Agenda: campo «Assunto» no evento** — pedido da equipa. O «Tipo de evento» diz **o que** é (Serviço, Reunião, Férias…); o assunto diz **para quê** («Substituição de baterias da UPS»). É **opcional** — umas férias não precisam dele. Fica logo a seguir ao tipo no formulário, e aparece no detalhe do evento, no email aos técnicos (a negrito), no convite do Outlook e no corpo do evento no calendário partilhado. Mudar só o assunto conta como alteração: os técnicos recebem o aviso com o antes/depois. Máximo 255 caracteres. Na base de dados chama-se `motivo`, porque «assunto» já era o nome histórico do lookup dos tipos (`AssuntoEvento`). **Requer migração** e `optimize`. +5 testes (641 no total).
 
 - 🎨 **Formulário do relatório: frequência também na 2.ª fila** — reportado pela equipa logo a seguir: no formulário a frequência tinha ficado só na 1.ª fila, ao contrário do PDF. Passa a aparecer nas duas, como no PDF. As duas caixas estão ligadas ao **mesmo campo** — escrever numa preenche a outra na hora, é um só valor. Sem migração; `optimize`.

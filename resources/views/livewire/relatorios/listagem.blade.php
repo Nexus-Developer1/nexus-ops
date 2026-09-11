@@ -47,11 +47,12 @@
 
             {{-- Tabela --}}
             <div class="cartao mt-6 overflow-hidden" wire:loading.class="opacity-60">
-                <div class="overflow-x-auto"><table class="w-full min-w-[640px] text-left text-sm">
+                <div class="overflow-x-auto"><table class="w-full min-w-[960px] text-left text-sm">
                     <thead>
                         <tr class="border-b border-borda bg-fundo text-xs uppercase tracking-wide text-texto-medio">
                             <th class="px-6 py-3.5 font-semibold">Nº</th>
                             <th class="px-6 py-3.5 font-semibold">Cliente / Equipamento</th>
+                            <th class="px-6 py-3.5 font-semibold">Cliente final / Local</th>
                             <th class="px-6 py-3.5 font-semibold">Tipo</th>
                             <th class="px-6 py-3.5 font-semibold">Técnico</th>
                             <th class="px-6 py-3.5 font-semibold">Data</th>
@@ -66,6 +67,13 @@
                                 <td class="px-6 py-4">
                                     <div class="text-texto-forte">{{ $r->intervencao->equipamento->local?->cliente?->nome ?? '—' }}</div>
                                     <div class="text-xs text-texto-fraco">{{ $r->intervencao->equipamento->numero_serie }}</div>
+                                </td>
+                                {{-- Cliente final e local de instalação do equipamento (pedido da equipa, set. 2026).
+                                     O local é o mesmo do PDF: o que está na ficha do equipamento; sem ele, a
+                                     morada do local ou da sede do cliente. --}}
+                                <td class="max-w-[16rem] px-6 py-4">
+                                    <div class="text-texto-forte">{{ $r->intervencao->equipamento->cliente_final ?: '—' }}</div>
+                                    <div class="text-xs text-texto-fraco">{{ $r->intervencao->equipamento->localInstalacao() }}</div>
                                 </td>
                                 <td class="px-6 py-4 text-texto-medio">{{ $r->intervencao->tipo->rotulo() }}</td>
                                 {{-- TODOS os técnicos da intervenção (principal + colaboradores), não só quem redigiu. --}}
@@ -109,7 +117,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-12 text-center text-sm text-texto-medio">Nenhum relatório encontrado.</td>
+                                <td colspan="8" class="px-6 py-12 text-center text-sm text-texto-medio">Nenhum relatório encontrado.</td>
                             </tr>
                         @endforelse
                     </tbody>
