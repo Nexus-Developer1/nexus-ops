@@ -135,6 +135,10 @@ class Ficha extends Component
             'colunas' => self::COLUNAS,
             'numericas' => self::NUMERICAS,
             'visiveis' => $this->colunasVisiveis(),
+            // Intervenções ligadas a esta encomenda de peças (a ligação faz-se no relatório).
+            'intervencoes' => (int) $this->dossier->ndos === Dossier::TIPO_ENCOMENDA_PECAS
+                ? $this->dossier->intervencoes()->with(['relatorio', 'equipamento', 'tecnico', 'tecnicos'])->orderByDesc('data_inicio')->get()
+                : collect(),
         ]);
     }
 }

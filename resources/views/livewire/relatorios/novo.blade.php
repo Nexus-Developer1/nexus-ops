@@ -315,6 +315,56 @@
                             @error('tecnicoIds') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             @error('tecnicoIds.*') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                         </div>
+
+                        {{-- Encomendas de peças (dossiês PHC do tipo 1) ligadas a esta intervenção — pedido
+                             da equipa, set. 2026. Sem texto sugere as do cliente do relatório; com texto
+                             procura em todas pelo nº ou pelo cliente. Clicar num chip abre a encomenda
+                             noutro separador (para não perder o que se está a escrever aqui). --}}
+                        <div class="sm:col-span-2">
+                            <label class="campo-label" for="encomenda-combo">Encomendas de peças</label>
+                            @if ($encomendasEscolhidas->isNotEmpty())
+                                <div class="mb-2 flex flex-wrap gap-2">
+                                    @foreach ($encomendasEscolhidas as $d)
+                                        <span wire:key="enc-{{ $d->id }}" class="inline-flex items-center gap-1.5 rounded-full border border-verde-200 bg-verde-50 py-1 pl-3 pr-1 text-xs font-medium text-verde-700">
+                                            <a href="{{ route('encomendas.ficha', $d) }}" target="_blank" rel="noopener" class="hover:underline">
+                                                Nº {{ $d->obrano }}<span class="font-normal text-verde-600"> · {{ \Illuminate\Support\Str::limit($d->nome, 30) }} · {{ $d->data?->format('d/m/Y') }}</span>
+                                            </a>
+                                            <button type="button" wire:click="removerEncomenda({{ $d->id }})" @click="marcarSuja()" title="Desligar esta encomenda"
+                                                class="flex h-5 w-5 items-center justify-center rounded-full text-verde-600 transition hover:bg-verde-100 hover:text-verde-800">
+                                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @endif
+                            <div wire:key="combo-encomendas" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
+                                <input id="encomenda-combo" type="text" wire:model.live.debounce.300ms="encomendaBusca"
+                                    @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
+                                    @keydown.arrow-down.prevent="aberto = true; if ($refs['enc' + (destaque + 1)]) destaque++"
+                                    @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
+                                    @keydown.enter.prevent="$refs['enc' + destaque]?.click()"
+                                    class="campo-input pr-10" placeholder="Pesquisar encomenda de peças por nº ou cliente..." autocomplete="off"
+                                    role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
+                                <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
+                                    @forelse ($encomendasFiltradas as $idx => $d)
+                                        <li x-ref="enc{{ $idx }}" wire:key="encl-{{ $d->id }}"
+                                            wire:click="adicionarEncomenda({{ $d->id }})" @click="aberto = false; marcarSuja()"
+                                            @mouseenter="destaque = {{ $idx }}"
+                                            :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
+                                            class="cursor-pointer px-4 py-2 text-sm" role="option">
+                                            <span class="font-medium">Encomenda Peças nº {{ $d->obrano }}</span>
+                                            <span class="text-xs text-texto-fraco"> · {{ $d->data?->format('d/m/Y') }} · {{ $d->fechada ? 'fechada' : 'aberta' }}</span>
+                                            <span class="block truncate text-xs text-texto-medio">{{ $d->nome }}</span>
+                                        </li>
+                                    @empty
+                                        <li class="px-4 py-2 text-sm text-texto-medio">{{ trim($encomendaBusca) === '' ? 'Escreva o nº da encomenda ou o nome do cliente…' : 'Nenhuma encomenda de peças encontrada.' }}</li>
+                                    @endforelse
+                                </ul>
+                            </div>
+                            @error('encomendaIds') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            @error('encomendaIds.*') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                        </div>
                     </div>
                 </section>
 

@@ -71,6 +71,13 @@ class Intervencao extends Model
         return $this->belongsToMany(Equipamento::class, 'intervencao_equipamentos');
     }
 
+    // Encomendas de peças (dossiês PHC do tipo 1) ligadas a esta intervenção — N:M: a mesma
+    // encomenda serve muitas vezes a visita do diagnóstico e a que instala a peça.
+    public function encomendas(): BelongsToMany
+    {
+        return $this->belongsToMany(Dossier::class, 'intervencao_encomenda')->withTimestamps();
+    }
+
     public function tecnico(): BelongsTo
     {
         return $this->belongsTo(User::class, 'tecnico_id');

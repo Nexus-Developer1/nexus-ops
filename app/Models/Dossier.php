@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 // Dossiê espelhado do ERP PHC (tabela `bo`) — read-only na app, sincronizado por
 // id_erp = bo.bostamp. Tipos: 1 (Encomenda Peças), 3 (Proposta), 7 (Encomenda Produção).
@@ -50,6 +51,15 @@ class Dossier extends Model
             'alterado_erp_em' => 'datetime',
             'alteracoes_erp' => 'array',
         ];
+    }
+
+    // Tipo que se pode ligar a intervenções: só as encomendas de peças.
+    public const TIPO_ENCOMENDA_PECAS = 1;
+
+    // Intervenções que usam esta encomenda de peças (ligação feita no relatório).
+    public function intervencoes(): BelongsToMany
+    {
+        return $this->belongsToMany(Intervencao::class, 'intervencao_encomenda')->withTimestamps();
     }
 
     // Cliente correlacionado por cliente_no = clientes.id_erp (pode não existir na app).

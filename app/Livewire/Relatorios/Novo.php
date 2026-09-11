@@ -14,6 +14,7 @@ use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Anexo;
 use App\Models\Cliente;
 use App\Models\Contrato;
+use App\Models\Dossier;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\FichaMedicao;
@@ -82,6 +83,12 @@ class Novo extends Component
 
     // Modo individual: escolhe-se o cliente e anexam-se os equipamentos dele.
     public ?int $cliente_id = null;
+
+    // Encomendas de peças (dossiês PHC do tipo 1) ligadas a esta intervenção — pedido da
+    // equipa, set. 2026. Ids validados ao gravar (têm de existir e ser encomendas de peças).
+    public array $encomendaIds = [];
+
+    public string $encomendaBusca = '';
 
     public string $clienteBusca = '';        // pesquisa server-side do cliente
 
@@ -165,6 +172,7 @@ class Novo extends Component
             $this->intervencaoId = $intervencao->id;
             $this->equipamento_id = $intervencao->equipamento_id;
             $this->equipamentosCobertos = $intervencao->equipamentosCobertos()->pluck('equipamentos.id')->all();
+            $this->encomendaIds = $intervencao->encomendas()->pluck('dossiers.id')->all();
 
             // Modo deduzido: se a intervenção tem contrato → "contrato", senão "individual".
             $this->contrato_id = $intervencao->contrato_id;
@@ -512,6 +520,63 @@ class Novo extends Component
     // Faixa 'pesquisa': pesquisa server-side dos CANDIDATOS (nº série / modelo sem acentos),
     // filtrada ao cliente OU ao contrato conforme o modo. Vazia sem texto — nunca carrega os
     // (potencialmente milhares) equipamentos de uma vez.
+    // --- Encomendas de peças ligadas à intervenção ------------------------------------
+
+    // Liga uma encomenda de peças. Só aceita dossiês do tipo certo (o id vem do browser).
+    public function adicionarEncomenda(int $id): void
+    {
+        $ok = Dossier::whereKey($id)->where('ndos', Dossier::TIPO_ENCOMENDA_PECAS)->exists();
+        if ($ok && ! in_array($id, array_map('intval', $this->encomendaIds), true) && count($this->encomendaIds) < 20) {
+            $this->encomendaIds[] = $id;
+        }
+        $this->encomendaBusca = '';
+    }
+
+    public function removerEncomenda(int $id): void
+    {
+        $this->encomendaIds = array_values(array_filter($this->encomendaIds, fn ($e) => (int) $e !== $id));
+    }
+
+    // Cliente do relatório (para sugerir as encomendas DELE primeiro): o escolhido no modo
+    // individual, o do contrato no modo contrato, ou o do equipamento principal.
+    private function clienteDoRelatorio(): ?Cliente
+    {
+        if ($this->cliente_id) {
+            return Cliente::withoutGlobalScopes()->find($this->cliente_id);
+        }
+        if ($this->contrato_id) {
+            return Contrato::withoutGlobalScopes()->find($this->contrato_id)?->cliente;
+        }
+
+        return $this->equipamento_id ? Equipamento::find($this->equipamento_id)?->local?->cliente : null;
+    }
+
+    // Sugestões: sem texto, as últimas encomendas de peças do cliente do relatório; com texto,
+    // pesquisa em TODAS pelo nº ou pelo nome do cliente (a peça pode ter sido encomendada
+    // noutro nome). Nunca as já ligadas.
+    private function encomendasFiltradas(): Collection
+    {
+        $busca = trim($this->encomendaBusca);
+        $q = Dossier::query()
+            ->where('ndos', Dossier::TIPO_ENCOMENDA_PECAS)
+            ->whereNotIn('id', array_map('intval', $this->encomendaIds) ?: [0]);
+
+        if ($busca === '') {
+            $cliente = $this->clienteDoRelatorio();
+            if (! $cliente?->id_erp) {
+                return collect();
+            }
+            $q->where('cliente_no', (string) $cliente->id_erp);
+        } else {
+            $termo = '%'.$busca.'%';
+            $q->where(fn ($w) => $w->whereRaw('CAST(obrano AS TEXT) LIKE ?', [$termo])
+                ->orWhere('nome', 'ilike', $termo));
+        }
+
+        return $q->orderByDesc('data')->orderByDesc('obrano')->limit(10)
+            ->get(['id', 'obrano', 'data', 'nome', 'fechada', 'total_debito']);
+    }
+
     private function equipamentosFiltrados(string $busca): Collection
     {
         if (trim($busca) === '') {
@@ -597,7 +662,18 @@ class Novo extends Component
             'fotosNovas.*.*' => ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'], // 20 MB (o PHP em produção aceita até 20M por ficheiro; ver 99-nexus-uploads.ini)
             // Finalizar exige saber quem fez a intervenção (o PDF identifica os técnicos).
             'tecnicoIds' => ['required', 'array', 'min:1'],
-        ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos() + $this->regrasCobertos();
+        ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos() + $this->regrasCobertos()
+            + $this->regrasEncomendas();
+    }
+
+    // Encomendas: prop pública (manipulável pelo browser) — só entram dossiês que existem E são
+    // encomendas de peças. Uma proposta ou uma encomenda de produção forjadas são recusadas.
+    protected function regrasEncomendas(): array
+    {
+        return [
+            'encomendaIds' => ['array', 'max:20'],
+            'encomendaIds.*' => ['integer', Rule::exists('dossiers', 'id')->where('ndos', Dossier::TIPO_ENCOMENDA_PECAS)],
+        ];
     }
 
     // Equipamentos cobertos: prop pública (manipulável pelo browser) — cada id tem de existir.
@@ -838,7 +914,8 @@ class Novo extends Component
         $this->validate([
             'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
             'fotosNovas.*.*' => ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'],
-        ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos() + $this->regrasCobertos());
+        ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos() + $this->regrasCobertos()
+            + $this->regrasEncomendas());
     }
 
     // ---- Gravação ----
@@ -1083,6 +1160,14 @@ class Novo extends Component
             // Equipamentos adicionais cobertos (exclui o principal, para não duplicar).
             $intervencao->equipamentosCobertos()->sync(
                 array_values(array_diff($this->equipamentosCobertos, [$this->equipamento_id])),
+            );
+
+            // Encomendas de peças — re-filtradas ao tipo certo (defesa em profundidade, além da
+            // validação): só dossiês que existem e são encomendas de peças entram no pivot.
+            $intervencao->encomendas()->sync(
+                Dossier::whereIn('id', array_map('intval', $this->encomendaIds))
+                    ->where('ndos', Dossier::TIPO_ENCOMENDA_PECAS)
+                    ->pluck('id')->all(),
             );
 
             // O trabalho passou a registar-se em fichas de medição por equipamento (ambos os
@@ -1439,6 +1524,9 @@ class Novo extends Component
             'equipamentosPorSerie' => $this->equipamentosPorSerie($this->serieBusca),
             'equipamentosFiltrados' => $this->equipamentosFiltrados($this->equipamentoBusca),
             'equipamentosLista' => $this->equipamentosLista(),
+            'encomendasFiltradas' => $this->encomendasFiltradas(),
+            'encomendasEscolhidas' => $this->encomendaIds === [] ? collect() : Dossier::whereIn('id', array_map('intval', $this->encomendaIds))
+                ->orderByDesc('data')->get(['id', 'obrano', 'data', 'nome', 'fechada']),
             'anexadosIds' => $anexadosIds,
             'tipos' => TipoIntervencao::cases(),
             'anexosExistentes' => $anexosExistentes,

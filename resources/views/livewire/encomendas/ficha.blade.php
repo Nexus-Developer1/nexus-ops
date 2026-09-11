@@ -33,6 +33,49 @@
                 </dl>
             </section>
 
+            {{-- Intervenções que usam esta encomenda de peças (ligadas no relatório — set. 2026). --}}
+            @if ((int) $dossier->ndos === \App\Models\Dossier::TIPO_ENCOMENDA_PECAS)
+                <h2 class="mt-6 text-lg font-semibold text-texto-forte">Intervenções associadas</h2>
+                <div class="cartao mt-3 overflow-x-auto">
+                    @if ($intervencoes->isEmpty())
+                        <p class="px-6 py-5 text-sm text-texto-medio">Sem intervenções associadas</p>
+                    @else
+                        <table class="w-full min-w-[640px] text-left text-sm">
+                            <thead>
+                                <tr class="border-b border-borda bg-fundo text-xs uppercase tracking-wide text-texto-medio">
+                                    <th class="px-6 py-3 font-semibold">Relatório</th>
+                                    <th class="px-6 py-3 font-semibold">Data</th>
+                                    <th class="px-6 py-3 font-semibold">Equipamento</th>
+                                    <th class="px-6 py-3 font-semibold">Técnico</th>
+                                    <th class="px-6 py-3 font-semibold">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($intervencoes as $i)
+                                    <tr wire:key="int-{{ $i->id }}" class="border-b border-borda last:border-0 hover:bg-fundo">
+                                        <td class="px-6 py-3 font-medium">
+                                            @if ($i->relatorio)
+                                                <a href="{{ route('relatorios.editar', $i->relatorio) }}" wire:navigate class="text-verde-600 hover:underline">{{ $i->relatorio->numero ?? 'Rascunho' }}</a>
+                                            @else
+                                                <span class="text-texto-fraco">—</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-6 py-3 text-texto-medio">{{ $i->data_inicio?->translatedFormat('d M Y') ?? '—' }}</td>
+                                        <td class="px-6 py-3 text-texto-medio">{{ $i->equipamento?->numero_serie ?? '—' }}</td>
+                                        <td class="px-6 py-3 text-texto-medio">{{ $i->tecnicosLabel() ?? '—' }}</td>
+                                        <td class="px-6 py-3">
+                                            @if ($i->relatorio)
+                                                <span class="etiqueta {{ $i->relatorio->estado->classesEtiqueta() }}">{{ $i->relatorio->estado->rotulo() }}</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @endif
+                </div>
+            @endif
+
             {{-- Linhas do dossiê — LIDAS AO VIVO do PHC (não sincronizadas). --}}
             <div class="mt-6 flex flex-wrap items-center justify-between gap-2">
                 <h2 class="text-lg font-semibold text-texto-forte">Linhas</h2>
