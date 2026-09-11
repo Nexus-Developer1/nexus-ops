@@ -37,6 +37,7 @@ class EventoAgenda extends Model
     protected $fillable = [
         'tipo',
         'titulo',
+        'motivo', // assunto/motivo (opcional): PARA QUÊ — o titulo é o TIPO de evento
         'notas', // texto livre: morada, contactos, indicações de acesso…
         'inicio',
         'fim',

@@ -92,6 +92,7 @@ class GeradorIcs
     private function descricao(array $e): string
     {
         $linhas = array_filter([
+            ($e['motivo'] ?? null) ? 'Assunto: '.$e['motivo'] : null,
             ($e['tecnicos_nomes'] ?? '') !== '' ? 'Técnicos: '.$e['tecnicos_nomes'] : null,
             ($e['cliente'] ?? null) ? 'Cliente: '.$e['cliente'] : null,
             ($e['equipamento'] ?? null) ? 'Equipamento: '.$e['equipamento'] : null,
@@ -114,6 +115,7 @@ class GeradorIcs
     private function descricaoHtml(array $e): string
     {
         $linhas = array_filter([
+            ($e['motivo'] ?? null) ? 'Assunto: <strong>'.e((string) $e['motivo']).'</strong>' : null,
             ($e['tecnicos_nomes'] ?? '') !== '' ? 'Técnicos: <strong>'.e($e['tecnicos_nomes']).'</strong>' : null,
             ($e['cliente'] ?? null) ? 'Cliente: <strong>'.e($e['cliente']).'</strong>' : null,
             ($e['equipamento'] ?? null) ? 'Equipamento: '.e($e['equipamento']) : null,

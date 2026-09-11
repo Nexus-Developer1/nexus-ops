@@ -128,6 +128,10 @@ class Calendario extends Component
 
     public string $formTitulo = '';
 
+    // Assunto/motivo do evento (opcional): o tipo diz O QUE é, isto diz PARA QUÊ. Umas
+    // férias não precisam dele (pedido da equipa, set. 2026).
+    public string $formMotivo = '';
+
     // Notas livres do evento (morada, contactos no local, indicações de acesso, o que levar…).
     public string $formNotas = '';
 
@@ -431,6 +435,7 @@ class Calendario extends Component
             'formTecnicoIds' => 'técnicos',
             'formTecnicoIds.*' => 'técnico',
             'formEquipamentoId' => 'equipamento',
+            'formMotivo' => 'assunto',
             'formNotas' => 'notas',
             'formInicio' => 'início',
             'formFim' => 'fim',
@@ -444,7 +449,7 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formNotas', 'formAlertas', 'formTecnicoIds', 'formClienteId', 'formClienteBusca', 'formEquipamentoId', 'formEquipamentoBusca', 'formEquipamentosExtra', 'formContratoId', 'formCobertura', 'formHorasDias', 'formNotificar', 'formDiaInteiro']);
+        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formMotivo', 'formNotas', 'formAlertas', 'formTecnicoIds', 'formClienteId', 'formClienteBusca', 'formEquipamentoId', 'formEquipamentoBusca', 'formEquipamentosExtra', 'formContratoId', 'formCobertura', 'formHorasDias', 'formNotificar', 'formDiaInteiro']);
 
         // A agenda manda o DIA (sem hora) — as horas reais escrevem-se no formulário e podem
         // abranger vários dias. Sem hora, arranca na abertura e propõe 1h (fácil de ajustar).
@@ -476,6 +481,7 @@ class Calendario extends Component
         $this->editandoConvertido = (bool) $evento->intervencao_id;
         $this->editandoId = $evento->id;
         $this->formTitulo = $evento->titulo;
+        $this->formMotivo = (string) $evento->motivo;
         $this->formNotas = (string) $evento->notas;
         $this->formAlertas = $evento->alertas()->orderBy('data')->get()
             ->map(fn ($a) => ['data' => $a->data->toDateString(), 'texto' => $a->texto])
@@ -675,6 +681,7 @@ class Calendario extends Component
 
         $this->validate([
             'formTitulo' => ['required', 'string', 'max:255'],
+            'formMotivo' => ['nullable', 'string', 'max:255'],
             'formNotas' => ['nullable', 'string', 'max:5000'],
             'formAlertas' => ['array', 'max:24'],
             'formAlertas.*.data' => ['required', 'date'],
@@ -769,6 +776,7 @@ class Calendario extends Component
 
         $atributos = [
             'titulo' => $titulo,
+            'motivo' => trim($this->formMotivo) !== '' ? trim($this->formMotivo) : null,
             'notas' => trim($this->formNotas) !== '' ? trim($this->formNotas) : null,
             'inicio' => $inicio,
             'fim' => $fim,

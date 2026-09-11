@@ -41,6 +41,7 @@
                                         @endforeach
                                     </td></tr>
                                 @endif
+                                @if ($evento['motivo'] ?? null)<tr><td style="padding:0 16px 4px; font-size:14px; color:#374151;"><span style="color:#6b7280;">Assunto:</span> <strong>{{ $evento['motivo'] }}</strong></td></tr>@endif
                                 <tr><td style="padding:0 16px 4px; font-size:14px; color:#374151;"><span style="color:#6b7280;">Técnicos:</span> {{ $evento['tecnicos_nomes'] ?: '—' }}</td></tr>
                                 @if ($evento['cliente'])<tr><td style="padding:0 16px 4px; font-size:14px; color:#374151;"><span style="color:#6b7280;">Cliente:</span> {{ $evento['cliente'] }}</td></tr>@endif
                                 @if ($evento['equipamento'])<tr><td style="padding:0 16px 4px; font-size:14px; color:#374151;"><span style="color:#6b7280;">Equipamento:</span> {{ $evento['equipamento'] }}</td></tr>@endif

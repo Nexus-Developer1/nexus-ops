@@ -88,6 +88,7 @@ class EventoAgendaNotificacao extends Notification implements ShouldQueue
         $linhas = [];
         $campos = [
             'titulo' => ['Tipo de evento', fn ($e) => (string) $e['titulo']],
+            'motivo' => ['Assunto', fn ($e) => ($e['motivo'] ?? null) ?: '—'],
             'quando' => ['Quando', fn ($e) => self::quando($e)],
             'tecnicos' => ['Técnicos', fn ($e) => $e['tecnicos_nomes'] ?: '—'],
             'cliente' => ['Cliente', fn ($e) => $e['cliente'] ?: '—'],

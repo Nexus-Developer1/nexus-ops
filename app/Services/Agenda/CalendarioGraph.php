@@ -285,6 +285,7 @@ class CalendarioGraph
         // (o Outlook desenha-o sempre em texto simples), por isso a evidência na grelha
         // faz-se pela COR da categoria (uma por técnico, ver garantirCategorias()).
         $linhas = array_filter([
+            $e->motivo ? 'Assunto: <strong>'.e($e->motivo).'</strong>' : null,
             $e->tecnico_label ? '<span style="font-size:15px;">Técnicos: <strong>'.e($e->tecnico_label).'</strong></span>' : null,
             $e->cliente ? 'Cliente: <strong>'.e($e->cliente->nome).'</strong>' : null,
             $e->equipamento ? 'Equipamento: '.e(trim(($e->equipamento->numero_serie ?? '').' · '.trim(($e->equipamento->fabricante ?? '').' '.($e->equipamento->modelo ?? '')), ' ·')) : null,

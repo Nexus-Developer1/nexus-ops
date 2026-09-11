@@ -72,6 +72,9 @@
                                 <dt class="text-texto-fraco">Quando</dt>
                                 <dd class="text-right font-medium text-texto-forte">{{ $evento->inicio->translatedFormat('d M Y · H:i') }} – {{ $evento->fim->format('H:i') }}</dd>
                             </div>
+                            @if ($evento->motivo)
+                                <div class="flex justify-between gap-4"><dt class="text-texto-fraco">Assunto</dt><dd class="text-right font-medium text-texto-forte">{{ $evento->motivo }}</dd></div>
+                            @endif
                             @if ($evento->cliente)
                                 <div class="flex justify-between gap-4"><dt class="text-texto-fraco">Cliente</dt><dd class="text-right font-medium text-texto-forte">{{ $evento->cliente->nome }}</dd></div>
                             @endif
@@ -185,6 +188,14 @@
                                 </ul>
                                 @error('formTitulo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                                 @error('novoAssunto') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            </div>
+
+                            {{-- Assunto/motivo (opcional): o tipo diz O QUE é, isto diz PARA QUÊ. --}}
+                            <div>
+                                <label class="campo-label" for="motivo-evento">Assunto</label>
+                                <input id="motivo-evento" type="text" wire:model="formMotivo" maxlength="255"
+                                    class="campo-input" placeholder="Ex: Substituição de baterias da UPS" autocomplete="off">
+                                @error('formMotivo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
 
                             {{-- Cliente: combobox server-side (nome/NIF/nº ERP). Restringe a pesquisa de
