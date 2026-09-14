@@ -27,6 +27,7 @@ class User extends Authenticatable
         'faz_servicos',
         'cliente_id',
         'ativo',
+        'preferencias', // preferências de interface (JSON chave => valor)
     ];
 
     /** @var list<string> */
@@ -44,7 +45,22 @@ class User extends Authenticatable
             'papel' => PapelUtilizador::class,
             'ativo' => 'boolean',
             'password_alterada_em' => 'datetime', // invalidação de sessões antigas (Vaga 1)
+            'preferencias' => 'array',
         ];
+    }
+
+    // Preferências de interface por utilizador (ex.: ordem dos campos do editor de relatórios).
+    // Ficam na BD para seguirem o utilizador entre dispositivos.
+    public function preferencia(string $chave, mixed $defeito = null): mixed
+    {
+        return ($this->preferencias ?? [])[$chave] ?? $defeito;
+    }
+
+    public function guardarPreferencia(string $chave, mixed $valor): void
+    {
+        $prefs = $this->preferencias ?? [];
+        $prefs[$chave] = $valor;
+        $this->forceFill(['preferencias' => $prefs])->save();
     }
 
     // Storage: o email é sempre guardado em minúsculas (emails são case-insensitive). Garante

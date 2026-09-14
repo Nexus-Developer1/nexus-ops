@@ -106,7 +106,7 @@
             <div x-show="tab==='gerais'" class="space-y-5">
 
                 {{-- Equipamento e Intervenção --}}
-                <section class="cartao mt-7" x-data="{ aberto: true }">
+                <section class="cartao mt-7" x-data="{ aberto: true, organizar: false, arrastado: null }">
                     <button @click="aberto=!aberto" class="cartao-cabecalho">
                         <span class="flex items-center gap-3">
                             <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3m6-14h1m-1 4h1m4-4h1m-1 4h1m-5 8v-4a1 1 0 011-1h2a1 1 0 011 1v4"/></svg></span>
@@ -115,326 +115,37 @@
                         <svg :class="aberto && 'rotate-180'" class="h-5 w-5 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                     </button>
                     <div x-show="aberto" x-transition class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 px-6 pb-7">
-                        {{-- Modo: relatório de contrato (equipamentos vêm do contrato) vs individual (à mão). --}}
-                        <div class="sm:col-span-2">
-                            <label class="campo-label">Tipo de relatório</label>
-                            <div class="inline-flex rounded-lg border border-borda bg-fundo p-1">
-                                <button type="button" wire:click="definirModo('contrato')" class="rounded-md px-4 py-1.5 text-sm font-medium transition {{ $modo === 'contrato' ? 'bg-white text-texto-forte shadow-sm' : 'text-texto-medio hover:text-texto-forte' }}">Relatório de contrato</button>
-                                <button type="button" wire:click="definirModo('individual')" class="rounded-md px-4 py-1.5 text-sm font-medium transition {{ $modo === 'individual' ? 'bg-white text-texto-forte shadow-sm' : 'text-texto-medio hover:text-texto-forte' }}">Relatório individual</button>
-                            </div>
+                        {{-- Campos REORDENÁVEIS (pedido da equipa, set. 2026): cada utilizador organiza estes blocos
+                             como preferir, mediante a importância. Modo «Organizar campos» → arrastar (desktop) ou
+                             setas ▲▼ (telemóvel). A ordem fica nas preferências do utilizador; a whitelist é
+                             revalidada no servidor. Cada bloco vive numa partial em livewire/relatorios/campos. --}}
+                        <div class="sm:col-span-2 -mb-3 flex flex-wrap items-center justify-end gap-3 text-xs">
+                            <button type="button" x-show="organizar" x-cloak wire:click="reporOrdemCampos" class="font-medium text-texto-medio hover:text-texto-forte hover:underline">Repor ordem de fábrica</button>
+                            <button type="button" @click="organizar = !organizar; arrastado = null" class="inline-flex items-center gap-1.5 rounded-lg border border-borda px-3 py-1.5 font-medium text-texto-medio transition hover:bg-fundo hover:text-texto-forte" :class="organizar && 'border-verde-300 bg-verde-50 text-verde-700'">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
+                                <span x-text="organizar ? 'Concluir' : 'Organizar campos'"></span>
+                            </button>
                         </div>
 
-                        @if ($modo === 'contrato')
-                            {{-- Contrato: filtragem client-side instantânea (poucos contratos); ao escolher carrega os equipamentos. --}}
-                            <div class="sm:col-span-2">
-                                <label class="campo-label" for="contrato-combo">Contrato <span class="text-perigo-500">*</span></label>
-                                <div
-                                    wire:key="combo-contrato"
-                                    x-data="{
-                                        contratos: @js($contratos->map(fn ($c) => ['id' => $c->id, 'label' => $c->numero . ' · ' . ($c->cliente?->nome ?? '—')])->values()),
-                                        inicial: @js((string) $contratoBusca),
-                                        query: '',
-                                        aberto: false,
-                                        destaque: 0,
-                                        norm(s) { return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); },
-                                        get filtrados() {
-                                            const n = this.norm(this.query);
-                                            if (n === '') return this.contratos;
-                                            return this.contratos.filter(c => this.norm(c.label).includes(n));
-                                        },
-                                        init() { this.query = this.inicial; },
-                                        abrir() { this.aberto = true; this.destaque = 0; },
-                                        fechar() { this.aberto = false; },
-                                        mover(d) { if (!this.aberto) { this.abrir(); return; } const n = this.filtrados.length; if (n === 0) return; this.destaque = (this.destaque + d + n) % n; },
-                                        escolherDestaque() { const c = this.filtrados[this.destaque]; if (c) this.escolher(c); },
-                                        escolher(c) { this.query = c.label; this.aberto = false; this.$wire.selecionarContrato(c.id); },
-                                    }"
-                                    @click.outside="fechar()"
-                                    @keydown.escape.stop="fechar()"
-                                    class="relative"
-                                >
-                                    <input id="contrato-combo" type="text" x-model="query"
-                                        @focus="abrir()" @click="abrir()" @input="abrir()"
-                                        @keydown.arrow-down.prevent="mover(1)" @keydown.arrow-up.prevent="mover(-1)" @keydown.enter.prevent="escolherDestaque()"
-                                        class="campo-input pr-10" placeholder="Pesquisar contrato por número ou cliente..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
-                                    <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                                    <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
-                                        <template x-for="(c, i) in filtrados" :key="c.id">
-                                            <li @click="escolher(c)" @mouseenter="destaque = i" :class="i === destaque ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'" class="cursor-pointer px-4 py-2 text-sm" role="option">
-                                                <span x-text="c.label"></span>
-                                            </li>
-                                        </template>
-                                        <li x-show="filtrados.length === 0" class="px-4 py-2 text-sm text-texto-medio">Nenhum contrato encontrado.</li>
-                                    </ul>
+                        @foreach ($ordemCampos as $campo)
+                            <div wire:key="campo-{{ $campo }}"
+                                class="relative {{ in_array($campo, ['tipo', 'datas', 'horas'], true) ? '' : 'sm:col-span-2' }}"
+                                :class="organizar && 'rounded-lg border border-dashed border-verde-300 bg-verde-50/40 p-3 pt-9 cursor-move'"
+                                :draggable="organizar"
+                                x-on:dragstart="if (!organizar) return; arrastado = '{{ $campo }}'"
+                                x-on:dragover.prevent
+                                x-on:drop.prevent="if (organizar && arrastado && arrastado !== '{{ $campo }}') { $wire.reordenarCampos(window.reordenar($wire.ordemCampos, arrastado, '{{ $campo }}')) } arrastado = null">
+                                <div x-show="organizar" x-cloak class="absolute right-2 top-2 flex items-center gap-1">
+                                    <button type="button" wire:click="moverCampo('{{ $campo }}', -1)" title="Subir" class="flex h-7 w-7 items-center justify-center rounded-md border border-borda bg-white text-texto-medio hover:text-verde-700 disabled:opacity-30" @disabled($loop->first)>
+                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+                                    </button>
+                                    <button type="button" wire:click="moverCampo('{{ $campo }}', 1)" title="Descer" class="flex h-7 w-7 items-center justify-center rounded-md border border-borda bg-white text-texto-medio hover:text-verde-700 disabled:opacity-30" @disabled($loop->last)>
+                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                    </button>
                                 </div>
-                                @error('contrato_id') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                @include('livewire.relatorios.campos.' . $campo)
                             </div>
-
-                            {{-- Escolha de equipamentos por faixa (auto/lista/pesquisa), filtrada ao CONTRATO. --}}
-                            @include('livewire.relatorios.selecao-equipamentos')
-                        @else
-                        {{-- Atalho: pesquisa GLOBAL por nº de série → resolve o cliente automaticamente. --}}
-                        <div class="sm:col-span-2">
-                            <label class="campo-label" for="serie-combo">Nº de série do equipamento <span class="text-perigo-500">*</span></label>
-                            <div wire:key="combo-serie" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
-                                <input id="serie-combo" type="text"
-                                    wire:model.live.debounce.300ms="serieBusca"
-                                    @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
-                                    @keydown.arrow-down.prevent="aberto = true; if ($refs['s' + (destaque + 1)]) destaque++"
-                                    @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
-                                    @keydown.enter.prevent="$refs['s' + destaque]?.click()"
-                                    class="campo-input pr-10" placeholder="Escreve o nº de série — o cliente é preenchido automaticamente..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
-                                <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                                <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
-                                    @forelse ($equipamentosPorSerie as $idx => $e)
-                                        <li x-ref="s{{ $idx }}" wire:key="es-{{ $e->id }}"
-                                            wire:click="selecionarPorSerie({{ $e->id }})" @click="aberto = false"
-                                            @mouseenter="destaque = {{ $idx }}"
-                                            :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
-                                            class="cursor-pointer px-4 py-2 text-sm" role="option">
-                                            <span class="font-medium">{{ $e->numero_serie ?? '—' }}</span>
-                                            <span class="text-xs text-texto-fraco"> · {{ trim($e->fabricante . ' ' . $e->modelo) ?: '—' }} · {{ $e->local?->cliente?->nome ?? '—' }}</span>
-                                        </li>
-                                    @empty
-                                        <li class="px-4 py-2 text-sm text-texto-medio">{{ trim($serieBusca) === '' ? 'Escreve o nº de série…' : 'Nenhum equipamento com esse nº de série.' }}</li>
-                                    @endforelse
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="sm:col-span-2 flex items-center gap-3 text-xs uppercase tracking-wide text-texto-fraco">
-                            <span class="h-px flex-1 bg-borda"></span>ou escolhe o cliente<span class="h-px flex-1 bg-borda"></span>
-                        </div>
-
-                        {{-- Individual: escolhe-se o CLIENTE e anexam-se todos os equipamentos dele. --}}
-                        <div class="sm:col-span-2">
-                            <label class="campo-label" for="cliente-combo">Cliente <span class="text-perigo-500">*</span></label>
-                            {{-- Pesquisa server-side (~20 resultados): não carrega os milhares de clientes. --}}
-                            <div wire:key="combo-cliente" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
-                                <input id="cliente-combo" type="text"
-                                    wire:model.live.debounce.300ms="clienteBusca"
-                                    @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
-                                    @keydown.arrow-down.prevent="aberto = true; if ($refs['c' + (destaque + 1)]) destaque++"
-                                    @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
-                                    @keydown.enter.prevent="$refs['c' + destaque]?.click()"
-                                    class="campo-input pr-10" placeholder="Pesquisar cliente por nome ou NIF..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
-                                <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                                <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
-                                    @forelse ($clientesFiltrados as $idx => $c)
-                                        <li x-ref="c{{ $idx }}" wire:key="cl-{{ $c->id }}"
-                                            wire:click="selecionarCliente({{ $c->id }})" @click="aberto = false"
-                                            @mouseenter="destaque = {{ $idx }}"
-                                            :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
-                                            class="cursor-pointer px-4 py-2 text-sm" role="option">
-                                            {{ $c->nome }}@if ($c->nif) <span class="text-texto-fraco">· {{ $c->nif }}</span>@endif
-                                        </li>
-                                    @empty
-                                        <li class="px-4 py-2 text-sm text-texto-medio">{{ $clienteBusca === '' ? 'Escreva para pesquisar…' : 'Nenhum cliente encontrado.' }}</li>
-                                    @endforelse
-                                </ul>
-                            </div>
-                        </div>
-
-                        {{-- Escolha de equipamentos por faixa (auto/lista/pesquisa), filtrada ao CLIENTE. --}}
-                        @include('livewire.relatorios.selecao-equipamentos')
-                        @endif
-
-                        <div>
-                            <label class="campo-label">Tipo de intervenção <span class="text-perigo-500">*</span></label>
-                            <select wire:model.live="tipo" class="campo-select">
-                                @foreach ($tipos as $t)
-                                    <option value="{{ $t->value }}">{{ $t->rotulo() }}</option>
-                                @endforeach
-                            </select>
-                            @error('tipo') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            {{-- Relógio do SLA de resposta (Vaga 2): quando o cliente PEDIU a
-                                 assistência — só corretivas. Nasce preenchido; corrige-se para
-                                 pedidos telefónicos registados mais tarde. --}}
-                            @if ($tipo === 'corretiva')
-                                <div class="mt-3">
-                                    <label class="campo-label">Pedido do cliente em</label>
-                                    <input wire:model="pedido_em" type="datetime-local" class="campo-input">
-                                    @error('pedido_em') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                                </div>
-                            @endif
-                        </div>
-                        <div>
-                            <label class="campo-label">Datas da intervenção <span class="text-perigo-500">*</span></label>
-                            <div class="grid grid-cols-1 gap-4 min-[380px]:grid-cols-2">
-                                <input wire:model="data" type="date" class="campo-input" aria-label="Data de início">
-                                <input wire:model="data_fim" type="date" class="campo-input" aria-label="Data de término">
-                            </div>
-                            @error('data') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            @error('data_fim') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                        </div>
-                        <div
-                            x-data="{
-                                inicio: $wire.entangle('hora_inicio'),
-                                fim: $wire.entangle('hora_fim'),
-                                get duracao() {
-                                    if (!this.inicio || !this.fim) return '';
-                                    const [hi, mi] = this.inicio.split(':').map(Number);
-                                    const [hf, mf] = this.fim.split(':').map(Number);
-                                    let min = (hf * 60 + mf) - (hi * 60 + mi);
-                                    if (isNaN(min) || min < 0) return '';
-                                    const h = Math.floor(min / 60), m = min % 60;
-                                    if (h && m) return h + 'h' + String(m).padStart(2, '0');
-                                    if (h) return h + 'h';
-                                    return m + 'min';
-                                },
-                            }"
-                        >
-                            <label class="campo-label">Horas</label>
-                            <div class="grid grid-cols-1 gap-4 min-[380px]:grid-cols-2">
-                                <input type="time" x-model="inicio" class="campo-input" aria-label="Hora de início">
-                                <input type="time" x-model="fim" class="campo-input" aria-label="Hora de fim">
-                            </div>
-                            <p x-show="duracao" x-cloak class="mt-1 text-xs text-texto-medio">Duração: <span class="font-medium text-texto-forte" x-text="duracao"></span></p>
-                            @error('hora_inicio') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            @error('hora_fim') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                        </div>
-
-                        {{-- Técnicos: quem FEZ a intervenção (não necessariamente quem redige o
-                             relatório) — nada vem pré-selecionado e não há hierarquia entre eles.
-                             A lista vem da BD a cada render, por isso reflete quem for entrando. --}}
-                        <div class="sm:col-span-2">
-                            <label class="campo-label">Técnicos <span class="text-perigo-500">*</span></label>
-                            <div class="flex flex-wrap gap-2">
-                                @foreach ($tecnicos as $t)
-                                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition {{ in_array($t->id, array_map('intval', $tecnicoIds), true) ? 'border-verde-400 bg-verde-50 font-medium text-verde-700' : 'border-borda text-texto-medio hover:bg-fundo' }}">
-                                        <input type="checkbox" wire:model.live="tecnicoIds" value="{{ $t->id }}" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-600">
-                                        {{ $t->nome }}
-                                    </label>
-                                @endforeach
-                            </div>
-
-                            @if ($tecnicos->isEmpty())
-                                <p class="mt-1.5 text-xs text-texto-fraco">Não há técnicos ativos para selecionar.</p>
-                            @else
-                            @endif
-                            @error('tecnicoIds') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            @error('tecnicoIds.*') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                        </div>
-
-                        {{-- Encomendas de peças (dossiês PHC do tipo 1) ligadas a esta intervenção — pedido
-                             da equipa, set. 2026. Sem texto sugere as do cliente do relatório; com texto
-                             procura em todas pelo nº ou pelo cliente. Clicar num chip abre a encomenda
-                             noutro separador (para não perder o que se está a escrever aqui). --}}
-                        <div class="sm:col-span-2">
-                            <div class="mb-2 flex items-center justify-between">
-                                <label class="campo-label mb-0" for="encomenda-combo">Encomendas de peças</label>
-                                <label class="inline-flex cursor-pointer items-center gap-2 text-xs text-texto-medio">
-                                    <input type="checkbox" wire:model.live="encomendasSoAbertas" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-500">
-                                    Só encomendas abertas
-                                </label>
-                            </div>
-                            @if ($encomendasEscolhidas->isNotEmpty() || $encomendasManuais !== [])
-                                <div class="mb-2 flex flex-wrap gap-2">
-                                    @foreach ($encomendasEscolhidas as $d)
-                                        <span wire:key="enc-{{ $d->id }}" class="inline-flex items-center gap-1.5 rounded-full border border-verde-200 bg-verde-50 py-1 pl-3 pr-1 text-xs font-medium text-verde-700">
-                                            <a href="{{ route('encomendas.ficha', $d) }}" target="_blank" rel="noopener" class="hover:underline">
-                                                Nº {{ $d->obrano }}<span class="font-normal text-verde-600"> · {{ \Illuminate\Support\Str::limit($d->nome, 30) }} · {{ $d->data?->format('d/m/Y') }}</span>
-                                            </a>
-                                            <button type="button" wire:click="removerEncomenda({{ $d->id }})" @click="marcarSuja()" title="Desligar esta encomenda"
-                                                class="flex h-5 w-5 items-center justify-center rounded-full text-verde-600 transition hover:bg-verde-100 hover:text-verde-800">
-                                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                                            </button>
-                                        </span>
-                                    @endforeach
-                                    {{-- Escritas à mão, ainda por chegar do PHC: passam a chip verde sozinhas no sync. --}}
-                                    @foreach ($encomendasManuais as $k => $m)
-                                        <span wire:key="encm-{{ $m['obrano'] }}-{{ $m['ano'] }}" class="inline-flex items-center gap-1.5 rounded-full border border-aviso-200 bg-aviso-100/60 py-1 pl-3 pr-1 text-xs font-medium text-aviso-500"
-                                            title="Ainda não chegou do PHC — fica ligada sozinha na próxima sincronização">
-                                            Nº {{ $m['obrano'] }}/{{ $m['ano'] }}<span class="font-normal"> · por sincronizar</span>
-                                            <button type="button" wire:click="removerEncomendaManual({{ $k }})" @click="marcarSuja()" title="Retirar"
-                                                class="flex h-5 w-5 items-center justify-center rounded-full transition hover:bg-aviso-200">
-                                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                                            </button>
-                                        </span>
-                                    @endforeach
-                                </div>
-                            @endif
-                            <div wire:key="combo-encomendas" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
-                                <input id="encomenda-combo" type="text" wire:model.live.debounce.300ms="encomendaBusca"
-                                    @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
-                                    @keydown.arrow-down.prevent="aberto = true; if ($refs['enc' + (destaque + 1)]) destaque++"
-                                    @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
-                                    @keydown.enter.prevent="$refs['enc' + destaque]?.click()"
-                                    class="campo-input pr-10" placeholder="Pesquisar encomenda de peças por nº ou cliente..." autocomplete="off"
-                                    role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
-                                <svg :class="aberto && 'rotate-180'" class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                                <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
-                                    @forelse ($encomendasFiltradas as $idx => $d)
-                                        <li x-ref="enc{{ $idx }}" wire:key="encl-{{ $d->id }}"
-                                            wire:click="adicionarEncomenda({{ $d->id }})" @click="aberto = false; marcarSuja()"
-                                            @mouseenter="destaque = {{ $idx }}"
-                                            :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
-                                            class="cursor-pointer px-4 py-2 text-sm" role="option">
-                                            <span class="font-medium">Encomenda Peças nº {{ $d->obrano }}</span>
-                                            <span class="text-xs text-texto-fraco"> · {{ $d->data?->format('d/m/Y') }} · {{ $d->fechada ? 'fechada' : 'aberta' }}</span>
-                                            <span class="block truncate text-xs text-texto-medio">{{ $d->nome }}</span>
-                                        </li>
-                                    @empty
-                                        <li class="px-4 py-2 text-sm text-texto-medio">{{ trim($encomendaBusca) === '' ? 'Escreva o nº da encomenda ou o nome do cliente…' : 'Nenhuma encomenda de peças encontrada.' }}</li>
-                                    @endforelse
-                                </ul>
-                            </div>
-                            {{-- Escrever o nº à mão: para a encomenda criada agora no PHC que o sync ainda não trouxe. --}}
-                            <div class="mt-2 flex flex-wrap items-center gap-2">
-                                <input type="number" inputmode="numeric" min="1" wire:model="encomendaManualNumero" wire:keydown.enter.prevent="adicionarEncomendaManual"
-                                    aria-label="Nº da encomenda (à mão)" placeholder="Nº à mão" class="campo-input w-32 py-2">
-                                <input type="number" inputmode="numeric" min="2000" wire:model="encomendaManualAno"
-                                    aria-label="Ano da encomenda" placeholder="Ano" class="campo-input w-24 py-2">
-                                <button type="button" wire:click="adicionarEncomendaManual" @click="marcarSuja()" class="botao-secundario py-2">Adicionar</button>
-                            </div>
-                            @error('encomendaManualNumero') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            @error('encomendaManualAno') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            @error('encomendasManuais.*.obrano') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            @error('encomendasManuais.*.ano') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            @error('encomendaIds') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            @error('encomendaIds.*') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
-
-                            {{-- Detalhe de cada encomenda ligada: cabeçalho + linhas ao vivo do PHC, para se
-                                 confirmar que é a certa (pedido da equipa, set. 2026). --}}
-                            @foreach ($encomendasDetalhe as $det)
-                                @php($d = $det['dossier'])
-                                <div wire:key="enc-det-{{ $d->id }}" class="mt-3 overflow-hidden rounded-lg border border-borda">
-                                    <div class="flex flex-wrap items-center justify-between gap-2 bg-fundo px-4 py-2.5 text-sm">
-                                        <div class="min-w-0">
-                                            <span class="font-semibold text-texto-forte">Encomenda Peças nº {{ $d->obrano }}/{{ $d->ano }}</span>
-                                            <span class="text-texto-medio"> · {{ $d->nome }} · {{ $d->data?->format('d/m/Y') }}</span>
-                                        </div>
-                                        <div class="flex items-center gap-3 text-xs">
-                                            <span class="etiqueta {{ $d->fechada ? 'bg-slate-100 text-texto-medio' : 'bg-verde-50 text-verde-700' }}">{{ $d->fechada ? 'Fechada' : 'Aberta' }}</span>
-                                            @if ($d->total_debito !== null)<span class="text-texto-medio">{{ number_format((float) $d->total_debito, 2, ',', ' ') }} €</span>@endif
-                                            <a href="{{ route('encomendas.ficha', $d) }}" target="_blank" rel="noopener" class="font-medium text-verde-700 hover:underline">Abrir</a>
-                                        </div>
-                                    </div>
-                                    @if ($det['erro'])
-                                        <p class="px-4 py-3 text-xs text-aviso-500">Não foi possível ler as linhas no PHC agora.</p>
-                                    @elseif ($det['linhas'] === [])
-                                        <p class="px-4 py-3 text-xs text-texto-fraco">Sem linhas.</p>
-                                    @else
-                                        <div class="overflow-x-auto"><table class="w-full text-left text-xs">
-                                            <thead><tr class="border-b border-borda text-[11px] uppercase tracking-wide text-texto-fraco">
-                                                <th class="px-4 py-2 font-semibold">Ref.</th><th class="px-4 py-2 font-semibold">Descrição</th>
-                                                <th class="px-4 py-2 text-right font-semibold">Qtd</th><th class="px-4 py-2 font-semibold">Série(s)</th>
-                                            </tr></thead>
-                                            <tbody>
-                                                @foreach ($det['linhas'] as $l)
-                                                    <tr class="border-b border-borda last:border-0">
-                                                        <td class="whitespace-nowrap px-4 py-1.5 font-medium text-texto-forte">{{ $l->ref ?: '—' }}</td>
-                                                        <td class="px-4 py-1.5 text-texto-medio">{{ $l->descricao ?: '—' }}</td>
-                                                        <td class="whitespace-nowrap px-4 py-1.5 text-right text-texto-medio">{{ $l->qtt !== null ? rtrim(rtrim(number_format($l->qtt, 2, ',', ''), '0'), ',') : '—' }}</td>
-                                                        <td class="px-4 py-1.5 text-texto-medio">{{ $l->series ?: '—' }}</td>
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table></div>
-                                    @endif
-                                </div>
-                            @endforeach
-                        </div>
+                        @endforeach
                     </div>
                 </section>
 
