@@ -131,8 +131,9 @@ class PdfRelatorioTest extends TestCase
         // NÃO existe — uma div vazia com page-break deixava uma página em branco.
         // (procura-se a class= no body; o seletor CSS no <head> existe sempre)
         $this->assertStringNotContainsString('class="pagina-tecnica"', $html);
-        // A identificação do equipamento (S/N, fabricante, tipo) saiu do relatório.
-        $this->assertStringNotContainsString('SN-77', $html);
+        // Sem fichas, a tabela de equipamentos é a única identificação no PDF: o S/N aparece lá
+        // (pedido da equipa, set. 2026 — com fichas, a identificação fica só nas fichas).
+        $this->assertSame(1, substr_count($html, 'S/N SN-77'));
 
         // As quebras de linha escritas pelo técnico chegam ao HTML e o CSS preserva-as.
         $this->assertStringContainsString("Substituição de baterias.\nTeste de autonomia OK.", $html);

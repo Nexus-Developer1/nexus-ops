@@ -105,6 +105,25 @@
     {{-- local pode ser null (equipamento "por associar" do PHC) — o PDF não pode rebentar. --}}
     @php($c = $e->local?->cliente)
     @php($fichas = $i->fichasMedicao)
+    {{-- Equipamentos do relatório: o principal + os cobertos, sem repetir (a mesma regra da contagem). --}}
+    @php($equipamentosRel = collect([$e])->merge($i->equipamentosCobertos)->filter()->unique('id')->values())
+    {{-- Bancos de baterias / equipamentos associados de um equipamento, como linhas de texto:
+         os registados como equipamento FILHO (equipamento_pai_id) e os guardados na própria ficha
+         do equipamento (atributos.bancos). Sem isto o PDF não mostrava os bancos (2026/0012). --}}
+    @php($bancosDe = function ($eq) {
+        if (! $eq) {
+            return collect();
+        }
+        $filhos = $eq->equipamentosAssociados->map(fn ($b) => trim(trim(($b->modelo ?: $b->tipo?->rotulo() ?? '')).($b->numero_serie ? ' · S/N '.$b->numero_serie : '')));
+        $proprios = collect($eq->bancosParaFormulario())->map(fn ($b) => trim(implode(' · ', array_filter([
+            trim('Banco de baterias '.$b['modelo']),
+            $b['capacidade'] !== '' ? $b['capacidade'] : null,
+            $b['num_baterias'] !== '' ? $b['num_baterias'].' baterias' : null,
+            $b['numero_serie'] !== '' ? 'S/N '.$b['numero_serie'] : null,
+        ]))));
+
+        return $filhos->merge($proprios)->filter()->unique()->values();
+    })
     {{-- Nº de equipamentos do relatório: o principal + os cobertos + os que têm ficha (sem
          repetir). Antes contava só as fichas e, sem fichas, mostrava sempre 1 — um relatório
          individual com 2 equipamentos e sem medições saía com «1» (2026/0012, set. 2026).
@@ -122,10 +141,8 @@
     {{-- Extras do equipamento (componentes sempre; cliente final / localização / também cobertos
          só sem fichas, porque com fichas já estão na tabela de resultados e em cada ficha). --}}
     @php($eCliFinal = trim((string) ($e->cliente_final ?? '')))
-    @php($eLocaliz = trim((string) ($e->localizacao_instalacao ?? '')))
     @php($eComponentes = collect($e->atributos['componentes'] ?? [])->filter(fn ($comp) => trim((string) ($comp['designacao'] ?? '')) !== ''))
     @php($semFichas = $fichas->isEmpty())
-    @php($temExtrasEquipamento = $eComponentes->isNotEmpty() || ($semFichas && ($eCliFinal !== '' || $eLocaliz !== '' || $i->equipamentosCobertos->isNotEmpty())))
     @php($temTextos = $i->descricao_problema || $i->trabalho_realizado || $i->observacoes)
 
     <div class="rodape-fixo">
@@ -225,7 +242,9 @@
                 @php($nomeEq = trim(($f->marca ?: $feq?->fabricante ?? '').' '.($f->modelo ?: $feq?->modelo ?? '')))
                 @php($locEq = trim((string) ($feq?->localizacao_instalacao ?? '')) ?: (trim((string) ($feq?->local?->morada ?? '')) ?: '—'))
                 <tr>
-                    <td><b>{{ $rotuloEq($f) }}</b>@if ($nomeEq !== '') · {{ $nomeEq }}@endif<div class="mini">S/N {{ $f->serie ?: ($feq?->numero_serie ?? '—') }}</div></td>
+                    <td><b>{{ $rotuloEq($f) }}</b>@if ($nomeEq !== '') · {{ $nomeEq }}@endif<div class="mini">S/N {{ $f->serie ?: ($feq?->numero_serie ?? '—') }}</div>
+                        @foreach ($bancosDe($feq) as $banco)<div class="mini">+ {{ $banco }}</div>@endforeach
+                    </td>
                     <td>{{ $locEq }}</td>
                 </tr>
             @endforeach
@@ -254,18 +273,35 @@
         @endif
     @endif
 
-    {{-- ---- Equipamento: extras (só quando preenchidos) -------------------------------- --}}
-    {{-- Identificação do equipamento (S/N, fabricante, tipo) saiu do relatório a pedido da
-         equipa — a ficha de medições já identifica cada equipamento. Ficam só os extras. --}}
-    @if ($temExtrasEquipamento)
-        <h2>Equipamento</h2>
-        <table class="grelha">
-            @if ($semFichas && ($eCliFinal !== '' || $eLocaliz !== ''))
+    {{-- ---- Equipamentos (sem fichas) e componentes do sistema ------------------------- --}}
+    {{-- Sem fichas, esta é a ÚNICA identificação dos equipamentos no PDF: todos (principal +
+         cobertos), cada um com S/N, local de instalação e bancos de baterias associados. Antes
+         só o principal aparecia (sem S/N) e os outros numa linha solta, sem bancos (2026/0012). --}}
+    @if ($semFichas && $equipamentosRel->isNotEmpty())
+        <h2>{{ $equipamentosRel->count() > 1 ? 'Equipamentos' : 'Equipamento' }}</h2>
+        @php($clientesFinais = $equipamentosRel->map(fn ($q) => trim((string) $q->cliente_final))->filter()->unique()->values())
+        @if ($clientesFinais->isNotEmpty())
+            <table class="grelha">
+                <tr><td colspan="2"><div class="campo-rotulo">Cliente final</div><div class="campo-valor">{{ $clientesFinais->implode(' / ') }}</div></td></tr>
+            </table>
+        @endif
+        <table class="tab">
+            <tr><th style="width: 55%;">Equipamento</th><th>Local de instalação</th></tr>
+            @foreach ($equipamentosRel as $q)
+                @php($nomeQ = trim(($q->fabricante ?? '').' '.($q->modelo ?? '')))
                 <tr>
-                    @if ($eCliFinal !== '')<td><div class="campo-rotulo">Cliente final</div><div class="campo-valor">{{ $eCliFinal }}</div></td>@endif
-                    @if ($eLocaliz !== '')<td><div class="campo-rotulo">Localização da instalação</div><div class="campo-valor">{{ $eLocaliz }}</div></td>@endif
+                    <td><b>{{ $q->tipo?->rotulo() ?? 'Equipamento' }}</b>@if ($nomeQ !== '') · {{ $nomeQ }}@endif<div class="mini">S/N {{ $q->numero_serie ?: '—' }}</div>
+                        @foreach ($bancosDe($q) as $banco)<div class="mini">+ {{ $banco }}</div>@endforeach
+                    </td>
+                    <td>{{ trim((string) $q->localizacao_instalacao) ?: (trim((string) ($q->local?->morada ?? '')) ?: '—') }}</td>
                 </tr>
-            @endif
+            @endforeach
+        </table>
+    @endif
+
+    @if ($eComponentes->isNotEmpty())
+        @if (! $semFichas)<h2>Equipamento</h2>@endif
+        <table class="grelha">
             {{-- Componentes do sistema (equipamentos compostos, ex.: deteção de incêndio). --}}
             @if ($eComponentes->isNotEmpty())
                 <tr>
@@ -273,16 +309,6 @@
                         <div class="campo-rotulo">Componentes do sistema</div>
                         @foreach ($eComponentes as $comp)
                             <div class="cliente-linha">{{ $comp['designacao'] }}@if ((int) ($comp['quantidade'] ?? 0) > 0) · {{ (int) $comp['quantidade'] }} un.@endif</div>
-                        @endforeach
-                    </td>
-                </tr>
-            @endif
-            @if ($semFichas && $i->equipamentosCobertos->isNotEmpty())
-                <tr>
-                    <td colspan="2">
-                        <div class="campo-rotulo">Também cobertos</div>
-                        @foreach ($i->equipamentosCobertos as $ec)
-                            <div class="cliente-linha">{{ $ec->numero_serie ?? '—' }} · {{ trim($ec->fabricante . ' ' . $ec->modelo) ?: '—' }}</div>
                         @endforeach
                     </td>
                 </tr>
@@ -398,6 +424,16 @@
                         <tr><th style="width:60%;">Modelo</th><th>S/N</th></tr>
                         @foreach ($modulos as $m)
                             <tr><td>{{ $m['modelo'] ?? '' }}</td><td>{{ $m['sn'] ?? '' }}</td></tr>
+                        @endforeach
+                    </table>
+                @endif
+                {{-- O campo saiu do formulário (os bancos registam-se na ficha do EQUIPAMENTO): sem
+                     bancos na ficha, mostram-se os associados ao equipamento. --}}
+                @if ($bancos->isEmpty() && $bancosDe($fe)->isNotEmpty())
+                    <table class="ficha-tab">
+                        <tr><th>Bancos de baterias / equipamentos associados</th></tr>
+                        @foreach ($bancosDe($fe) as $banco)
+                            <tr><td>{{ $banco }}</td></tr>
                         @endforeach
                     </table>
                 @endif

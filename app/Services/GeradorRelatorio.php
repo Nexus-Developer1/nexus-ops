@@ -105,12 +105,22 @@ class GeradorRelatorio
         $relatorio = Relatorio::withoutGlobalScopes()
             ->with([
                 'intervencao' => fn ($q) => $q->withoutGlobalScopes()->with([
-                    'equipamento' => fn ($q) => $q->withoutGlobalScopes()->with('local.cliente'),
-                    'equipamentosCobertos' => fn ($q) => $q->withoutGlobalScopes(),
+                    // + equipamentos ASSOCIADOS (bancos de baterias/kits ligados ao UPS): o PDF lista-os
+                    // debaixo de cada equipamento (2026/0012 saiu sem os bancos — set. 2026).
+                    'equipamento' => fn ($q) => $q->withoutGlobalScopes()->with([
+                        'local.cliente',
+                        'equipamentosAssociados' => fn ($q) => $q->withoutGlobalScopes()->orderBy('numero_serie'),
+                    ]),
+                    'equipamentosCobertos' => fn ($q) => $q->withoutGlobalScopes()->with([
+                        'equipamentosAssociados' => fn ($q) => $q->withoutGlobalScopes()->orderBy('numero_serie'),
+                    ]),
                     'contrato' => fn ($q) => $q->withoutGlobalScopes()->with('cliente'),
                     // Fichas de medição (relatório de contrato) + equipamento/local/cliente de cada uma.
                     'fichasMedicao' => fn ($q) => $q->with([
-                        'equipamento' => fn ($q) => $q->withoutGlobalScopes()->with('local.cliente'),
+                        'equipamento' => fn ($q) => $q->withoutGlobalScopes()->with([
+                            'local.cliente',
+                            'equipamentosAssociados' => fn ($q) => $q->withoutGlobalScopes()->orderBy('numero_serie'),
+                        ]),
                     ]),
                     'tecnico',
                     'tecnicos',

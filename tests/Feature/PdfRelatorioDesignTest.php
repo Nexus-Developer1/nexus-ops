@@ -9,6 +9,7 @@ use App\Models\FichaMedicao;
 use App\Models\Intervencao;
 use App\Models\Local;
 use App\Models\Relatorio;
+use App\Services\GeradorRelatorio;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -148,6 +149,43 @@ class PdfRelatorioDesignTest extends TestCase
         // O principal repetido na lista de cobertos também não conta duas vezes.
         $i->equipamentosCobertos()->attach($ups->id);
         $this->assertSame('2', $celula());
+    }
+
+    // Relatório SEM fichas (2026/0012, set. 2026): o PDF saía só com o cliente final/localização do
+    // principal e os outros equipamentos numa linha, sem S/N do principal nem bancos de baterias.
+    // Agora lista todos os equipamentos, cada um com S/N, local e bancos associados.
+    public function test_sem_fichas_lista_todos_os_equipamentos_com_bancos_de_baterias(): void
+    {
+        [$r, $i, $ups] = $this->cenario();
+        $ups->update(['fabricante' => 'RIELLO / AROS', 'modelo' => 'SDL 5000', 'numero_serie' => 'ML12UT119150001', 'cliente_final' => 'Caixa Agrícola', 'localizacao_instalacao' => 'Balcão Tabuaço']);
+        $salicru = Equipamento::create(['local_id' => $ups->local_id, 'tipo' => 'ups', 'estado' => 'operacional', 'fabricante' => 'SALICRU', 'modelo' => 'SLC-3000-TWIN PRO2', 'numero_serie' => '232021A71549', 'cliente_final' => 'Caixa Agrícola', 'localizacao_instalacao' => 'Balcão Tabuaço - Piso 1']);
+        $i->equipamentosCobertos()->attach($salicru->id);
+        // Bancos registados como equipamento associado (filho) — como em produção…
+        Equipamento::create(['local_id' => $ups->local_id, 'equipamento_pai_id' => $ups->id, 'tipo' => 'ups', 'estado' => 'operacional', 'modelo' => 'Banco baterias BX02C', 'numero_serie' => '00631T645560002']);
+        Equipamento::create(['local_id' => $ups->local_id, 'equipamento_pai_id' => $salicru->id, 'tipo' => 'ups', 'estado' => 'operacional', 'modelo' => 'M BAT TWIN PRO2', 'numero_serie' => '232021A73085']);
+        // …e na própria ficha do equipamento (atributos.bancos).
+        $salicru->update(['atributos' => ['bancos' => [['modelo' => 'EXT-2', 'capacidade' => '9Ah', 'num_baterias' => 20, 'numero_serie' => 'BK-77']]]]);
+
+        $html = view('pdf.relatorio', app(GeradorRelatorio::class)->dadosDoPdf($r))->render();
+
+        $this->assertStringContainsString('<h2>Equipamentos</h2>', $html);
+        $this->assertStringContainsString('<b>UPS</b> · RIELLO / AROS SDL 5000', $html);
+        $this->assertStringContainsString('S/N ML12UT119150001', $html);
+        $this->assertStringContainsString('<b>UPS</b> · SALICRU SLC-3000-TWIN PRO2', $html);
+        $this->assertStringContainsString('S/N 232021A71549', $html);
+        $this->assertStringContainsString('+ Banco baterias BX02C · S/N 00631T645560002', $html);
+        $this->assertStringContainsString('+ M BAT TWIN PRO2 · S/N 232021A73085', $html);
+        $this->assertStringContainsString('+ Banco de baterias EXT-2 · 9Ah · 20 baterias · S/N BK-77', $html);
+        $this->assertStringContainsString('Balcão Tabuaço - Piso 1', $html);       // local de cada um
+        $this->assertSame(1, substr_count($html, 'Caixa Agrícola</div>'));          // cliente final uma vez
+        $this->assertStringNotContainsString('Também cobertos', $html);
+
+        // Com fichas, os bancos aparecem na tabela de equipamentos verificados e na ficha.
+        FichaMedicao::create(['intervencao_id' => $i->id, 'equipamento_id' => $ups->id, 'tipo_equipamento' => 'ups', 'serie' => 'ML12UT119150001']);
+        $html = view('pdf.relatorio', app(GeradorRelatorio::class)->dadosDoPdf($r))->render();
+        $this->assertStringContainsString('Equipamentos verificados', $html);
+        $this->assertStringContainsString('+ Banco baterias BX02C · S/N 00631T645560002', $html);
+        $this->assertStringContainsString('Bancos de baterias / equipamentos associados', $html);
     }
 
     public function test_sem_fichas_nao_ha_resumo(): void

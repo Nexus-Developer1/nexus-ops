@@ -299,7 +299,7 @@ class EquipamentoManualTest extends TestCase
 
         $this->assertStringContainsString('Cliente final', $html);
         $this->assertStringContainsString('Hospital Central', $html);
-        $this->assertStringContainsString('Localização da instalação', $html);
+        $this->assertStringContainsString('Local de instalação', $html); // coluna da tabela de equipamentos (set. 2026)
         $this->assertStringContainsString('Edifício B, piso 2', $html);
     }
 
