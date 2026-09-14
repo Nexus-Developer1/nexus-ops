@@ -321,7 +321,13 @@
                              procura em todas pelo nº ou pelo cliente. Clicar num chip abre a encomenda
                              noutro separador (para não perder o que se está a escrever aqui). --}}
                         <div class="sm:col-span-2">
-                            <label class="campo-label" for="encomenda-combo">Encomendas de peças</label>
+                            <div class="mb-2 flex items-center justify-between">
+                                <label class="campo-label mb-0" for="encomenda-combo">Encomendas de peças</label>
+                                <label class="inline-flex cursor-pointer items-center gap-2 text-xs text-texto-medio">
+                                    <input type="checkbox" wire:model.live="encomendasSoAbertas" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-500">
+                                    Só encomendas abertas
+                                </label>
+                            </div>
                             @if ($encomendasEscolhidas->isNotEmpty() || $encomendasManuais !== [])
                                 <div class="mb-2 flex flex-wrap gap-2">
                                     @foreach ($encomendasEscolhidas as $d)
@@ -387,6 +393,47 @@
                             @error('encomendasManuais.*.ano') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             @error('encomendaIds') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             @error('encomendaIds.*') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
+
+                            {{-- Detalhe de cada encomenda ligada: cabeçalho + linhas ao vivo do PHC, para se
+                                 confirmar que é a certa (pedido da equipa, set. 2026). --}}
+                            @foreach ($encomendasDetalhe as $det)
+                                @php($d = $det['dossier'])
+                                <div wire:key="enc-det-{{ $d->id }}" class="mt-3 overflow-hidden rounded-lg border border-borda">
+                                    <div class="flex flex-wrap items-center justify-between gap-2 bg-fundo px-4 py-2.5 text-sm">
+                                        <div class="min-w-0">
+                                            <span class="font-semibold text-texto-forte">Encomenda Peças nº {{ $d->obrano }}/{{ $d->ano }}</span>
+                                            <span class="text-texto-medio"> · {{ $d->nome }} · {{ $d->data?->format('d/m/Y') }}</span>
+                                        </div>
+                                        <div class="flex items-center gap-3 text-xs">
+                                            <span class="etiqueta {{ $d->fechada ? 'bg-slate-100 text-texto-medio' : 'bg-verde-50 text-verde-700' }}">{{ $d->fechada ? 'Fechada' : 'Aberta' }}</span>
+                                            @if ($d->total_debito !== null)<span class="text-texto-medio">{{ number_format((float) $d->total_debito, 2, ',', ' ') }} €</span>@endif
+                                            <a href="{{ route('encomendas.ficha', $d) }}" target="_blank" rel="noopener" class="font-medium text-verde-700 hover:underline">Abrir</a>
+                                        </div>
+                                    </div>
+                                    @if ($det['erro'])
+                                        <p class="px-4 py-3 text-xs text-aviso-500">Não foi possível ler as linhas no PHC agora.</p>
+                                    @elseif ($det['linhas'] === [])
+                                        <p class="px-4 py-3 text-xs text-texto-fraco">Sem linhas.</p>
+                                    @else
+                                        <div class="overflow-x-auto"><table class="w-full text-left text-xs">
+                                            <thead><tr class="border-b border-borda text-[11px] uppercase tracking-wide text-texto-fraco">
+                                                <th class="px-4 py-2 font-semibold">Ref.</th><th class="px-4 py-2 font-semibold">Descrição</th>
+                                                <th class="px-4 py-2 text-right font-semibold">Qtd</th><th class="px-4 py-2 font-semibold">Série(s)</th>
+                                            </tr></thead>
+                                            <tbody>
+                                                @foreach ($det['linhas'] as $l)
+                                                    <tr class="border-b border-borda last:border-0">
+                                                        <td class="whitespace-nowrap px-4 py-1.5 font-medium text-texto-forte">{{ $l->ref ?: '—' }}</td>
+                                                        <td class="px-4 py-1.5 text-texto-medio">{{ $l->descricao ?: '—' }}</td>
+                                                        <td class="whitespace-nowrap px-4 py-1.5 text-right text-texto-medio">{{ $l->qtt !== null ? rtrim(rtrim(number_format($l->qtt, 2, ',', ''), '0'), ',') : '—' }}</td>
+                                                        <td class="px-4 py-1.5 text-texto-medio">{{ $l->series ?: '—' }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table></div>
+                                    @endif
+                                </div>
+                            @endforeach
                         </div>
                     </div>
                 </section>

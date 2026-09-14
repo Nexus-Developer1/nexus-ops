@@ -239,6 +239,61 @@ class IntervencaoEncomendaTest extends TestCase
         $this->assertSame(0, EncomendaManual::count());
     }
 
+    // Detalhe da encomenda ligada (set. 2026): com o nº sozinho não se sabe se é a certa, por
+    // isso o editor mostra em baixo o cabeçalho e as LINHAS lidas ao vivo do PHC.
+    public function test_encomenda_ligada_mostra_o_cabecalho_e_as_linhas_do_phc(): void
+    {
+        $enc = $this->dossier(3280, nome: 'PONTUAL - IT BUSINESS');
+        $enc->update(['total_debito' => 1234.5]);
+
+        $this->editorNovo()
+            ->call('adicionarEncomenda', $enc->id)
+            ->assertSee('Encomenda Peças nº 3280/2026')
+            ->assertSee('PONTUAL - IT BUSINESS')
+            ->assertSee('Aberta')
+            ->assertSee('1 234,50 €')
+            ->assertViewHas('encomendasDetalhe', fn ($d) => $d->count() === 1 && $d->first()['erro'] === false && count($d->first()['linhas']) >= 1)
+            ->assertSee('Ref.')
+            ->assertSee('UPS Riello NPW 2000VA'); // 1.ª linha do FakeErpDriver
+    }
+
+    public function test_phc_em_baixo_mostra_o_cabecalho_com_aviso_e_nao_rebenta(): void
+    {
+        $this->app->bind(ErpSyncDriver::class, fn () => new class extends FakeErpDriver
+        {
+            public function obterLinhasDossier(string $bostamp): iterable
+            {
+                throw new \RuntimeException('SQLSTATE[HY000]: Unable to connect to server');
+            }
+        });
+        $enc = $this->dossier(3281);
+
+        $this->editorNovo()
+            ->call('adicionarEncomenda', $enc->id)
+            ->assertOk()
+            ->assertSee('Encomenda Peças nº 3281/2026')
+            ->assertSee('Não foi possível ler as linhas no PHC agora.')
+            ->assertViewHas('encomendasDetalhe', fn ($d) => $d->first()['erro'] === true);
+    }
+
+    public function test_filtro_so_encomendas_abertas(): void
+    {
+        $aberta = $this->dossier(3300);
+        $fechada = $this->dossier(3301);
+        $fechada->update(['fechada' => true]);
+
+        $editor = $this->editorNovo()
+            ->assertSee('Só encomendas abertas')
+            ->assertViewHas('encomendasFiltradas', fn ($l) => $l->pluck('id')->sort()->values()->all() === [$aberta->id, $fechada->id]);
+
+        $editor->set('encomendasSoAbertas', true)
+            ->assertViewHas('encomendasFiltradas', fn ($l) => $l->pluck('id')->all() === [$aberta->id]);
+
+        // Também na pesquisa por texto.
+        $editor->set('encomendaBusca', '330')
+            ->assertViewHas('encomendasFiltradas', fn ($l) => $l->pluck('id')->all() === [$aberta->id]);
+    }
+
     public function test_ficha_de_uma_proposta_nao_tem_a_seccao(): void
     {
         Livewire::actingAs($this->admin)->test(Ficha::class, ['dossier' => $this->dossier(6970, 3)])

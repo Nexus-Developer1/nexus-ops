@@ -25,11 +25,13 @@ use App\Models\User;
 use App\Services\Agenda\SincronizadorAgenda;
 use App\Services\Auditor;
 use App\Services\Encomendas\LigadorEncomendasManuais;
+use App\Services\Erp\ErpSyncDriver;
 use App\Services\GeradorRelatorio;
 use App\Services\Relatorios\LeitorTesteDescarga;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -91,6 +93,9 @@ class Novo extends Component
     public array $encomendaIds = [];
 
     public string $encomendaBusca = '';
+
+    // Filtro da pesquisa: só encomendas de peças ainda ABERTAS no PHC (set. 2026).
+    public bool $encomendasSoAbertas = false;
 
     // Encomendas escritas À MÃO (ainda não chegaram do PHC): [{obrano, ano}]. Quando o dossiê
     // chega no sync, passam sozinhas a ligação normal. O nº recomeça todos os anos no PHC.
@@ -604,6 +609,7 @@ class Novo extends Component
         $busca = trim($this->encomendaBusca);
         $q = Dossier::query()
             ->where('ndos', Dossier::TIPO_ENCOMENDA_PECAS)
+            ->when($this->encomendasSoAbertas, fn ($w) => $w->where('fechada', false))
             ->whereNotIn('id', array_map('intval', $this->encomendaIds) ?: [0]);
 
         if ($busca === '') {
@@ -620,6 +626,29 @@ class Novo extends Component
 
         return $q->orderByDesc('data')->orderByDesc('obrano')->limit(10)
             ->get(['id', 'obrano', 'data', 'nome', 'fechada', 'total_debito']);
+    }
+
+    // Detalhe de cada encomenda ligada — cabeçalho + LINHAS lidas ao vivo do PHC (pedido da
+    // equipa, set. 2026: com o nº sozinho não se sabe se é a encomenda certa). As linhas
+    // ficam em cache 10 min por dossiê: o editor re-renderiza a cada tecla e o PHC não tem
+    // de ser consultado de cada vez. PHC em baixo → o cabeçalho aparece na mesma, com aviso.
+    /** @return Collection<int, array{dossier: Dossier, linhas: list<object>, erro: bool}> */
+    private function encomendasDetalhe(Collection $escolhidas): Collection
+    {
+        return $escolhidas->map(function (Dossier $d) {
+            $erro = false;
+            try {
+                $linhas = Cache::remember('linhas-dossier:'.$d->id_erp, 600, fn () => array_values(
+                    iterator_to_array(app(ErpSyncDriver::class)->obterLinhasDossier($d->id_erp), false),
+                ));
+            } catch (\Throwable $e) {
+                $linhas = [];
+                $erro = true;
+                Log::warning('Falha a ler as linhas da encomenda ligada ao relatório.', ['bostamp' => $d->id_erp, 'erro' => $e->getMessage()]);
+            }
+
+            return ['dossier' => $d, 'linhas' => $linhas, 'erro' => $erro];
+        });
     }
 
     private function equipamentosFiltrados(string $busca): Collection
@@ -1608,8 +1637,9 @@ class Novo extends Component
             'equipamentosFiltrados' => $this->equipamentosFiltrados($this->equipamentoBusca),
             'equipamentosLista' => $this->equipamentosLista(),
             'encomendasFiltradas' => $this->encomendasFiltradas(),
-            'encomendasEscolhidas' => $this->encomendaIds === [] ? collect() : Dossier::whereIn('id', array_map('intval', $this->encomendaIds))
-                ->orderByDesc('data')->get(['id', 'obrano', 'data', 'nome', 'fechada']),
+            'encomendasEscolhidas' => $encomendasEscolhidas = ($this->encomendaIds === [] ? collect() : Dossier::whereIn('id', array_map('intval', $this->encomendaIds))
+                ->orderByDesc('data')->get(['id', 'id_erp', 'obrano', 'ano', 'data', 'nome', 'fechada', 'total_debito'])),
+            'encomendasDetalhe' => $this->encomendasDetalhe($encomendasEscolhidas),
             'anexadosIds' => $anexadosIds,
             'tipos' => TipoIntervencao::cases(),
             'anexosExistentes' => $anexosExistentes,
