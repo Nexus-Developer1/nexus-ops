@@ -6,8 +6,6 @@
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Novo equipamento</h1>
-                    <p class="mt-2 text-sm text-texto-medio">Registo manual de um equipamento não vendido por nós — fica disponível em contratos e relatórios.</p>
-                    <p class="mt-2 text-sm text-texto-medio">Os campos marcados com <span class="text-perigo-500">*</span> são obrigatórios.</p>
                 </div>
                 <div class="flex items-center gap-3">
                     <a href="{{ route('ativos') }}" wire:navigate class="botao-secundario">Cancelar</a>

@@ -27,7 +27,9 @@ class CamposObrigatoriosTest extends TestCase
     public function test_novo_equipamento_marca_e_exige_os_obrigatorios(): void
     {
         Livewire::actingAs($this->admin())->test(Novo::class)
-            ->assertSee('são obrigatórios')
+            // Os textos de apoio sob o título saíram (set. 2026); os asteriscos continuam.
+            ->assertDontSee('são obrigatórios')
+            ->assertSeeHtml('<span class="text-perigo-500">*</span>')
             ->call('guardar')
             ->assertHasErrors(['cliente_id']); // cliente é obrigatório (tipo/estado têm default)
     }
