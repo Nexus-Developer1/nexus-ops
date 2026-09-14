@@ -81,7 +81,7 @@
                             @if ($evento->equipamento)
                                 <div class="flex justify-between gap-4"><dt class="text-texto-fraco">Equipamento</dt><dd class="text-right font-medium text-texto-forte">{{ trim($evento->equipamento->fabricante . ' ' . $evento->equipamento->modelo) ?: $evento->equipamento->numero_serie }}</dd></div>
                             @endif
-                            <div class="flex justify-between gap-4"><dt class="text-texto-fraco">Técnico</dt><dd class="text-right font-medium text-texto-forte">{{ $evento->tecnico_label ?? 'Por atribuir' }}</dd></div>
+                            <div class="flex justify-between gap-4"><dt class="text-texto-fraco">Técnico</dt><dd class="text-right font-medium text-texto-forte">{{ $evento->tecnico_label ?? '—' }}</dd></div>
                             @if ($evento->notas)
                                 <div><dt class="text-texto-fraco">Notas</dt><dd class="mt-1 whitespace-pre-line font-medium text-texto-forte">{{ $evento->notas }}</dd></div>
                             @endif
@@ -467,9 +467,6 @@
                         <span class="h-3 w-3 rounded-full" style="background-color: {{ $t['cor'] }}"></span> {{ $t['nome'] }}
                     </span>
                 @endforeach
-                <span class="inline-flex items-center gap-2">
-                    <span class="h-3 w-3 rounded-full" style="background-color: #94a3b8"></span> Por atribuir
-                </span>
             </div>
 
         </div>
