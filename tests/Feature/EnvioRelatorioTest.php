@@ -82,6 +82,56 @@ class EnvioRelatorioTest extends TestCase
             && $job->mensagem === 'Olá, segue o relatório.');
     }
 
+    // Quem envia recebe sempre cópia (pedido da equipa, set. 2026) e o «Para» aceita vários
+    // endereços separados por «;» ou «,».
+    public function test_quem_envia_recebe_copia_e_para_aceita_varios(): void
+    {
+        Queue::fake();
+        $relatorio = $this->relatorioPara('cliente@exemplo.pt');
+
+        Livewire::actingAs($this->admin())->test(Enviar::class, ['relatorio' => $relatorio])
+            ->assertSee('Recebes uma cópia em a@nexus.pt')
+            ->set('para', 'comercial@pontual.pt; Gelimar.Trillo@pontual.pt ,comercial@pontual.pt')
+            ->call('enviar')
+            ->assertHasNoErrors()
+            ->assertSet('para', 'comercial@pontual.pt; gelimar.trillo@pontual.pt'); // normalizado, sem repetidos
+
+        Queue::assertPushed(EnviarRelatorioPorEmail::class, fn ($job) => $job->para === 'comercial@pontual.pt; gelimar.trillo@pontual.pt'
+            && $job->cc === 'a@nexus.pt');
+    }
+
+    public function test_um_email_invalido_no_meio_de_varios_e_recusado(): void
+    {
+        Queue::fake();
+        $relatorio = $this->relatorioPara('cliente@exemplo.pt');
+
+        Livewire::actingAs($this->admin())->test(Enviar::class, ['relatorio' => $relatorio])
+            ->set('para', 'comercial@pontual.pt; joao@')
+            ->call('enviar')
+            ->assertHasErrors(['para']);
+
+        Queue::assertNothingPushed();
+    }
+
+    public function test_job_envia_a_todos_com_copia_a_quem_enviou(): void
+    {
+        Mail::fake();
+        $relatorio = $this->relatorioPara('cliente@exemplo.pt');
+
+        (new EnviarRelatorioPorEmail($relatorio, 'a@cliente.pt; b@cliente.pt', 'Assunto', 'Msg', 'tecnico@nexus.pt'))
+            ->handle(app(GeradorRelatorio::class));
+
+        Mail::assertSent(RelatorioParaCliente::class, fn ($mail) => $mail->hasTo('a@cliente.pt')
+            && $mail->hasTo('b@cliente.pt') && $mail->hasCc('tecnico@nexus.pt'));
+        $this->assertSame('a@cliente.pt; b@cliente.pt', $relatorio->fresh()->enviado_para);
+
+        // Se quem envia já está no «Para», não vai duplicado em cópia.
+        Mail::fake();
+        (new EnviarRelatorioPorEmail($relatorio, 'tecnico@nexus.pt', 'Assunto', 'Msg', 'tecnico@nexus.pt'))
+            ->handle(app(GeradorRelatorio::class));
+        Mail::assertSent(RelatorioParaCliente::class, fn ($mail) => $mail->hasTo('tecnico@nexus.pt') && ! $mail->hasCc('tecnico@nexus.pt'));
+    }
+
     public function test_email_do_relatorio_usa_o_template_verde_do_site(): void
     {
         $relatorio = $this->relatorioPara('cliente@exemplo.pt');
@@ -110,10 +160,11 @@ class EnvioRelatorioTest extends TestCase
             ->call('enviar')
             ->assertHasErrors(['para' => 'required']);
 
-        // Malformado ("joao@") → regra 'email', também barrado na página, não despacha.
+        // Malformado ("joao@") → barrado pela verificação endereço a endereço (o campo aceita
+        // vários desde set. 2026, por isso a regra deixou de ser a 'email' do Laravel).
         $comp->set('para', 'joao@')
             ->call('enviar')
-            ->assertHasErrors(['para' => 'email']);
+            ->assertHasErrors(['para']);
 
         // Nunca chegou nada à fila (a validação corre antes do dispatch).
         Queue::assertNothingPushed();

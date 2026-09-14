@@ -24,8 +24,13 @@
                 <div class="space-y-5 px-6 py-6">
                     <div>
                         <label class="campo-label" for="para">Para <span class="text-perigo-500">*</span></label>
-                        <input id="para" wire:model="para" type="email" class="campo-input" placeholder="cliente@dominio.pt" autocomplete="off">
+                        {{-- type=text (não email): aceita vários endereços separados por «;». --}}
+                        <input id="para" wire:model="para" type="text" class="campo-input" placeholder="cliente@dominio.pt; outro@dominio.pt" autocomplete="off">
                         @error('para') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                        {{-- Quem envia recebe sempre cópia (pedido da equipa, set. 2026). --}}
+                        @if (auth()->user()->email)
+                            <p class="mt-1.5 text-xs text-texto-fraco">Recebes uma cópia em {{ auth()->user()->email }}.</p>
+                        @endif
                     </div>
 
                     <div>

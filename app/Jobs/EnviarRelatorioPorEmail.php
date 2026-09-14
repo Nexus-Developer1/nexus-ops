@@ -27,6 +27,7 @@ class EnviarRelatorioPorEmail implements ShouldQueue
         public string $para,
         public string $assunto,
         public string $mensagem,
+        public ?string $cc = null, // quem envia recebe cópia (set. 2026)
     ) {}
 
     public function handle(GeradorRelatorio $gerador): void
@@ -57,7 +58,14 @@ class EnviarRelatorioPorEmail implements ShouldQueue
         $disco->put($caminho, $conteudo);
         $sha256 = hash('sha256', $conteudo);
 
-        Mail::to($this->para)->send(new RelatorioParaCliente($this->relatorio, $this->assunto, $this->mensagem));
+        // «Para» pode trazer vários emails separados por «;» (set. 2026); a cópia vai para
+        // quem enviou, se não for já um dos destinatários.
+        $destinatarios = array_values(array_filter(array_map('trim', explode(';', $this->para))));
+        $mail = Mail::to($destinatarios);
+        if ($this->cc && ! in_array(mb_strtolower($this->cc), array_map('mb_strtolower', $destinatarios), true)) {
+            $mail->cc($this->cc);
+        }
+        $mail->send(new RelatorioParaCliente($this->relatorio, $this->assunto, $this->mensagem));
 
         $this->relatorio->update([
             'estado' => EstadoRelatorio::Enviado,

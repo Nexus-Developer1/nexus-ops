@@ -54,28 +54,59 @@ class Enviar extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
+        // Vários destinatários, separados por «;» ou «,» (set. 2026) — cada um tem de ser um
+        // email válido. Normaliza-se para «a@x.pt; b@y.pt» antes de validar e de guardar.
+        $this->para = self::normalizarDestinatarios($this->para);
+
         $this->validate([
-            'para' => ['required', 'email'],
+            'para' => ['required', 'string', 'max:1000'],
             'assunto' => ['required', 'string', 'max:255'],
             'mensagem' => ['required', 'string', 'max:5000'],
         ]);
+        foreach (self::destinatarios($this->para) as $email) {
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $this->addError('para', "«{$email}» não é um email válido.");
+
+                return;
+            }
+        }
+
+        // Quem envia recebe sempre cópia (pedido da equipa, set. 2026): fica com o mesmo email
+        // que o cliente recebeu, com o PDF, na própria caixa.
+        $cc = auth()->user()->email ?: null;
 
         EnviarRelatorioPorEmail::dispatch(
             $this->relatorio,
-            trim($this->para),
+            $this->para,
             trim($this->assunto),
             $this->mensagem,
+            $cc,
         );
 
         // Auditoria: emissão de documento oficial ao cliente (CLAUDE.md §11).
         Auditor::registar('relatorio_enviado', $this->relatorio, [
             'numero' => $this->relatorio->numero,
-            'para' => trim($this->para),
+            'para' => $this->para,
+            'cc' => $cc,
         ]);
 
         session()->flash('sucesso', "Relatório {$this->relatorio->numero} em envio para {$this->para}.");
 
         return redirect()->route('relatorios');
+    }
+
+    /** «a@x.pt;  b@y.pt , c@z.pt» → «a@x.pt; b@y.pt; c@z.pt» (sem repetidos, sem vazios). */
+    public static function normalizarDestinatarios(string $texto): string
+    {
+        return implode('; ', self::destinatarios($texto));
+    }
+
+    /** @return list<string> */
+    public static function destinatarios(string $texto): array
+    {
+        return collect(preg_split('/[;,\s]+/', $texto) ?: [])
+            ->map(fn ($e) => mb_strtolower(trim($e)))
+            ->filter()->unique()->values()->all();
     }
 
     public function render()
