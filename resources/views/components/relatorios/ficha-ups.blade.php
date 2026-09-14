@@ -2,6 +2,7 @@
     'prefixo',              // caminho Livewire da ficha, ex.: "fichas.123"
     'descarga' => [],       // valores da tabela do teste de descarga (último recurso do gráfico)
     'curva' => [],          // curva importada do ficheiro do teste (fonte preferida do gráfico)
+    'ordem',                // ordem dos blocos escolhida pelo utilizador (Novo::CAMPOS['ficha_ups'] validada)
 ])
 
 @php
@@ -36,194 +37,36 @@
 @endphp
 
 {{-- Campos da ficha de medições (sem cabeçalho próprio — o contexto/tab vem de fora). --}}
-<div class="space-y-6" wire:key="ficha-{{ $prefixo }}">
+<div class="space-y-6" wire:key="ficha-{{ $prefixo }}" x-data="{ organizar: false, arrastado: null }">
 
-        {{-- Identificação do equipamento --}}
-        <div class="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-            <div><label class="campo-label">Marca</label><input type="text" wire:model="{{ $prefixo }}.marca" class="campo-input"></div>
-            <div><label class="campo-label">Modelo</label><input type="text" wire:model="{{ $prefixo }}.modelo" class="campo-input"></div>
-            <div><label class="campo-label">Nº de série</label><input type="text" wire:model="{{ $prefixo }}.serie" class="campo-input"></div>
-            <div><label class="campo-label">Baterias</label><input type="text" wire:model="{{ $prefixo }}.baterias" class="campo-input" placeholder="Ex: 40"></div>
+    {{-- Blocos REORDENÁVEIS por utilizador (pedido da equipa, set. 2026), tal como nos Dados
+         Gerais: «Organizar campos» → arrastar (desktop) ou setas ▲▼ (telemóvel). Cada bloco
+         vive numa partial em components/relatorios/ficha-ups; a ordem vem do componente Livewire
+         (grupo ficha_ups), já validada contra a whitelist. --}}
+    <div class="-mb-3 flex flex-wrap items-center justify-end gap-3 text-xs">
+        <button type="button" x-show="organizar" x-cloak wire:click="reporOrdemCampos('ficha_ups')" class="font-medium text-texto-medio hover:text-texto-forte hover:underline">Repor ordem de fábrica</button>
+        <button type="button" @click="organizar = !organizar; arrastado = null" class="inline-flex items-center gap-1.5 rounded-lg border border-borda px-3 py-1.5 font-medium text-texto-medio transition hover:bg-fundo hover:text-texto-forte" :class="organizar && 'border-verde-300 bg-verde-50 text-verde-700'">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
+            <span x-text="organizar ? 'Concluir' : 'Organizar campos'"></span>
+        </button>
+    </div>
+
+    @foreach ($ordem as $bloco)
+        <div wire:key="campo-{{ $prefixo }}-{{ $bloco }}" class="relative"
+            :class="organizar && 'rounded-lg border border-dashed border-verde-300 bg-verde-50/40 p-3 pt-9 cursor-move'"
+            :draggable="organizar"
+            x-on:dragstart="if (!organizar) return; arrastado = '{{ $bloco }}'"
+            x-on:dragover.prevent
+            x-on:drop.prevent="if (organizar && arrastado && arrastado !== '{{ $bloco }}') { $wire.reordenarCampos(window.reordenar($wire.ordemCampos.ficha_ups, arrastado, '{{ $bloco }}'), 'ficha_ups') } arrastado = null">
+            <div x-show="organizar" x-cloak class="absolute right-2 top-2 flex items-center gap-1">
+                <button type="button" wire:click="moverCampo('{{ $bloco }}', -1, 'ficha_ups')" title="Subir" class="flex h-7 w-7 items-center justify-center rounded-md border border-borda bg-white text-texto-medio hover:text-verde-700 disabled:opacity-30" @disabled($loop->first)>
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+                </button>
+                <button type="button" wire:click="moverCampo('{{ $bloco }}', 1, 'ficha_ups')" title="Descer" class="flex h-7 w-7 items-center justify-center rounded-md border border-borda bg-white text-texto-medio hover:text-verde-700 disabled:opacity-30" @disabled($loop->last)>
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+            </div>
+            @include('components.relatorios.ficha-ups.' . $bloco)
         </div>
-
-        {{-- Configuração --}}
-        <div class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
-            <div>
-                <label class="campo-label">Configuração</label>
-                <select wire:model="{{ $prefixo }}.config_tipo" class="campo-select">
-                    <option value="">—</option>
-                    <option value="simples">Simples</option>
-                    <option value="modular">Modular</option>
-                    <option value="paralelo">Paralelo</option>
-                </select>
-            </div>
-            <div class="flex items-end pb-1">
-                <label class="inline-flex items-center gap-2 text-sm text-texto-forte">
-                    <input type="checkbox" wire:model="{{ $prefixo }}.bypass_externo" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-500">
-                    Bypass externo
-                </label>
-            </div>
-        </div>
-
-        {{-- Módulos de potência (até 4). Os "Bancos de bateria" saíram do formulário a pedido
-             da equipa — os bancos registam-se na ficha do EQUIPAMENTO; fichas antigas com
-             bancos preenchidos continuam a mostrá-los no PDF. --}}
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div>
-                <p class="campo-label">Módulos de potência</p>
-                <div class="space-y-2">
-                    @for ($i = 0; $i < FichaMedicao::MAX_LINHAS; $i++)
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="text" wire:model="{{ $prefixo }}.modulos.{{ $i }}.modelo" class="campo-input" placeholder="Modelo">
-                            <input type="text" wire:model="{{ $prefixo }}.modulos.{{ $i }}.sn" class="campo-input" placeholder="N/S">
-                        </div>
-                    @endfor
-                </div>
-            </div>
-        </div>
-
-        {{-- Valores elétricos --}}
-        <div>
-            <p class="mb-2 text-sm font-semibold text-texto-forte">Medições elétricas</p>
-            <div class="space-y-4">
-            @foreach ($filasEletricas as $fila)
-            <div class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach ($fila as $grupo => $campos)
-                    <div class="rounded-lg border border-borda bg-white px-3 py-2.5">
-                        <p class="mb-1.5 text-xs font-medium text-texto-medio">{{ $grupo }}</p>
-                        <div class="grid gap-2 {{ count($campos) === 1 ? 'grid-cols-1' : 'grid-cols-3' }}">
-                            @foreach ($campos as $campo => $curto)
-                                <div>
-                                    <label class="mb-0.5 block text-[11px] text-texto-fraco">{{ $curto }}</label>
-                                    @if ($campo === 'temperatura')
-                                        {{-- Acima de 25 °C fica a vermelho, em tempo real e ao carregar a ficha. --}}
-                                        <input type="number" step="0.01" inputmode="decimal" wire:model="{{ $prefixo }}.{{ $campo }}"
-                                            x-data="{ marcar() { const v = parseFloat(this.$el.value); const alta = !isNaN(v) && v > 25; ['text-perigo-600', 'border-perigo-500', 'font-semibold'].forEach(c => this.$el.classList.toggle(c, alta)); } }"
-                                            x-init="marcar()" @input="marcar()"
-                                            class="campo-input px-2 py-1.5 text-sm">
-                                    @else
-                                        <input type="number" step="0.01" inputmode="decimal" wire:model="{{ $prefixo }}.{{ $campo }}" class="campo-input px-2 py-1.5 text-sm">
-                                    @endif
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-            @endforeach
-            </div>
-        </div>
-
-        {{-- Verificações --}}
-        <div>
-            <p class="mb-2 text-sm font-semibold text-texto-forte">Verificações</p>
-            <div class="space-y-2">
-                @foreach (FichaMedicao::VERIFICACOES as $chave => $rotulo)
-                    <div class="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr,7rem,1fr]">
-                        <span class="text-sm text-texto-forte">{{ $rotulo }}</span>
-                        <select wire:model="{{ $prefixo }}.verificacoes.{{ $chave }}.estado" class="campo-select py-1.5 text-sm">
-                            <option value="">—</option>
-                            <option value="ok">OK</option>
-                            <option value="nok">NOK</option>
-                        </select>
-                        <input type="text" wire:model="{{ $prefixo }}.verificacoes.{{ $chave }}.nota" class="campo-input py-1.5 text-sm" placeholder="Observação">
-                    </div>
-                @endforeach
-            </div>
-        </div>
-
-        {{-- Teste de descarga --}}
-        <div>
-            <p class="mb-2 text-sm font-semibold text-texto-forte">Teste de descarga</p>
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[34rem] text-sm">
-                    <thead>
-                        <tr class="text-left text-xs text-texto-medio">
-                            <th class="px-2 py-1.5 font-medium">Tempo</th>
-                            @foreach (FichaMedicao::COLS_DESCARGA as $col => $rotuloCol)
-                                <th class="px-2 py-1.5 font-medium">{{ $rotuloCol }}</th>
-                            @endforeach
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (FichaMedicao::LINHAS_DESCARGA as $linha => $rotuloLinha)
-                            <tr class="border-t border-borda">
-                                <td class="px-2 py-1 font-medium text-texto-forte whitespace-nowrap">{{ $rotuloLinha }}</td>
-                                @foreach (array_keys(FichaMedicao::COLS_DESCARGA) as $col)
-                                    <td class="px-1 py-1">
-                                        <input type="number" step="0.01" inputmode="decimal" wire:model="{{ $prefixo }}.teste_descarga.{{ $linha }}.{{ $col }}" class="campo-input px-2 py-1 text-sm">
-                                    </td>
-                                @endforeach
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @php($equipId = (int) (explode('.', $prefixo)[1] ?? 0))
-            {{-- Ficheiro do teste (battest.txt) → o gráfico desenha a curva completa, igual à
-                 do Excel; a tabela acima só é usada quando não há ficheiro. --}}
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-                <label class="campo-label !mb-0" for="descarga-ficheiro-{{ $equipId }}">Ficheiro do teste</label>
-                <input id="descarga-ficheiro-{{ $equipId }}" type="file" accept=".txt,.csv,.log"
-                    wire:model="descargaFicheiros.{{ $equipId }}"
-                    class="text-sm text-texto-medio file:mr-3 file:rounded-lg file:border-0 file:bg-verde-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-verde-700 hover:file:bg-verde-100">
-                <span wire:loading wire:target="descargaFicheiros.{{ $equipId }}" class="text-xs text-texto-fraco">A ler…</span>
-                @if ($curva !== [])
-                    <button type="button" wire:click="removerCurvaDescarga({{ $equipId }})" class="text-sm font-medium text-texto-fraco hover:text-perigo-600">Remover gráfico</button>
-                @endif
-            </div>
-            @error('descargaFicheiros.'.$equipId) <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-
-            {{-- Gráfico (o mesmo do PDF): curva do ficheiro; sem ficheiro, os valores da tabela. --}}
-            @if ($curva !== [] || $descarga !== [])
-                <div class="mt-3 overflow-x-auto">
-                    <x-relatorios.grafico-descarga :curva="$curva" :dados="$descarga" :largura="640" :altura="260" />
-                </div>
-            @endif
-            <div class="mt-3 sm:max-w-xs">
-                <label class="campo-label">Baterias em funcionamento</label>
-                <select wire:model="{{ $prefixo }}.baterias_funcionamento" class="campo-select">
-                    <option value="">—</option>
-                    <option value="ok">OK</option>
-                    <option value="nok">NOK</option>
-                </select>
-            </div>
-        </div>
-
-        {{-- Conclusão --}}
-        <div class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
-            <div>
-                <label class="campo-label">Equipamento a suportar a carga e sem anomalias</label>
-                <select wire:model="{{ $prefixo }}.carga_a_funcionar" class="campo-select">
-                    <option value="">—</option>
-                    <option value="ok">OK</option>
-                    <option value="nok">NOK</option>
-                </select>
-            </div>
-            <div>
-                <label class="campo-label">Equipamento com status carga no inversor</label>
-                <select wire:model="{{ $prefixo }}.ups_modo_normal" class="campo-select">
-                    <option value="">—</option>
-                    <option value="ok">OK</option>
-                    <option value="nok">NOK</option>
-                </select>
-            </div>
-            <div class="sm:col-span-2">
-                <label class="campo-label">Notas finais</label>
-                <textarea wire:model="{{ $prefixo }}.notas_finais" rows="2" class="campo-input resize-none" placeholder="Observações gerais da intervenção neste equipamento…"></textarea>
-            </div>
-        </div>
-
-        {{-- Recomendações e próximos passos (por equipamento) --}}
-        <div>
-            <p class="mb-2 text-sm font-semibold text-texto-forte">Recomendações e próximos passos</p>
-            <div class="flex flex-col gap-3 sm:flex-row">
-                <input type="text" wire:model="{{ $prefixo }}.recomendacao" class="campo-input flex-1" placeholder="Ex: Substituição de baterias">
-                <select wire:model="{{ $prefixo }}.prioridade" class="campo-select w-full shrink-0 sm:w-40">
-                    <option value="Baixa">Baixa</option>
-                    <option value="Normal">Normal</option>
-                    <option value="Alta">Alta</option>
-                </select>
-            </div>
-        </div>
+    @endforeach
 </div>

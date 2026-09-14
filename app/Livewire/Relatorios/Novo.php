@@ -94,15 +94,20 @@ class Novo extends Component
 
     public string $encomendaBusca = '';
 
-    // Ordem dos blocos do cartão «Equipamento e Intervenção» — cada utilizador organiza os
-    // campos como preferir, mediante a importância (pedido da equipa, set. 2026). Guardada nas
+    // Ordem dos blocos do editor, por GRUPO — cada utilizador organiza os campos como preferir,
+    // mediante a importância (pedido da equipa, set. 2026): 'gerais' é o cartão «Equipamento e
+    // Intervenção», 'ficha_ups' a ficha de medições de cada equipamento. Guardada nas
     // preferências do utilizador (BD). #[Locked]: a ordem é lida pelo JS ($wire.ordemCampos)
-    // mas só muda pelas ações abaixo, que revalidam contra a whitelist CAMPOS — a vista faz
-    // @include por chave, por isso nunca pode render uma chave forjada.
-    public const CAMPOS = ['modo', 'origem', 'tipo', 'datas', 'horas', 'tecnicos', 'encomendas'];
+    // mas só muda pelas ações abaixo, que revalidam contra a whitelist CAMPOS — as vistas fazem
+    // @include por chave, por isso nunca podem render uma chave forjada.
+    public const CAMPOS = [
+        'gerais' => ['modo', 'origem', 'tipo', 'datas', 'horas', 'tecnicos', 'encomendas'],
+        'ficha_ups' => ['identificacao', 'configuracao', 'modulos', 'medicoes', 'verificacoes', 'descarga', 'conclusao', 'recomendacoes'],
+    ];
 
     public const PREF_ORDEM_CAMPOS = 'relatorios.ordem_campos';
 
+    /** @var array<string, list<string>> */
     #[Locked]
     public array $ordemCampos = self::CAMPOS;
 
@@ -188,7 +193,7 @@ class Novo extends Component
     public function mount(?Relatorio $relatorio = null): void
     {
         $this->encomendaManualAno = (string) now()->year;
-        $this->ordemCampos = self::ordemNormalizada(auth()->user()->preferencia(self::PREF_ORDEM_CAMPOS, []));
+        $this->ordemCampos = self::ordensNormalizadas(auth()->user()->preferencia(self::PREF_ORDEM_CAMPOS, []));
 
         if ($relatorio && $relatorio->exists) {
             // Editáveis: rascunhos, finalizados E enviados (pedido da equipa). Editar um
@@ -641,45 +646,63 @@ class Novo extends Component
             ->get(['id', 'obrano', 'data', 'nome', 'fechada', 'total_debito']);
     }
 
-    /** Só chaves conhecidas, sem repetidos, e as que faltarem vão para o fim na ordem de fábrica. */
-    public static function ordemNormalizada(mixed $ordem): array
+    /** Só chaves conhecidas do grupo, sem repetidos; as que faltarem vão para o fim na ordem de fábrica. */
+    public static function ordemNormalizada(string $grupo, mixed $ordem): array
     {
+        $fabrica = self::CAMPOS[$grupo] ?? [];
         $limpa = array_values(array_unique(array_filter(
             is_array($ordem) ? $ordem : [],
-            fn ($c) => is_string($c) && in_array($c, self::CAMPOS, true),
+            fn ($c) => is_string($c) && in_array($c, $fabrica, true),
         )));
 
-        return array_merge($limpa, array_values(array_diff(self::CAMPOS, $limpa)));
+        return array_merge($limpa, array_values(array_diff($fabrica, $limpa)));
     }
 
-    private function guardarOrdemCampos(array $ordem): void
+    /** Todos os grupos normalizados. Aceita a forma antiga (lista simples = só os gerais). */
+    public static function ordensNormalizadas(mixed $prefs): array
     {
-        $this->ordemCampos = self::ordemNormalizada($ordem);
+        if (is_array($prefs) && array_is_list($prefs)) {
+            $prefs = ['gerais' => $prefs];
+        }
+        $ordens = [];
+        foreach (array_keys(self::CAMPOS) as $grupo) {
+            $ordens[$grupo] = self::ordemNormalizada($grupo, is_array($prefs) ? ($prefs[$grupo] ?? []) : []);
+        }
+
+        return $ordens;
+    }
+
+    private function guardarOrdemCampos(string $grupo, array $ordem): void
+    {
+        if (! isset(self::CAMPOS[$grupo])) {
+            return;
+        }
+        $this->ordemCampos[$grupo] = self::ordemNormalizada($grupo, $ordem);
         auth()->user()->guardarPreferencia(self::PREF_ORDEM_CAMPOS, $this->ordemCampos);
     }
 
-    // Arrastar e largar (desktop): recebe a ordem nova inteira, vinda do JS.
-    public function reordenarCampos(array $ordem): void
+    // Arrastar e largar (desktop): recebe a ordem nova inteira do grupo, vinda do JS.
+    public function reordenarCampos(array $ordem, string $grupo = 'gerais'): void
     {
-        $this->guardarOrdemCampos($ordem);
+        $this->guardarOrdemCampos($grupo, $ordem);
     }
 
     // Setas ▲▼ (telemóvel): move um bloco uma posição para cima (-1) ou para baixo (+1).
-    public function moverCampo(string $campo, int $delta): void
+    public function moverCampo(string $campo, int $delta, string $grupo = 'gerais'): void
     {
-        $ordem = $this->ordemCampos;
+        $ordem = $this->ordemCampos[$grupo] ?? [];
         $de = array_search($campo, $ordem, true);
         $para = $de === false ? -1 : $de + ($delta < 0 ? -1 : 1);
         if ($de === false || $para < 0 || $para >= count($ordem)) {
             return;
         }
         [$ordem[$de], $ordem[$para]] = [$ordem[$para], $ordem[$de]];
-        $this->guardarOrdemCampos($ordem);
+        $this->guardarOrdemCampos($grupo, $ordem);
     }
 
-    public function reporOrdemCampos(): void
+    public function reporOrdemCampos(string $grupo = 'gerais'): void
     {
-        $this->guardarOrdemCampos(self::CAMPOS);
+        $this->guardarOrdemCampos($grupo, self::CAMPOS[$grupo] ?? []);
     }
 
     // Detalhe de cada encomenda ligada — cabeçalho + LINHAS lidas ao vivo do PHC (pedido da
