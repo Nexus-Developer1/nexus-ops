@@ -236,7 +236,6 @@
                 <div class="flex items-center justify-between px-6 py-5">
                     <div>
                         <h2 class="text-lg font-semibold text-texto-forte">SLAs</h2>
-                        <p class="mt-1 text-xs text-texto-fraco">Opcionais; em cada linha adicionada, a cobertura (8x5/24x7) é obrigatória.</p>
                     </div>
                     <button type="button" wire:click="adicionarSla" class="botao-secundario">+ SLA</button>
                 </div>
