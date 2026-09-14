@@ -32,6 +32,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-01
 
+- 🎨 **Contratos: sai o texto por baixo de «Visitas incluídas»** — «Opcional — total pela vida do contrato. Vazio = sem controlo de saldo.» O campo funciona igual (vazio continua a significar sem controlo de saldo). Requer `optimize`.
+
 - 🎨 **Contratos: sai a frase por baixo do título** — «Os campos marcados com * são obrigatórios», em «Novo contrato» e «Editar contrato». Os asteriscos continuam a marcar os campos obrigatórios. Requer `optimize`.
 
 - ✨ **Intervenção ligada a encomendas de peças** — pedido da equipa. No relatório, em «Dados Gerais», há um campo novo **Encomendas de peças**: sem escrever nada sugere as últimas encomendas de peças **do cliente do relatório**; a escrever, procura em todas pelo nº ou pelo nome do cliente (a peça pode ter sido encomendada noutro nome). As escolhidas ficam como chips com ×; clicar num abre a encomenda noutro separador, para não perder o que se está a escrever. Uma intervenção pode ter **várias** encomendas e a mesma encomenda pode servir **várias** intervenções (a visita do diagnóstico e a que instala a peça). Só entram dossiês do tipo **Encomenda Peças** — propostas e encomendas de produção não aparecem, e se forem forjadas no pedido são recusadas na validação e filtradas outra vez ao gravar. Na **ficha da encomenda** passa a haver a secção «Intervenções associadas» (relatório, data, equipamento, técnico, estado, com link). O PDF do cliente não muda. Tabela nova `intervencao_encomenda`. **Requer migração**, build e `optimize`. +5 testes (652 no total).
