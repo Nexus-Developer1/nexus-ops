@@ -35,7 +35,10 @@ class CamposObrigatoriosTest extends TestCase
     public function test_novo_contrato_marca_e_exige_os_obrigatorios(): void
     {
         Livewire::actingAs($this->admin())->test(Editor::class)
-            ->assertSee('são obrigatórios')
+            // A frase «Os campos marcados com * são obrigatórios» saiu (set. 2026); os
+            // asteriscos continuam a marcar os campos.
+            ->assertDontSee('são obrigatórios')
+            ->assertSeeHtml('<span class="text-perigo-500">*</span>')
             ->set('numero', '')
             ->set('data_inicio', '')
             ->set('data_fim', '')
