@@ -32,6 +32,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-01
 
+- ✨ **Encomenda de peças escrita à mão no relatório** — pedido da equipa. A encomenda é muitas vezes criada no PHC durante a visita, mas os dossiês só chegam à aplicação às 8h, 13h e 19h — até lá não aparece na pesquisa. Por baixo da pesquisa de «Encomendas de peças» há agora **nº + ano + Adicionar**: se a encomenda já estiver na aplicação, liga logo à verdadeira; senão fica numa etiqueta amarela **«Nº 3425/2026 · por sincronizar»**. No **fim de cada sincronização dos dossiês**, as escritas à mão que já chegaram passam **sozinhas** a ligação normal (e aparecem na ficha da encomenda); ao gravar o relatório faz-se a mesma verificação. Guarda-se o **ano** porque a numeração recomeça todos os anos no PHC (a nº 3408 existe em 2026, 2025, 2024…) — o ano vem pré-preenchido com o atual. Nº e ano validados (a gravação recusa valores forjados). Tabela nova `intervencao_encomendas_manuais`. **Requer migração**, build e `optimize`. +6 testes (658 no total).
+
 - 🎨 **Contratos: sai o texto por baixo de «Alertas de visita»** — «Programa avisos para agendar as visitas (as incluídas marcam-se à mão na agenda). O texto é editável e aparece no alerta a partir de 7 dias antes da data.» Os alertas funcionam igual. Requer `optimize`.
 
 - 🎨 **Contratos: sai o texto por baixo de «SLAs»** — «Opcionais; em cada linha adicionada, a cobertura (8x5/24x7) é obrigatória.» A validação continua igual (cada SLA adicionado exige a cobertura). Requer `optimize`.

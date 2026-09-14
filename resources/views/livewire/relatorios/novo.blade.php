@@ -322,7 +322,7 @@
                              noutro separador (para não perder o que se está a escrever aqui). --}}
                         <div class="sm:col-span-2">
                             <label class="campo-label" for="encomenda-combo">Encomendas de peças</label>
-                            @if ($encomendasEscolhidas->isNotEmpty())
+                            @if ($encomendasEscolhidas->isNotEmpty() || $encomendasManuais !== [])
                                 <div class="mb-2 flex flex-wrap gap-2">
                                     @foreach ($encomendasEscolhidas as $d)
                                         <span wire:key="enc-{{ $d->id }}" class="inline-flex items-center gap-1.5 rounded-full border border-verde-200 bg-verde-50 py-1 pl-3 pr-1 text-xs font-medium text-verde-700">
@@ -331,6 +331,17 @@
                                             </a>
                                             <button type="button" wire:click="removerEncomenda({{ $d->id }})" @click="marcarSuja()" title="Desligar esta encomenda"
                                                 class="flex h-5 w-5 items-center justify-center rounded-full text-verde-600 transition hover:bg-verde-100 hover:text-verde-800">
+                                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                        </span>
+                                    @endforeach
+                                    {{-- Escritas à mão, ainda por chegar do PHC: passam a chip verde sozinhas no sync. --}}
+                                    @foreach ($encomendasManuais as $k => $m)
+                                        <span wire:key="encm-{{ $m['obrano'] }}-{{ $m['ano'] }}" class="inline-flex items-center gap-1.5 rounded-full border border-aviso-200 bg-aviso-100/60 py-1 pl-3 pr-1 text-xs font-medium text-aviso-500"
+                                            title="Ainda não chegou do PHC — fica ligada sozinha na próxima sincronização">
+                                            Nº {{ $m['obrano'] }}/{{ $m['ano'] }}<span class="font-normal"> · por sincronizar</span>
+                                            <button type="button" wire:click="removerEncomendaManual({{ $k }})" @click="marcarSuja()" title="Retirar"
+                                                class="flex h-5 w-5 items-center justify-center rounded-full transition hover:bg-aviso-200">
                                                 <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                                             </button>
                                         </span>
@@ -362,6 +373,18 @@
                                     @endforelse
                                 </ul>
                             </div>
+                            {{-- Escrever o nº à mão: para a encomenda criada agora no PHC que o sync ainda não trouxe. --}}
+                            <div class="mt-2 flex flex-wrap items-center gap-2">
+                                <input type="number" inputmode="numeric" min="1" wire:model="encomendaManualNumero" wire:keydown.enter.prevent="adicionarEncomendaManual"
+                                    aria-label="Nº da encomenda (à mão)" placeholder="Nº à mão" class="campo-input w-32 py-2">
+                                <input type="number" inputmode="numeric" min="2000" wire:model="encomendaManualAno"
+                                    aria-label="Ano da encomenda" placeholder="Ano" class="campo-input w-24 py-2">
+                                <button type="button" wire:click="adicionarEncomendaManual" @click="marcarSuja()" class="botao-secundario py-2">Adicionar</button>
+                            </div>
+                            @error('encomendaManualNumero') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            @error('encomendaManualAno') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            @error('encomendasManuais.*.obrano') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            @error('encomendasManuais.*.ano') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             @error('encomendaIds') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             @error('encomendaIds.*') <p class="mt-1 text-xs text-perigo-500">{{ $message }}</p> @enderror
                         </div>

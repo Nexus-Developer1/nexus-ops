@@ -78,6 +78,12 @@ class Intervencao extends Model
         return $this->belongsToMany(Dossier::class, 'intervencao_encomenda')->withTimestamps();
     }
 
+    // Encomendas de peças escritas à mão, ainda por chegar do PHC (nº + ano).
+    public function encomendasManuais(): HasMany
+    {
+        return $this->hasMany(EncomendaManual::class)->orderBy('ano')->orderBy('obrano');
+    }
+
     public function tecnico(): BelongsTo
     {
         return $this->belongsTo(User::class, 'tecnico_id');

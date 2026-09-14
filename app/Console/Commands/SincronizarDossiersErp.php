@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Dossier;
+use App\Services\Encomendas\LigadorEncomendasManuais;
 use App\Services\Erp\ErpSyncDriver;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -48,11 +49,23 @@ class SincronizarDossiersErp extends Command
             return self::FAILURE;
         }
 
+        // Encomendas de peças escritas à mão nos relatórios que acabaram de chegar do PHC:
+        // passam a ligação normal (set. 2026). Uma falha aqui não estraga o sync, que já correu.
+        $manuaisLigadas = 0;
+        try {
+            $manuaisLigadas = app(LigadorEncomendasManuais::class)->reconciliar();
+        } catch (Throwable $e) {
+            Log::warning('Falha a ligar as encomendas escritas à mão.', ['erro' => $e->getMessage()]);
+        }
+
         $resumo = "{$criados} criados, {$atualizados} atualizados, {$iguais} iguais (saltados), {$erros} erros";
         $resumo .= $conferencia['saltada']
             ? ' (conferência com o PHC saltada: '.$conferencia['saltada'].').'
             : ", {$conferencia['orfaos']} ausentes do PHC, {$conferencia['reencontrados']} reencontrados.";
         $this->info("Sincronização concluída: {$resumo}");
+        if ($manuaisLigadas > 0) {
+            $this->info("Encomendas escritas à mão ligadas aos relatórios: {$manuaisLigadas}.");
+        }
 
         // Auditoria do sync (CLAUDE.md §11).
         Log::info('Sync de dossiês do ERP concluído.', [
@@ -65,6 +78,7 @@ class SincronizarDossiersErp extends Command
             'ausentes_do_erp' => $conferencia['orfaos'],
             'reencontrados' => $conferencia['reencontrados'],
             'conferencia_saltada' => $conferencia['saltada'],
+            'encomendas_manuais_ligadas' => $manuaisLigadas,
         ]);
 
         return $erros > 0 ? self::FAILURE : self::SUCCESS;

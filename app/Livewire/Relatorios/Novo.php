@@ -15,6 +15,7 @@ use App\Models\Anexo;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Dossier;
+use App\Models\EncomendaManual;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\FichaMedicao;
@@ -23,6 +24,7 @@ use App\Models\Relatorio;
 use App\Models\User;
 use App\Services\Agenda\SincronizadorAgenda;
 use App\Services\Auditor;
+use App\Services\Encomendas\LigadorEncomendasManuais;
 use App\Services\GeradorRelatorio;
 use App\Services\Relatorios\LeitorTesteDescarga;
 use Illuminate\Database\Eloquent\Builder;
@@ -89,6 +91,14 @@ class Novo extends Component
     public array $encomendaIds = [];
 
     public string $encomendaBusca = '';
+
+    // Encomendas escritas À MÃO (ainda não chegaram do PHC): [{obrano, ano}]. Quando o dossiê
+    // chega no sync, passam sozinhas a ligação normal. O nº recomeça todos os anos no PHC.
+    public array $encomendasManuais = [];
+
+    public string $encomendaManualNumero = '';
+
+    public string $encomendaManualAno = '';
 
     public string $clienteBusca = '';        // pesquisa server-side do cliente
 
@@ -160,6 +170,8 @@ class Novo extends Component
 
     public function mount(?Relatorio $relatorio = null): void
     {
+        $this->encomendaManualAno = (string) now()->year;
+
         if ($relatorio && $relatorio->exists) {
             // Editáveis: rascunhos, finalizados E enviados (pedido da equipa). Editar um
             // ENVIADO reabre o ciclo: ao gravar volta a Rascunho/Finalizado e é preciso
@@ -173,6 +185,8 @@ class Novo extends Component
             $this->equipamento_id = $intervencao->equipamento_id;
             $this->equipamentosCobertos = $intervencao->equipamentosCobertos()->pluck('equipamentos.id')->all();
             $this->encomendaIds = $intervencao->encomendas()->pluck('dossiers.id')->all();
+            $this->encomendasManuais = $intervencao->encomendasManuais()->get(['obrano', 'ano'])
+                ->map(fn ($m) => ['obrano' => $m->obrano, 'ano' => $m->ano])->all();
 
             // Modo deduzido: se a intervenção tem contrato → "contrato", senão "individual".
             $this->contrato_id = $intervencao->contrato_id;
@@ -532,6 +546,37 @@ class Novo extends Component
         $this->encomendaBusca = '';
     }
 
+    // Encomenda escrita à mão (nº + ano). Se o dossiê já estiver na aplicação liga-o logo a
+    // sério; senão fica «por sincronizar» até chegar do PHC.
+    public function adicionarEncomendaManual(): void
+    {
+        $this->validate([
+            'encomendaManualNumero' => ['required', 'integer', 'min:1', 'max:9999999'],
+            'encomendaManualAno' => ['required', 'integer', 'min:2000', 'max:'.(now()->year + 1)],
+        ], [], ['encomendaManualNumero' => 'nº da encomenda', 'encomendaManualAno' => 'ano']);
+
+        $obrano = (int) $this->encomendaManualNumero;
+        $ano = (int) $this->encomendaManualAno;
+
+        $dossierId = Dossier::where('ndos', Dossier::TIPO_ENCOMENDA_PECAS)
+            ->where('obrano', $obrano)->where('ano', $ano)->value('id');
+
+        if ($dossierId) {
+            $this->adicionarEncomenda((int) $dossierId);
+        } elseif (count($this->encomendasManuais) < 20
+            && ! collect($this->encomendasManuais)->contains(fn ($m) => (int) $m['obrano'] === $obrano && (int) $m['ano'] === $ano)) {
+            $this->encomendasManuais[] = ['obrano' => $obrano, 'ano' => $ano];
+        }
+
+        $this->encomendaManualNumero = '';
+    }
+
+    public function removerEncomendaManual(int $indice): void
+    {
+        unset($this->encomendasManuais[$indice]);
+        $this->encomendasManuais = array_values($this->encomendasManuais);
+    }
+
     public function removerEncomenda(int $id): void
     {
         $this->encomendaIds = array_values(array_filter($this->encomendaIds, fn ($e) => (int) $e !== $id));
@@ -673,6 +718,9 @@ class Novo extends Component
         return [
             'encomendaIds' => ['array', 'max:20'],
             'encomendaIds.*' => ['integer', Rule::exists('dossiers', 'id')->where('ndos', Dossier::TIPO_ENCOMENDA_PECAS)],
+            'encomendasManuais' => ['array', 'max:20'],
+            'encomendasManuais.*.obrano' => ['required', 'integer', 'min:1', 'max:9999999'],
+            'encomendasManuais.*.ano' => ['required', 'integer', 'min:2000', 'max:'.(now()->year + 1)],
         ];
     }
 
@@ -1169,6 +1217,26 @@ class Novo extends Component
                     ->where('ndos', Dossier::TIPO_ENCOMENDA_PECAS)
                     ->pluck('id')->all(),
             );
+
+            // Encomendas escritas à mão: ficam as da lista (quem as criou mantém-se), saem as
+            // retiradas. Logo a seguir, as que entretanto já chegaram do PHC passam a ligação
+            // normal — e o formulário passa a mostrá-las como tal.
+            $manuais = collect($this->encomendasManuais)
+                ->map(fn ($m) => ['obrano' => (int) $m['obrano'], 'ano' => (int) $m['ano']])
+                ->unique(fn ($m) => $m['obrano'].'/'.$m['ano'])->values();
+            $intervencao->encomendasManuais()->get()
+                ->reject(fn ($m) => $manuais->contains(fn ($x) => $x['obrano'] === $m->obrano && $x['ano'] === $m->ano))
+                ->each->delete();
+            foreach ($manuais as $m) {
+                EncomendaManual::firstOrCreate(
+                    ['intervencao_id' => $intervencao->id, 'obrano' => $m['obrano'], 'ano' => $m['ano']],
+                    ['criado_por' => auth()->id()],
+                );
+            }
+            app(LigadorEncomendasManuais::class)->reconciliar($intervencao->id);
+            $this->encomendaIds = $intervencao->encomendas()->pluck('dossiers.id')->all();
+            $this->encomendasManuais = $intervencao->encomendasManuais()->get(['obrano', 'ano'])
+                ->map(fn ($m) => ['obrano' => $m->obrano, 'ano' => $m->ano])->all();
 
             // O trabalho passou a registar-se em fichas de medição por equipamento (ambos os
             // modos). Relatórios novos nascem só com fichas; NÃO se cria checklist para eles.

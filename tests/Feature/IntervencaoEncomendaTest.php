@@ -7,11 +7,13 @@ use App\Livewire\Encomendas\Ficha;
 use App\Livewire\Relatorios\Novo;
 use App\Models\Cliente;
 use App\Models\Dossier;
+use App\Models\EncomendaManual;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Models\Local;
 use App\Models\Relatorio;
 use App\Models\User;
+use App\Services\Encomendas\LigadorEncomendasManuais;
 use App\Services\Erp\ErpSyncDriver;
 use App\Services\Erp\FakeErpDriver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -134,6 +136,107 @@ class IntervencaoEncomendaTest extends TestCase
             ->assertSee('2026/0101')
             ->assertSee('2026/0102')
             ->assertSee('SN-ENC-1');
+    }
+
+    // ---- Encomenda escrita à mão (nº + ano), ainda por chegar do PHC ----
+
+    public function test_numero_a_mao_que_ainda_nao_chegou_fica_por_sincronizar_e_grava(): void
+    {
+        $this->editorNovo()
+            ->set('encomendaManualNumero', '3425')
+            ->assertSet('encomendaManualAno', (string) now()->year) // ano pré-preenchido
+            ->set('encomendaManualAno', '2026')
+            ->call('adicionarEncomendaManual')
+            ->assertSet('encomendasManuais', [['obrano' => 3425, 'ano' => 2026]])
+            ->assertSet('encomendaManualNumero', '')
+            ->assertSee('Nº 3425/2026')
+            ->assertSee('por sincronizar')
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+
+        $interv = Intervencao::firstOrFail();
+        $this->assertTrue($interv->encomendasManuais()->where('obrano', 3425)->where('ano', 2026)->exists());
+        $this->assertSame(0, $interv->encomendas()->count());
+
+        // Reabrir traz a escrita à mão; retirá-la e gravar apaga-a.
+        Livewire::actingAs($this->admin)->test(Novo::class, ['relatorio' => $interv->relatorio])
+            ->assertSet('encomendasManuais', [['obrano' => 3425, 'ano' => 2026]])
+            ->call('removerEncomendaManual', 0)
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+        $this->assertSame(0, EncomendaManual::count());
+    }
+
+    public function test_numero_a_mao_que_ja_existe_liga_logo_a_encomenda_verdadeira(): void
+    {
+        $enc = $this->dossier(3408); // ano 2026
+
+        $this->editorNovo()
+            ->set('encomendaManualNumero', '3408')->set('encomendaManualAno', '2026')
+            ->call('adicionarEncomendaManual')
+            ->assertSet('encomendaIds', [$enc->id])
+            ->assertSet('encomendasManuais', []);
+    }
+
+    public function test_o_mesmo_numero_de_outro_ano_nao_e_confundido(): void
+    {
+        $this->dossier(3408); // é de 2026
+
+        // A nº 3408 de 2025 é outra encomenda: fica por sincronizar, não liga a de 2026.
+        $this->editorNovo()
+            ->set('encomendaManualNumero', '3408')->set('encomendaManualAno', '2025')
+            ->call('adicionarEncomendaManual')
+            ->assertSet('encomendaIds', [])
+            ->assertSet('encomendasManuais', [['obrano' => 3408, 'ano' => 2025]]);
+    }
+
+    public function test_quando_a_encomenda_chega_do_phc_a_ligacao_passa_a_normal(): void
+    {
+        $interv = Intervencao::create(['equipamento_id' => $this->ups->id, 'tipo' => 'corretiva', 'estado' => 'concluida', 'data_inicio' => now()]);
+        Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/0200', 'data' => now(), 'estado' => 'finalizado']);
+        EncomendaManual::create(['intervencao_id' => $interv->id, 'obrano' => 3425, 'ano' => 2026]);
+
+        // Ainda não chegou: nada muda.
+        $this->assertSame(0, app(LigadorEncomendasManuais::class)->reconciliar());
+        $this->assertSame(1, EncomendaManual::count());
+
+        // Chega no sync: passa a ligação normal e sai das escritas à mão.
+        $enc = $this->dossier(3425);
+        $this->assertSame(1, app(LigadorEncomendasManuais::class)->reconciliar());
+        $this->assertSame([$enc->id], $interv->encomendas()->pluck('dossiers.id')->all());
+        $this->assertSame(0, EncomendaManual::count());
+
+        // E a ficha da encomenda já mostra o relatório.
+        Livewire::actingAs($this->admin)->test(Ficha::class, ['dossier' => $enc])->assertSee('2026/0200');
+    }
+
+    public function test_o_sync_dos_dossies_faz_a_ligacao_no_fim(): void
+    {
+        $interv = Intervencao::create(['equipamento_id' => $this->ups->id, 'tipo' => 'corretiva', 'estado' => 'concluida', 'data_inicio' => now()]);
+        EncomendaManual::create(['intervencao_id' => $interv->id, 'obrano' => 3425, 'ano' => 2026]);
+        $enc = $this->dossier(3425); // já cá está (ex.: veio numa corrida anterior)
+
+        $this->artisan('erp:sincronizar-dossiers', ['--limit' => 3])
+            ->expectsOutputToContain('Encomendas escritas à mão ligadas aos relatórios: 1.');
+
+        $this->assertSame([$enc->id], $interv->encomendas()->pluck('dossiers.id')->all());
+    }
+
+    public function test_numero_e_ano_invalidos_sao_recusados(): void
+    {
+        $this->editorNovo()
+            ->set('encomendaManualNumero', '')->call('adicionarEncomendaManual')
+            ->assertHasErrors('encomendaManualNumero')
+            ->set('encomendaManualNumero', '12')->set('encomendaManualAno', '1999')->call('adicionarEncomendaManual')
+            ->assertHasErrors('encomendaManualAno')
+            ->assertSet('encomendasManuais', []);
+
+        // Forjado directamente na propriedade: a gravação recusa.
+        $this->editorNovo()
+            ->set('encomendasManuais', [['obrano' => 'abc', 'ano' => 2026]])
+            ->call('guardarRascunho')
+            ->assertHasErrors('encomendasManuais.0.obrano');
+        $this->assertSame(0, EncomendaManual::count());
     }
 
     public function test_ficha_de_uma_proposta_nao_tem_a_seccao(): void
