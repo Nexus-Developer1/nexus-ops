@@ -36,13 +36,6 @@
                 </label>
             @endforeach
         </div>
-        <p class="mt-1.5 text-xs text-texto-fraco">
-            @if ($faixaEquipamentos === 'auto')
-                Marca ou desmarca os equipamentos deste {{ $rotuloFonte }} que entram no relatório — cada um vira uma aba com ficha em cima.
-            @else
-                Marca os equipamentos a intervencionar — cada um vira uma aba com ficha em cima.
-            @endif
-        </p>
         @error('equipamento_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
     </div>
 
