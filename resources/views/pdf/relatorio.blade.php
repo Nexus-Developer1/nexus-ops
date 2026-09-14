@@ -105,6 +105,14 @@
     {{-- local pode ser null (equipamento "por associar" do PHC) — o PDF não pode rebentar. --}}
     @php($c = $e->local?->cliente)
     @php($fichas = $i->fichasMedicao)
+    {{-- Nº de equipamentos do relatório: o principal + os cobertos + os que têm ficha (sem
+         repetir). Antes contava só as fichas e, sem fichas, mostrava sempre 1 — um relatório
+         individual com 2 equipamentos e sem medições saía com «1» (2026/0012, set. 2026).
+         Fichas de equipamentos entretanto apagados contam pela própria ficha. --}}
+    @php($nEquipamentos = max(
+        collect([$i->equipamento_id])->merge($i->equipamentosCobertos->pluck('id'))->merge($fichas->pluck('equipamento_id'))->filter()->unique()->count(),
+        $fichas->count(),
+    ))
     {{-- Sem selo "Conforme / Com anomalias" (a equipa não o quer no PDF): o que o técnico marcou
          KO fica visível na caixa "Anomalias detetadas" e nas próprias fichas. --}}
     @php($marca = fn ($v, $alvo) => ($v ?? null) === $alvo ? (in_array($alvo, ['ko', 'nok'], true) ? '✗' : ($alvo === 'na' ? '–' : '✓')) : '')
@@ -188,7 +196,7 @@
             <td class="r">Término</td>
             <td class="v">{{ $i->data_fim?->format('d/m/Y') ?? ($i->data_inicio?->format('d/m/Y') ?? '—') }}{{ $hFim ? " · $hFim" : '' }}</td>
             <td class="r">Equipamentos</td>
-            <td class="v">{{ $fichas->isNotEmpty() ? $fichas->count() : 1 }}</td>
+            <td class="v">{{ $nEquipamentos ?: '—' }}</td>
         </tr>
     </table>
 

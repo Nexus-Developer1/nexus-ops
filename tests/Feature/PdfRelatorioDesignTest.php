@@ -128,6 +128,28 @@ class PdfRelatorioDesignTest extends TestCase
         $this->assertStringNotContainsString('Recomendações e próximos passos', $html); // sem recomendação
     }
 
+    // Contagem de equipamentos no cabeçalho (bug 2026/0012, set. 2026): contava só as fichas e,
+    // sem fichas, mostrava sempre 1. Conta o principal + os cobertos + os com ficha, sem repetir.
+    public function test_cabecalho_conta_principal_e_cobertos_mesmo_sem_fichas(): void
+    {
+        [$r, $i, $ups, $inc] = $this->cenario();
+        $celula = fn () => preg_match('/Equipamentos<\/td>\s*<td class="v">([^<]*)<\/td>/', $this->html($r), $m) ? trim($m[1]) : null;
+
+        $this->assertSame('1', $celula()); // só o principal
+
+        $i->equipamentosCobertos()->attach($inc->id);
+        $this->assertSame('2', $celula()); // principal + coberto, sem fichas (o caso do 2026/0012)
+
+        // Fichas dos mesmos equipamentos não duplicam a contagem.
+        FichaMedicao::create(['intervencao_id' => $i->id, 'equipamento_id' => $ups->id, 'tipo_equipamento' => 'ups']);
+        FichaMedicao::create(['intervencao_id' => $i->id, 'equipamento_id' => $inc->id, 'tipo_equipamento' => 'incendio']);
+        $this->assertSame('2', $celula());
+
+        // O principal repetido na lista de cobertos também não conta duas vezes.
+        $i->equipamentosCobertos()->attach($ups->id);
+        $this->assertSame('2', $celula());
+    }
+
     public function test_sem_fichas_nao_ha_resumo(): void
     {
         [$r] = $this->cenario();
