@@ -1,5 +1,12 @@
 <div>
     <x-topbar :breadcrumb="['Início', 'Clientes', $cliente->nome]">
+        {{-- Resumo de horas dos contratos do cliente na aplicação Tempos (só admin; escondido sem TEMPOS_URL). --}}
+        @if (filled(config('app.tempos_url')) && auth()->user()?->ehAdmin())
+            <a href="{{ rtrim(config('app.tempos_url'), '/') }}/relatorios/clientes/{{ $cliente->id }}" class="botao-secundario">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Ver tempos
+            </a>
+        @endif
         <a href="{{ route('clientes') }}" wire:navigate class="botao-secundario">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
             Voltar

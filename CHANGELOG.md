@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-14
+
+- 🧰 **Fichas de contrato e de cliente: botão "Ver tempos"** — abre o consumo de horas do contrato (ou o resumo dos contratos do cliente) na nova aplicação **Nexus Tempos** da suite. Só para administradores e **só aparece com `TEMPOS_URL` preenchido** no `.env` — enquanto os Tempos não estiverem instalados, a Nexus Infra fica exatamente como estava. Nenhuma tabela nem regra da Nexus Infra muda. Requer `optimize`; para ligar, `TEMPOS_URL=https://…/tempos`. +3 testes (as 12 falhas de despesas na suite local são do container sem a função de imagem do GD, anteriores a esta alteração).
+
 ## 2026-09-07
 
 - 🛠️ **Calendário partilhado: a Suporte pode alterar no Outlook (sai a ressincronização horária)** — a `Suporte@nxs.pt` é a dona do calendário e sempre pôde editá-lo; o que desfazia essas alterações era a passagem horária de `agenda:graph` posta a 02-09. Foi **retirada do scheduler**: o que se altera no Outlook a partir da mailbox de suporte **fica**. A equipa continua só com leitura, e cada evento continua a ser espelhado quando muda na app (observer + fila) — pelo que uma alteração feita no Outlook é substituída se depois esse evento for mexido na agenda, e o que se faz no Outlook não volta para a app. Para repor tudo a partir da agenda corre-se à mão `php artisan agenda:graph`. Sem migração; `optimize`. `6f0a73b`

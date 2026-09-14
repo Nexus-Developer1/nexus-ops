@@ -1,5 +1,12 @@
 <div>
     <x-topbar :breadcrumb="['Manutenção', 'Contratos', $contrato->numero]">
+        {{-- Consumo de horas do contrato na aplicação Tempos (só admin; escondido sem TEMPOS_URL). --}}
+        @if (filled(config('app.tempos_url')) && auth()->user()?->ehAdmin())
+            <a href="{{ rtrim(config('app.tempos_url'), '/') }}/relatorios/contratos/{{ $contrato->id }}" class="botao-secundario">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Ver tempos
+            </a>
+        @endif
         <a href="{{ route('contratos.editar', $contrato) }}" wire:navigate class="botao-secundario">Editar</a>
 
         @if ($contrato->estado === \App\Enums\EstadoContrato::Rascunho)

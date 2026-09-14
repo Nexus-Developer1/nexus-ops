@@ -139,4 +139,17 @@ return [
 
     'portal_url' => env('PORTAL_URL', 'https://infra.nexus-solutions.pt:9443/portal'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Nexus Tempos (registo de horas)
+    |--------------------------------------------------------------------------
+    |
+    | Aplicacao da suite com o consumo de horas por contrato e o resumo por
+    | cliente. Com o endereco preenchido, as fichas de contrato e de cliente
+    | mostram "Ver tempos" (so a administradores). Vazio = botao escondido.
+    |
+    */
+
+    'tempos_url' => env('TEMPOS_URL'),
+
 ];
