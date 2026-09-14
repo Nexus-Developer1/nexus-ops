@@ -279,7 +279,6 @@
                 <div class="flex items-center justify-between px-6 py-5">
                     <div>
                         <h2 class="text-lg font-semibold text-texto-forte">Alertas de visita</h2>
-                        <p class="mt-1 text-xs text-texto-fraco">Programa avisos para agendar as visitas (as incluídas marcam-se à mão na agenda). O texto é editável e aparece no alerta a partir de 7 dias antes da data.</p>
                     </div>
                     <button type="button" wire:click="adicionarAlertaVisita" class="botao-secundario">+ Alerta</button>
                 </div>

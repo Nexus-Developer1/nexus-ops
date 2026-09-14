@@ -32,6 +32,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-01
 
+- 🎨 **Contratos: sai o texto por baixo de «Alertas de visita»** — «Programa avisos para agendar as visitas (as incluídas marcam-se à mão na agenda). O texto é editável e aparece no alerta a partir de 7 dias antes da data.» Os alertas funcionam igual. Requer `optimize`.
+
 - 🎨 **Contratos: sai o texto por baixo de «SLAs»** — «Opcionais; em cada linha adicionada, a cobertura (8x5/24x7) é obrigatória.» A validação continua igual (cada SLA adicionado exige a cobertura). Requer `optimize`.
 
 - 🎨 **Contratos: sai o texto por baixo de «Visitas incluídas»** — «Opcional — total pela vida do contrato. Vazio = sem controlo de saldo.» O campo funciona igual (vazio continua a significar sem controlo de saldo). Requer `optimize`.
