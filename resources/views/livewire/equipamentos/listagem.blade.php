@@ -119,7 +119,14 @@
                                     </div>
                                     <div class="text-xs text-texto-fraco">{{ $e->fabricante }} {{ $e->modelo }}</div>
                                 </td>
-                                <td class="px-6 py-4"><span class="etiqueta {{ $e->tipo->classesEtiqueta() }}">{{ $e->tipo->rotulo() }}</span></td>
+                                {{-- Família do PHC por baixo do tipo (set. 2026): o tipo sozinho dizia «UPS» a
+                                     tudo — uma caixa de baterias e uma UPS eram iguais na lista. --}}
+                                <td class="px-6 py-4">
+                                    <span class="etiqueta {{ $e->tipo->classesEtiqueta() }}">{{ $e->tipo->rotulo() }}</span>
+                                    @if ($e->faminome)
+                                        <div class="mt-1 text-xs text-texto-fraco">{{ $e->faminome }}</div>
+                                    @endif
+                                </td>
                                 <td class="px-6 py-4">
                                     {{-- Sem local = veio do PHC sem cliente associado (fatura sem o nº) — fica "por associar". --}}
                                     @if ($e->local)

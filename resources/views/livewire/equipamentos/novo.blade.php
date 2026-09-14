@@ -78,6 +78,7 @@
                         {{-- live: as secções abaixo (bancos/componentes) e a descrição de "Diversos" aparecem consoante o tipo. --}}
                         <div class="flex gap-3">
                             <select wire:model.live="tipo" class="campo-select flex-1">
+                                <option value="">— escolher —</option>
                                 @foreach ($tipos as $t)
                                     <option value="{{ $t->value }}">{{ $t->rotulo() }}</option>
                                 @endforeach
@@ -88,6 +89,43 @@
                         </div>
                         @error('tipo') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                         @error('tipo_descricao') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                    </div>
+                    {{-- Família do PHC (obrigatória): pesquisa no catálogo de artigos. Sem texto mostra
+                         as famílias que os equipamentos já usam. --}}
+                    <div>
+                        <label class="campo-label" for="familia-combo">Família <span class="text-perigo-500">*</span></label>
+                        <div wire:key="combo-familia" x-data="{ aberto: false, destaque: 0 }" @click.outside="aberto = false" @keydown.escape.stop="aberto = false" class="relative">
+                            <input id="familia-combo" type="text" wire:model.live.debounce.300ms="familiaBusca"
+                                @readonly($familia !== '')
+                                @focus="aberto = true" @click="aberto = true" @input="aberto = true; destaque = 0"
+                                @keydown.arrow-down.prevent="aberto = true; if ($refs['fam' + (destaque + 1)]) destaque++"
+                                @keydown.arrow-up.prevent="if (destaque > 0) destaque--"
+                                @keydown.enter.prevent="$refs['fam' + destaque]?.click()"
+                                class="campo-input pr-10 {{ $familia !== '' ? 'bg-verde-50 font-medium text-verde-700' : '' }}"
+                                placeholder="Pesquisar família do PHC..." autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="aberto">
+                            @if ($familia !== '')
+                                <button type="button" wire:click="limparFamilia" title="Trocar de família"
+                                    class="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-verde-700 hover:bg-verde-100">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            @else
+                                <ul x-show="aberto" x-cloak x-transition.opacity class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg" role="listbox">
+                                    @forelse ($familiasFiltradas as $idx => $f)
+                                        <li x-ref="fam{{ $idx }}" wire:key="fam-{{ md5($f->familia) }}"
+                                            wire:click="escolherFamilia(@js($f->familia))" @click="aberto = false"
+                                            @mouseenter="destaque = {{ $idx }}"
+                                            :class="destaque === {{ $idx }} ? 'bg-verde-50 text-verde-700' : 'text-texto-forte'"
+                                            class="cursor-pointer px-4 py-2 text-sm" role="option">
+                                            <span class="font-medium">{{ $f->faminome }}</span>
+                                            <span class="text-xs text-texto-fraco"> · {{ $f->familia }}</span>
+                                        </li>
+                                    @empty
+                                        <li class="px-4 py-2 text-sm text-texto-medio">Nenhuma família encontrada.</li>
+                                    @endforelse
+                                </ul>
+                            @endif
+                        </div>
+                        @error('familia') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="campo-label">Estado <span class="text-perigo-500">*</span></label>

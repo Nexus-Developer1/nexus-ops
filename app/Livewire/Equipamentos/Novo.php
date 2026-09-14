@@ -10,6 +10,7 @@ use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\Local;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -35,7 +36,17 @@ class Novo extends Component
     public ?int $local_id = null;
 
     // Dados do equipamento.
-    public string $tipo = 'ups';
+    // Sem valor por defeito (set. 2026): vinha 'ups' pré-escolhido e quem não mudava deixava
+    // caixas de baterias, PDUs… registadas como UPS. Escolhe-se sempre; uma família de UPS
+    // preenche-o sozinha (ver escolherFamilia).
+    public string $tipo = '';
+
+    // Família do artigo no PHC (st.familia = código, st.faminome = nome) — obrigatória ao
+    // criar à mão, como nos equipamentos que vêm do PHC. O nome é relido do catálogo de
+    // artigos ao gravar (nunca se confia no que vem do browser).
+    public string $familia = '';
+
+    public string $familiaBusca = '';
 
     // Só para o tipo "Diversos" (soluções pontuais): o tipo não diz nada, a descrição é
     // obrigatória e é ela que identifica a solução. Guardada em atributos.tipo_descricao.
@@ -152,6 +163,51 @@ class Novo extends Component
         $this->local_id = null;
     }
 
+    // Escolhe a família (código do PHC). Se for uma família de UPS e o tipo ainda estiver por
+    // escolher, o tipo passa a UPS — é o único mapeamento família→tipo que é seguro.
+    public function escolherFamilia(string $codigo): void
+    {
+        $nome = DB::table('artigos')->where('familia', $codigo)->whereNotNull('faminome')->value('faminome');
+        if ($nome === null) {
+            return; // código que não existe no catálogo (payload forjado)
+        }
+
+        $this->familia = $codigo;
+        $this->familiaBusca = $nome;
+
+        if ($this->tipo === '' && str_starts_with(mb_strtoupper(trim($nome)), 'UPS')) {
+            $this->tipo = TipoEquipamento::Ups->value;
+        }
+    }
+
+    public function limparFamilia(): void
+    {
+        $this->familia = '';
+        $this->familiaBusca = '';
+    }
+
+    // Sugestões: sem texto, as famílias que os equipamentos já usam (UPS MONO INTERATIVA,
+    // UPS BATERIAS…); com texto, todas as do catálogo do PHC, pelo nome ou pelo código.
+    private function familiasFiltradas(): Collection
+    {
+        $busca = trim($this->familiaBusca);
+        if ($this->familia !== '') {
+            return collect(); // já escolhida: a caixa mostra-a, sem lista aberta
+        }
+
+        if ($busca === '') {
+            return DB::table('equipamentos')->whereNotNull('familia')->whereNotNull('faminome')
+                ->select('familia', 'faminome', DB::raw('count(*) as n'))
+                ->groupBy('familia', 'faminome')->orderByDesc('n')->limit(12)->get();
+        }
+
+        $termo = '%'.$busca.'%';
+
+        return DB::table('artigos')->whereNotNull('familia')->whereNotNull('faminome')
+            ->where(fn ($q) => $q->where('faminome', 'ilike', $termo)->orWhere('familia', 'ilike', $termo))
+            ->select('familia', 'faminome')->distinct()->orderBy('faminome')->limit(20)->get();
+    }
+
     public function guardar()
     {
         $this->validate([
@@ -161,6 +217,8 @@ class Novo extends Component
             'tipo' => ['required', Rule::in(array_column(TipoEquipamento::selecionaveis(), 'value'))],
             // Em "Diversos" a descrição é obrigatória (é ela que identifica a solução).
             'tipo_descricao' => $this->tipoTemDescricao() ? ['required', 'string', 'max:255'] : [],
+            // A família tem de ser uma do catálogo de artigos do PHC.
+            'familia' => ['required', 'string', Rule::exists('artigos', 'familia')],
             'fabricante' => ['nullable', 'string', 'max:255'],
             'modelo' => ['nullable', 'string', 'max:255'],
             'numero_serie' => ['nullable', 'string', 'max:255'],
@@ -189,6 +247,9 @@ class Novo extends Component
             ] : []),
         ], [
             'tipo_descricao.required' => 'No tipo "Diversos", descreve a solução no campo ao lado.',
+            'tipo.required' => 'Escolhe o tipo de equipamento.',
+            'familia.required' => 'Escolhe a família do PHC.',
+            'familia.exists' => 'Essa família não existe no PHC.',
         ]);
 
         // Local: o escolhido ou a "Instalação principal" do cliente (criada se não existir — mesma
@@ -225,6 +286,8 @@ class Novo extends Component
             'id_erp' => null, // manual — não vendido por nós
             'local_id' => $localId,
             'tipo' => $this->tipo,
+            'familia' => $this->familia,
+            'faminome' => DB::table('artigos')->where('familia', $this->familia)->whereNotNull('faminome')->value('faminome'),
             'fabricante' => trim($this->fabricante) ?: null,
             'modelo' => trim($this->modelo) ?: null,
             'numero_serie' => trim($this->numero_serie) ?: null,
@@ -278,6 +341,7 @@ class Novo extends Component
         return view('livewire.equipamentos.novo', [
             'clientesFiltrados' => $this->clientesFiltrados(),
             'artigosFiltrados' => $this->artigosFiltrados(),
+            'familiasFiltradas' => $this->familiasFiltradas(),
             'locais' => $locais,
             'tipos' => TipoEquipamento::selecionaveis(),
             'estados' => EstadoEquipamento::cases(),

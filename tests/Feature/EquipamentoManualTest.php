@@ -24,6 +24,17 @@ class EquipamentoManualTest extends TestCase
 {
     use RefreshDatabase;
 
+    // A família do PHC passou a obrigatória ao criar (set. 2026) e o tipo deixou de vir 'ups'
+    // por defeito: os testes partem de uma família do catálogo e do tipo UPS, e mudam o tipo
+    // quando testam outro.
+    private const FAMILIA = '018C-UPS DIVERSOS';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Artigo::create(['id_erp' => 'ART-FAM-1', 'designacao' => 'Artigo de teste', 'familia' => self::FAMILIA, 'faminome' => 'UPS DIVERSOS']);
+    }
+
     private function admin(): User
     {
         return User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
@@ -35,7 +46,7 @@ class EquipamentoManualTest extends TestCase
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Datacenter']);
 
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->assertSet('local_id', $local->id)              // pré-selecionou o local do cliente
             ->set('tipo', 'ups')
@@ -58,7 +69,7 @@ class EquipamentoManualTest extends TestCase
         $admin = $this->admin();
         $cliente = Cliente::create(['nome' => 'BETA', 'ativo' => true]); // sem locais
 
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->assertSet('local_id', null)
             ->set('modelo', 'Gerador X')
@@ -79,7 +90,7 @@ class EquipamentoManualTest extends TestCase
         Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sala']);
 
         // Cria o equipamento manual.
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->set('modelo', 'UPS de terceiros')
             ->set('numero_serie', 'SN-3RD')
@@ -174,7 +185,7 @@ class EquipamentoManualTest extends TestCase
     {
         $admin = $this->admin();
 
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->set('modelo', 'Sem cliente')
             ->call('guardar')
             ->assertHasErrors('cliente_id');
@@ -187,7 +198,7 @@ class EquipamentoManualTest extends TestCase
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
 
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->set('modelo', 'PDU X')
             ->set('tipo', 'pdu')
@@ -204,7 +215,7 @@ class EquipamentoManualTest extends TestCase
         Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
 
         // Gerador: nem bancos nem componentes, mesmo que tenham ficado preenchidos.
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->set('modelo', 'Gerador Y')
             ->set('bancos', [['numero_serie' => 'BANK-Z', 'modelo' => '', 'capacidade' => '', 'num_baterias' => '8', 'data_instalacao' => '', 'proxima_troca' => '2027-01-01']])
@@ -219,7 +230,7 @@ class EquipamentoManualTest extends TestCase
         $this->assertNull($eq->proxima_troca_baterias);
 
         // UPS: bancos E componentes (as modulares são compostas por chassis/módulos/gestão).
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->set('modelo', 'UPS Z')
             ->set('tipo', 'ups')
@@ -242,7 +253,7 @@ class EquipamentoManualTest extends TestCase
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
 
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->set('modelo', 'UPS X')
             ->set('cliente_final', 'Hospital Central')
@@ -317,7 +328,7 @@ class EquipamentoManualTest extends TestCase
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
 
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->set('modelo', 'UPS B')
             ->set('bancos', [['numero_serie' => 'BANK-001', 'modelo' => 'Riello 12V', 'capacidade' => '7 Ah / 384 V', 'num_baterias' => '16', 'data_instalacao' => '', 'proxima_troca' => '']])
@@ -337,7 +348,7 @@ class EquipamentoManualTest extends TestCase
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
 
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->set('modelo', 'UPS 2 bancos')
             ->set('bancos', [
@@ -403,7 +414,7 @@ class EquipamentoManualTest extends TestCase
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
 
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->set('tipo', 'gerador')
             ->set('bancos', [['numero_serie' => 'X', 'modelo' => '', 'capacidade' => '',
@@ -425,7 +436,7 @@ class EquipamentoManualTest extends TestCase
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
 
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->set('tipo', 'incendio')
             ->set('modelo', 'SADI EP 3988')
@@ -452,7 +463,7 @@ class EquipamentoManualTest extends TestCase
         $cliente = Cliente::create(['nome' => 'Municipio do Barreiro', 'ativo' => true]);
         Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sede']);
 
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->set('tipo', 'sistema')
             ->set('modelo', 'WiFi EB1')
@@ -479,7 +490,7 @@ class EquipamentoManualTest extends TestCase
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
 
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->set('tipo', 'ambiental')
             ->set('modelo', 'Monit. sala técnica')
@@ -503,7 +514,7 @@ class EquipamentoManualTest extends TestCase
         Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
 
         // Sem descrição não grava — em "Diversos" o tipo não diz nada, a descrição é obrigatória.
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->set('tipo', 'diversos')
             ->set('modelo', 'Solução pontual')
@@ -511,7 +522,7 @@ class EquipamentoManualTest extends TestCase
             ->assertHasErrors('tipo_descricao');
 
         // Com descrição grava (em atributos) e a ficha mostra-a junto à etiqueta do tipo.
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->set('tipo', 'diversos')
             ->set('modelo', 'Solução pontual')
@@ -536,7 +547,7 @@ class EquipamentoManualTest extends TestCase
         $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
         Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
 
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->set('tipo', 'diversos')
             ->set('tipo_descricao', 'Ficou para trás')
@@ -558,7 +569,7 @@ class EquipamentoManualTest extends TestCase
         $artigo = Artigo::create(['id_erp' => 'DET-701P', 'designacao' => 'Detetor ótico convencional 701P', 'faminome' => 'Deteção de incêndio']);
         Artigo::create(['id_erp' => 'BAT-12V', 'designacao' => 'Bateria 12V 9Ah']);
 
-        Livewire::actingAs($admin)->test(Novo::class)
+        Livewire::actingAs($admin)->test(Novo::class)->set('familia', self::FAMILIA)->set('tipo', 'ups')
             ->call('selecionarCliente', $cliente->id)
             ->set('tipo', 'incendio')
             ->set('modelo', 'SADI com artigos')
