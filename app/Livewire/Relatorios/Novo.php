@@ -920,6 +920,21 @@ class Novo extends Component
     }
 
     // ---- Fotos já guardadas (em edição) ----
+    // Liga/desliga uma foto no PDF do cliente (set. 2026). Desligada fica guardada na
+    // intervenção (registo interno), mas não sai no relatório. Só fotos DESTA intervenção.
+    public function alternarFotoNoRelatorio(int $id): void
+    {
+        if (! $this->intervencaoId) {
+            return;
+        }
+
+        $anexo = Anexo::where('anexavel_type', Intervencao::class)
+            ->where('anexavel_id', $this->intervencaoId)
+            ->find($id);
+
+        $anexo?->update(['no_relatorio' => ! $anexo->no_relatorio]);
+    }
+
     public function removerAnexoExistente(int $id): void
     {
         if (! $this->intervencaoId) {

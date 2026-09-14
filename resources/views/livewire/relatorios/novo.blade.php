@@ -492,6 +492,12 @@
                                                 <img src="{{ route('anexos.ver', $ax) }}" alt="{{ $ax->nome_ficheiro }}" title="Ver maior"
                                                     @click="$dispatch('ver-foto', { src: @js(route('anexos.ver', $ax)), legenda: @js($ax->nome_ficheiro) })"
                                                     class="h-full w-full cursor-zoom-in object-cover">
+                                                {{-- Sai no PDF do cliente? Desligado = só registo interno (fica guardada). --}}
+                                                <label wire:key="nr-{{ $ax->id }}" @click.stop title="{{ $ax->no_relatorio ? 'Sai no relatório do cliente — clique para guardar só como registo interno' : 'Só registo interno — clique para sair no relatório' }}"
+                                                    class="absolute bottom-1.5 left-1.5 flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium {{ $ax->no_relatorio ? 'bg-verde-600 text-white' : 'bg-black/60 text-white/80' }}">
+                                                    <input type="checkbox" wire:click="alternarFotoNoRelatorio({{ $ax->id }})" @click="window.preservarScroll()" @checked($ax->no_relatorio) class="h-3.5 w-3.5 rounded border-white/60 bg-transparent text-verde-600 focus:ring-0">
+                                                    {{ $ax->no_relatorio ? 'No relatório' : 'Só interno' }}
+                                                </label>
                                                 <button type="button" @click="window.preservarScroll()" wire:click="removerAnexoExistente({{ $ax->id }})" wire:confirm="Remover esta foto?" class="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-black/60 text-white transition hover:bg-perigo-500">
                                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                                                 </button>
@@ -530,6 +536,12 @@
                                                     <img src="{{ route('anexos.ver', $ax) }}" alt="{{ $ax->nome_ficheiro }}" title="Ver maior"
                                                         @click="$dispatch('ver-foto', { src: @js(route('anexos.ver', $ax)), legenda: @js($ax->nome_ficheiro) })"
                                                         class="h-full w-full cursor-zoom-in object-cover">
+                                                    {{-- Sai no PDF do cliente? Desligado = só registo interno (fica guardada). --}}
+                                                    <label wire:key="nr-{{ $ax->id }}" @click.stop title="{{ $ax->no_relatorio ? 'Sai no relatório do cliente — clique para guardar só como registo interno' : 'Só registo interno — clique para sair no relatório' }}"
+                                                        class="absolute bottom-1.5 left-1.5 flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium {{ $ax->no_relatorio ? 'bg-verde-600 text-white' : 'bg-black/60 text-white/80' }}">
+                                                        <input type="checkbox" wire:click="alternarFotoNoRelatorio({{ $ax->id }})" @click="window.preservarScroll()" @checked($ax->no_relatorio) class="h-3.5 w-3.5 rounded border-white/60 bg-transparent text-verde-600 focus:ring-0">
+                                                        {{ $ax->no_relatorio ? 'No relatório' : 'Só interno' }}
+                                                    </label>
                                                     <button type="button" @click="window.preservarScroll()" wire:click="removerAnexoExistente({{ $ax->id }})" wire:confirm="Remover esta foto?" class="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-black/60 text-white transition hover:bg-perigo-500">
                                                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                                                     </button>

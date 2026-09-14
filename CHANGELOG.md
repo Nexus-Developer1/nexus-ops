@@ -8,6 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-14
 
+- ✨ **Escolher que fotografias saem no PDF do cliente** — pedido da equipa: o técnico tira fotos para registo interno (etiquetas, cabos, avarias) que não interessa enviar ao cliente. Cada foto gravada tem agora, no canto inferior esquerdo, um interruptor **«No relatório»** (verde) / **«Só interno»** (cinzento). Desligada, a foto **fica guardada na intervenção** e visível no editor, mas **não entra no PDF**. Todas nascem ligadas — só se desliga o que não vai — e as fotos dos relatórios já existentes continuam a sair. Só se consegue mexer nas fotos da própria intervenção. Coluna `anexos.no_relatorio`; o gerador do PDF ganhou `dadosDoPdf()` para o conteúdo poder ser verificado sem desenhar o PDF. **Requer migração**, build, `optimize` e reinício do worker. +3 testes.
+
 - Equipamentos: ações Editar e Eliminar na listagem e acesso à edição pela ficha. Formulário para os dados do equipamento, com proteção dos campos importados do PHC e preservação de bancos/componentes. Eliminação com confirmação, soft delete e auditoria; recusa equipamentos ligados a histórico, contratos, agenda, despesas, anexos, alertas ou outros equipamentos. Sem migração; requer build e atualização da cache de vistas no deploy.
 
 - UI: removidos os dois textos de apoio sob o titulo "Novo equipamento".

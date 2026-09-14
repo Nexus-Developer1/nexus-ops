@@ -19,6 +19,7 @@ class Anexo extends Model
         'tamanho',
         'criado_por',
         'equipamento_id', // a que equipamento a foto pertence (null = geral / relatório antigo)
+        'no_relatorio',   // sai no PDF do cliente? (false = só registo interno — set. 2026)
         'capturada_em',   // carimbo de captura (Vaga 2 — o EXIF morre na compressão client-side)
         'latitude',
         'longitude',
@@ -27,7 +28,7 @@ class Anexo extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['capturada_em' => 'datetime'];
+        return ['capturada_em' => 'datetime', 'no_relatorio' => 'boolean'];
     }
 
     // Equipamento a que a foto está associada (fotos por equipamento no relatório).

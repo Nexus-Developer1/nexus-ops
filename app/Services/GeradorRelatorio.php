@@ -81,6 +81,25 @@ class GeradorRelatorio
     // Gera o PDF e guarda-o no object storage, atualizando pdf_path.
     public function gerarPdf(Relatorio $relatorio): void
     {
+        $dados = $this->dadosDoPdf($relatorio);
+
+        $pdf = Pdf::loadView('pdf.relatorio', $dados)->setPaper('a4');
+
+        $caminho = 'relatorios/'.str_replace('/', '-', $dados['relatorio']->numero).'.pdf';
+        Storage::disk()->put($caminho, $pdf->output());
+
+        $dados['relatorio']->update(['pdf_path' => $caminho]);
+    }
+
+    /**
+     * Tudo o que a vista do PDF recebe: o relatório carregado sem scopes, as fotos (só as
+     * marcadas «no relatório») agrupadas por equipamento e as assinaturas. Separado do
+     * gerarPdf() para se poder verificar o conteúdo sem desenhar o PDF.
+     *
+     * @return array{relatorio: Relatorio, fotosPorEquipamento: array<int, array{nome: string, fotos: list<string>}>, fotosGerais: list<string>, assinaturasFichas: array<int, array<string, string>>}
+     */
+    public function dadosDoPdf(Relatorio $relatorio): array
+    {
         // Documento de sistema — ignora global scopes (técnico/cliente) ao carregar,
         // senão a intervenção/equipamento podiam ser filtrados conforme quem gera.
         $relatorio = Relatorio::withoutGlobalScopes()
@@ -105,8 +124,10 @@ class GeradorRelatorio
 
         // Fotos embebidas no PDF como data URI (lidas do object storage), AGRUPADAS por equipamento
         // (aparecem na ficha de cada um) + gerais (anexo sem equipamento — relatórios antigos).
+        // Só as fotos marcadas «no relatório»: as de registo interno ficam na intervenção mas
+        // fora do PDF do cliente (set. 2026).
         $imagens = $relatorio->intervencao->anexos
-            ->filter(fn ($a) => str_starts_with((string) $a->mime, 'image/'));
+            ->filter(fn ($a) => str_starts_with((string) $a->mime, 'image/') && $a->no_relatorio);
 
         $dataUri = fn ($a) => 'data:'.$a->mime.';base64,'.base64_encode($a->conteudo());
 
@@ -140,16 +161,11 @@ class GeradorRelatorio
             })
             ->all();
 
-        $pdf = Pdf::loadView('pdf.relatorio', [
+        return [
             'relatorio' => $relatorio,
             'fotosPorEquipamento' => $fotosPorEquipamento,
             'fotosGerais' => $fotosGerais,
             'assinaturasFichas' => $assinaturasFichas,
-        ])->setPaper('a4');
-
-        $caminho = 'relatorios/'.str_replace('/', '-', $relatorio->numero).'.pdf';
-        Storage::disk()->put($caminho, $pdf->output());
-
-        $relatorio->update(['pdf_path' => $caminho]);
+        ];
     }
 }
