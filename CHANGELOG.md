@@ -8,6 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-14
 
+- Equipamentos: ações Editar e Eliminar na listagem e acesso à edição pela ficha. Formulário para os dados do equipamento, com proteção dos campos importados do PHC e preservação de bancos/componentes. Eliminação com confirmação, soft delete e auditoria; recusa equipamentos ligados a histórico, contratos, agenda, despesas, anexos, alertas ou outros equipamentos. Sem migração; requer build e atualização da cache de vistas no deploy.
+
 - UI: removidos os dois textos de apoio sob o titulo "Novo equipamento".
 
 ## 2026-09-07

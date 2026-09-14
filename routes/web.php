@@ -14,6 +14,7 @@ use App\Livewire\Contratos\Editor;
 use App\Livewire\Contratos\Ficha;
 use App\Livewire\DashboardGestao;
 use App\Livewire\Equipamentos\Associar;
+use App\Livewire\Equipamentos\Editar;
 use App\Livewire\Equipamentos\Listagem;
 use App\Livewire\Equipamentos\Novo;
 use App\Livewire\Portal\Dashboard;
@@ -171,6 +172,7 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
     Route::get('/equipamentos/novo', Novo::class)->name('equipamentos.novo');
 
     // Ficha de equipamento (leitura em campo — ex.: QR code).
+    Route::get('/equipamentos/{equipamento}/editar', Editar::class)->name('equipamentos.editar');
     Route::get('/equipamentos/{equipamento}', App\Livewire\Equipamentos\Ficha::class)->name('equipamentos.ficha');
     // Etiqueta QR (90x50mm) para imprimir e colar no equipamento — o QR contém o URL da
     // ficha (qualquer câmara o abre; o login é pedido se a sessão tiver caducado).

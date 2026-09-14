@@ -6,6 +6,7 @@ use App\Enums\EstadoEquipamento;
 use App\Enums\TipoEquipamento;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Equipamento;
+use App\Services\Auditor;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -112,6 +113,52 @@ class Listagem extends Component
     {
         return $this->pesquisa !== '' || $this->tipo !== '' || $this->familia !== ''
             || $this->estado !== '' || $this->banco !== '';
+    }
+
+    public function eliminar(int $id): void
+    {
+        $this->resetErrorBag('eliminar');
+
+        $eliminado = DB::transaction(function () use ($id) {
+            $equipamento = Equipamento::lockForUpdate()->findOrFail($id);
+
+            // Inclui ligações de registos arquivados: também fazem parte do histórico.
+            foreach ([
+                'intervencoes' => 'intervenções',
+                'intervencao_equipamentos' => 'relatórios',
+                'fichas_medicao' => 'fichas de medição',
+                'contrato_equipamentos' => 'contratos',
+                'eventos_agenda' => 'eventos na agenda',
+                'evento_equipamentos' => 'eventos na agenda',
+                'despesas' => 'despesas',
+                'anexos' => 'anexos',
+                'equipamento_alertas_manutencao' => 'alertas de manutenção',
+            ] as $tabela => $rotulo) {
+                if (DB::table($tabela)->where('equipamento_id', $id)->exists()) {
+                    $this->addError('eliminar', "Não é possível eliminar este equipamento porque existem ligações a {$rotulo}.");
+
+                    return false;
+                }
+            }
+
+            if ($equipamento->equipamento_pai_id !== null
+                || Equipamento::withTrashed()->where('equipamento_pai_id', $id)->exists()) {
+                $this->addError('eliminar', 'Desassocia primeiro os equipamentos ligados a este equipamento.');
+
+                return false;
+            }
+
+            // Soft delete: conserva o registo e o id_erp; o sync não o volta a criar.
+            $equipamento->delete();
+            Auditor::registar('equipamento_eliminado', $equipamento, ['serie' => $equipamento->numero_serie]);
+
+            return true;
+        });
+
+        if ($eliminado) {
+            session()->flash('sucesso', 'Equipamento eliminado.');
+            $this->resetPage();
+        }
     }
 
     public function render()

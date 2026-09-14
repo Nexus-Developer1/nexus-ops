@@ -14,6 +14,9 @@
         <div class="mx-auto max-w-6xl">
 
             <x-toast-sucesso />
+            @error('eliminar')
+                <div role="alert" class="mb-4 rounded-lg border border-perigo-200 bg-perigo-100 px-4 py-3 text-sm text-perigo-600">{{ $message }}</div>
+            @enderror
 
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Equipamentos</h1>
             <p class="mt-2 text-sm text-texto-medio">{{ $equipamentos->total() }} {{ \Illuminate\Support\Str::plural('equipamento', $equipamentos->total()) }} registado{{ $equipamentos->total() === 1 ? '' : 's' }}.</p>
@@ -104,12 +107,12 @@
                             <th class="px-6 py-3.5 font-semibold">Cliente / Local</th>
                             <th class="px-6 py-3.5 font-semibold">Estado</th>
                             <th class="px-6 py-3.5 font-semibold">Próxima manutenção</th>
-                            <th class="px-6 py-3.5"></th>
+                            <th class="px-6 py-3.5 font-semibold text-right">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($equipamentos as $e)
-                            <tr class="border-b border-borda transition last:border-0 hover:bg-fundo">
+                            <tr wire:key="equipamento-{{ $e->id }}" class="border-b border-borda transition last:border-0 hover:bg-fundo">
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-2">
                                         <span class="font-medium text-texto-forte">{{ $e->numero_serie ?? '—' }}</span>
@@ -139,9 +142,13 @@
                                 <td class="px-6 py-4"><span class="etiqueta {{ $e->estado->classesEtiqueta() }}">{{ $e->estado->rotulo() }}</span></td>
                                 <td class="px-6 py-4 text-texto-medio">{{ $e->proxima_troca_baterias?->translatedFormat('d M Y') ?? '—' }}</td>
                                 <td class="px-6 py-4 text-right">
-                                    <a href="{{ route('equipamentos.ficha', $e) }}" wire:navigate class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-texto-fraco transition hover:bg-white hover:text-verde-600">
-                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-                                    </a>
+                                    <div class="flex items-center justify-end gap-3 whitespace-nowrap">
+                                        <a href="{{ route('equipamentos.editar', $e) }}" wire:navigate class="text-sm font-medium text-verde-700 hover:underline" aria-label="Editar equipamento {{ $e->numero_serie ?? $e->id }}">Editar</a>
+                                        <button type="button" wire:click="eliminar({{ $e->id }})" wire:confirm="Eliminar o equipamento «{{ $e->numero_serie ?? $e->modelo ?? $e->id }}»? Esta ação remove-o da listagem." wire:loading.attr="disabled" wire:target="eliminar" class="text-sm font-medium text-perigo-600 hover:underline disabled:opacity-50" aria-label="Eliminar equipamento {{ $e->numero_serie ?? $e->id }}">Eliminar</button>
+                                        <a href="{{ route('equipamentos.ficha', $e) }}" wire:navigate aria-label="Ver ficha do equipamento {{ $e->numero_serie ?? $e->id }}" class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-texto-fraco transition hover:bg-white hover:text-verde-600">
+                                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
