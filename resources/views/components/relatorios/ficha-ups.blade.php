@@ -37,20 +37,13 @@
 @endphp
 
 {{-- Campos da ficha de medições (sem cabeçalho próprio — o contexto/tab vem de fora). --}}
-<div class="space-y-6" wire:key="ficha-{{ $prefixo }}" x-data="{ organizar: false, arrastado: null }">
+<div class="space-y-6" wire:key="ficha-{{ $prefixo }}">
 
     {{-- Blocos REORDENÁVEIS por utilizador (pedido da equipa, set. 2026), tal como nos Dados
-         Gerais: «Organizar campos» → arrastar (desktop) ou setas ▲▼ (telemóvel). Cada bloco
+         Gerais: «Organizar campos» (botão no cabeçalho do cartão, ao lado de «Remover»; o estado
+         `organizar` vive nesse cartão) → arrastar (desktop) ou setas ▲▼ (telemóvel). Cada bloco
          vive numa partial em components/relatorios/ficha-ups; a ordem vem do componente Livewire
          (grupo ficha_ups), já validada contra a whitelist. --}}
-    <div class="-mb-3 flex flex-wrap items-center justify-end gap-3 text-xs">
-        <button type="button" x-show="organizar" x-cloak wire:click="reporOrdemCampos('ficha_ups')" class="font-medium text-texto-medio hover:text-texto-forte hover:underline">Repor ordem de fábrica</button>
-        <button type="button" @click="organizar = !organizar; arrastado = null" class="inline-flex items-center gap-1.5 rounded-lg border border-borda px-3 py-1.5 font-medium text-texto-medio transition hover:bg-fundo hover:text-texto-forte" :class="organizar && 'border-verde-300 bg-verde-50 text-verde-700'">
-            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
-            <span x-text="organizar ? 'Concluir' : 'Organizar campos'"></span>
-        </button>
-    </div>
-
     @foreach ($ordem as $bloco)
         <div wire:key="campo-{{ $prefixo }}-{{ $bloco }}" class="relative"
             :class="organizar && 'rounded-lg border border-dashed border-verde-300 bg-verde-50/40 p-3 pt-9 cursor-move'"

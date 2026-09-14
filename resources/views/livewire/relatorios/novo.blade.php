@@ -180,7 +180,7 @@
                 @foreach ($equipamentosFicha as $item)
                     @php($e = $item['e'])
                     <div x-show="tab==='equip-{{ $e->id }}'" x-cloak class="space-y-5" wire:key="tab-ficha-{{ $e->id }}">
-                        <section class="cartao mt-7">
+                        <section class="cartao mt-7" x-data="{ organizar: false, arrastado: null }">
                             <div class="flex items-center justify-between gap-3 px-6 py-5">
                                 <div class="flex min-w-0 items-center gap-3">
                                     <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
@@ -192,11 +192,21 @@
                                         <p class="truncate text-sm text-texto-medio">{{ $e->numero_serie ?? '—' }}</p>
                                     </div>
                                 </div>
+                                <div class="flex shrink-0 items-center gap-4">
+                                    {{-- Organizar os blocos da ficha (só UPS; a SADEI espelha a folha oficial). --}}
+                                    @unless ($e->tipo === \App\Enums\TipoEquipamento::Incendio)
+                                        <button type="button" x-show="organizar" x-cloak wire:click="reporOrdemCampos('ficha_ups')" class="text-xs font-medium text-texto-medio hover:text-texto-forte hover:underline">Repor ordem de fábrica</button>
+                                        <button type="button" @click="organizar = !organizar; arrastado = null" class="inline-flex items-center gap-1.5 rounded-lg border border-borda px-3 py-1.5 text-xs font-medium text-texto-medio transition hover:bg-fundo hover:text-texto-forte" :class="organizar && 'border-verde-300 bg-verde-50 text-verde-700'">
+                                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
+                                            <span x-text="organizar ? 'Concluir' : 'Organizar campos'"></span>
+                                        </button>
+                                    @endunless
                                 {{-- Remove o equipamento do relatório e volta aos Dados Gerais. --}}
                                 <button type="button" @click="tab='gerais'" wire:click="removerEquipamentoDoRelatorio({{ $e->id }})" class="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-texto-medio transition hover:text-perigo-600" title="Remover equipamento do relatório">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                                     Remover
                                 </button>
+                                </div>
                             </div>
                             <div class="border-t border-borda px-6 py-6">
                                 {{-- Equipamentos de incêndio têm ficha técnica própria (SADEI); os restantes usam a de medições UPS. --}}
