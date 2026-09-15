@@ -21,6 +21,9 @@ class RelatorioParaCliente extends Mailable
         public Relatorio $relatorio,
         public string $assunto,
         public string $mensagem,
+        // Bytes do PDF a anexar — a cópia congelada que o job arquivou. Sem eles (chamadas
+        // antigas) lê o documento de trabalho.
+        public ?string $pdfConteudo = null,
     ) {}
 
     public function envelope(): Envelope
@@ -48,7 +51,7 @@ class RelatorioParaCliente extends Mailable
         // PDF lido do object storage (nunca da BD — ver CLAUDE.md §2).
         return [
             Attachment::fromData(
-                fn () => Storage::disk()->get($this->relatorio->pdf_path),
+                fn () => $this->pdfConteudo ?? Storage::disk()->get($this->relatorio->pdf_path),
                 str_replace('/', '-', $this->relatorio->numero).'.pdf',
             )->withMime('application/pdf'),
         ];

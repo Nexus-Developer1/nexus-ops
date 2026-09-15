@@ -367,6 +367,16 @@ class Ficha extends Component
             return;
         }
 
+        // Um banco de OUTRO cliente não se associa (22.ª revisão de segurança): os bancos saem
+        // no PDF do relatório deste UPS. Bancos ainda «por associar» (sem local) podem.
+        $clienteBanco = $banco->local?->cliente_id;
+        $clienteUps = $this->equipamento->local?->cliente_id;
+        if ($clienteBanco !== null && $clienteUps !== null && $clienteBanco !== $clienteUps) {
+            $this->addError('bancoBusca', 'Este equipamento é de outro cliente — não pode ser associado a este UPS.');
+
+            return;
+        }
+
         // A hierarquia é de UM nível (UPS → bancos). Um equipamento que já TEM associados não pode
         // passar a ser filho — evita cadeias de 3+ níveis (X → P → B), mesmo por chamada forjada.
         if ($banco->equipamentosAssociados()->exists()) {

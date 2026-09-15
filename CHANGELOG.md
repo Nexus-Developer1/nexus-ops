@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-15
 
+- 🔒 **Segurança (22.ª revisão) — envio e equipamentos.** O email ao cliente leva **exatamente** a cópia congelada do PDF (a mesma que fica arquivada com o hash); um relatório nunca é processado duas vezes em simultâneo; e um relatório que voltou a rascunho não sai, nem da fila nem da página de envio. Equipamentos adicionais de um relatório, equipamentos de um contrato e bancos de baterias associados têm de ser do **mesmo cliente** — a app recusa, com mensagem, qualquer outro. No uso normal nada muda.
 - 🔒 **Segurança (22.ª revisão) — sessões.** Uma conta **desativada** é expulsa no pedido seguinte, mesmo com a sessão aberta (antes só o login olhava para o estado). E quem perder o **módulo Nexus no portal** deixa de conseguir entrar por URL direta: a Nexus passa a confirmar o acesso ao módulo em cada pedido (o portal apagava o acesso mas o papel ficava). Para quem tem acesso, nada muda.
 - **Editor de relatórios:** o botão «Organizar campos» do cartão «Equipamento e Intervenção» passa para o cabeçalho, ao lado da seta — deixa de ocupar uma linha inteira por cima dos campos.
 - **Associar equipamento a local:** saem o subtítulo sob o título e o texto de apoio sob «Novo local».

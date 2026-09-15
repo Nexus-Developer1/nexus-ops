@@ -11,6 +11,7 @@ use App\Services\Auditor;
 use App\Services\GeradorRelatorio;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -30,11 +31,30 @@ class EnviarRelatorioPorEmail implements ShouldQueue
         public ?string $cc = null, // quem envia recebe cópia (set. 2026)
     ) {}
 
+    // Um relatório de cada vez (22.ª revisão de segurança): dois «Enviar» em simultâneo
+    // calculavam a mesma versão da cópia congelada e um sobrescrevia o outro. O segundo job
+    // espera pela vez (releaseAfter) em vez de ser descartado — os dois envios acontecem, com
+    // versões distintas.
+    /** @return array<int, object> */
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping('relatorio-envio:'.$this->relatorio->getKey()))->releaseAfter(15)->expireAfter(600)];
+    }
+
     public function handle(GeradorRelatorio $gerador): void
     {
         // Defensivo: o destinatário é validado na composição, mas nunca envia em branco.
         if (blank($this->para)) {
             Log::warning('Envio de relatório sem destinatário.', ['relatorio' => $this->relatorio->numero]);
+
+            return;
+        }
+
+        // O estado é verificado na composição, mas entre o clique e a fila o relatório pode
+        // ter sido reaberto (voltou a rascunho) — um rascunho nunca sai para o cliente.
+        $this->relatorio->refresh();
+        if ($this->relatorio->estado === EstadoRelatorio::Rascunho) {
+            Log::warning('Envio de relatório cancelado: voltou a rascunho antes de sair.', ['relatorio' => $this->relatorio->numero]);
 
             return;
         }
@@ -65,7 +85,9 @@ class EnviarRelatorioPorEmail implements ShouldQueue
         if ($this->cc && ! in_array(mb_strtolower($this->cc), array_map('mb_strtolower', $destinatarios), true)) {
             $mail->cc($this->cc);
         }
-        $mail->send(new RelatorioParaCliente($this->relatorio, $this->assunto, $this->mensagem));
+        // O anexo é EXATAMENTE a cópia congelada (o mesmo $conteudo que ficou arquivado com o
+        // hash) — antes o email voltava a ler o pdf_path, que entretanto podia ser regenerado.
+        $mail->send(new RelatorioParaCliente($this->relatorio, $this->assunto, $this->mensagem, $conteudo));
 
         $this->relatorio->update([
             'estado' => EstadoRelatorio::Enviado,

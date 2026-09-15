@@ -54,6 +54,15 @@ class Enviar extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
+        // O estado é conferido ao abrir a página, mas a página pode ficar aberta enquanto o
+        // relatório é reaberto noutro separador — um rascunho não se envia (22.ª revisão).
+        $this->relatorio->refresh();
+        if ($this->relatorio->estado === EstadoRelatorio::Rascunho) {
+            session()->flash('erro', 'Este relatório voltou a rascunho — finalize-o antes de enviar.');
+
+            return redirect()->route('relatorios');
+        }
+
         // Vários destinatários, separados por «;» ou «,» (set. 2026) — cada um tem de ser um
         // email válido. Normaliza-se para «a@x.pt; b@y.pt» antes de validar e de guardar.
         $this->para = self::normalizarDestinatarios($this->para);

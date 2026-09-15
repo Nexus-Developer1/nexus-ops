@@ -9,6 +9,7 @@ use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Equipamento;
+use App\Models\Local;
 use App\Models\ModeloFaturacao;
 use App\Models\User;
 use App\Services\Auditor;
@@ -228,7 +229,8 @@ class Editor extends Component
             'exclusoes' => ['nullable', 'string'],
             'periodo_aviso_dias' => ['required', 'integer', 'min:0', 'max:365'],
             'equipamentoIds' => ['array'],
-            'equipamentoIds.*' => ['exists:equipamentos,id'],
+            // Só equipamentos do cliente do contrato (22.ª revisão de segurança).
+            'equipamentoIds.*' => ['integer', Rule::exists('equipamentos', 'id')->where(fn ($q) => $q->whereIn('local_id', Local::where('cliente_id', $this->cliente_id)->select('id')))],
             'slas' => ['array'],
             'slas.*.tempo_resposta_horas' => ['nullable', 'integer', 'min:0'],
             'slas.*.resposta_nbd' => ['boolean'],

@@ -20,6 +20,7 @@ use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\FichaMedicao;
 use App\Models\Intervencao;
+use App\Models\Local;
 use App\Models\Relatorio;
 use App\Models\User;
 use App\Services\Agenda\SincronizadorAgenda;
@@ -830,13 +831,20 @@ class Novo extends Component
         ];
     }
 
-    // Equipamentos cobertos: prop pública (manipulável pelo browser) — cada id tem de existir.
-    // Sem isto, ids inexistentes rebentavam na FK (500) e ids arbitrários entravam no sync.
+    // Equipamentos cobertos: prop pública (manipulável pelo browser) — cada id tem de existir
+    // E ser do cliente do relatório (22.ª revisão de segurança: só «existe» deixava juntar
+    // equipamento de outro cliente, que depois saía no PDF deste). Sem cliente conhecido
+    // ainda (relatório acabado de abrir), fica só a existência.
     protected function regrasCobertos(): array
     {
+        $cliente = $this->clienteDoRelatorio();
+        $existe = $cliente
+            ? Rule::exists('equipamentos', 'id')->where(fn ($q) => $q->whereIn('local_id', Local::where('cliente_id', $cliente->id)->select('id')))
+            : 'exists:equipamentos,id';
+
         return [
             'equipamentosCobertos' => ['array', 'max:500'],
-            'equipamentosCobertos.*' => ['integer', 'exists:equipamentos,id'],
+            'equipamentosCobertos.*' => ['integer', $existe],
         ];
     }
 
