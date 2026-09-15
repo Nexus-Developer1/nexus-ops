@@ -167,6 +167,13 @@ class Editor extends Component
     public function guardar()
     {
         $this->validate([
+            // Recibos pendentes REVALIDADOS aqui (22.ª revisão de segurança): a validação de
+            // «é imagem» corria só ao adicionar, mas $recibosPendentes é propriedade pública —
+            // um ficheiro temporário de outro tipo (ex.: HTML) podia ser posto aqui diretamente
+            // e gravado como recibo, e depois servido inline a quem o abrisse (stored XSS).
+            'recibosPendentes' => ['array'],
+            'recibosPendentes.*' => ['array'],
+            'recibosPendentes.*.*' => self::REGRAS_RECIBO,
             'matricula' => ['nullable', 'string', 'max:50'],
             'departamento' => ['nullable', 'string', 'max:100'],
             'linhas' => ['array', 'max:31'],

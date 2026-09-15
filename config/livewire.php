@@ -68,7 +68,11 @@ return [
         // Alinhado com a validação da app (max:20480). O default do Livewire é 12 MB: entre
         // 12 e 20 MB o upload era recusado no endpoint temporário, ANTES de chegar ao
         // componente — o mesmo "failed" sem explicação que se corrigiu no PHP (14.ª revisão).
-        'rules' => ['required', 'file', 'max:20480'],
+        // Só os tipos que a aplicação usa (fotos/recibos como imagem; registo do teste de
+        // descarga como txt/csv/log). Sem isto, QUALQUER ficheiro entrava na pasta temporária
+        // e a validação de tipo ficava toda a cargo de cada componente (22.ª revisão). SVG de
+        // fora: passa na regra `image` do Laravel mas pode conter scripts.
+        'rules' => ['required', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,bmp,webp,txt,csv,log'],
         'directory' => null,   // Example: 'tmp'                      | Default: 'livewire-tmp'
         'middleware' => null,  // Example: 'throttle:5,1'             | Default: 'throttle:60,1'
         'preview_mimes' => [   // Supported file types for temporary pre-signed file URLs...

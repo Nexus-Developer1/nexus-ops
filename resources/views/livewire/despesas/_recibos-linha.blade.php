@@ -33,7 +33,13 @@
         @endforeach
         @foreach ($recibosPendentes[$n] ?? [] as $i => $pendente)
             <span class="group relative" wire:key="rp-{{ $sufixo }}-{{ $n }}-{{ $i }}">
-                <img src="{{ $pendente->temporaryUrl() }}" alt="Recibo pendente" class="h-12 w-12 rounded border border-verde-300 object-cover">
+                {{-- Só imagens têm pré-visualização; outro tipo (nunca devia chegar aqui) mostra o nome
+                     em vez de rebentar o render — e é recusado ao guardar. --}}
+                @if ($pendente->isPreviewable())
+                    <img src="{{ $pendente->temporaryUrl() }}" alt="Recibo pendente" class="h-12 w-12 rounded border border-verde-300 object-cover">
+                @else
+                    <span class="flex h-12 w-12 items-center justify-center rounded border border-perigo-300 bg-perigo-50 text-[10px] text-perigo-600" title="{{ $pendente->getClientOriginalName() }}">?</span>
+                @endif
                 <button type="button" wire:click="removerReciboPendente({{ $n }}, {{ $i }})"
                     class="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-perigo-600 text-white sm:hidden sm:group-hover:flex" title="Remover">
                     <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
