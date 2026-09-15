@@ -8,6 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-15
 
+- **Editar equipamento — removido o texto de apoio no fundo da página.** Sai a indicação sobre alterações na ficha. Sem alterações ao formulário; atualizar a cache de vistas no deploy.
+
 - **Barra lateral — logótipo com «IFE».** Por baixo do logótipo Nexus da aplicação passa a ler-se «IFE» em vez de «Technical Suite» (o portal mantém «Technical Suite»).
 
 ## 2026-09-14

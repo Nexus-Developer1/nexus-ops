@@ -91,7 +91,6 @@
                     </div>
                 </div>
             </section>
-            <p class="mt-4 text-sm text-texto-medio">Na ficha podes alterar o cliente e o local, os bancos de baterias, os componentes e os alertas de manutenção.</p>
         </form>
     </main>
 </div>
