@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-15
 
-- **Agenda:** sai o texto de apoio sob «Avisar os técnicos por email».
+- **Agenda:** saem os textos de apoio sob «Avisar os técnicos por email» e «Dia inteiro».
 - 🔒 **Segurança (22.ª revisão) — recibos das despesas.** Fechado um caminho para *stored XSS*: um ficheiro que não fosse imagem podia chegar aos recibos pendentes por uma porta lateral, ser gravado sem revalidação e aberto no browser como HTML. Agora: (1) ao guardar, todos os recibos pendentes são revalidados como imagem; (2) o upload temporário só aceita imagens e os ficheiros de teste de descarga (txt/csv/log), SVG excluído; (3) a rota dos anexos só abre imagens e PDF no browser — qualquer outro tipo é entregue como download opaco. Para a equipa nada muda: fotos e PDFs continuam a abrir com um clique.
 - **Editar equipamento — removido o texto de apoio no fundo da página.** Sai a indicação sobre alterações na ficha. Sem alterações ao formulário; atualizar a cache de vistas no deploy.
 
