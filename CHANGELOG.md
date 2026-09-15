@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-15
+
+- **Barra lateral — logótipo com «IFE».** Por baixo do logótipo Nexus da aplicação passa a ler-se «IFE» em vez de «Technical Suite» (o portal mantém «Technical Suite»).
+
 ## 2026-09-14
 
 - **Agenda — sai «Por atribuir» da legenda.** O campo Técnicos é obrigatório, por isso já não há eventos sem técnico; a entrada cinzenta da legenda ficou de quando era opcional.
