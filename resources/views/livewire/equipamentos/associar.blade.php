@@ -137,7 +137,6 @@
                                         @error('novoLocalMorada') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                                     </div>
                                 </div>
-                                <p class="text-xs text-texto-fraco">Cria o local para o cliente escolhido e associa-lhe o equipamento. Se já existir um local com esta designação, reutiliza-o.</p>
                             </div>
                         @endif
                     </div>
