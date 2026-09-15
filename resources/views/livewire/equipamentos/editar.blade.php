@@ -20,10 +20,6 @@
                     <a href="{{ route('equipamentos.ficha', $equipamento) }}" wire:navigate class="botao-secundario">Ver ficha</a>
                 </div>
 
-                @if (! $manual)
-                    <p class="border-t border-borda px-6 py-4 text-sm text-texto-medio">Fabricante, modelo, número de série, família e data de instalação são dados importados do PHC e estão disponíveis apenas para consulta.</p>
-                @endif
-
                 <div class="grid grid-cols-1 gap-6 border-t border-borda px-6 py-6 sm:grid-cols-2">
                     <div>
                         <label for="editar-tipo" class="campo-label">Tipo <span class="text-perigo-500">*</span></label>
