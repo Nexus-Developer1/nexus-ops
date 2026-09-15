@@ -11,7 +11,6 @@
         <div class="mx-auto max-w-2xl">
 
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Associar equipamento a local</h1>
-            <p class="mt-2 text-sm text-texto-medio">Escolha um equipamento existente e o local onde está instalado.</p>
 
             <section class="cartao mt-8">
                 <div class="flex items-center gap-3 px-6 py-5">
