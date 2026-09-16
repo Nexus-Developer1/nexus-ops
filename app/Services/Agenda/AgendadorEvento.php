@@ -4,6 +4,7 @@ namespace App\Services\Agenda;
 
 use App\Enums\EstadoEvento;
 use App\Enums\TipoEvento;
+use App\Livewire\Agenda\Calendario;
 use App\Models\EventoAgenda;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -43,6 +44,12 @@ class AgendadorEvento
             ])
             ->values()
             ->all() ?: null;
+
+        // Feriado nacional (set. 2026): não se marca um evento que COMECE num feriado.
+        // As férias são a exceção — um período de férias atravessa feriados naturalmente.
+        if ($razao = $this->recusaPorFeriado($inicio, (string) ($atributos['titulo'] ?? ''))) {
+            return ['erro' => $razao];
+        }
 
         return DB::transaction(function () use ($atributos, $tecnicos, $adicionaisIds, $editandoId, $inicio, $fim, $segmentos, $equipamentosExtraIds) {
             // Trava por id de conta E por nome: o reagendamento de eventos legados trava
@@ -137,8 +144,30 @@ class AgendadorEvento
      *
      * @return array{ok: bool, mensagem?: string}
      */
+    /**
+     * Mensagem de recusa se o evento começar num feriado nacional, ou null se puder ser
+     * marcado. Só olha para o DIA DE INÍCIO: um serviço de vários dias que atravesse um
+     * feriado é normal, e as férias atravessam-nos sempre.
+     */
+    private function recusaPorFeriado(Carbon $inicio, string $titulo): ?string
+    {
+        if (! config('agenda.bloquear_feriados', true) || Calendario::ehFerias($titulo)) {
+            return null;
+        }
+
+        $feriado = app(FeriadosPortugal::class)->nome($inicio);
+
+        return $feriado
+            ? $inicio->format('d/m/Y').' é feriado nacional ('.$feriado.') — não é possível marcar neste dia.'
+            : null;
+    }
+
     public function reagendar(EventoAgenda $evento, Carbon $novoInicio, Carbon $novoFim): array
     {
+        if ($razao = $this->recusaPorFeriado($novoInicio, (string) $evento->titulo)) {
+            return ['ok' => false, 'mensagem' => $razao];
+        }
+
         return DB::transaction(function () use ($evento, $novoInicio, $novoFim) {
             $this->detetor->travarAgendaDe($evento->tecnicoIdsTodos() !== []
                 ? $evento->tecnicoIdsTodos()

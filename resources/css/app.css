@@ -138,3 +138,28 @@
         @apply bg-sidebar-ativo text-verde-300 hover:bg-sidebar-ativo hover:text-verde-300;
     }
 }
+
+/* Feriados nacionais na agenda (set. 2026): o dia fica pintado de leve e com o nome, e
+   não aceita marcações. As tolerâncias de ponto (Carnaval) ficam em cinzento — vêem-se,
+   mas não impedem nada. */
+.fc .fc-feriado {
+    background-color: rgba(220, 38, 38, 0.08) !important;
+    opacity: 1;
+}
+.fc .fc-tolerancia {
+    background-color: rgba(100, 116, 139, 0.10) !important;
+    opacity: 1;
+}
+.fc .fc-feriado .fc-event-title,
+.fc .fc-tolerancia .fc-event-title {
+    padding: 2px 4px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.fc .fc-feriado .fc-event-title { color: #b91c1c; }
+.fc .fc-tolerancia .fc-event-title { color: #64748b; }

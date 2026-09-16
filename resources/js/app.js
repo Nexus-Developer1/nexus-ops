@@ -709,6 +709,18 @@ document.addEventListener('alpine:init', () => {
                 },
                 eventDrop: (info) => this.aoMover(info),
                 eventResize: (info) => this.aoMover(info),
+                // Dias feriados não se selecionam: o servidor recusaria de qualquer forma
+                // (AgendadorEvento), mas assim a pessoa percebe logo porquê, sem abrir o
+                // formulário e perder o que lá escreveu.
+                selectAllow: (info) => {
+                    const nome = this.feriadoEm(info.start);
+                    if (nome) {
+                        this.erro = info.start.toLocaleDateString('pt-PT') + ' é feriado nacional (' + nome + ') — não é possível marcar neste dia.';
+                        clearTimeout(this.avisoFeriado);
+                        this.avisoFeriado = setTimeout(() => { this.erro = ''; }, 5000);
+                    }
+                    return !nome;
+                },
                 select: (info) => {
                     // Criação por DIA: manda só a data (sem hora) — as horas reais escrevem-se
                     // no formulário, que aceita vários dias. Antes o evento nascia colado à
@@ -727,6 +739,19 @@ document.addEventListener('alpine:init', () => {
 
             // Refrescar quando o filtro de técnico muda (evento despachado pelo Livewire).
             window.addEventListener('agenda:refetch', () => this.calendar.refetchEvents());
+        },
+
+        // Nome do feriado nesse dia (os feriados chegam como blocos de fundo na mesma
+        // lista de eventos). As tolerâncias de ponto não contam — não bloqueiam nada.
+        feriadoEm(data) {
+            const dia = new Date(data.getTime() - data.getTimezoneOffset() * 60000)
+                .toISOString().slice(0, 10);
+            const f = this.calendar.getEvents().find((e) =>
+                e.extendedProps.kind === 'feriado' &&
+                !e.extendedProps.tolerancia &&
+                e.startStr.slice(0, 10) === dia);
+
+            return f ? f.extendedProps.nome : null;
         },
 
         async aoMover(info) {

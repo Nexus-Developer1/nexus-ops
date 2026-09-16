@@ -101,7 +101,12 @@ class AgendaHorasPorDiaTest extends TestCase
             ],
         ]);
 
-        $blocos = app(FonteCalendario::class)->eventos(Carbon::parse('2026-08-01'), Carbon::parse('2026-08-31'));
+        // Só os blocos de EVENTOS: a lista traz também os feriados nacionais como fundo
+        // (15 de agosto cai neste intervalo) — set. 2026.
+        $blocos = array_values(array_filter(
+            app(FonteCalendario::class)->eventos(Carbon::parse('2026-08-01'), Carbon::parse('2026-08-31')),
+            fn (array $b) => ($b['extendedProps']['kind'] ?? null) === 'evento',
+        ));
 
         $this->assertCount(2, $blocos);
         $this->assertSame('2026-08-03T09:00:00', $blocos[0]['start']);

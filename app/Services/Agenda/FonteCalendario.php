@@ -204,7 +204,36 @@ class FonteCalendario
             ->values()
             ->all();
 
-        return $eventos;
+        return array_merge($this->feriados($de, $ate), $eventos);
+    }
+
+    /**
+     * Feriados nacionais como blocos de fundo (set. 2026): pintam o dia sem ocupar espaço
+     * nem competir com os eventos. Vão PRIMEIRO na lista para ficarem por baixo de tudo.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function feriados(Carbon $de, Carbon $ate): array
+    {
+        $blocos = [];
+        foreach (app(FeriadosPortugal::class)->entre($de, $ate) as $data => $f) {
+            $blocos[] = [
+                'id' => 'feriado-'.$data,
+                'title' => $f['nome'],
+                'start' => $data,
+                'allDay' => true,
+                'display' => 'background',
+                'editable' => false,
+                'classNames' => [$f['tolerancia'] ? 'fc-tolerancia' : 'fc-feriado'],
+                'extendedProps' => [
+                    'kind' => 'feriado',
+                    'nome' => $f['nome'],
+                    'tolerancia' => $f['tolerancia'],
+                ],
+            ];
+        }
+
+        return $blocos;
     }
 
     // Segmento que cobre o dia todo: começa às 00:00 e acaba às 23:59 do mesmo dia (o que a

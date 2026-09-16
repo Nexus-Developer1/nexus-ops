@@ -13,4 +13,13 @@
 return [
     'hora_abertura' => env('AGENDA_HORA_ABERTURA', 8),   // 08:00 — hora proposta de início
     'hora_fecho' => env('AGENDA_HORA_FECHO', 19),        // 19:00 — hora proposta de fim
+
+    // Feriados nacionais (set. 2026): aparecem sempre na agenda; com isto ligado, não se
+    // marcam eventos que COMECEM num feriado (as férias são a exceção — atravessam-nos
+    // naturalmente). Desligar aqui volta ao comportamento anterior, sem dias recusados.
+    'bloquear_feriados' => env('AGENDA_BLOQUEAR_FERIADOS', true),
+
+    // Carnaval: não é feriado obrigatório (é tolerância de ponto, decidida ano a ano).
+    // Mostra-se na agenda com outro aspeto, mas nunca impede marcações.
+    'mostrar_carnaval' => env('AGENDA_MOSTRAR_CARNAVAL', true),
 ];
