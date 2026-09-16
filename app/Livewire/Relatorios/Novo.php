@@ -807,7 +807,7 @@ class Novo extends Component
     protected function rules(): array
     {
         return [
-            'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
+            'equipamento_id' => $this->regraEquipamentoPrincipal(),
             'tipo' => ['required', 'in:preventiva,corretiva,instalacao'],
             'pedido_em' => ['nullable', 'date', 'before_or_equal:now'],
             'data' => ['required', 'date'],
@@ -829,6 +829,21 @@ class Novo extends Component
             'encomendasManuais.*.obrano' => ['required', 'integer', 'min:1', 'max:9999999'],
             'encomendasManuais.*.ano' => ['required', 'integer', 'min:2000', 'max:'.(now()->year + 1)],
         ];
+    }
+
+    // Equipamento PRINCIPAL: quando o cliente já está fixado (escolhido à mão no modo individual
+    // ou herdado do contrato), tem de ser desse cliente (22.ª revisão de segurança — os cobertos
+    // já eram validados assim; o principal ficou de fora). Sem cliente fixado, é o próprio
+    // equipamento que o define, por isso basta existir.
+    /** @return list<mixed> */
+    protected function regraEquipamentoPrincipal(): array
+    {
+        $clienteId = $this->cliente_id
+            ?: ($this->contrato_id ? Contrato::withoutGlobalScopes()->whereKey($this->contrato_id)->value('cliente_id') : null);
+
+        return ['required', 'integer', $clienteId
+            ? Rule::exists('equipamentos', 'id')->where(fn ($q) => $q->whereIn('local_id', Local::where('cliente_id', $clienteId)->select('id')))
+            : 'exists:equipamentos,id'];
     }
 
     // Equipamentos cobertos: prop pública (manipulável pelo browser) — cada id tem de existir
@@ -1089,7 +1104,7 @@ class Novo extends Component
         }
 
         $this->validate([
-            'equipamento_id' => ['required', 'integer', 'exists:equipamentos,id'],
+            'equipamento_id' => $this->regraEquipamentoPrincipal(),
             'fotosNovas.*.*' => ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'],
         ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos() + $this->regrasCobertos()
             + $this->regrasEncomendas());

@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-16
 
+- 🔒 **Segurança (revisão completa de 16/09).** (1) O envio de relatório ao cliente faz **uma só tentativa**: se falhar, fica na auditoria (`relatorio_envio_falhou`) e quem enviou (mais o suporte) recebe um aviso por email — antes, uma falha depois do envio fazia o job repetir e o cliente recebia o relatório duas vezes. (2) Na agenda, o contrato tem de ser do mesmo cliente do equipamento (o saldo de visitas nunca é gasto no contrato de outro cliente). (3) No editor de relatórios, o equipamento principal tem de ser do cliente escolhido/do contrato (os adicionais já eram). (4) Redis de produção passa a exigir password.
 - **Dossiers PHC:** os filtros passam a um cartão igual ao da listagem de equipamentos — pesquisa em cima e, por baixo, Tipo / Estado / PHC / Ano em colunas iguais, cada um com rótulo.
 - **Despesas:** os filtros passam ao mesmo cartão — pesquisa em cima e, por baixo, Período / Categoria / Estado / Colaborador em colunas iguais, cada um com rótulo.
 - **Relatórios:** os filtros passam ao mesmo cartão — pesquisa em cima e, por baixo, Estado / Tipo / Ordenar em colunas iguais (os botões soltos de estado e tipo deram lugar a listas).

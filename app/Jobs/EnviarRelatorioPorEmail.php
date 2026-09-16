@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\EstadoEvento;
 use App\Enums\EstadoRelatorio;
+use App\Mail\FalhaEnvioRelatorio;
 use App\Mail\RelatorioParaCliente;
 use App\Models\EventoAgenda;
 use App\Models\Relatorio;
@@ -15,6 +16,7 @@ use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 // Envio do relatório ao cliente por email — sempre em job assíncrono (CLAUDE.md §12).
 // Destinatário, assunto e mensagem são escritos à mão na página de composição
@@ -30,6 +32,13 @@ class EnviarRelatorioPorEmail implements ShouldQueue
         public string $mensagem,
         public ?string $cc = null, // quem envia recebe cópia (set. 2026)
     ) {}
+
+    // UMA tentativa (22.ª revisão de segurança): o worker corre com --tries=3, e se o email
+    // saísse e a gravação a seguir falhasse, a repetição mandava o relatório ao cliente uma
+    // segunda vez, com outra versão congelada. Uma falha vai para failed() e avisa quem enviou.
+    public int $tries = 1;
+
+    public int $timeout = 300;
 
     // Um relatório de cada vez (22.ª revisão de segurança): dois «Enviar» em simultâneo
     // calculavam a mesma versão da cópia congelada e um sobrescrevia o outro. O segundo job
@@ -116,10 +125,31 @@ class EnviarRelatorioPorEmail implements ShouldQueue
                 ->update(['estado' => EstadoEvento::Concluido->value]);
         }
 
-        // Auditoria de envios de relatórios (CLAUDE.md §11).
-        Log::info('Relatório enviado ao cliente.', [
-            'relatorio' => $this->relatorio->numero,
+        // Auditoria de envios de relatórios (CLAUDE.md §11). Sem o destinatário no log — já
+        // está na auditoria (relatorio_enviado) e não se repete PII nos ficheiros de log.
+        Log::info('Relatório enviado ao cliente.', ['relatorio' => $this->relatorio->numero]);
+    }
+
+    // Falha definitiva (exceção, timeout ou crash do worker): fica na auditoria e quem enviou
+    // recebe um aviso — antes ficava só em failed_jobs e o técnico julgava o relatório enviado.
+    public function failed(?Throwable $e): void
+    {
+        Log::error('Envio de relatório falhou.', ['relatorio' => $this->relatorio->numero, 'erro' => $e?->getMessage()]);
+
+        Auditor::registar('relatorio_envio_falhou', $this->relatorio, [
+            'numero' => $this->relatorio->numero,
             'para' => $this->para,
+            'erro' => mb_substr((string) $e?->getMessage(), 0, 500),
         ]);
+
+        $avisar = array_values(array_unique(array_filter([$this->cc, config('erp.email_sync')])));
+        if ($avisar === []) {
+            return;
+        }
+        try {
+            Mail::to($avisar)->send(new FalhaEnvioRelatorio($this->relatorio, $this->para, (string) $e?->getMessage()));
+        } catch (Throwable $falhaAviso) {
+            Log::error('Não foi possível avisar da falha de envio.', ['erro' => $falhaAviso->getMessage()]);
+        }
     }
 }

@@ -5,13 +5,17 @@ namespace Tests\Feature;
 use App\Enums\EstadoRelatorio;
 use App\Enums\PapelUtilizador;
 use App\Jobs\EnviarRelatorioPorEmail;
+use App\Livewire\Agenda\Calendario;
 use App\Livewire\Contratos\Editor as EditorContrato;
 use App\Livewire\Equipamentos\Ficha;
 use App\Livewire\Relatorios\Enviar;
 use App\Livewire\Relatorios\Novo;
+use App\Mail\FalhaEnvioRelatorio;
 use App\Mail\RelatorioParaCliente;
 use App\Models\Cliente;
+use App\Models\Contrato;
 use App\Models\Equipamento;
+use App\Models\EventoAgenda;
 use App\Models\Intervencao;
 use App\Models\Local;
 use App\Models\ModeloFaturacao;
@@ -172,5 +176,77 @@ class SegurancaRevisao22EnvioEquipamentosTest extends TestCase
             ->call('associarBanco', $bancoSemLocal->id)
             ->assertHasNoErrors();
         $this->assertSame($this->upsAcme->id, $bancoSemLocal->fresh()->equipamento_pai_id);
+    }
+
+    // ---- M5 / M8 (revisão completa de 16/09) ----
+
+    public function test_job_de_envio_tem_uma_so_tentativa_e_avisa_quem_enviou_quando_falha(): void
+    {
+        Mail::fake();
+        $r = $this->relatorio();
+        $job = new EnviarRelatorioPorEmail($r, 'c@acme.pt', 'A', 'M', 'tecnico@nexus.pt');
+
+        $this->assertSame(1, $job->tries); // repetir = reenviar ao cliente
+
+        $job->failed(new \RuntimeException('Graph 503'));
+
+        $this->assertDatabaseHas('auditoria', ['acao' => 'relatorio_envio_falhou', 'entidade_id' => $r->id]);
+        // Quem enviou (cc) e o suporte recebem o aviso; o cliente não recebe nada.
+        Mail::assertSent(FalhaEnvioRelatorio::class, fn ($m) => $m->hasTo('tecnico@nexus.pt') && $m->hasTo(config('erp.email_sync')) && ! $m->hasTo('c@acme.pt'));
+        Mail::assertNotSent(RelatorioParaCliente::class);
+    }
+
+    public function test_agenda_recusa_contrato_de_outro_cliente(): void
+    {
+        $contratoBeta = Contrato::create(['numero' => '2026/7100', 'cliente_id' => $this->beta->id, 'data_inicio' => now()->subMonth(), 'data_fim' => now()->addYear(),
+            'estado' => 'ativo', 'tipo' => 'preventiva', 'modelo_faturacao_id' => ModeloFaturacao::query()->value('id')]);
+        $inicio = now()->addWeek()->setTime(10, 0);
+
+        Livewire::actingAs($this->admin)->test(Calendario::class)
+            ->set('formTitulo', 'Preventiva')
+            ->set('formEquipamentoId', $this->upsAcme->id) // equipamento da ACME…
+            ->set('formInicio', $inicio->format('Y-m-d\TH:i'))
+            ->set('formFim', (clone $inicio)->setTime(11, 0)->format('Y-m-d\TH:i'))
+            ->set('formContratoId', $contratoBeta->id)      // …com contrato da Beta
+            ->set('formCobertura', 'incluida')
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])
+            ->call('criarEvento')
+            ->assertHasErrors('formContratoId');
+
+        $this->assertSame(0, EventoAgenda::count());
+    }
+
+    public function test_relatorio_recusa_equipamento_principal_de_outro_cliente(): void
+    {
+        // Individual com cliente já escolhido: o principal tem de ser desse cliente.
+        Livewire::actingAs($this->admin)->test(Novo::class)
+            ->call('selecionarCliente', $this->acme->id)
+            ->set('equipamento_id', $this->upsBeta->id)
+            ->set('data', now()->toDateString())
+            ->call('guardarRascunho')
+            ->assertHasErrors('equipamento_id');
+        $this->assertSame(0, Intervencao::count());
+
+        // Modo contrato: o principal tem de ser do cliente do contrato.
+        $contratoAcme = Contrato::create(['numero' => '2026/7101', 'cliente_id' => $this->acme->id, 'data_inicio' => now()->subMonth(), 'data_fim' => now()->addYear(),
+            'estado' => 'ativo', 'tipo' => 'preventiva', 'modelo_faturacao_id' => ModeloFaturacao::query()->value('id')]);
+        $contratoAcme->equipamentos()->sync([$this->upsAcme->id]);
+        Livewire::actingAs($this->admin)->test(Novo::class)
+            ->call('definirModo', 'contrato')
+            ->call('selecionarContrato', $contratoAcme->id)
+            ->set('equipamento_id', $this->upsBeta->id)
+            ->set('data', now()->toDateString())
+            ->call('guardarRascunho')
+            ->assertHasErrors('equipamento_id');
+        $this->assertSame(0, Intervencao::count());
+
+        // Do cliente certo passa.
+        Livewire::actingAs($this->admin)->test(Novo::class)
+            ->call('selecionarCliente', $this->acme->id)
+            ->set('equipamento_id', $this->upsAcme->id)
+            ->set('data', now()->toDateString())
+            ->call('guardarRascunho')
+            ->assertHasNoErrors();
+        $this->assertSame(1, Intervencao::count());
     }
 }

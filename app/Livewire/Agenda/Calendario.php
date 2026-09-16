@@ -766,6 +766,18 @@ class Calendario extends Component
             $clienteId = $equipamento->local?->cliente_id;
         }
 
+        // Contrato e equipamento têm de ser do MESMO cliente (22.ª revisão de segurança): a lista
+        // do modal já filtra, mas um id trocado gastava o saldo de visitas do contrato de outro
+        // cliente e deixava intervencoes.contrato_id incoerente (incluído vs. faturável).
+        if ($clienteId && $this->formContratoId) {
+            $clienteDoContrato = Contrato::withoutGlobalScopes()->whereKey($this->formContratoId)->value('cliente_id');
+            if ((int) $clienteDoContrato !== (int) $clienteId) {
+                $this->addError('formContratoId', 'O contrato escolhido é de outro cliente — não pode ser ligado a este equipamento.');
+
+                return;
+            }
+        }
+
         // Sem equipamento mas COM contrato: o evento herda o cliente do contrato.
         if (! $clienteId && $this->formContratoId) {
             $clienteId = Contrato::withoutGlobalScopes()->whereKey($this->formContratoId)->value('cliente_id');
