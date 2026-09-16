@@ -15,33 +15,43 @@
 
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Relatórios</h1>
 
-            {{-- Pesquisa + filtros --}}
-            <div class="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div class="relative w-full max-w-sm">
+            {{-- Filtros num CARTÃO, iguais aos da listagem de equipamentos (pedido da equipa,
+                 set. 2026): pesquisa em cima, por baixo Estado / Tipo / Ordenar em colunas iguais,
+                 cada um com o seu rótulo (antes: botões soltos em duas linhas). --}}
+            <div class="cartao mt-8 p-4 sm:p-5">
+                <div class="relative">
                     <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     <input wire:model.live.debounce.400ms="pesquisa" type="text" class="campo-input pl-10" placeholder="Pesquisar por nº, cliente ou técnico...">
                 </div>
-                <div class="flex items-center gap-2">
-                    <button wire:click="filtrarEstado('')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $estado === '' ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">Todos</button>
-                    @foreach ($estados as $e)
-                        <button wire:click="filtrarEstado('{{ $e->value }}')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $estado === $e->value ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">{{ $e->rotulo() }}</button>
-                    @endforeach
-                </div>
-            </div>
 
-            {{-- Filtro por tipo (combina com o de estado) + ordenação (padrão da lista de clientes). --}}
-            <div class="mt-3 flex flex-wrap items-center gap-2">
-                <span class="mr-1 text-xs font-semibold uppercase tracking-wide text-texto-fraco">Tipo</span>
-                <button wire:click="filtrarTipo('')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $tipo === '' ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">Todos</button>
-                <button wire:click="filtrarTipo('contrato')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $tipo === 'contrato' ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">De contrato</button>
-                <button wire:click="filtrarTipo('individual')" class="rounded-lg px-3.5 py-2 text-sm font-medium {{ $tipo === 'individual' ? 'bg-verde-600 text-white' : 'border border-borda bg-white text-texto-medio hover:bg-fundo' }}">Individual</button>
-                <div class="ml-auto flex items-center gap-2">
-                    <label for="ordenar" class="shrink-0 text-sm text-texto-medio">Ordenar:</label>
-                    <select id="ordenar" wire:model.live="ordenar" class="campo-select w-full sm:w-56">
-                        @foreach ($ordenacoes as $valor => $rotulo)
-                            <option value="{{ $valor }}">{{ $rotulo }}</option>
-                        @endforeach
-                    </select>
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="rel-estado" class="campo-label">Estado</label>
+                        <select id="rel-estado" wire:model.live="estado" class="campo-select">
+                            <option value="">Todos</option>
+                            @foreach ($estados as $e)
+                                <option value="{{ $e->value }}">{{ $e->rotulo() }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="rel-tipo" class="campo-label">Tipo</label>
+                        <select id="rel-tipo" wire:model.live="tipo" class="campo-select">
+                            <option value="">Todos</option>
+                            <option value="contrato">De contrato</option>
+                            <option value="individual">Individual</option>
+                        </select>
+                    </div>
+
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="ordenar" class="campo-label">Ordenar</label>
+                        <select id="ordenar" wire:model.live="ordenar" class="campo-select">
+                            @foreach ($ordenacoes as $valor => $rotulo)
+                                <option value="{{ $valor }}">{{ $rotulo }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
             </div>
 

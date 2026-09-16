@@ -10,6 +10,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 - **Dossiers PHC:** os filtros passam a um cartão igual ao da listagem de equipamentos — pesquisa em cima e, por baixo, Tipo / Estado / PHC / Ano em colunas iguais, cada um com rótulo.
 - **Despesas:** os filtros passam ao mesmo cartão — pesquisa em cima e, por baixo, Período / Categoria / Estado / Colaborador em colunas iguais, cada um com rótulo.
+- **Relatórios:** os filtros passam ao mesmo cartão — pesquisa em cima e, por baixo, Estado / Tipo / Ordenar em colunas iguais (os botões soltos de estado e tipo deram lugar a listas).
 - 🧹 **Limpeza de código morto** (sem qualquer efeito para a equipa): saíram o layout `guest` dos ecrãs de login antigos, o comando `inspire` do esqueleto, o comando manual `relatorio:gerar` (nunca usado), os métodos `User::convitePendente()` e `EventoAgenda::equipamentoIdsTodos()` (só usados em testes), os estados de contrato «Expirado»/«Renovado» (nunca atribuídos — a expiração lê-se pela data de fim) e o subsistema de checklist antigo (modelos, relações e bloco do PDF; substituído pelas fichas de medição, sem uma única linha em produção). As tabelas `checklist_*` ficam na BD, vazias.
 
 ## 2026-09-15

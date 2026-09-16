@@ -48,6 +48,16 @@ class Listagem extends Component
         $this->resetPage();
     }
 
+    public function updatingEstado(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingTipo(): void
+    {
+        $this->resetPage();
+    }
+
     public function filtrarEstado(string $estado): void
     {
         $this->estado = $estado;
