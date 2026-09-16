@@ -266,13 +266,30 @@ class Editor extends Component
         ];
 
         if ($this->contrato) {
+            // Auditoria das edições (revisão de 16/09): só a mudança de estado era registada;
+            // alterar visitas incluídas, valor ou datas não deixava rasto.
+            $antes = $this->contrato->only(array_keys($atributos));
             $this->contrato->update($atributos);
+            $equipAntes = $this->contrato->equipamentos()->pluck('equipamentos.id')->sort()->values()->all();
+            $this->contrato->equipamentos()->sync($this->equipamentoIds);
+            $equipDepois = collect($this->equipamentoIds)->map(fn ($id) => (int) $id)->sort()->values()->all();
+
+            $alteracoes = [];
+            foreach ($this->contrato->getChanges() as $campo => $novo) {
+                if (array_key_exists($campo, $antes) && $campo !== 'updated_at') {
+                    $alteracoes[$campo] = ['de' => $antes[$campo] instanceof \BackedEnum ? $antes[$campo]->value : (string) ($antes[$campo] ?? ''), 'para' => (string) ($novo ?? '')];
+                }
+            }
+            if ($equipAntes !== $equipDepois) {
+                $alteracoes['equipamentos'] = ['de' => count($equipAntes), 'para' => count($equipDepois)];
+            }
+            Auditor::registar('contrato_editado', $this->contrato, ['numero' => $this->contrato->numero, 'alteracoes' => $alteracoes]);
         } else {
             // Contratos nascem em rascunho; a ativação gera as visitas (ver Ficha).
             $this->contrato = Contrato::create($atributos);
+            $this->contrato->equipamentos()->sync($this->equipamentoIds);
+            Auditor::registar('contrato_criado', $this->contrato, ['numero' => $this->contrato->numero, 'cliente_id' => $this->contrato->cliente_id]);
         }
-
-        $this->contrato->equipamentos()->sync($this->equipamentoIds);
 
         // SLAs: substitui o conjunto (forma simples e previsível). Os planos de visita
         // (modelo antigo) já NÃO são editados aqui — não se tocam, preservando os existentes.

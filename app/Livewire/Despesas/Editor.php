@@ -7,6 +7,7 @@ use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Anexo;
 use App\Models\Despesa;
 use App\Models\RegistoDespesa;
+use App\Services\Auditor;
 use App\Services\Despesas\FluxoAprovacaoDespesas;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -162,6 +163,9 @@ class Editor extends Component
             ->firstOrFail();
         Storage::disk()->delete($anexo->storage_key);
         $anexo->delete();
+
+        // O ficheiro do recibo desaparece de vez — fica quem o apagou e de que despesa (revisão de 16/09).
+        Auditor::registar('recibo_removido', $registo, ['despesa_id' => $anexo->anexavel_id, 'ficheiro' => $anexo->nome_ficheiro]);
     }
 
     public function guardar()

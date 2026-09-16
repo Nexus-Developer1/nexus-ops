@@ -411,6 +411,15 @@ class Calendario extends Component
             $evento->delete();
         });
 
+        // Remoção em cascata (evento + rascunho + intervenção) fica na auditoria (revisão de 16/09).
+        Auditor::registar('evento_removido', $evento, [
+            'titulo' => $evento->titulo,
+            'inicio' => $evento->inicio?->toDateTimeString(),
+            'cliente_id' => $evento->cliente_id,
+            'intervencao_apagada' => $intervencao?->id,
+            'rascunho_apagado' => $relatorio?->id,
+        ]);
+
         app(NotificadorAgenda::class)->removido($antes);
 
         $this->eventoSelecionadoId = null;

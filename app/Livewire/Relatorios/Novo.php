@@ -1419,6 +1419,8 @@ class Novo extends Component
             if ($finalizar && blank($relatorio->numero)) {
                 // Atribui o número (MAX+1) e grava com retry à prova de corrida.
                 $gerador->atribuirNumeroEGravar($relatorio);
+                // Emissão do documento oficial (número atribuído) fica na auditoria (revisão de 16/09).
+                Auditor::registar('relatorio_finalizado', $relatorio, ['numero' => $relatorio->numero, 'intervencao_id' => $intervencao->id]);
             } else {
                 $relatorio->save();
             }

@@ -5,6 +5,7 @@ namespace App\Livewire\Contratos;
 use App\Enums\EstadoContrato;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Contrato;
+use App\Services\Auditor;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Session;
 use Livewire\Component;
@@ -42,6 +43,9 @@ class Listagem extends Component
         $numero = $contrato->numero;
 
         $contrato->delete();
+
+        // Documento com valor contratual — fica registado quem o eliminou (revisão de 16/09).
+        Auditor::registar('contrato_eliminado', $contrato, ['numero' => $numero, 'cliente_id' => $contrato->cliente_id]);
 
         session()->flash('sucesso', "Contrato {$numero} eliminado.");
     }
