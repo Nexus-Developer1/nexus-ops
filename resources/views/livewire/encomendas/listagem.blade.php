@@ -6,34 +6,54 @@
 
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Dossiers PHC</h1>
 
-            {{-- Filtros --}}
-            <div class="mt-8 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
-                <select wire:model.live="tipo" class="campo-select w-full sm:w-48">
-                    <option value="">Todos os tipos</option>
-                    @foreach ($tipos as $n => $rotulo)
-                        <option value="{{ $n }}">{{ $rotulo }}</option>
-                    @endforeach
-                </select>
-                <select wire:model.live="estado" class="campo-select w-full sm:w-36">
-                    <option value="">Todos</option>
-                    <option value="aberta">Em aberto</option>
-                    <option value="fechada">Fechadas</option>
-                </select>
-                {{-- Resultado da conferência com o PHC feita a cada sync. --}}
-                <select wire:model.live="phc" class="campo-select w-full sm:w-52">
-                    <option value="">Tudo o que veio do PHC</option>
-                    <option value="ausente">Já não existe no PHC</option>
-                    <option value="alterado">Alterado no PHC (7 dias)</option>
-                </select>
-                <select wire:model.live="ano" class="campo-select w-full sm:w-32">
-                    <option value="">Todos os anos</option>
-                    @foreach ($anos as $a)
-                        <option value="{{ $a }}">{{ $a }}</option>
-                    @endforeach
-                </select>
-                <div class="relative col-span-2 sm:col-span-1 sm:min-w-56 sm:flex-1">
+            {{-- Filtros num CARTÃO, iguais aos da listagem de equipamentos (pedido da equipa,
+                 set. 2026): pesquisa em cima, por baixo os controlos em colunas iguais, cada um
+                 com o seu rótulo. --}}
+            <div class="cartao mt-8 p-4 sm:p-5">
+                <div class="relative">
                     <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 17a6 6 0 100-12 6 6 0 000 12z"/></svg>
                     <input wire:model.live.debounce.400ms="pesquisa" type="text" class="campo-input pl-10" placeholder="Pesquisar por cliente, nº ou nº de cliente...">
+                </div>
+
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="dos-tipo" class="campo-label">Tipo</label>
+                        <select id="dos-tipo" wire:model.live="tipo" class="campo-select">
+                            <option value="">Todos</option>
+                            @foreach ($tipos as $n => $rotulo)
+                                <option value="{{ $n }}">{{ $rotulo }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="dos-estado" class="campo-label">Estado</label>
+                        <select id="dos-estado" wire:model.live="estado" class="campo-select">
+                            <option value="">Todos</option>
+                            <option value="aberta">Em aberto</option>
+                            <option value="fechada">Fechadas</option>
+                        </select>
+                    </div>
+
+                    {{-- Resultado da conferência com o PHC feita a cada sync. --}}
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="dos-phc" class="campo-label">PHC</label>
+                        <select id="dos-phc" wire:model.live="phc" class="campo-select">
+                            <option value="">Tudo o que veio do PHC</option>
+                            <option value="ausente">Já não existe no PHC</option>
+                            <option value="alterado">Alterado no PHC (7 dias)</option>
+                        </select>
+                    </div>
+
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="dos-ano" class="campo-label">Ano</label>
+                        <select id="dos-ano" wire:model.live="ano" class="campo-select">
+                            <option value="">Todos</option>
+                            @foreach ($anos as $a)
+                                <option value="{{ $a }}">{{ $a }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
             </div>
 
