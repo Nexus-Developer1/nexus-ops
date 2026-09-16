@@ -21,33 +21,53 @@
                 </button>
             @endif
 
-            {{-- Filtros — largura total no telemóvel, lado a lado no desktop. --}}
-            <div class="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
-                <select wire:model.live="periodo" class="campo-select w-full sm:w-40">
-                    <option value="mes">Este mês</option>
-                    <option value="tudo">Todo o período</option>
-                </select>
-                <select wire:model.live="categoria" class="campo-select w-full sm:w-44">
-                    <option value="">Todas as categorias</option>
-                    @foreach ($categorias as $c)
-                        <option value="{{ $c }}">{{ $c }}</option>
-                    @endforeach
-                </select>
-                <select wire:model.live="estado" class="campo-select w-full sm:w-44">
-                    <option value="">Todos os estados</option>
-                    @foreach ($estados as $e)
-                        <option value="{{ $e->value }}">{{ $e->rotulo() }}</option>
-                    @endforeach
-                </select>
-                <select wire:model.live="colaborador" class="campo-select w-full sm:w-44">
-                    <option value="">Todos os colaboradores</option>
-                    @foreach ($colaboradores as $u)
-                        <option value="{{ $u->id }}">{{ $u->nome }}</option>
-                    @endforeach
-                </select>
-                <div class="relative col-span-2 sm:col-span-1 sm:min-w-56 sm:flex-1">
+            {{-- Filtros num CARTÃO, iguais aos da listagem de equipamentos (pedido da equipa,
+                 set. 2026): pesquisa em cima, por baixo os controlos em colunas iguais, cada um
+                 com o seu rótulo. --}}
+            <div class="cartao mt-6 p-4 sm:p-5">
+                <div class="relative">
                     <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 17a6 6 0 100-12 6 6 0 000 12z"/></svg>
                     <input wire:model.live.debounce.300ms="pesquisa" type="text" class="campo-input pl-10" placeholder="Pesquisar por descrição ou colaborador...">
+                </div>
+
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="desp-periodo" class="campo-label">Período</label>
+                        <select id="desp-periodo" wire:model.live="periodo" class="campo-select">
+                            <option value="mes">Este mês</option>
+                            <option value="tudo">Todo o período</option>
+                        </select>
+                    </div>
+
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="desp-categoria" class="campo-label">Categoria</label>
+                        <select id="desp-categoria" wire:model.live="categoria" class="campo-select">
+                            <option value="">Todas</option>
+                            @foreach ($categorias as $c)
+                                <option value="{{ $c }}">{{ $c }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="desp-estado" class="campo-label">Estado</label>
+                        <select id="desp-estado" wire:model.live="estado" class="campo-select">
+                            <option value="">Todos</option>
+                            @foreach ($estados as $e)
+                                <option value="{{ $e->value }}">{{ $e->rotulo() }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="desp-colaborador" class="campo-label">Colaborador</label>
+                        <select id="desp-colaborador" wire:model.live="colaborador" class="campo-select">
+                            <option value="">Todos</option>
+                            @foreach ($colaboradores as $u)
+                                <option value="{{ $u->id }}">{{ $u->nome }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
             </div>
 
