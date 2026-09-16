@@ -3,7 +3,7 @@
 namespace App\Livewire\Despesas;
 
 use App\Enums\EstadoDespesa;
-use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\AcessoDespesas;
 use App\Models\RegistoDespesa;
 use App\Services\Despesas\FluxoAprovacaoDespesas;
 use Illuminate\Support\Facades\Gate;
@@ -15,7 +15,7 @@ use Livewire\Component;
 #[Layout('components.layouts.app', ['ativo' => 'despesas', 'titulo' => 'Despesa'])]
 class Ficha extends Component
 {
-    use ApenasEquipa;
+    use AcessoDespesas;
 
     public RegistoDespesa $registo;
 

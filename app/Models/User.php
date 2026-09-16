@@ -89,11 +89,28 @@ class User extends Authenticatable
         return $this->papel === PapelUtilizador::Cliente;
     }
 
+    // Papel `financeiro`: só o módulo de despesas. Não é equipa técnica (não entra em
+    // equipamentos, contratos, agenda nem relatórios) nem cliente (set. 2026).
+    public function ehFinanceiro(): bool
+    {
+        return $this->papel === PapelUtilizador::Financeiro;
+    }
+
+    /** Equipa técnica: quem trabalha na operação (admin e técnico). */
+    public function ehEquipa(): bool
+    {
+        return in_array($this->papel, [PapelUtilizador::Admin, PapelUtilizador::Tecnico], true);
+    }
+
     // Rota inicial de cada papel. Técnico = admin (aterra no dashboard); só o cliente vai
     // para o portal.
     public function rotaInicial(): string
     {
-        return $this->ehCliente() ? 'portal.dashboard' : 'dashboard';
+        return match (true) {
+            $this->ehCliente() => 'portal.dashboard',
+            $this->ehFinanceiro() => 'despesas',
+            default => 'dashboard',
+        };
     }
 
     // Eventos da agenda em que esta conta é técnico ADICIONAL (pivot evento_tecnicos).

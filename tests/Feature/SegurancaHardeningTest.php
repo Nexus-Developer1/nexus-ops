@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
 use App\Livewire\Agenda\Calendario;
+use App\Livewire\Concerns\AcessoDespesas;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Livewire\Equipamentos\Novo as EquipamentoNovo;
 use App\Models\Cliente;
@@ -63,17 +64,19 @@ class SegurancaHardeningTest extends TestCase
         return $classes;
     }
 
-    // Garante que NENHUM componente de equipa fica sem o trait (uma adição futura sem o trait
+    // Garante que NENHUM componente de equipa fica sem guarda (uma adição futura sem o trait
     // falha aqui). class_uses_recursive apanha o trait mesmo que venha de um trait-de-trait.
+    // As despesas usam AcessoDespesas (equipa + financeiro); todo o resto, ApenasEquipa.
     public function test_todos_os_componentes_de_equipa_usam_o_trait(): void
     {
         $semTrait = array_filter(
             $this->componentesDeEquipa(),
-            fn (string $c) => ! in_array(ApenasEquipa::class, class_uses_recursive($c), true),
+            fn (string $c) => ! in_array(ApenasEquipa::class, class_uses_recursive($c), true)
+                && ! (str_starts_with($c, 'App\\Livewire\\Despesas\\') && in_array(AcessoDespesas::class, class_uses_recursive($c), true)),
         );
 
         $this->assertSame([], array_values($semTrait),
-            'Componentes de equipa sem ApenasEquipa: '.implode(', ', $semTrait));
+            'Componentes de equipa sem ApenasEquipa/AcessoDespesas: '.implode(', ', $semTrait));
     }
 
     // Invoca cada componente DIRETAMENTE (Livewire::test contorna o middleware da rota), por isso o

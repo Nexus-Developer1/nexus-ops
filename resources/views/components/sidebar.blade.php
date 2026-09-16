@@ -37,6 +37,12 @@
         $itens[] = ['id' => 'auditoria', 'label' => 'Auditoria', 'url' => route('auditoria')];
     }
 
+    // O financeiro só tem o módulo de despesas (as rotas do resto também o barram).
+    $soDespesas = $u && $u->ehFinanceiro();
+    if ($soDespesas) {
+        $itens = array_values(array_filter($itens, fn ($i) => $i['id'] === 'despesas'));
+    }
+
     $itens = array_map(fn ($i) => $i + ['icon' => $icones[$i['id']]], $itens);
 
     $iniciais = $u
@@ -69,10 +75,12 @@
         @endforeach
     </nav>
 
-    <a href="{{ route('relatorios.novo') }}" class="botao-primario mt-6 w-full py-3">
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
-        Novo Relatório
-    </a>
+    @unless ($soDespesas)
+        <a href="{{ route('relatorios.novo') }}" class="botao-primario mt-6 w-full py-3">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
+            Novo Relatório
+        </a>
+    @endunless
 
     <div class="mt-6 flex items-center gap-3 border-t border-white/10 pt-5">
         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-verde-600 text-sm font-semibold text-white">{{ $iniciais }}</div>

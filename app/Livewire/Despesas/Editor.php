@@ -3,7 +3,7 @@
 namespace App\Livewire\Despesas;
 
 use App\Enums\EstadoDespesa;
-use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\AcessoDespesas;
 use App\Models\Anexo;
 use App\Models\Despesa;
 use App\Models\RegistoDespesa;
@@ -24,7 +24,7 @@ use Livewire\WithFileUploads;
 #[Layout('components.layouts.app', ['ativo' => 'despesas', 'titulo' => 'Despesa'])]
 class Editor extends Component
 {
-    use ApenasEquipa;
+    use AcessoDespesas;
     use WithFileUploads;
 
     // #[Locked]: definido apenas no mount (rota) — um payload forjado a apontar o editor a

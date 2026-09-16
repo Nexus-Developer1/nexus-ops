@@ -111,7 +111,7 @@ class PortalTest extends TestCase
         // uma conta de cliente que entre na aplicação é sempre encaminhada para o portal.
         [, $user] = $this->clienteComRelatorio('A');
 
-        $this->actingAs($user)->get('/')->assertRedirect(route('dashboard'));
+        $this->actingAs($user)->get('/')->assertRedirect(route('portal.dashboard'));
         $this->actingAs($user)->get(route('dashboard'))->assertRedirect(route('portal.dashboard'));
     }
 }

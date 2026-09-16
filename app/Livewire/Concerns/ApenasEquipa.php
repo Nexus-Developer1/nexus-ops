@@ -11,7 +11,8 @@ trait ApenasEquipa
 {
     public function bootApenasEquipa(): void
     {
-        // Fail-closed: sem utilizador (null) também aborta.
-        abort_if(auth()->user()?->ehCliente() ?? true, 403);
+        // Fail-closed: sem utilizador (null) também aborta. O papel `financeiro` só entra
+        // no módulo de despesas (trait AcessoDespesas) — aqui fica de fora como o cliente.
+        abort_unless(auth()->user()?->ehEquipa() ?? false, 403);
     }
 }

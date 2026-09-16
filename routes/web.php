@@ -32,7 +32,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
-Route::get('/', fn () => redirect()->route('dashboard'));
+// Cada papel cai na sua área (o financeiro vai direto às despesas).
+Route::get('/', fn () => redirect()->route(auth()->user()?->rotaInicial() ?? 'dashboard'));
 
 // Autenticação — vive toda no portal, que é a única entrada da suite.
 //
@@ -115,6 +116,11 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
     // Auditoria: o componente barra os técnicos (abort_unless ehAdmin em mount+render).
     Route::get('/auditoria', App\Livewire\Auditoria\Listagem::class)->name('auditoria');
 
+});
+
+// ---- Despesas (admin + técnico + financeiro). O papel `financeiro` existe só para isto:
+// trata das despesas de toda a gente e não entra em mais nada da aplicação (set. 2026). ----
+Route::middleware(['auth', 'papel:admin,tecnico,financeiro'])->group(function () {
     // Despesas: REGISTOS (documento com linhas, como a folha da empresa). Rotas literais/
     // compostas ANTES de /{despesa} para não colidir.
     Route::get('/despesas', App\Livewire\Despesas\Listagem::class)->name('despesas');
