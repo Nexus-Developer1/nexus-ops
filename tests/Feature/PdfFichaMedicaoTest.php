@@ -83,26 +83,6 @@ class PdfFichaMedicaoTest extends TestCase
         $this->assertStringContainsString('55.00', $html);
         $this->assertStringContainsString('acesso livre', $html);
 
-        // Num relatório de contrato NÃO sai a checklist antiga.
-        $this->assertStringNotContainsString('<h2>Checklist</h2>', $html);
-    }
-
-    // Legado: relatório SEM fichas (só checklist antiga) continua a mostrar a checklist (fallback).
-    public function test_pdf_legado_sem_ficha_mostra_checklist(): void
-    {
-        [, $local] = $this->contexto();
-        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-IND']);
-        $interv = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'corretiva', 'estado' => 'concluida']);
-        $etapa = $interv->checklistEtapas()->create(['titulo' => 'Inspeção', 'ordem' => 0]);
-        $etapa->itens()->create(['intervencao_id' => $interv->id, 'descricao' => 'Verificar ventoinhas', 'concluido' => true, 'ordem' => 0]);
-        $relatorio = Relatorio::create(['intervencao_id' => $interv->id, 'numero' => '2026/9301', 'data' => now(), 'estado' => EstadoRelatorio::Finalizado]);
-
-        $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
-
-        $this->assertStringContainsString('<h2>Checklist</h2>', $html);
-        $this->assertStringContainsString('Verificar ventoinhas', $html);
-        $this->assertStringNotContainsString('Medições elétricas', $html); // sem fichas → sem secção de ficha
-        $this->assertStringNotContainsString('<div class="ficha-pagina">', $html);
     }
 
     public function test_pdf_nao_mostra_seccao_diagnostico(): void

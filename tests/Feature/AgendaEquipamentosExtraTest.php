@@ -85,7 +85,6 @@ class AgendaEquipamentosExtraTest extends TestCase
         $this->assertSame($this->ups1->id, $e->equipamento_id);
         $this->assertSame($this->acme->id, $e->cliente_id);
         $this->assertSame([$this->ups2->id], $e->equipamentosAdicionais()->pluck('equipamentos.id')->all());
-        $this->assertSame([$this->ups1->id, $this->ups2->id], $e->equipamentoIdsTodos());
     }
 
     public function test_adicionais_passam_para_os_cobertos_do_rascunho_de_relatorio(): void

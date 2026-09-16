@@ -52,7 +52,6 @@ A suite cobre os fluxos principais (relatórios, fichas de medição, contratos,
 | `php artisan erp:sincronizar-clientes` | Sync de clientes do PHC (agendado 3x/dia) |
 | `php artisan erp:sincronizar-equipamentos` | Sync de equipamentos Riello do PHC |
 | `php artisan erp:sincronizar-faturacao` | Sync das linhas de fatura do PHC |
-| `php artisan relatorio:gerar {intervencao}` | Gerar o relatório de uma intervenção à mão |
 | `php artisan mail:teste {email}` | Testar o envio de email via Graph |
 
 ## API de sincronização (PHC → Nexus)

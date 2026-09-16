@@ -137,17 +137,6 @@ class Intervencao extends Model
         ]);
     }
 
-    public function checklistItens(): HasMany
-    {
-        return $this->hasMany(ChecklistItem::class)->orderBy('ordem');
-    }
-
-    // Etapas (secções) da checklist, ordenadas; cada uma com os seus itens.
-    public function checklistEtapas(): HasMany
-    {
-        return $this->hasMany(ChecklistEtapa::class)->orderBy('ordem');
-    }
-
     // Fichas de medição (uma por equipamento coberto pelo relatório).
     public function fichasMedicao(): HasMany
     {

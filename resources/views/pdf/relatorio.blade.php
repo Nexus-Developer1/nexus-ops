@@ -50,15 +50,6 @@
         .lista-item { padding: 2px 0; color: #111827; }
         .lista-item .quem { color: #4B5563; }
 
-        /* A informação técnica (checklist legada) começa sempre numa página nova. */
-        .pagina-tecnica { page-break-before: always; }
-        .item { padding: 3px 0 3px 10px; }
-        .marca-check { color: #15803D; font-weight: bold; }
-        .marca-vazio { color: #9CA3AF; }
-        .etapa-titulo { margin-top: 8px; font-weight: bold; color: #111827; font-size: 11px; }
-        .etapa-contador { color: #6B7280; font-weight: normal; font-size: 9px; }
-        .item-obs { color: #4B5563; }
-
         /* ---- Fotos (grelha em tabela, 3/linha — ver pdf/_fotos.blade.php) ---------- */
         .fotos-tab { width: 100%; border-collapse: separate; border-spacing: 0 0; margin-bottom: 6px; }
         .foto-cel { width: 33.33%; padding: 0 6px 6px 0; }
@@ -314,36 +305,6 @@
                 </tr>
             @endif
         </table>
-    @endif
-
-    {{-- ===== PÁGINA TÉCNICA — checklist antiga, só quando NÃO há fichas de medição (relatórios
-         legados). A página só existe quando tem conteúdo — vazia deixava uma página em branco. --}}
-    @php($temChecklist = $fichas->isEmpty() && ($i->checklistEtapas->count() || $i->checklistItens->count()))
-    @if ($temChecklist)
-    <div class="pagina-tecnica">
-        @if ($i->checklistEtapas->count())
-            <h2>Checklist</h2>
-            @foreach ($i->checklistEtapas as $etapa)
-                @php($tot = $etapa->itens->count())
-                @php($fei = $etapa->itens->where('concluido', true)->count())
-                <div class="etapa-titulo">{{ $etapa->titulo }} <span class="etapa-contador">({{ $fei }}/{{ $tot }} concluídos)</span></div>
-                @foreach ($etapa->itens as $item)
-                    <div class="item">
-                        <span class="{{ $item->concluido ? 'marca-check' : 'marca-vazio' }}">{{ $item->concluido ? '[X]' : '[ ]' }}</span>
-                        {{ $item->descricao }}@if ($item->observacao)<span class="item-obs"> — {{ $item->observacao }}</span>@endif
-                    </div>
-                @endforeach
-            @endforeach
-        @elseif ($i->checklistItens->count())
-            <h2>Checklist</h2>
-            @foreach ($i->checklistItens as $item)
-                <div class="item">
-                    <span class="{{ $item->concluido ? 'marca-check' : 'marca-vazio' }}">{{ $item->concluido ? '[X]' : '[ ]' }}</span>
-                    {{ $item->descricao }}
-                </div>
-            @endforeach
-        @endif
-    </div>{{-- /pagina-tecnica --}}
     @endif
 
     {{-- ===== FICHAS DE MEDIÇÃO — uma por página (contrato e individual), SEMPRE a começar em

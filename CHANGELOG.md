@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-16
+
+- 🧹 **Limpeza de código morto** (sem qualquer efeito para a equipa): saíram o layout `guest` dos ecrãs de login antigos, o comando `inspire` do esqueleto, o comando manual `relatorio:gerar` (nunca usado), os métodos `User::convitePendente()` e `EventoAgenda::equipamentoIdsTodos()` (só usados em testes), os estados de contrato «Expirado»/«Renovado» (nunca atribuídos — a expiração lê-se pela data de fim) e o subsistema de checklist antigo (modelos, relações e bloco do PDF; substituído pelas fichas de medição, sem uma única linha em produção). As tabelas `checklist_*` ficam na BD, vazias.
+
 ## 2026-09-15
 
 - 🔒 **Segurança (22.ª revisão) — envio e equipamentos.** O email ao cliente leva **exatamente** a cópia congelada do PDF (a mesma que fica arquivada com o hash); um relatório nunca é processado duas vezes em simultâneo; e um relatório que voltou a rascunho não sai, nem da fila nem da página de envio. Equipamentos adicionais de um relatório, equipamentos de um contrato e bancos de baterias associados têm de ser do **mesmo cliente** — a app recusa, com mensagem, qualquer outro. No uso normal nada muda.

@@ -43,8 +43,8 @@ class ConvitePendenteNaoSelecionavelTest extends TestCase
 
     public function test_o_ambito_deixa_de_fora_quem_nao_aceitou(): void
     {
-        $this->assertTrue($this->pendente->convitePendente());
-        $this->assertFalse($this->aceite->convitePendente());
+        $this->assertNull($this->pendente->password);
+        $this->assertNotNull($this->aceite->password);
 
         $this->assertSame(['Rui Pereira'], User::selecionavel()->pluck('nome')->all());
     }
@@ -83,7 +83,7 @@ class ConvitePendenteNaoSelecionavelTest extends TestCase
     {
         $this->pendente->forceFill(['password' => bcrypt('escolhida-pela-pessoa')])->save();
 
-        $this->assertFalse($this->pendente->fresh()->convitePendente());
+        $this->assertNotNull($this->pendente->fresh()->password);
         $this->assertEqualsCanonicalizing(
             ['Rui Pereira', 'Paulo Gouveia'],
             User::selecionavel()->pluck('nome')->all()

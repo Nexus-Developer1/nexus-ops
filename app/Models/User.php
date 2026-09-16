@@ -110,12 +110,6 @@ class User extends Authenticatable
         return $q->fazServicos()->where('ativo', true)->whereNotNull('password');
     }
 
-    /** Convidado mas ainda sem palavra-passe definida — nunca entrou. */
-    public function convitePendente(): bool
-    {
-        return $this->password === null;
-    }
-
     /**
      * Quem entra nas listas de TÉCNICOS: os técnicos e os administradores que também vão
      * a serviços (`faz_servicos`).

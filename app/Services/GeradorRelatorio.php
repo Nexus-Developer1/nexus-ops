@@ -124,8 +124,6 @@ class GeradorRelatorio
                     ]),
                     'tecnico',
                     'tecnicos',
-                    'checklistItens',
-                    'checklistEtapas.itens',
                     // Anexos com o equipamento (para agrupar as fotos por equipamento no PDF).
                     'anexos.equipamento' => fn ($q) => $q->withoutGlobalScopes(),
                 ]),

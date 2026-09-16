@@ -2,13 +2,7 @@
 
 use App\Jobs\CadeiaSincronizacaoCompletaErp;
 use App\Jobs\SincronizarErp;
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
-
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
 
 // Sincronização do ERP 3x/dia (08h, 13h, 19h): UMA corrida encadeada — clientes →
 // equipamentos → faturação, cada etapa arranca quando a anterior acaba — via o MESMO job

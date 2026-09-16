@@ -1367,10 +1367,7 @@ class Novo extends Component
             $this->encomendasManuais = $intervencao->encomendasManuais()->get(['obrano', 'ano'])
                 ->map(fn ($m) => ['obrano' => $m->obrano, 'ano' => $m->ano])->all();
 
-            // O trabalho passou a registar-se em fichas de medição por equipamento (ambos os
-            // modos). Relatórios novos nascem só com fichas; NÃO se cria checklist para eles.
-            // A checklist antiga de relatórios LEGADOS NUNCA é apagada aqui — fica preservada na
-            // BD (histórico de manutenção). No PDF, o fallback mostra-a só quando não há fichas.
+            // O trabalho regista-se em fichas de medição por equipamento (ambos os modos).
             $this->persistirFichas($intervencao);
 
             // Fotos novas por equipamento (anexa às existentes). $fotosNovas é [equipId => fotos];

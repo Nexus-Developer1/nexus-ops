@@ -80,21 +80,21 @@ class ContratoPopupEstadoTest extends TestCase
         $this->assertSame(EstadoContrato::Rascunho, Contrato::firstOrFail()->estado);
     }
 
-    public function test_decidir_estado_forjado_nao_ressuscita_contrato_expirado(): void
+    public function test_decidir_estado_forjado_nao_muda_contrato_que_nao_esta_em_rascunho(): void
     {
         [$admin, $cliente, $equip] = $this->base();
         $contrato = Contrato::create(['numero' => '2026/0200', 'cliente_id' => $cliente->id,
-            'data_inicio' => now()->subYears(2), 'data_fim' => now()->subYear(), 'estado' => EstadoContrato::Expirado,
+            'data_inicio' => now()->subYears(2), 'data_fim' => now()->subYear(), 'estado' => EstadoContrato::Suspenso,
             'tipo' => 'preventiva', 'modelo_faturacao_id' => ModeloFaturacao::query()->value('id'),
             'renovacao_automatica' => false, 'periodo_aviso_dias' => 30]);
         $contrato->equipamentos()->sync([$equip->id]);
 
-        // Chamada forjada (o popup nunca aparece para expirados) → o estado não muda.
+        // Chamada forjada (o popup só existe para rascunhos) → o estado não muda.
         Livewire::actingAs($admin)->test(Editor::class, ['contrato' => $contrato])
             ->call('decidirEstado', 'ativar')
             ->assertRedirect();
 
-        $this->assertSame(EstadoContrato::Expirado, $contrato->fresh()->estado);
+        $this->assertSame(EstadoContrato::Suspenso, $contrato->fresh()->estado);
     }
 
     public function test_reativar_suspenso_sem_equipamentos_e_bloqueado(): void

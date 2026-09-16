@@ -2,14 +2,13 @@
 
 namespace App\Enums;
 
-// Ciclo de vida de um contrato (CLAUDE.md §4).
+// Ciclo de vida de um contrato (CLAUDE.md §4). «Expirado»/«Renovado» saíram (set. 2026): nunca
+// eram atribuídos — a expiração lê-se pela data_fim, e renovar é criar contrato novo.
 enum EstadoContrato: string
 {
     case Rascunho = 'rascunho';
     case Ativo = 'ativo';
     case Suspenso = 'suspenso';
-    case Expirado = 'expirado';
-    case Renovado = 'renovado';
 
     public function rotulo(): string
     {
@@ -17,8 +16,6 @@ enum EstadoContrato: string
             self::Rascunho => 'Rascunho',
             self::Ativo => 'Ativo',
             self::Suspenso => 'Suspenso',
-            self::Expirado => 'Expirado',
-            self::Renovado => 'Renovado',
         };
     }
 
@@ -29,8 +26,6 @@ enum EstadoContrato: string
             self::Rascunho => 'bg-slate-100 text-texto-medio',
             self::Ativo => 'bg-verde-50 text-verde-700',
             self::Suspenso => 'bg-aviso-100 text-aviso-500',
-            self::Expirado => 'bg-perigo-100 text-perigo-600',
-            self::Renovado => 'bg-info-100 text-info-600',
         };
     }
 }

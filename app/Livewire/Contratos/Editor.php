@@ -81,8 +81,8 @@ class Editor extends Component
         abort_unless(in_array($decisao, ['ativar', 'suspender', 'rascunho'], true), 400);
 
         // Máquina de estados: este popup só existe para RASCUNHOS — re-verificado no servidor
-        // (12.ª revisão de segurança: uma chamada forjada num contrato Expirado/Renovado
-        // conseguia ressuscitá-lo para Ativo/Suspenso, contornando as regras da ficha).
+        // (12.ª revisão de segurança: uma chamada forjada num contrato já Ativo/Suspenso
+        // conseguia mudá-lo de estado, contornando as regras da ficha).
         if ($this->contrato->fresh()->estado !== EstadoContrato::Rascunho) {
             $this->modalEstado = false;
 

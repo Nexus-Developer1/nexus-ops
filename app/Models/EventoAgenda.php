@@ -139,15 +139,6 @@ class EventoAgenda extends Model
         return $this->belongsToMany(Equipamento::class, 'evento_equipamentos', 'evento_agenda_id', 'equipamento_id')->withTimestamps();
     }
 
-    /** @return list<int> Principal + adicionais, sem repetidos. */
-    public function equipamentoIdsTodos(): array
-    {
-        return array_values(array_unique(array_filter(array_merge(
-            [$this->equipamento_id],
-            $this->equipamentosAdicionais->pluck('id')->all(),
-        ))));
-    }
-
     // Ids de TODOS os técnicos do evento (principal + adicionais) — conflitos e iCal.
     /** @return list<int> */
     public function tecnicoIdsTodos(): array
