@@ -79,7 +79,6 @@ services:
       - "9101:9001"
 
 volumes:
-  db_data:
   minio_data:
   caddy_data:
   caddy_config:
