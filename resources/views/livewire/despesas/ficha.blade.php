@@ -5,8 +5,16 @@
         @endif
         <a href="{{ route('despesas.registo.pdf', $registo) }}" class="botao-secundario">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a2 2 0 002 2h14a2 2 0 002-2v-3"/></svg>
-            PDF
+            PDF completo
         </a>
+        {{-- Só as digitalizações, uma por página: é o que quem trata da faturação costuma
+             pedir, sem a folha atrás. --}}
+        @if ($registo->temRecibos())
+            <a href="{{ route('despesas.registo.pdf.recibos', $registo) }}" class="botao-secundario">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                PDF do recibo
+            </a>
+        @endif
     </x-topbar>
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">

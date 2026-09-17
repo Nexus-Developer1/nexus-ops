@@ -8,6 +8,7 @@ use App\Livewire\Despesas\Listagem;
 use App\Models\Despesa;
 use App\Models\RegistoDespesa;
 use App\Models\User;
+use App\Services\Despesas\PdfRegistoDespesas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -195,7 +196,7 @@ class DespesaTest extends TestCase
         $registo = RegistoDespesa::create(['criado_por' => $admin->id, 'matricula' => 'BD-71-VI']);
         $registo->despesas()->create(['data' => '2026-08-03', 'categoria' => 'Refeições', 'descricao' => 'ACME - Porto', 'detalhe' => 'Almoço com cliente', 'valor' => 12.5, 'refeicao_tipo' => 'A', 'faturavel' => false]);
 
-        $html = view('pdf.registo-despesas', ['registo' => $registo])->render();
+        $html = app(PdfRegistoDespesas::class)->html($registo);
         $this->assertStringContainsString('BD-71-VI', $html);
         $this->assertStringContainsString('ACME - Porto — Almoço com cliente', $html);
         $this->assertStringContainsString('12,50', $html);
@@ -209,8 +210,8 @@ class DespesaTest extends TestCase
         $this->assertStringContainsString('attachment', $resp->headers->get('Content-Disposition'));
     }
 
-    // Os recibos anexados às linhas saem no PDF (imagens embebidas em base64, agrupadas por
-    // linha); um ficheiro em falta no storage é saltado sem rebentar a geração.
+    // Os recibos anexados às linhas saem no PDF, um por página (imagens embebidas em
+    // base64); um ficheiro em falta no storage é saltado sem rebentar a geração.
     public function test_pdf_inclui_os_recibos_das_linhas(): void
     {
         $admin = $this->admin();
@@ -223,17 +224,19 @@ class DespesaTest extends TestCase
         $despesa->anexos()->create(['nome_ficheiro' => 'recibo.jpg', 'storage_key' => $chave, 'mime' => 'image/jpeg', 'tamanho' => 21, 'criado_por' => $admin->id]);
         $despesa->anexos()->create(['nome_ficheiro' => 'perdido.jpg', 'storage_key' => 'anexos/despesas/'.$despesa->id.'/nao-existe.jpg', 'mime' => 'image/jpeg', 'tamanho' => 1, 'criado_por' => $admin->id]);
 
-        $html = view('pdf.registo-despesas', ['registo' => $registo])->render();
+        $pdf = app(PdfRegistoDespesas::class);
+        $html = $pdf->html($registo);
 
-        $this->assertStringContainsString('Recibos', $html);
         $this->assertStringContainsString('BNP - Lisboa', $html);
         $this->assertStringContainsString(base64_encode('conteudo-jpg-de-teste'), $html); // imagem embebida
+        $this->assertStringContainsString('class="recibo-pagina"', $html);
 
-        // Sem recibos, a secção nem aparece.
+        // Sem recibos, não há páginas de recibo nenhumas.
         $registoVazio = RegistoDespesa::create(['criado_por' => $admin->id]);
         $registoVazio->despesas()->create(['data' => '2026-08-04', 'categoria' => 'Hotel', 'descricao' => 'Sem recibos', 'valor' => 10, 'faturavel' => false]);
         // (class="..." e não o nome solto — o seletor CSS vive sempre no <head>.)
-        $this->assertStringNotContainsString('class="recibos-titulo"', view('pdf.registo-despesas', ['registo' => $registoVazio])->render());
+        $this->assertStringNotContainsString('class="recibo-pagina"', $pdf->html($registoVazio));
+        $this->assertFalse($registoVazio->temRecibos());
 
         Storage::disk()->delete($chave); // limpeza best-effort
     }

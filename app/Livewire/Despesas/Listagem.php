@@ -109,6 +109,8 @@ class Listagem extends Component
         // linhas (despesas) — um registo aparece se alguma linha lhe corresponder.
         $registos = RegistoDespesa::query()
             ->with(['colaborador', 'despesas'])
+            // Quantas linhas trazem digitalizações: decide o link "Recibo" sem N+1.
+            ->withCount(['despesas as linhas_com_recibos_count' => fn ($q) => $q->has('anexos')])
             ->whereHas('despesas', function ($q) {
                 $filtrada = $this->base();
                 $q->whereIn('id', $filtrada->select('id'));

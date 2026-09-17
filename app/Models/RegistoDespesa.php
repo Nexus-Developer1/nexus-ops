@@ -70,4 +70,16 @@ class RegistoDespesa extends Model
     {
         return $this->despesas()->with('anexos')->orderBy('data')->orderBy('id')->get();
     }
+
+    // Tem digitalizações anexadas? É o que decide se faz sentido oferecer o PDF só dos
+    // recibos. Na listagem a conta vem já com a consulta (withCount), para não fazer uma
+    // pergunta à base de dados por cada linha do ecrã.
+    public function temRecibos(): bool
+    {
+        if (array_key_exists('linhas_com_recibos_count', $this->attributes)) {
+            return (int) $this->attributes['linhas_com_recibos_count'] > 0;
+        }
+
+        return $this->despesas()->whereHas('anexos')->exists();
+    }
 }

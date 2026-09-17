@@ -3,6 +3,9 @@
 <head>
     <meta charset="utf-8">
     <style>
+        /* A margem é dita aqui e a conta do tamanho da digitalização parte dela (ver
+           PdfRegistoDespesas): sem isto ficava à mercê do valor por omissão do dompdf. */
+        @page { margin: {{ $margemMm ?? 12.7 }}mm; }
         * { font-family: 'DejaVu Sans', sans-serif; }
         body { font-size: 9px; color: #1f2937; margin: 0; }
         table { width: 100%; border-collapse: collapse; }
@@ -18,13 +21,11 @@
         .resumo td { border: 1px solid #111827; padding: 3px 6px; font-size: 9px; }
         .resumo .rot { font-weight: bold; text-transform: uppercase; }
         .suite { color: #9ca3af; font-size: 7px; letter-spacing: 2px; margin-top: 2px; }
-        /* Recibos digitalizados (4 por linha, imagem inteira visível). */
-        .recibos-titulo { font-size: 11px; font-weight: bold; text-transform: uppercase; margin: 0 0 6px; }
-        .recibo-grupo { margin-bottom: 10px; }
-        .recibo-rot { font-size: 8.5px; font-weight: bold; margin-bottom: 3px; }
-        .recibos-tab { width: 100%; border-collapse: collapse; }
-        .recibo-cel { width: 25%; padding: 0 6px 6px 0; }
-        .recibo-img { width: 100%; height: 190px; object-fit: contain; border: 1px solid #e5e7eb; }
+        /* Recibos digitalizados: UM POR PÁGINA, a ocupar a página toda. Antes iam quatro
+           por linha, do tamanho de um selo, e não se lia nada. */
+        .recibo-pagina { text-align: center; }
+        .recibo-rot { font-size: 9px; font-weight: bold; margin: 0 0 4px; text-align: left; }
+        .recibo-img { border: 1px solid #e5e7eb; }
     </style>
 </head>
 <body>
@@ -35,6 +36,7 @@
     @php($total = array_sum($totais))
     @php($eur = fn ($v) => is_numeric($v) && (float) $v > 0 ? number_format((float) $v, 2, ',', ' ') . ' €' : '')
 
+    @unless ($apenasRecibos ?? false)
     {{-- Cabeçalho: logótipo oficial + identificação (como na folha impressa). --}}
     <table style="margin-bottom: 8px;">
         <tr>
@@ -114,34 +116,42 @@
     <table class="resumo" style="width: 42%; margin-left: 58%; margin-top: 8px;">
         <tr><td class="rot">Total despesas</td><td class="num">{{ number_format($total, 2, ',', ' ') }} €</td></tr>
     </table>
+    @endunless
 
-    {{-- Recibos digitalizados: as imagens anexadas a cada linha saem no PDF (embebidas em
-         base64 — o dompdf tem enable_remote=false). Ficheiro em falta no storage é saltado
-         sem rebentar a geração; linhas sem recibos não aparecem aqui. --}}
+    {{-- Recibos digitalizados: UM POR PÁGINA, a ocupar a página toda.
+
+         As imagens vão embebidas em base64 (o dompdf corre com enable_remote=false). Um
+         ficheiro que falte no storage é saltado sem rebentar a geração, e as linhas sem
+         recibos não aparecem aqui.
+
+         O dompdf não sabe `object-fit`, por isso a conta é feita aqui: sabendo a forma da
+         imagem e o espaço da página, manda-se encostar à LARGURA (imagem deitada) ou à
+         ALTURA (talão, que é o caso normal). Assim enche sempre sem ficar esticada. --}}
     @php($comRecibos = $linhas->filter(fn ($d) => $d->anexos->isNotEmpty()))
-    @if ($comRecibos->isNotEmpty())
-        <div style="page-break-before: always;"></div>
-        <div class="recibos-titulo">Recibos</div>
-        @foreach ($comRecibos as $d)
-            <div class="recibo-grupo">
+    @php($formaCaixa = $caixa['largura'] / max(1, $caixa['imagem']))
+    @php($primeira = true)
+    @foreach ($comRecibos as $d)
+        @foreach ($d->anexos as $anexo)
+            @php($conteudo = \Illuminate\Support\Facades\Storage::disk()->get($anexo->storage_key))
+            @continue($conteudo === null)
+            @php($medidas = @getimagesizefromstring($conteudo))
+            @php($forma = $medidas && ! empty($medidas[1]) ? $medidas[0] / $medidas[1] : 0.7)
+            @php($estilo = $forma > $formaCaixa
+                ? 'width: ' . $caixa['largura'] . 'px; height: auto;'
+                : 'height: ' . $caixa['imagem'] . 'px; width: auto;')
+
+            {{-- No PDF completo a folha vem antes, por isso o primeiro recibo também salta
+                 de página; no PDF só de recibos o primeiro abre o documento. --}}
+            @if (! $primeira || ! $apenasRecibos)
+                <div style="page-break-before: always;"></div>
+            @endif
+            @php($primeira = false)
+
+            <div class="recibo-pagina">
                 <div class="recibo-rot">{{ $d->data->format('d/m/Y') }} · {{ $d->descricao }}{{ $d->detalhe ? ' — ' . $d->detalhe : '' }} · {{ $d->categoria }} · {{ number_format((float) $d->valor, 2, ',', ' ') }} €</div>
-                <table class="recibos-tab">
-                    @foreach ($d->anexos->chunk(4) as $grupo)
-                        <tr>
-                            @foreach ($grupo as $anexo)
-                                <td class="recibo-cel">
-                                    @php($conteudo = \Illuminate\Support\Facades\Storage::disk()->get($anexo->storage_key))
-                                    @if ($conteudo !== null)
-                                        <img class="recibo-img" src="data:{{ $anexo->mime ?: 'image/jpeg' }};base64,{{ base64_encode($conteudo) }}">
-                                    @endif
-                                </td>
-                            @endforeach
-                            @for ($k = $grupo->count(); $k < 4; $k++)<td class="recibo-cel"></td>@endfor
-                        </tr>
-                    @endforeach
-                </table>
+                <img class="recibo-img" style="{{ $estilo }}" src="data:{{ $anexo->mime ?: 'image/jpeg' }};base64,{{ base64_encode($conteudo) }}">
             </div>
         @endforeach
-    @endif
+    @endforeach
 </body>
 </html>

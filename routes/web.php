@@ -25,6 +25,7 @@ use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Models\RegistoDespesa;
 use App\Models\Relatorio;
+use App\Services\Despesas\PdfRegistoDespesas;
 use App\Services\GeradorQrEquipamento;
 use App\Services\GeradorRelatorio;
 use Dompdf\Dompdf;
@@ -129,19 +130,24 @@ Route::middleware(['auth', 'papel:admin,tecnico,financeiro'])->group(function ()
     // Ficha (só leitura) com o processo de validação: estado, recibos, Aprovar/Rejeitar.
     Route::get('/despesas/registo/{registo}', App\Livewire\Despesas\Ficha::class)->name('despesas.registo.ficha');
 
-    // PDF do registo (layout da folha da empresa, logótipo Nexus) — transferível.
-    Route::get('/despesas/registo/{registo}/pdf', function (RegistoDespesa $registo) {
-        $html = view('pdf.registo-despesas', ['registo' => $registo])->render();
-        $dompdf = new Dompdf(['enable_remote' => false]);
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('a4', 'landscape'); // a folha é larga (7 colunas de valores)
-        $dompdf->render();
+    // PDF do registo, em duas versões: a folha da empresa com os recibos atrás (completo) e
+    // só as digitalizações, uma por página (para quem só precisa do talão).
+    $pdfDespesas = function (RegistoDespesa $registo, PdfRegistoDespesas $pdf, string $parte) {
+        if ($parte === PdfRegistoDespesas::RECIBOS) {
+            abort_unless($pdf->temRecibos($registo), 404);
+        }
 
-        return response($dompdf->output(), 200, [
+        return response($pdf->gerar($registo, $parte), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="registo-despesas-'.$registo->id.'.pdf"',
+            'Content-Disposition' => 'attachment; filename="'.$pdf->nomeFicheiro($registo, $parte).'"',
         ]);
-    })->name('despesas.registo.pdf');
+    };
+
+    Route::get('/despesas/registo/{registo}/pdf', fn (RegistoDespesa $registo, PdfRegistoDespesas $pdf) => $pdfDespesas($registo, $pdf, PdfRegistoDespesas::COMPLETO))
+        ->name('despesas.registo.pdf');
+
+    Route::get('/despesas/registo/{registo}/pdf/recibos', fn (RegistoDespesa $registo, PdfRegistoDespesas $pdf) => $pdfDespesas($registo, $pdf, PdfRegistoDespesas::RECIBOS))
+        ->name('despesas.registo.pdf.recibos');
 
     // Caminho antigo (despesa individual): abre o registo a que a linha pertence.
     Route::get('/despesas/{despesa}/editar', function (Despesa $despesa) {
