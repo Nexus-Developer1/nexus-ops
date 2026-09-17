@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Notifications\DespesaDecidida;
 use App\Notifications\DespesaSubmetida;
 use App\Services\Alertas\ServicoAlertas;
+use App\Services\Despesas\FluxoAprovacaoDespesas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -59,6 +60,35 @@ class DespesaAprovacaoTest extends TestCase
             ->assertRedirect(route('despesas'));
 
         return RegistoDespesa::latest('id')->firstOrFail();
+    }
+
+    // O aviso do portal ("tem despesas à espera da sua aprovação") liga para cá com
+    // ?estado=pendente: a listagem tem de abrir já filtrada, senão a pessoa cai na lista
+    // toda e tem de procurar o filtro.
+    public function test_a_listagem_abre_filtrada_pelo_estado_vindo_do_endereco(): void
+    {
+        $joao = $this->tecnico();
+        $this->registar($joao, 'Almoço pendente');
+        $aprovada = $this->registar($joao, 'Almoço fechado');
+        $paulo = $this->aprovador();
+        app(FluxoAprovacaoDespesas::class)->decidir($aprovada, $paulo, true);
+
+        Livewire::actingAs($paulo)
+            ->withQueryParams(['estado' => 'pendente'])
+            ->test(Listagem::class)
+            ->assertSet('estado', 'pendente')
+            ->assertSee('Almoço pendente')
+            ->assertDontSee('Almoço fechado');
+
+        // Um estado que não existe é ignorado: fica o filtro que a pessoa já tinha (os
+        // filtros da listagem são guardados na sessão), não um filtro inventado.
+        session()->flush();
+        Livewire::actingAs($paulo)
+            ->withQueryParams(['estado' => 'xpto'])
+            ->test(Listagem::class)
+            ->assertSet('estado', '')
+            ->assertSee('Almoço pendente')
+            ->assertSee('Almoço fechado');
     }
 
     public function test_recibo_e_obrigatorio_em_cada_linha(): void

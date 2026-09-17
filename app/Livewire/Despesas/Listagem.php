@@ -36,6 +36,16 @@ class Listagem extends Component
     #[Session]
     public string $colaborador = ''; // id do utilizador
 
+    // Ligação vinda de fora (o aviso de despesas por aprovar, no portal): `?estado=pendente`
+    // abre a listagem já filtrada, em vez de deixar a pessoa procurar o filtro.
+    public function mount(): void
+    {
+        $pedido = (string) request()->query('estado', '');
+        if (in_array($pedido, array_column(EstadoDespesa::cases(), 'value'), true)) {
+            $this->estado = $pedido;
+        }
+    }
+
     public function updatingEstado(): void
     {
         $this->resetPage();
