@@ -186,19 +186,25 @@
                             </button>
                         </div>
                         <p x-show="erro" x-text="erro" class="mt-2 text-sm text-perigo-500"></p>
-                        <div class="mt-3 overflow-hidden rounded-lg bg-black">
-                            <video x-ref="video" x-show="!capturado" playsinline muted class="max-h-[60vh] w-full object-contain"></video>
-                            <canvas x-ref="tela" x-show="capturado" class="max-h-[60vh] w-full object-contain"></canvas>
+                        <div class="mt-3 flex justify-center overflow-hidden rounded-lg bg-black">
+                            <video x-ref="video" x-show="fase === 'camara'" playsinline muted class="max-h-[60vh] w-full object-contain"></video>
+                            <canvas x-ref="tela" x-show="fase !== 'camara'" class="max-h-[60vh] max-w-full touch-none select-none"
+                                    @pointerdown="agarrar($event)" @pointermove="mover($event)"
+                                    @pointerup="largar($event)" @pointercancel="largar($event)"></canvas>
                         </div>
-                        <div class="mt-4 flex items-center justify-end gap-2">
-                            <button type="button" x-show="!capturado" @click="capturar()" :disabled="aCapturar"
+                        <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+                            <button type="button" x-show="fase === 'camara'" @click="capturar()" :disabled="aCapturar"
                                     class="botao-primario" x-text="aCapturar ? 'A capturar…' : 'Capturar'"></button>
-                            <button type="button" x-show="capturado" @click="repetir()" class="botao-secundario">Repetir</button>
-                            <button type="button" x-show="capturado" @click="alternarFiltro()" class="botao-secundario"
+                            <button type="button" x-show="fase !== 'camara'" @click="repetir()" class="botao-secundario">Repetir</button>
+                            <button type="button" x-show="fase === 'recorte'" @click="confirmarRecorte()" class="botao-primario">Continuar</button>
+                            <button type="button" x-show="fase === 'pronto'" @click="voltarAoRecorte()" class="botao-secundario">Ajustar recorte</button>
+                            <button type="button" x-show="fase === 'pronto'" @click="alternarFiltro()" class="botao-secundario"
                                     x-text="filtro ? 'Ver a cores' : 'Filtro de documento'"></button>
-                            <button type="button" x-show="capturado" @click="usar()" class="botao-primario">Usar digitalização</button>
+                            <button type="button" x-show="fase === 'pronto'" @click="usar()" class="botao-primario">Usar digitalização</button>
                         </div>
-                        <p class="mt-2 text-xs text-texto-fraco">Enquadra o recibo e captura. O filtro de documento deixa o papel branco e a tinta escura; se ficar melhor sem ele, usa «Ver a cores» antes de guardar.</p>
+                        <p class="mt-2 text-xs text-texto-fraco" x-show="fase === 'camara'">Enquadra o recibo e captura.</p>
+                        <p class="mt-2 text-xs text-texto-fraco" x-show="fase === 'recorte'" x-cloak>Os cantos do papel são uma proposta — arrasta-os se o recorte não estiver certo e carrega em «Continuar».</p>
+                        <p class="mt-2 text-xs text-texto-fraco" x-show="fase === 'pronto'" x-cloak>O filtro de documento deixa o papel branco e a tinta escura; se ficar melhor sem ele, usa «Ver a cores» antes de guardar.</p>
                     </div>
                 </div>
 

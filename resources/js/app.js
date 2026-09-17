@@ -305,19 +305,27 @@ document.addEventListener('alpine:init', () => {
     // escuro, papel claro) antes de enviar ao Livewire. Precisa de HTTPS (produção tem).
     window.Alpine.data('scannerRecibo', () => ({
         aberto: false,
-        capturado: false,
+        fase: 'camara', // camara → recorte (arrastar os cantos) → pronto
         stream: null,
-        foto: null,    // ImageCapture: fotografia do sensor, quando o browser a dá
-        plana: null,   // recorte endireitado SEM filtro (alternar não repete a captura)
+        foto: null,     // ImageCapture: fotografia do sensor, quando o browser a dá
+        bruta: null,    // fotografia inteira, como saiu da câmara
+        quad: null,     // os 4 cantos do papel, em coordenadas da fotografia
+        plana: null,    // recorte endireitado SEM filtro (alternar não repete a captura)
+        previa: null,   // cópia reduzida da fotografia, para o passo do recorte
+        escala: 1,      // fotografia → tela do ecrã, no passo do recorte
+        arrastar: -1,   // canto agarrado com o dedo/rato
         aCapturar: false,
-        filtro: true,  // filtro de documento ligado por omissão
+        filtro: true,   // filtro de documento ligado por omissão
         erro: '',
 
         async abrir() {
             this.erro = '';
-            this.capturado = false;
+            this.fase = 'camara';
             this.aberto = true;
             this.plana = null;
+            this.bruta = null;
+            this.previa = null;
+            this.quad = null;
             this.foto = null;
             if (!navigator.mediaDevices?.getUserMedia) {
                 this.erro = 'A câmara não está disponível neste dispositivo/navegador.';
@@ -403,16 +411,139 @@ document.addEventListener('alpine:init', () => {
             bruta.getContext('2d').drawImage(origem, 0, 0, ow, oh);
             origem.close?.();
 
-            // Recorta automaticamente ao PAPEL: com os 4 cantos detetados, ENDIREITA a folha
-            // (correção de perspetiva — comportamento de scanner); senão, recorta à caixa
-            // aparada; falhando tudo, fica o frame inteiro.
+            // Procura o papel: os 4 cantos, se der; senão a caixa aparada; falhando tudo, a
+            // fotografia inteira. Seja como for, é só uma PROPOSTA — o passo seguinte mostra
+            // os cantos e deixa arrastá-los.
             const det = this.detetarPapel(bruta);
             const zona = det?.caixa ?? { x: 0, y: 0, w: bruta.width, h: bruta.height };
-            this.plana = det?.quad ? this.corrigirPerspetiva(bruta, det.quad) : this.recortar(bruta, zona);
+            this.bruta = bruta;
+            this.previa = null;
+            this.quad = det?.quad ?? [
+                { x: zona.x, y: zona.y },
+                { x: zona.x + zona.w, y: zona.y },
+                { x: zona.x + zona.w, y: zona.y + zona.h },
+                { x: zona.x, y: zona.y + zona.h },
+            ];
 
-            this.aplicar();
-            this.capturado = true;
+            this.fase = 'recorte';
             this.pararCamara(); // congela a captura; "Repetir" reabre
+            this.$nextTick(() => this.desenharRecorte());
+        },
+
+        // ---- passo do recorte: fotografia com os cantos por cima, para os arrastar ----
+
+        desenharRecorte() {
+            if (!this.bruta) return;
+            const tela = this.$refs.tela;
+
+            // A tela do ecrã não precisa da fotografia inteira: 1000px chegam. A cópia
+            // reduzida faz-se UMA vez — arrastar um canto redesenha dezenas de vezes por
+            // segundo, e reduzir a fotografia toda a cada movimento engasgava o telemóvel.
+            this.escala = Math.min(1, 1000 / Math.max(this.bruta.width, this.bruta.height));
+            if (!this.previa) {
+                this.previa = document.createElement('canvas');
+                this.previa.width = Math.round(this.bruta.width * this.escala);
+                this.previa.height = Math.round(this.bruta.height * this.escala);
+                this.previa.getContext('2d').drawImage(this.bruta, 0, 0, this.previa.width, this.previa.height);
+            }
+            tela.width = this.previa.width;
+            tela.height = this.previa.height;
+
+            const ctx = tela.getContext('2d');
+            ctx.drawImage(this.previa, 0, 0);
+
+            const pontos = this.quad.map((c) => ({ x: c.x * this.escala, y: c.y * this.escala }));
+
+            // Escurecer o que fica de fora do papel.
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, 0, tela.width, tela.height);
+            ctx.moveTo(pontos[0].x, pontos[0].y);
+            for (let i = 1; i < 4; i++) ctx.lineTo(pontos[i].x, pontos[i].y);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
+            ctx.fill('evenodd');
+            ctx.restore();
+
+            // Contorno e pegas dos cantos.
+            const traco = Math.max(2, Math.round(tela.width / 260));
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = traco;
+            ctx.beginPath();
+            ctx.moveTo(pontos[0].x, pontos[0].y);
+            for (let i = 1; i < 4; i++) ctx.lineTo(pontos[i].x, pontos[i].y);
+            ctx.closePath();
+            ctx.stroke();
+
+            const raio = Math.max(9, Math.round(tela.width / 46));
+            for (const ponto of pontos) {
+                ctx.beginPath();
+                ctx.arc(ponto.x, ponto.y, raio, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+                ctx.fill();
+                ctx.lineWidth = traco;
+                ctx.strokeStyle = '#16a34a';
+                ctx.stroke();
+            }
+        },
+
+        // Ponto do ecrã → ponto da fotografia.
+        pontoNaFoto(evento) {
+            const tela = this.$refs.tela;
+            const caixa = tela.getBoundingClientRect();
+            const x = ((evento.clientX - caixa.left) * (tela.width / caixa.width)) / this.escala;
+            const y = ((evento.clientY - caixa.top) * (tela.height / caixa.height)) / this.escala;
+
+            return { x, y };
+        },
+
+        agarrar(evento) {
+            if (this.fase !== 'recorte') return;
+            const ponto = this.pontoNaFoto(evento);
+
+            // Canto mais perto, desde que o dedo tenha caído razoavelmente em cima dele.
+            const alcance = Math.max(this.bruta.width, this.bruta.height) * 0.09;
+            let perto = -1, menor = Infinity;
+            this.quad.forEach((canto, i) => {
+                const d = Math.hypot(canto.x - ponto.x, canto.y - ponto.y);
+                if (d < menor) { menor = d; perto = i; }
+            });
+            if (menor > alcance) return;
+
+            this.arrastar = perto;
+            this.$refs.tela.setPointerCapture?.(evento.pointerId);
+            evento.preventDefault();
+        },
+
+        mover(evento) {
+            if (this.arrastar < 0) return;
+            const ponto = this.pontoNaFoto(evento);
+            this.quad[this.arrastar] = {
+                x: Math.max(0, Math.min(this.bruta.width, ponto.x)),
+                y: Math.max(0, Math.min(this.bruta.height, ponto.y)),
+            };
+            this.desenharRecorte();
+            evento.preventDefault();
+        },
+
+        largar(evento) {
+            if (this.arrastar < 0) return;
+            this.arrastar = -1;
+            this.$refs.tela.releasePointerCapture?.(evento.pointerId);
+        },
+
+        // Endireita a folha pelos cantos que ficaram (detetados ou arrastados) e aplica o
+        // filtro. Guarda-se o recorte em bruto: alternar o filtro não repete tudo.
+        confirmarRecorte() {
+            if (!this.bruta || !this.quad) return;
+            this.plana = this.corrigirPerspetiva(this.bruta, this.quad);
+            this.fase = 'pronto';
+            this.aplicar();
+        },
+
+        voltarAoRecorte() {
+            this.fase = 'recorte';
+            this.$nextTick(() => this.desenharRecorte());
         },
 
         // Recorte à caixa, com tecto de resolução: o recibo tem de sair legível, mas um
@@ -446,6 +577,9 @@ document.addEventListener('alpine:init', () => {
             this.filtro = !this.filtro;
             this.aplicar();
         },
+
+        // A fotografia vem do sensor com a resolução que der; o recorte final fica-se pelos
+        // 2400px do lado maior, que é quanto basta para ler um recibo e não atochar o envio.
 
         // Encontra o papel: análise numa miniatura, ENCHENTE a partir do centro sobre os
         // píxeis claros e, da mancha, tira os 4 CANTOS (para endireitar a perspetiva) e a
@@ -515,25 +649,16 @@ document.addEventListener('alpine:init', () => {
                 if (y < H - 1 && !visto[p + W] && cinza[p + W] > limiar) { visto[p + W] = 1; fila.push(p + W); }
             }
 
+            // Nem uma nesga (não há papel) nem quase tudo (a mancha fugiu para a mesa).
             const fracao = area / (W * H);
-            if (fracao < 0.08) return null;
+            if (fracao < 0.08 || fracao > 0.92) return null;
 
-            // 4 CANTOS da mancha (antes de aparar): extremos de x+y e x−y — é isto que
-            // permite endireitar folhas inclinadas/em perspetiva.
-            let tl = null, tr = null, br = null, bl = null;
-            let sMin = Infinity, sMax = -Infinity, dMin = Infinity, dMax = -Infinity;
             const porLinha = new Uint32Array(H);
             const porColuna = new Uint32Array(W);
             for (let p = 0; p < visto.length; p++) {
                 if (!visto[p]) continue;
-                const x = p % W, y = (p / W) | 0;
-                porLinha[y]++;
-                porColuna[x]++;
-                const s = x + y, dif = x - y;
-                if (s < sMin) { sMin = s; tl = { x, y }; }
-                if (s > sMax) { sMax = s; br = { x, y }; }
-                if (dif > dMax) { dMax = dif; tr = { x, y }; }
-                if (dif < dMin) { dMin = dif; bl = { x, y }; }
+                porLinha[(p / W) | 0]++;
+                porColuna[p % W]++;
             }
 
             // Apara a caixa até às MARGENS da folha: filas/colunas de borda que não sejam
@@ -562,29 +687,223 @@ document.addEventListener('alpine:init', () => {
             const y1 = Math.min(bruta.height, Math.round((maxY + 1) * ey) + margem);
             const caixa = { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
 
-            // Validação do quadrilátero: área (shoelace) coerente com a mancha (se a enchente
-            // arrastou uma nesga diagonal, os extremos disparam e a área rebenta) e lados
-            // mínimos. Falhando, fica o recorte pela caixa.
-            const areaQuad = Math.abs(
-                (tl.x * tr.y - tr.x * tl.y) + (tr.x * br.y - br.x * tr.y) +
-                (br.x * bl.y - bl.x * br.y) + (bl.x * tl.y - tl.x * bl.y)
-            ) / 2;
-            const lado = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-            const ladoMin = Math.min(lado(tl, tr), lado(tr, br), lado(br, bl), lado(bl, tl));
-            const quadOk = areaQuad >= 0.8 * area && areaQuad <= 1.5 * area && ladoMin >= 0.15 * Math.min(W, H);
-
-            let quad = null;
-            if (quadOk) {
-                // Cantos → coordenadas reais, empurrados 1,5% para fora do centróide (para a
-                // margem da folha não ser rapada) e presos ao frame.
-                const mx = (tl.x + tr.x + br.x + bl.x) / 4, my = (tl.y + tr.y + br.y + bl.y) / 4;
-                quad = [tl, tr, br, bl].map((c) => ({
-                    x: Math.max(0, Math.min(bruta.width - 1, (c.x + (c.x - mx) * 0.015 + 0.5) * ex)),
-                    y: Math.max(0, Math.min(bruta.height - 1, (c.y + (c.y - my) * 0.015 + 0.5) * ey)),
-                }));
-            }
+            const quad = this.quadrilateroDoPapel(cinza, visto, W, H, area, ex, ey, bruta.width, bruta.height);
 
             return { quad, caixa };
+        },
+
+        /**
+         * Os quatro cantos do papel, por AJUSTE DE RETAS aos lados.
+         *
+         * Antes tomavam-se por cantos os pontos mais extremos da mancha. Bastava o brilho de
+         * uma lâmpada colado à folha, ou uma dobra, para um desses extremos saltar para fora
+         * do papel — e a folha saía torta, com um canto cortado e um bocado de mesa dentro.
+         *
+         * Agora, de cada lado junta-se a margem da mancha (o ponto mais à esquerda de cada
+         * linha, o mais acima de cada coluna, etc.), ajusta-se uma reta que DESPREZA os
+         * pontos desgarrados, e os cantos são os cruzamentos dessas quatro retas. Um reflexo
+         * mexe com uma minoria das linhas e é posto de lado; o lado continua onde está.
+         *
+         * As pontas ficam de fora do ajuste (15% de cada lado): é aí que a margem deixa de
+         * seguir um lado e passa a seguir o vizinho.
+         */
+        quadrilateroDoPapel(cinza, visto, W, H, area, ex, ey, larguraReal, alturaReal) {
+            let minX = W, maxX = 0, minY = H, maxY = 0;
+            for (let p = 0; p < visto.length; p++) {
+                if (!visto[p]) continue;
+                const x = p % W, y = (p / W) | 0;
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+
+            const esquerda = [], direita = [], cima = [], baixo = [];
+            const recuoY = (maxY - minY) * 0.15, recuoX = (maxX - minX) * 0.15;
+
+            for (let y = Math.ceil(minY + recuoY); y <= Math.floor(maxY - recuoY); y++) {
+                let a = -1, b = -1;
+                for (let x = 0; x < W; x++) if (visto[y * W + x]) { if (a < 0) a = x; b = x; }
+                if (a >= 0) { esquerda.push({ u: y, v: a }); direita.push({ u: y, v: b }); }
+            }
+            for (let x = Math.ceil(minX + recuoX); x <= Math.floor(maxX - recuoX); x++) {
+                let a = -1, b = -1;
+                for (let y = 0; y < H; y++) if (visto[y * W + x]) { if (a < 0) a = y; b = y; }
+                if (a >= 0) { cima.push({ u: x, v: a }); baixo.push({ u: x, v: b }); }
+            }
+            if (esquerda.length < 8 || cima.length < 8) return null;
+
+            let rEsq = this.ajustarReta(esquerda), rDir = this.ajustarReta(direita);
+            let rCima = this.ajustarReta(cima), rBaixo = this.ajustarReta(baixo);
+            if (!rEsq || !rDir || !rCima || !rBaixo) return null;
+
+            // Encostar ao contraste: a mancha decide pelo brilho e erra uns píxeis quando a
+            // mesa é quase tão clara como o papel. A margem verdadeira é onde a luz dá o
+            // salto — é aí que as retas vão parar.
+            rEsq = this.encostarReta(cinza, W, H, rEsq, true, minY, maxY);
+            rDir = this.encostarReta(cinza, W, H, rDir, true, minY, maxY);
+            rCima = this.encostarReta(cinza, W, H, rCima, false, minX, maxX);
+            rBaixo = this.encostarReta(cinza, W, H, rBaixo, false, minX, maxX);
+
+            // Lados: x = a·y + b. Topo e base: y = a·x + b. O cruzamento é o canto.
+            const canto = (lateral, horizontal) => {
+                const den = 1 - lateral.a * horizontal.a;
+                if (Math.abs(den) < 1e-6) return null;
+                const x = (lateral.a * horizontal.b + lateral.b) / den;
+
+                return { x, y: horizontal.a * x + horizontal.b };
+            };
+            const quad = [canto(rEsq, rCima), canto(rDir, rCima), canto(rDir, rBaixo), canto(rEsq, rBaixo)];
+            if (quad.some((c) => !c || !Number.isFinite(c.x) || !Number.isFinite(c.y))) return null;
+
+            // Cantos muito fora do frame = folha cortada na fotografia: mais vale não
+            // endireitar do que endireitar uma folha que não se vê toda.
+            const folga = 0.03;
+            if (quad.some((c) => c.x < -folga * W || c.x > W * (1 + folga) || c.y < -folga * H || c.y > H * (1 + folga))) {
+                return null;
+            }
+
+            // Tem de ser um quadrilátero convexo, de lados com tamanho e cantos em esquadria
+            // razoável, e com a área da mancha. Senão, fica o recorte direito pela caixa.
+            const comprimento = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+            let sinal = 0;
+            for (let i = 0; i < 4; i++) {
+                const a = quad[(i + 3) % 4], b = quad[i], c = quad[(i + 1) % 4];
+                const v1 = { x: a.x - b.x, y: a.y - b.y }, v2 = { x: c.x - b.x, y: c.y - b.y };
+                const n1 = Math.hypot(v1.x, v1.y), n2 = Math.hypot(v2.x, v2.y);
+                if (n1 < 1e-6 || n2 < 1e-6) return null;
+                const cosseno = (v1.x * v2.x + v1.y * v2.y) / (n1 * n2);
+                if (Math.abs(cosseno) > 0.72) return null; // cantos fora de ~44°–136°
+                const cruz = v1.x * v2.y - v1.y * v2.x;
+                if (!sinal) sinal = Math.sign(cruz);
+                else if (Math.sign(cruz) !== sinal) return null; // não é convexo
+            }
+            if (Math.min(
+                comprimento(quad[0], quad[1]), comprimento(quad[1], quad[2]),
+                comprimento(quad[2], quad[3]), comprimento(quad[3], quad[0]),
+            ) < 0.12 * Math.min(W, H)) return null;
+
+            const areaQuad = Math.abs(
+                (quad[0].x * quad[1].y - quad[1].x * quad[0].y) + (quad[1].x * quad[2].y - quad[2].x * quad[1].y) +
+                (quad[2].x * quad[3].y - quad[3].x * quad[2].y) + (quad[3].x * quad[0].y - quad[0].x * quad[3].y)
+            ) / 2;
+            if (areaQuad < 0.7 * area || areaQuad > 1.35 * area) return null;
+
+            // Miniatura → coordenadas reais, com 1% para fora do centro (a margem do papel
+            // não deve ser rapada) e presos ao frame.
+            const mx = (quad[0].x + quad[1].x + quad[2].x + quad[3].x) / 4;
+            const my = (quad[0].y + quad[1].y + quad[2].y + quad[3].y) / 4;
+
+            return quad.map((c) => ({
+                x: Math.max(0, Math.min(larguraReal - 1, (c.x + (c.x - mx) * 0.01 + 0.5) * ex)),
+                y: Math.max(0, Math.min(alturaReal - 1, (c.y + (c.y - my) * 0.01 + 0.5) * ey)),
+            }));
+        },
+
+        /**
+         * Empurra a reta de um lado para onde está o degrau de luz mais forte.
+         *
+         * Experimenta deslocá-la para um lado e para o outro (e inclinar um pouco), e fica
+         * onde a diferença entre o que está por dentro e o que está por fora é maior — ou
+         * seja, em cima da margem do papel. Sem contraste nenhum à volta, fica como estava.
+         */
+        encostarReta(cinza, W, H, reta, eLateral, u0, u1) {
+            const luz = (x, y) => cinza[Math.max(0, Math.min(H - 1, Math.round(y))) * W
+                + Math.max(0, Math.min(W - 1, Math.round(x)))];
+            const passos = Math.max(12, Math.min(90, Math.round(u1 - u0)));
+
+            // Conta em QUANTOS pontos do lado há mesmo um degrau de luz, sempre no mesmo
+            // sentido. Não se usa a média dos degraus: num recibo o texto começa todo na
+            // mesma coluna, e a média ia encostar a reta ao texto em vez da margem. Assim
+            // não: a margem tem degrau ao longo do lado inteiro, o texto só onde há linhas.
+            const pontuar = (a, b) => {
+                let claros = 0, escuros = 0;
+                for (let i = 0; i <= passos; i++) {
+                    const u = u0 + ((u1 - u0) * i) / passos;
+                    const v = a * u + b;
+                    const degrau = eLateral ? luz(v + 2, u) - luz(v - 2, u) : luz(u, v + 2) - luz(u, v - 2);
+                    if (degrau >= 8) claros++;
+                    else if (degrau <= -8) escuros++;
+                }
+
+                return Math.max(claros, escuros);
+            };
+
+            // Só se troca de sítio quando o novo é claramente melhor do que onde já estava.
+            let melhor = { a: reta.a, b: reta.b, pontos: pontuar(reta.a, reta.b) * 1.15 + 1 };
+            for (let dInclinacao = -0.03; dInclinacao <= 0.031; dInclinacao += 0.01) {
+                for (let dLado = -8; dLado <= 8.01; dLado += 0.5) {
+                    const a = reta.a + dInclinacao, b = reta.b + dLado;
+                    const pontos = pontuar(a, b);
+                    if (pontos > melhor.pontos) melhor = { a, b, pontos };
+                }
+            }
+
+            return { a: melhor.a, b: melhor.b };
+        },
+
+        /**
+         * Reta v = a·u + b pelos pontos de um lado, imune aos desgarrados.
+         *
+         * Fica a reta com MAIS pontos em cima dela: duas amostras afastadas definem uma
+         * candidata, conta-se quantos pontos lhe ficam a menos de um píxel e meio, e no fim
+         * afina-se por mínimos quadrados só com esses.
+         *
+         * Porquê assim e não a média dos pontos: o brilho de uma lâmpada encostado à folha
+         * chega a empurrar MAIS DE METADE dos pontos de um lado, e a média vai atrás dele.
+         * A reta com mais pontos alinhados continua a ser a do papel — o contorno do brilho
+         * é redondo, não alinha com nada.
+         */
+        ajustarReta(pontos) {
+            const n = pontos.length;
+            if (n < 8) return null;
+
+            const vao = Math.abs(pontos[n - 1].u - pontos[0].u);
+            const afastamento = Math.max(2, vao * 0.25);
+            const tolerancia = 1.5;
+
+            // Sorteio próprio, sempre igual: a mesma fotografia dá sempre o mesmo recorte.
+            let semente = 987654321;
+            const sorte = () => {
+                semente = (semente * 1103515245 + 12345) % 2147483648;
+
+                return semente / 2147483648;
+            };
+
+            let melhorA = 0, melhorB = 0, melhorConta = -1;
+            for (let tentativa = 0; tentativa < 200; tentativa++) {
+                const p1 = pontos[Math.min(n - 1, (sorte() * n) | 0)];
+                const p2 = pontos[Math.min(n - 1, (sorte() * n) | 0)];
+                if (Math.abs(p1.u - p2.u) < afastamento) continue;
+                const a = (p2.v - p1.v) / (p2.u - p1.u);
+                const b = p1.v - a * p1.u;
+                let conta = 0;
+                for (let i = 0; i < n; i++) {
+                    if (Math.abs(pontos[i].v - (a * pontos[i].u + b)) <= tolerancia) conta++;
+                }
+                if (conta > melhorConta) { melhorConta = conta; melhorA = a; melhorB = b; }
+            }
+            if (melhorConta < Math.max(8, n * 0.25)) return null;
+
+            // Afinação com os pontos que ficaram em cima da reta escolhida.
+            for (let volta = 0; volta < 2; volta++) {
+                let su = 0, sv = 0, suu = 0, suv = 0, m = 0;
+                for (let i = 0; i < n; i++) {
+                    if (Math.abs(pontos[i].v - (melhorA * pontos[i].u + melhorB)) > tolerancia * 1.5) continue;
+                    su += pontos[i].u;
+                    sv += pontos[i].v;
+                    suu += pontos[i].u * pontos[i].u;
+                    suv += pontos[i].u * pontos[i].v;
+                    m++;
+                }
+                if (m < 6) break;
+                const den = m * suu - su * su;
+                if (Math.abs(den) < 1e-9) break;
+                melhorA = (m * suv - su * sv) / den;
+                melhorB = (sv - melhorA * su) / m;
+            }
+
+            return { a: melhorA, b: melhorB };
         },
 
         // Endireita a folha: mapeamento projetivo (Heckbert, quadrado unitário → quadrilátero)
@@ -796,6 +1115,12 @@ document.addEventListener('alpine:init', () => {
         fechar() {
             this.pararCamara();
             this.aberto = false;
+            // Uma fotografia de 12 MP ocupa dezenas de MB em memória: largar as telas ao
+            // fechar evita deixar isso pendurado no telemóvel.
+            this.bruta = null;
+            this.previa = null;
+            this.plana = null;
+            this.quad = null;
         },
     }));
 
