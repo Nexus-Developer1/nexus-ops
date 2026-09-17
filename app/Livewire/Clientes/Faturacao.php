@@ -3,7 +3,6 @@
 namespace App\Livewire\Clientes;
 
 use App\Livewire\Concerns\ApenasEquipa;
-use App\Livewire\Concerns\Paginacao;
 use App\Models\Cliente;
 use App\Models\LinhaFatura;
 use Livewire\Attributes\Layout;
@@ -17,7 +16,6 @@ use Livewire\WithPagination;
 class Faturacao extends Component
 {
     use ApenasEquipa;
-    use Paginacao;
     use WithPagination;
 
     public Cliente $cliente;

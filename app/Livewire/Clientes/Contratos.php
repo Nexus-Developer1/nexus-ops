@@ -3,7 +3,6 @@
 namespace App\Livewire\Clientes;
 
 use App\Livewire\Concerns\ApenasEquipa;
-use App\Livewire\Concerns\Paginacao;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use Livewire\Attributes\Layout;
@@ -16,7 +15,6 @@ use Livewire\WithPagination;
 class Contratos extends Component
 {
     use ApenasEquipa;
-    use Paginacao;
     use WithPagination;
 
     public Cliente $cliente;

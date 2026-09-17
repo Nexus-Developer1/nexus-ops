@@ -5,7 +5,6 @@ namespace App\Livewire\Equipamentos;
 use App\Enums\EstadoEquipamento;
 use App\Enums\TipoEquipamento;
 use App\Livewire\Concerns\ApenasEquipa;
-use App\Livewire\Concerns\Paginacao;
 use App\Models\Equipamento;
 use App\Services\Auditor;
 use Illuminate\Database\Query\Builder;
@@ -19,7 +18,6 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use ApenasEquipa;
-    use Paginacao;
     use WithPagination;
 
     // Filtros e pesquisa vivem na SESSÃO (não no URL): entrar numa ficha e voltar à lista

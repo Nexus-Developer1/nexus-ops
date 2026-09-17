@@ -3,7 +3,6 @@
 namespace App\Livewire\Clientes;
 
 use App\Livewire\Concerns\ApenasEquipa;
-use App\Livewire\Concerns\Paginacao;
 use App\Models\Cliente;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Session;
@@ -16,7 +15,6 @@ use Livewire\WithPagination;
 class Index extends Component
 {
     use ApenasEquipa;
-    use Paginacao;
     use WithPagination;
 
     // Expressão pura (sem extensão) para ordenar por nome ignorando acentos, maiúsculas e espaços.

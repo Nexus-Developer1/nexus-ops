@@ -4,7 +4,6 @@ namespace App\Livewire\Despesas;
 
 use App\Enums\EstadoDespesa;
 use App\Livewire\Concerns\AcessoDespesas;
-use App\Livewire\Concerns\Paginacao;
 use App\Models\Despesa;
 use App\Models\RegistoDespesa;
 use App\Models\User;
@@ -18,7 +17,6 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use AcessoDespesas;
-    use Paginacao;
     use WithPagination;
 
     #[Session]

@@ -7,6 +7,11 @@ export default {
     content: [
         './resources/views/**/*.blade.php',
         './app/Livewire/**/*.php',
+        // A barra de paginas das listagens e a do Livewire, que vive em vendor/. Sem isto o
+        // Tailwind so gera as classes dela que POR ACASO tambem apareçam nas nossas vistas:
+        // em set. 2026 uma troca de filtros levou a ultima ocorrencia de `sm:flex` e a barra
+        // desapareceu de todas as listagens (o bloco dos numeros e `hidden sm:flex`).
+        './vendor/livewire/livewire/src/Features/SupportPagination/views/*.blade.php',
         // Os enums devolvem as classes das etiquetas de estado (rotulo/classesEtiqueta):
         // sem isto, uma cor so usada por um enum nao chegava a ser gerada.
         './app/Enums/**/*.php',

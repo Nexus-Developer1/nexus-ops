@@ -3,7 +3,6 @@
 namespace App\Livewire\Encomendas;
 
 use App\Livewire\Concerns\ApenasEquipa;
-use App\Livewire\Concerns\Paginacao;
 use App\Models\Dossier;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Session;
@@ -17,7 +16,6 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use ApenasEquipa;
-    use Paginacao;
     use WithPagination;
 
     #[Session]
