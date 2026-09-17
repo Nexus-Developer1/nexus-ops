@@ -22,8 +22,8 @@
     <div class="mt-1.5 flex flex-wrap gap-1.5">
         @foreach ($gravados as $recibo)
             <span class="group relative" wire:key="rg-{{ $sufixo }}-{{ $recibo->id }}">
-                <a href="{{ route('anexos.ver', $recibo) }}" target="_blank">
-                    <img src="{{ route('anexos.ver', $recibo) }}" alt="{{ $recibo->nome_ficheiro }}" class="h-12 w-12 rounded border border-borda object-cover">
+                <a href="{{ route('despesas.recibos.ver', $recibo) }}" target="_blank">
+                    <img src="{{ route('despesas.recibos.ver', $recibo) }}" alt="{{ $recibo->nome_ficheiro }}" class="h-12 w-12 rounded border border-borda object-cover">
                 </a>
                 <button type="button" wire:click="removerReciboGravado({{ $recibo->id }})" wire:confirm="Remover este recibo?"
                     class="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-perigo-600 text-white sm:hidden sm:group-hover:flex" title="Remover">

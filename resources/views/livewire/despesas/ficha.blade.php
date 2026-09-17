@@ -118,8 +118,8 @@
                                 <td class="px-6 py-3.5">
                                     <div class="flex flex-wrap gap-2">
                                         @forelse ($d->anexos as $a)
-                                            <a href="{{ route('anexos.ver', $a) }}" target="_blank" class="block overflow-hidden rounded border border-borda" title="{{ $a->nome_ficheiro }}">
-                                                <img src="{{ route('anexos.ver', $a) }}" alt="Recibo" class="h-16 w-16 object-cover">
+                                            <a href="{{ route('despesas.recibos.ver', $a) }}" target="_blank" class="block overflow-hidden rounded border border-borda" title="{{ $a->nome_ficheiro }}">
+                                                <img src="{{ route('despesas.recibos.ver', $a) }}" alt="Recibo" class="h-16 w-16 object-cover">
                                             </a>
                                         @empty
                                             <span class="text-xs text-perigo-500">Sem recibo</span>

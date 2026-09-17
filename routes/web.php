@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\EstadoRelatorio;
+use App\Http\Controllers\AnexoController;
 use App\Livewire\Agenda\Calendario;
 use App\Livewire\Alertas\Painel;
 use App\Livewire\Clientes\Contratos;
@@ -19,7 +20,6 @@ use App\Livewire\Equipamentos\Listagem;
 use App\Livewire\Equipamentos\Novo;
 use App\Livewire\Portal\Dashboard;
 use App\Livewire\Relatorios\Enviar;
-use App\Models\Anexo;
 use App\Models\Despesa;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
@@ -122,6 +122,9 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
 // ---- Despesas (admin + técnico + financeiro). O papel `financeiro` existe só para isto:
 // trata das despesas de toda a gente e não entra em mais nada da aplicação (set. 2026). ----
 Route::middleware(['auth', 'papel:admin,tecnico,financeiro'])->group(function () {
+    // Só recibos de despesas existentes; não abre os restantes anexos ao financeiro.
+    Route::get('/despesas/recibos/{anexo}', [AnexoController::class, 'recibo'])->name('despesas.recibos.ver');
+
     // Despesas: REGISTOS (documento com linhas, como a folha da empresa). Rotas literais/
     // compostas ANTES de /{despesa} para não colidir.
     Route::get('/despesas', App\Livewire\Despesas\Listagem::class)->name('despesas');
@@ -234,25 +237,7 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
     Route::get('/relatorios/{relatorio}/pdf', $servirPdf)->name('relatorios.pdf');
 
     // Proxy aos anexos no object storage (evita expor o MinIO ao browser).
-    Route::get('/anexos/{anexo}', function (Anexo $anexo) {
-        $disco = Storage::disk();
-        abort_unless($disco->exists($anexo->storage_key), 404);
-
-        // Nome sanitizado para o cabeçalho (sem aspas/quebras de linha → sem header injection).
-        $nome = preg_replace('/[^\w.\- ]/u', '_', basename($anexo->nome_ficheiro ?? 'anexo')) ?: 'anexo';
-
-        // Só imagens (não SVG) e PDF abrem no browser. Qualquer outro tipo — ou um mime que
-        // afirme ser HTML/SVG/JS — vai como DOWNLOAD opaco (octet-stream + attachment): o
-        // browser nunca o interpreta, mesmo que tenha entrado por uma porta lateral (stored
-        // XSS via recibo em HTML, 22.ª revisão de segurança). nosniff em ambos os casos.
-        $mime = strtolower(trim((string) ($anexo->mime ?? '')));
-        $inline = in_array($mime, ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp', 'application/pdf'], true);
-
-        return response($disco->get($anexo->storage_key))
-            ->header('Content-Type', $inline ? $mime : 'application/octet-stream')
-            ->header('X-Content-Type-Options', 'nosniff')
-            ->header('Content-Disposition', ($inline ? 'inline' : 'attachment').'; filename="'.$nome.'"');
-    })->name('anexos.ver');
+    Route::get('/anexos/{anexo}', [AnexoController::class, 'ver'])->name('anexos.ver');
 });
 
 // Portal do cliente (só leitura). O isolamento por cliente é imposto na camada de
