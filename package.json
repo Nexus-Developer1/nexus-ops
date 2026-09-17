@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "testa-scanner": "node tests/js/scanner-componente.cjs && node tests/js/scanner-imagem.cjs"
     },
     "devDependencies": {
         "autoprefixer": "^10.4.20",

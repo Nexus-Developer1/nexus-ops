@@ -331,23 +331,38 @@ document.addEventListener('alpine:init', () => {
                 this.erro = 'A câmara não está disponível neste dispositivo/navegador.';
                 return;
             }
-            try {
-                // Pede a maior resolução que o aparelho der. A pré-visualização de um
-                // telemóvel fica-se muitas vezes pelos 1280×720 e um recibo capturado assim
-                // sai pixelizado — o `advanced` é uma escada, o browser fica no primeiro
-                // degrau que consegue.
-                this.stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: { ideal: 'environment' },
-                        width: { ideal: 3840 },
-                        height: { ideal: 2160 },
-                        advanced: [{ width: 3840 }, { width: 2560 }, { width: 1920 }],
-                    },
-                    audio: false,
-                });
+            // Escada de exigências: pede-se muito e vai-se baixando. Pedir 4K a uma câmara
+            // que não os tem faz algumas recusarem o pedido inteiro — e aí não se
+            // digitalizava nada. O último degrau é "uma câmara, qualquer uma".
+            const exigencias = [
+                {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 3840 },
+                    height: { ideal: 2160 },
+                },
+                { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } },
+                { facingMode: { ideal: 'environment' } },
+                true,
+            ];
 
+            for (const video of exigencias) {
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+                    break;
+                } catch (e) {
+                    this.stream = null;
+                }
+            }
+
+            if (!this.stream) {
+                this.erro = 'Não foi possível abrir a câmara (verifica as permissões).';
+
+                return;
+            }
+
+            try {
                 // A fotografia do sensor é bastante maior do que o vídeo (onde existe:
-                // Chrome/Android). Se não existir, capturamos o frame do vídeo.
+                // Chrome/Android). Se não existir, captura-se o frame do vídeo.
                 const faixa = this.stream.getVideoTracks()[0];
                 if (window.ImageCapture && faixa) {
                     try {
@@ -360,7 +375,7 @@ document.addEventListener('alpine:init', () => {
                 this.$refs.video.srcObject = this.stream;
                 await this.$refs.video.play();
             } catch (e) {
-                this.erro = 'Não foi possível abrir a câmara (verifica as permissões).';
+                this.erro = 'A câmara abriu mas a imagem não apareceu. Tenta fechar e abrir outra vez.';
             }
         },
 
@@ -371,6 +386,11 @@ document.addEventListener('alpine:init', () => {
             this.aCapturar = true;
             try {
                 await this.capturarAgora();
+            } catch (e) {
+                // Nada pode deixar o botão preso: se a captura falhar, diz-se e fica-se na
+                // câmara, pronto para tentar outra vez.
+                this.erro = 'Não foi possível capturar. Tenta outra vez.';
+                this.fase = 'camara';
             } finally {
                 this.aCapturar = false;
             }
@@ -383,9 +403,20 @@ document.addEventListener('alpine:init', () => {
             // fotografia vier MENOR do que o vídeo (acontece em alguns aparelhos), fica o
             // vídeo — o que se quer é sempre o maior número de píxeis.
             let origem = null, ow = 0, oh = 0;
-            if (this.foto) {
+
+            // A fotografia do sensor só compensa quando o vídeo é pequeno; num vídeo já
+            // grande não vale a pena estar à espera dela.
+            const videoPequeno = !video.videoWidth || video.videoWidth * video.videoHeight < 8e6;
+            if (this.foto && videoPequeno) {
                 try {
-                    const blob = await this.foto.takePhoto();
+                    // COM RELÓGIO: em muitas webcams de portátil o pedido da fotografia do
+                    // sensor nunca responde. Sem isto o botão ficava em "A capturar…" para
+                    // sempre e não se digitalizava nada. Se demorar, segue-se com o frame do
+                    // vídeo e não se volta a pedir fotografia nesta sessão.
+                    const blob = await Promise.race([
+                        this.foto.takePhoto(),
+                        new Promise((_, rejeitar) => setTimeout(() => rejeitar(new Error('demorou')), 2500)),
+                    ]);
                     origem = await createImageBitmap(blob, { imageOrientation: 'from-image' });
                     ow = origem.width;
                     oh = origem.height;
@@ -394,11 +425,16 @@ document.addEventListener('alpine:init', () => {
                         origem = null;
                     }
                 } catch (e) {
+                    this.foto = null; // não insistir: as vezes seguintes vão direto ao vídeo
                     origem = null;
                 }
             }
             if (!origem) {
-                if (!video.videoWidth) return;
+                if (!video.videoWidth) {
+                    this.erro = 'A câmara ainda não está pronta. Espera um instante e tenta outra vez.';
+
+                    return;
+                }
                 origem = video;
                 ow = video.videoWidth;
                 oh = video.videoHeight;
@@ -454,36 +490,42 @@ document.addEventListener('alpine:init', () => {
 
             const pontos = this.quad.map((c) => ({ x: c.x * this.escala, y: c.y * this.escala }));
 
-            // Escurecer o que fica de fora do papel.
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(0, 0, tela.width, tela.height);
-            ctx.moveTo(pontos[0].x, pontos[0].y);
-            for (let i = 1; i < 4; i++) ctx.lineTo(pontos[i].x, pontos[i].y);
-            ctx.closePath();
-            ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
-            ctx.fill('evenodd');
-            ctx.restore();
-
-            // Contorno e pegas dos cantos.
-            const traco = Math.max(2, Math.round(tela.width / 260));
-            ctx.strokeStyle = '#22c55e';
-            ctx.lineWidth = traco;
-            ctx.beginPath();
-            ctx.moveTo(pontos[0].x, pontos[0].y);
-            for (let i = 1; i < 4; i++) ctx.lineTo(pontos[i].x, pontos[i].y);
-            ctx.closePath();
-            ctx.stroke();
-
-            const raio = Math.max(9, Math.round(tela.width / 46));
-            for (const ponto of pontos) {
+            // Daqui para baixo é só o contorno e as pegas dos cantos. Se algum browser se
+            // engasgar nisto, a fotografia fica na mesma no ecrã e a digitalização segue.
+            try {
+                // Escurecer o que fica de fora do papel.
+                ctx.save();
                 ctx.beginPath();
-                ctx.arc(ponto.x, ponto.y, raio, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-                ctx.fill();
+                ctx.rect(0, 0, tela.width, tela.height);
+                ctx.moveTo(pontos[0].x, pontos[0].y);
+                for (let i = 1; i < 4; i++) ctx.lineTo(pontos[i].x, pontos[i].y);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
+                ctx.fill('evenodd');
+                ctx.restore();
+
+                // Contorno e pegas dos cantos.
+                const traco = Math.max(2, Math.round(tela.width / 260));
+                ctx.strokeStyle = '#22c55e';
                 ctx.lineWidth = traco;
-                ctx.strokeStyle = '#16a34a';
+                ctx.beginPath();
+                ctx.moveTo(pontos[0].x, pontos[0].y);
+                for (let i = 1; i < 4; i++) ctx.lineTo(pontos[i].x, pontos[i].y);
+                ctx.closePath();
                 ctx.stroke();
+
+                const raio = Math.max(9, Math.round(tela.width / 46));
+                for (const ponto of pontos) {
+                    ctx.beginPath();
+                    ctx.arc(ponto.x, ponto.y, raio, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+                    ctx.fill();
+                    ctx.lineWidth = traco;
+                    ctx.strokeStyle = '#16a34a';
+                    ctx.stroke();
+                }
+            } catch (e) {
+                // sem contorno, mas com fotografia
             }
         },
 
