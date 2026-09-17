@@ -3,6 +3,7 @@
 namespace App\Livewire\Encomendas;
 
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\Paginacao;
 use App\Models\Dossier;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Session;
@@ -16,6 +17,7 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use ApenasEquipa;
+    use Paginacao;
     use WithPagination;
 
     #[Session]
@@ -81,7 +83,7 @@ class Listagem extends Component
             ->orderByDesc('ano')
             ->orderByDesc('obrano')
             ->orderByDesc('id')
-            ->paginate(20);
+            ->paginate(25); // ~200 000 dossiers: ver a caixa de salto na barra de paginas
 
         // Anos disponíveis para o filtro (distintos, do mais recente ao mais antigo).
         $anos = Dossier::query()->whereNotNull('ano')->distinct()->orderByDesc('ano')->pluck('ano');

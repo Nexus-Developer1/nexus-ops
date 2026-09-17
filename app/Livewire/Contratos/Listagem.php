@@ -4,6 +4,7 @@ namespace App\Livewire\Contratos;
 
 use App\Enums\EstadoContrato;
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\Paginacao;
 use App\Models\Contrato;
 use App\Services\Auditor;
 use Livewire\Attributes\Layout;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use ApenasEquipa;
+    use Paginacao;
     use WithPagination;
 
     #[Session]

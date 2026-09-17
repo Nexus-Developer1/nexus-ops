@@ -3,6 +3,7 @@
 namespace App\Livewire\Portal;
 
 use App\Enums\EstadoRelatorio;
+use App\Livewire\Concerns\Paginacao;
 use App\Models\Relatorio;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.portal', ['ativo' => 'relatorios', 'titulo' => 'Relatórios'])]
 class Relatorios extends Component
 {
+    use Paginacao;
     use WithPagination;
 
     public function render()

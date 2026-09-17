@@ -5,6 +5,7 @@ namespace App\Livewire\Equipamentos;
 use App\Enums\EstadoEquipamento;
 use App\Enums\TipoEquipamento;
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\Paginacao;
 use App\Models\Equipamento;
 use App\Services\Auditor;
 use Illuminate\Database\Query\Builder;
@@ -18,6 +19,7 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use ApenasEquipa;
+    use Paginacao;
     use WithPagination;
 
     // Filtros e pesquisa vivem na SESSÃO (não no URL): entrar numa ficha e voltar à lista
@@ -201,7 +203,8 @@ class Listagem extends Component
             default => $equipamentos->orderByRaw('coalesce(criado_erp_em, created_at) desc nulls last')->orderByDesc('id'),
         };
 
-        $equipamentos = $equipamentos->paginate(10);
+        // 25 por pagina: com ~18 000 equipamentos, 10 eram 1800 paginas.
+        $equipamentos = $equipamentos->paginate(25);
 
         // Famílias disponíveis (nomes distintos já presentes) para o dropdown do filtro.
         $familias = Equipamento::query()
