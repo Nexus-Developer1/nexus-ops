@@ -307,21 +307,48 @@ document.addEventListener('alpine:init', () => {
         aberto: false,
         capturado: false,
         stream: null,
+        foto: null,    // ImageCapture: fotografia do sensor, quando o browser a dá
+        plana: null,   // recorte endireitado SEM filtro (alternar não repete a captura)
+        aCapturar: false,
+        filtro: true,  // filtro de documento ligado por omissão
         erro: '',
 
         async abrir() {
             this.erro = '';
             this.capturado = false;
             this.aberto = true;
+            this.plana = null;
+            this.foto = null;
             if (!navigator.mediaDevices?.getUserMedia) {
                 this.erro = 'A câmara não está disponível neste dispositivo/navegador.';
                 return;
             }
             try {
+                // Pede a maior resolução que o aparelho der. A pré-visualização de um
+                // telemóvel fica-se muitas vezes pelos 1280×720 e um recibo capturado assim
+                // sai pixelizado — o `advanced` é uma escada, o browser fica no primeiro
+                // degrau que consegue.
                 this.stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment', width: { ideal: 2560 } },
+                    video: {
+                        facingMode: { ideal: 'environment' },
+                        width: { ideal: 3840 },
+                        height: { ideal: 2160 },
+                        advanced: [{ width: 3840 }, { width: 2560 }, { width: 1920 }],
+                    },
                     audio: false,
                 });
+
+                // A fotografia do sensor é bastante maior do que o vídeo (onde existe:
+                // Chrome/Android). Se não existir, capturamos o frame do vídeo.
+                const faixa = this.stream.getVideoTracks()[0];
+                if (window.ImageCapture && faixa) {
+                    try {
+                        this.foto = new ImageCapture(faixa);
+                    } catch (e) {
+                        this.foto = null;
+                    }
+                }
+
                 this.$refs.video.srcObject = this.stream;
                 await this.$refs.video.play();
             } catch (e) {
@@ -329,37 +356,95 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        capturar() {
+        async capturar() {
+            // A fotografia do sensor demora um instante a chegar: sem tranca, dois toques
+            // seguidos no botão lançavam duas capturas ao mesmo tempo.
+            if (this.aCapturar) return;
+            this.aCapturar = true;
+            try {
+                await this.capturarAgora();
+            } finally {
+                this.aCapturar = false;
+            }
+        },
+
+        async capturarAgora() {
             const video = this.$refs.video;
-            const tela = this.$refs.tela;
-            if (!video.videoWidth) return;
+
+            // Origem: fotografia do sensor se houver, senão o frame do vídeo. Se a
+            // fotografia vier MENOR do que o vídeo (acontece em alguns aparelhos), fica o
+            // vídeo — o que se quer é sempre o maior número de píxeis.
+            let origem = null, ow = 0, oh = 0;
+            if (this.foto) {
+                try {
+                    const blob = await this.foto.takePhoto();
+                    origem = await createImageBitmap(blob, { imageOrientation: 'from-image' });
+                    ow = origem.width;
+                    oh = origem.height;
+                    if (video.videoWidth && ow * oh < video.videoWidth * video.videoHeight) {
+                        origem.close?.();
+                        origem = null;
+                    }
+                } catch (e) {
+                    origem = null;
+                }
+            }
+            if (!origem) {
+                if (!video.videoWidth) return;
+                origem = video;
+                ow = video.videoWidth;
+                oh = video.videoHeight;
+            }
 
             // Frame completo numa tela de trabalho (fora do ecrã).
             const bruta = document.createElement('canvas');
-            bruta.width = video.videoWidth;
-            bruta.height = video.videoHeight;
-            bruta.getContext('2d').drawImage(video, 0, 0);
+            bruta.width = ow;
+            bruta.height = oh;
+            bruta.getContext('2d').drawImage(origem, 0, 0, ow, oh);
+            origem.close?.();
 
             // Recorta automaticamente ao PAPEL: com os 4 cantos detetados, ENDIREITA a folha
             // (correção de perspetiva — comportamento de scanner); senão, recorta à caixa
-            // aparada; falhando tudo, fica o frame inteiro. Filtro de documento no fim.
+            // aparada; falhando tudo, fica o frame inteiro.
             const det = this.detetarPapel(bruta);
-            const ctx = tela.getContext('2d');
-            if (det?.quad) {
-                const plano = this.corrigirPerspetiva(bruta, det.quad);
-                tela.width = plano.width;
-                tela.height = plano.height;
-                ctx.drawImage(plano, 0, 0);
-            } else {
-                const zona = det?.caixa ?? { x: 0, y: 0, w: bruta.width, h: bruta.height };
-                tela.width = zona.w;
-                tela.height = zona.h;
-                ctx.drawImage(bruta, zona.x, zona.y, zona.w, zona.h, 0, 0, zona.w, zona.h);
-            }
-            this.filtroDocumento(ctx, tela.width, tela.height);
+            const zona = det?.caixa ?? { x: 0, y: 0, w: bruta.width, h: bruta.height };
+            this.plana = det?.quad ? this.corrigirPerspetiva(bruta, det.quad) : this.recortar(bruta, zona);
 
+            this.aplicar();
             this.capturado = true;
             this.pararCamara(); // congela a captura; "Repetir" reabre
+        },
+
+        // Recorte à caixa, com tecto de resolução: o recibo tem de sair legível, mas um
+        // frame 4K inteiro só engorda o ficheiro.
+        recortar(bruta, zona) {
+            const esc = Math.min(1, 2400 / Math.max(zona.w, zona.h, 1));
+            const saida = document.createElement('canvas');
+            saida.width = Math.max(1, Math.round(zona.w * esc));
+            saida.height = Math.max(1, Math.round(zona.h * esc));
+            const ctx = saida.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(bruta, zona.x, zona.y, zona.w, zona.h, 0, 0, saida.width, saida.height);
+
+            return saida;
+        },
+
+        // Põe o recorte na tela visível, com ou sem filtro. Guardar o recorte em bruto é o
+        // que permite ligar/desligar o filtro sem voltar a fotografar.
+        aplicar() {
+            if (!this.plana) return;
+            const tela = this.$refs.tela;
+            tela.width = this.plana.width;
+            tela.height = this.plana.height;
+            const ctx = tela.getContext('2d');
+            ctx.drawImage(this.plana, 0, 0);
+            if (this.filtro) this.filtroDocumento(ctx, tela.width, tela.height);
+        },
+
+        alternarFiltro() {
+            this.filtro = !this.filtro;
+            this.aplicar();
         },
 
         // Encontra o papel: análise numa miniatura, ENCHENTE a partir do centro sobre os
@@ -509,7 +594,7 @@ document.addEventListener('alpine:init', () => {
             const lado = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
             let w = Math.round(Math.max(lado(tl, tr), lado(bl, br)));
             let h = Math.round(Math.max(lado(tl, bl), lado(tr, br)));
-            const esc = Math.min(1, 1600 / Math.max(w, h, 1));
+            const esc = Math.min(1, 2400 / Math.max(w, h, 1));
             w = Math.max(1, Math.round(w * esc));
             h = Math.max(1, Math.round(h * esc));
 
@@ -578,35 +663,115 @@ document.addEventListener('alpine:init', () => {
             return melhor;
         },
 
-        // Filtro de documento ADAPTATIVO: em vez da curva fixa de antes (rebentava com luz
-        // forte/fraca), estica os níveis entre os percentis 5 e 92 do próprio recorte — o
-        // papel fica branco seja qual for a iluminação — e dá um empurrão suave ao contraste
-        // para escurecer a tinta (aspeto de digitalização).
+        // Filtro de documento pela LUZ LOCAL. O que havia antes esticava os níveis de toda
+        // a imagem entre dois percentis: bastava um reflexo ou um canto às escuras para o
+        // papel ficar cinzento — a queixa de "está muito escuro". Agora cada píxel é
+        // comparado com o papel À VOLTA dele, por isso o papel fica branco mesmo com a
+        // sombra da mão, luz de lado ou papel térmico acinzentado, e a tinta escurece.
         filtroDocumento(ctx, w, h) {
             const img = ctx.getImageData(0, 0, w, h);
             const d = img.data;
             const total = w * h;
+
             const cinza = new Uint8Array(total);
-            const hist = new Uint32Array(256);
             for (let p = 0, i = 0; p < total; p++, i += 4) {
-                const g = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) | 0;
-                cinza[p] = g;
-                hist[g]++;
+                cinza[p] = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) | 0;
             }
-            const percentil = (fr) => {
-                let acc = 0;
-                for (let t = 0; t < 256; t++) { acc += hist[t]; if (acc >= total * fr) return t; }
-                return 255;
-            };
-            const preto = percentil(0.05);
-            const branco = Math.max(preto + 30, percentil(0.92));
+
+            const fundo = this.fundoLocal(cinza, w, h);
+
             for (let p = 0, i = 0; p < total; p++, i += 4) {
-                let v = ((cinza[p] - preto) / (branco - preto)) * 255;
-                v = (v - 128) * 1.15 + 136;
-                v = Math.max(0, Math.min(255, v));
-                d[i] = d[i + 1] = d[i + 2] = v;
+                // Quanto o píxel é mais escuro do que o papel à volta: papel → branco,
+                // tinta → escuro. O mínimo de 32 no divisor evita ampliar ruído numa
+                // fotografia tirada às escuras.
+                let v = (cinza[p] / Math.max(fundo[p], 32)) * 255;
+                if (v > 255) v = 255;
+                // Gama > 1 aprofunda a tinta sem mexer no branco do papel.
+                v = 255 * Math.pow(v / 255, 1.3);
+                d[i] = d[i + 1] = d[i + 2] = v < 0 ? 0 : (v > 255 ? 255 : v);
             }
             ctx.putImageData(img, 0, 0);
+        },
+
+        /**
+         * Mapa da iluminação: para cada píxel, quão claro é o PAPEL naquela zona.
+         *
+         * Calcula-se numa miniatura — a luz é uma superfície suave, não precisa de
+         * resolução, e assim isto corre num telemóvel sem engasgar. Em cada bloco fica o
+         * píxel MAIS CLARO (o papel entre as letras, nunca a tinta), depois alarga-se e
+         * suaviza-se, e no fim estica-se de volta ao tamanho real por interpolação.
+         */
+        fundoLocal(cinza, w, h) {
+            const W = Math.max(2, Math.min(160, w));
+            const H = Math.max(2, Math.round(h * (W / w)) || 2);
+            const passoX = w / W, passoY = h / H;
+
+            const peq = new Float32Array(W * H);
+            for (let y = 0; y < H; y++) {
+                const y0 = Math.floor(y * passoY);
+                const y1 = Math.max(y0 + 1, Math.min(h, Math.floor((y + 1) * passoY)));
+                for (let x = 0; x < W; x++) {
+                    const x0 = Math.floor(x * passoX);
+                    const x1 = Math.max(x0 + 1, Math.min(w, Math.floor((x + 1) * passoX)));
+                    let maximo = 0;
+                    for (let yy = y0; yy < y1; yy++) {
+                        const base = yy * w;
+                        for (let xx = x0; xx < x1; xx++) {
+                            const g = cinza[base + xx];
+                            if (g > maximo) maximo = g;
+                        }
+                    }
+                    peq[y * W + x] = maximo;
+                }
+            }
+
+            const alargado = this.janela(peq, W, H, 2, true);
+            const suave = this.janela(alargado, W, H, 3, false);
+
+            const fundo = new Float32Array(w * h);
+            for (let y = 0; y < h; y++) {
+                const fy = Math.max(0, Math.min(H - 1.001, ((y + 0.5) / h) * H - 0.5));
+                const yi = fy | 0, ty = fy - yi, yi2 = Math.min(H - 1, yi + 1);
+                for (let x = 0; x < w; x++) {
+                    const fx = Math.max(0, Math.min(W - 1.001, ((x + 0.5) / w) * W - 0.5));
+                    const xi = fx | 0, tx = fx - xi, xi2 = Math.min(W - 1, xi + 1);
+                    const a = suave[yi * W + xi], b = suave[yi * W + xi2];
+                    const c = suave[yi2 * W + xi], e = suave[yi2 * W + xi2];
+                    fundo[y * w + x] = (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + e * tx) * ty;
+                }
+            }
+
+            return fundo;
+        },
+
+        // Passagem separável (linhas e depois colunas) numa janela de raio r: máximo
+        // (alargar) ou média (suavizar).
+        janela(origem, W, H, r, maximo) {
+            const meio = new Float32Array(W * H);
+            const saida = new Float32Array(W * H);
+
+            for (let y = 0; y < H; y++) {
+                for (let x = 0; x < W; x++) {
+                    let acc = 0, n = 0;
+                    for (let k = -r; k <= r; k++) {
+                        const v = origem[y * W + Math.min(W - 1, Math.max(0, x + k))];
+                        if (maximo) { if (v > acc) acc = v; } else { acc += v; n++; }
+                    }
+                    meio[y * W + x] = maximo ? acc : acc / n;
+                }
+            }
+            for (let y = 0; y < H; y++) {
+                for (let x = 0; x < W; x++) {
+                    let acc = 0, n = 0;
+                    for (let k = -r; k <= r; k++) {
+                        const v = meio[Math.min(H - 1, Math.max(0, y + k)) * W + x];
+                        if (maximo) { if (v > acc) acc = v; } else { acc += v; n++; }
+                    }
+                    saida[y * W + x] = maximo ? acc : acc / n;
+                }
+            }
+
+            return saida;
         },
 
         repetir() {
@@ -620,7 +785,7 @@ document.addEventListener('alpine:init', () => {
                     this.erro = 'Falha ao enviar a digitalização.';
                 });
                 this.fechar();
-            }, 'image/jpeg', 0.9);
+            }, 'image/jpeg', 0.92);
         },
 
         pararCamara() {

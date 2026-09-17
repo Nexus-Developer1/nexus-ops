@@ -191,11 +191,14 @@
                             <canvas x-ref="tela" x-show="capturado" class="max-h-[60vh] w-full object-contain"></canvas>
                         </div>
                         <div class="mt-4 flex items-center justify-end gap-2">
-                            <button type="button" x-show="!capturado" @click="capturar()" class="botao-primario">Capturar</button>
+                            <button type="button" x-show="!capturado" @click="capturar()" :disabled="aCapturar"
+                                    class="botao-primario" x-text="aCapturar ? 'A capturar…' : 'Capturar'"></button>
                             <button type="button" x-show="capturado" @click="repetir()" class="botao-secundario">Repetir</button>
+                            <button type="button" x-show="capturado" @click="alternarFiltro()" class="botao-secundario"
+                                    x-text="filtro ? 'Ver a cores' : 'Filtro de documento'"></button>
                             <button type="button" x-show="capturado" @click="usar()" class="botao-primario">Usar digitalização</button>
                         </div>
-                        <p class="mt-2 text-xs text-texto-fraco">Enquadra o recibo e captura — é aplicado um filtro de documento (preto e branco, alto contraste).</p>
+                        <p class="mt-2 text-xs text-texto-fraco">Enquadra o recibo e captura. O filtro de documento deixa o papel branco e a tinta escura; se ficar melhor sem ele, usa «Ver a cores» antes de guardar.</p>
                     </div>
                 </div>
 

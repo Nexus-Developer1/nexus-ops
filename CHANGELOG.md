@@ -6,6 +6,11 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-17
+
+- 🧰 **Digitalização de recibos — imagem escura e pixelizada.** Duas correções na captura: (1) **resolução** — passava a fotografar o que se vê na pré-visualização (muitas vezes 1280×720); agora pede a maior resolução da câmara e, nos browsers que o permitem, usa a **fotografia do sensor**, com o recorte a sair até 2400px em vez de 1600px; (2) **luz** — o filtro esticava os níveis de toda a imagem entre dois percentis, e num recibo com pouca tinta isso empurrava o papel todo para cinzento escuro (medido: papel a 67–145 em 255). O filtro passa a comparar cada ponto com o **papel à volta dele**, por isso o papel fica branco (253–255) mesmo com sombra da mão, luz de lado, reflexo da lâmpada ou papel térmico acinzentado. Há agora um botão **«Ver a cores»** para guardar a fotografia sem filtro quando for preferível.
+- 🧰 **Assistente da Knowledgebase — responde a tudo.** Quando não há procedimento sobre o assunto, responde com o conhecimento geral do modelo e a resposta leva um aviso a dizer que não vem da Knowledgebase. A pergunta continua a ficar registada, para se saber o que falta documentar. A caixa de escrita do chat passou a começar numa linha e a crescer com o texto, e saiu o aviso do rodapé.
+
 ## 2026-09-16
 
 - 🧰 **Novo papel «Financeiro».** Conta que só vê o módulo de **Despesas**: entra direto nas despesas, a barra lateral só mostra esse item (sem «Novo Relatório») e qualquer outra página — dashboard, equipamentos, clientes, contratos, relatórios, agenda, alertas, dossiers, auditoria — devolve-o às despesas; os componentes da equipa também o recusam no servidor. Não conta como técnico (não aparece nas listas de técnicos nem na agenda). Atribui-se no **portal**, em Gestão de utilizadores, com o perfil «Financeiro (só despesas)» na Nexus Infra.
