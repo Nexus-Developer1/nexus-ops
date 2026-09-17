@@ -81,7 +81,7 @@ class Listagem extends Component
             ->orderByDesc('ano')
             ->orderByDesc('obrano')
             ->orderByDesc('id')
-            ->paginate(25); // ~200 000 dossiers: ver a caixa de salto na barra de paginas
+            ->paginate(10); // 10 por página (pedido da equipa)
 
         // Anos disponíveis para o filtro (distintos, do mais recente ao mais antigo).
         $anos = Dossier::query()->whereNotNull('ano')->distinct()->orderByDesc('ano')->pluck('ano');

@@ -201,8 +201,8 @@ class Listagem extends Component
             default => $equipamentos->orderByRaw('coalesce(criado_erp_em, created_at) desc nulls last')->orderByDesc('id'),
         };
 
-        // 25 por pagina: com ~18 000 equipamentos, 10 eram 1800 paginas.
-        $equipamentos = $equipamentos->paginate(25);
+        // 10 por página (pedido da equipa): mais do que isso obriga a um scroll enorme.
+        $equipamentos = $equipamentos->paginate(10);
 
         // Famílias disponíveis (nomes distintos já presentes) para o dropdown do filtro.
         $familias = Equipamento::query()

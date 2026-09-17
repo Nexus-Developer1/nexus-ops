@@ -4,6 +4,10 @@
  * Regra (CLAUDE.md s.12): cores e medidas vivem AQUI, nada hardcoded nas views.
  */
 export default {
+    // Sem modo escuro: as variantes `dark:` só valem com uma classe `.dark` no <html>, que
+    // ninguém põe. Sem isto, o paginador do Livewire (que as traz) ficava preto em quem tem
+    // o sistema em modo escuro (set. 2026).
+    darkMode: 'class',
     content: [
         './resources/views/**/*.blade.php',
         './app/Livewire/**/*.php',

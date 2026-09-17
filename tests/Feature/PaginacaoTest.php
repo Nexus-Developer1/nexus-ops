@@ -53,13 +53,13 @@ class PaginacaoTest extends TestCase
 
     public function test_a_barra_de_paginas_do_livewire_aparece_com_numeros_e_botoes(): void
     {
-        $this->equipamentos(60); // 25 por página → 3 páginas
+        $this->equipamentos(60); // 10 por página → 6 páginas
 
         $html = Livewire::actingAs($this->admin)->test(EquipamentosListagem::class)->html();
 
         $this->assertStringContainsString('aria-label="Pagination Navigation"', $html);
         $this->assertStringContainsString('gotoPage(2', $html);
-        $this->assertStringContainsString('gotoPage(3', $html);
+        $this->assertStringContainsString('gotoPage(6', $html);
         $this->assertStringContainsString('nextPage(', $html);
     }
 
@@ -81,7 +81,7 @@ class PaginacaoTest extends TestCase
         $componente = Livewire::actingAs($this->admin)->test(EquipamentosListagem::class);
 
         $vistos = [];
-        for ($pagina = 1; $pagina <= 3; $pagina++) {
+        for ($pagina = 1; $pagina <= 6; $pagina++) {
             $componente->call('gotoPage', $pagina);
             $html = $componente->html();
             $daPagina = 0;
@@ -94,7 +94,7 @@ class PaginacaoTest extends TestCase
                 }
             }
 
-            $this->assertSame($pagina === 3 ? 10 : 25, $daPagina, "Página $pagina");
+            $this->assertSame(10, $daPagina, "Página $pagina");
         }
 
         $this->assertCount(60, $vistos, 'Ficaram equipamentos por mostrar.');
@@ -109,7 +109,7 @@ class PaginacaoTest extends TestCase
         $componente = Livewire::actingAs($this->admin)->test(ClientesIndex::class);
 
         $vistos = [];
-        foreach ([1, 2] as $pagina) {
+        foreach ([1, 2, 3] as $pagina) {
             $componente->call('gotoPage', $pagina);
             $html = $componente->html();
             for ($i = 1; $i <= 30; $i++) {
@@ -140,7 +140,7 @@ class PaginacaoTest extends TestCase
         $this->assertStringContainsString('aria-label="Pagination Navigation"', $componente->html());
 
         $vistos = [];
-        foreach ([1, 2] as $pagina) {
+        foreach ([1, 2, 3] as $pagina) {
             $componente->call('gotoPage', $pagina);
             $html = $componente->html();
             for ($i = 1; $i <= 30; $i++) {

@@ -81,7 +81,7 @@ class Index extends Component
             })
             ->orderByRaw($this->clausulaOrdenacao())
             ->orderBy('id') // desempate estável (paginação consistente)
-            ->paginate(25); // ~3000 clientes
+            ->paginate(10); // 10 por página (pedido da equipa)
 
         return view('livewire.clientes.index', [
             'clientes' => $clientes,
