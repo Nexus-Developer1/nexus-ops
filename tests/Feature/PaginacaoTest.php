@@ -6,10 +6,13 @@ use App\Enums\PapelUtilizador;
 use App\Livewire\Clientes\Index as ClientesIndex;
 use App\Livewire\Encomendas\Listagem as EncomendasListagem;
 use App\Livewire\Equipamentos\Listagem as EquipamentosListagem;
+use App\Livewire\Relatorios\Listagem as RelatoriosListagem;
 use App\Models\Cliente;
 use App\Models\Dossier;
 use App\Models\Equipamento;
+use App\Models\Intervencao;
 use App\Models\Local;
+use App\Models\Relatorio;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -151,6 +154,41 @@ class PaginacaoTest extends TestCase
         }
 
         $this->assertCount(30, $vistos, 'Ficaram dossiers por mostrar.');
+    }
+
+    // Os relatórios paginam como as outras listagens (10 por página). Com 10 ou menos não
+    // há barra nenhuma — é o comportamento normal, não um erro.
+    public function test_os_relatorios_tambem_paginam(): void
+    {
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC']);
+        $equipamento = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-REL']);
+
+        for ($i = 1; $i <= 12; $i++) {
+            $intervencao = Intervencao::create(['equipamento_id' => $equipamento->id, 'tipo' => 'corretiva', 'estado' => 'concluida']);
+            Relatorio::create([
+                'intervencao_id' => $intervencao->id,
+                'numero' => '2026/'.str_pad((string) $i, 4, '0', STR_PAD_LEFT),
+                'data' => now()->subDays($i),
+                'estado' => 'finalizado',
+            ]);
+        }
+
+        $componente = Livewire::actingAs($this->admin)->test(RelatoriosListagem::class);
+        $this->assertStringContainsString('aria-label="Pagination Navigation"', $componente->html());
+
+        $vistos = [];
+        foreach ([1, 2] as $pagina) {
+            $componente->call('gotoPage', $pagina);
+            $html = $componente->html();
+            for ($i = 1; $i <= 12; $i++) {
+                if (str_contains($html, '2026/'.str_pad((string) $i, 4, '0', STR_PAD_LEFT))) {
+                    $vistos[$i] = true;
+                }
+            }
+        }
+
+        $this->assertCount(12, $vistos, 'Ficaram relatórios por mostrar.');
     }
 
     // O guarda: as vistas do paginador do Livewire têm de estar no `content` do Tailwind.

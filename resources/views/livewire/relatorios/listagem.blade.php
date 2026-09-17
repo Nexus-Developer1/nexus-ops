@@ -57,40 +57,43 @@
 
             {{-- Tabela --}}
             <div class="cartao mt-6 overflow-hidden" wire:loading.class="opacity-60">
-                <div class="overflow-x-auto"><table class="w-full min-w-[960px] text-left text-sm">
+                {{-- Oito colunas: a largura mínima é a menor que ainda as deixa legíveis, e o
+                     enchimento aperta um pouco em ecrãs médios para não obrigar a arrastar
+                     a tabela para o lado (set. 2026). --}}
+                <div class="overflow-x-auto"><table class="w-full min-w-[720px] text-left text-sm">
                     <thead>
                         <tr class="border-b border-borda bg-fundo text-xs uppercase tracking-wide text-texto-medio">
-                            <th class="px-6 py-3.5 font-semibold">Nº</th>
-                            <th class="px-6 py-3.5 font-semibold">Cliente / Equipamento</th>
-                            <th class="px-6 py-3.5 font-semibold">Cliente final / Local</th>
-                            <th class="px-6 py-3.5 font-semibold">Tipo</th>
-                            <th class="px-6 py-3.5 font-semibold">Técnico</th>
-                            <th class="px-6 py-3.5 font-semibold">Data</th>
-                            <th class="px-6 py-3.5 font-semibold">Estado</th>
-                            <th class="px-6 py-3.5"></th>
+                            <th class="px-4 py-3.5 lg:px-6 font-semibold">Nº</th>
+                            <th class="px-4 py-3.5 lg:px-6 font-semibold">Cliente / Equipamento</th>
+                            <th class="px-4 py-3.5 lg:px-6 font-semibold">Cliente final / Local</th>
+                            <th class="px-4 py-3.5 lg:px-6 font-semibold">Tipo</th>
+                            <th class="px-4 py-3.5 lg:px-6 font-semibold">Técnico</th>
+                            <th class="px-4 py-3.5 lg:px-6 font-semibold">Data</th>
+                            <th class="px-4 py-3.5 lg:px-6 font-semibold">Estado</th>
+                            <th class="px-4 py-3.5 lg:px-6"></th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($relatorios as $r)
                             <tr class="border-b border-borda transition last:border-0 hover:bg-fundo" wire:key="rel-{{ $r->id }}">
-                                <td class="px-6 py-4 font-medium text-texto-forte">{{ $r->numero ?? '—' }}</td>
-                                <td class="px-6 py-4">
+                                <td class="px-4 py-4 lg:px-6 font-medium text-texto-forte">{{ $r->numero ?? '—' }}</td>
+                                <td class="max-w-[14rem] px-4 py-4 lg:px-6">
                                     <div class="text-texto-forte">{{ $r->intervencao->equipamento->local?->cliente?->nome ?? '—' }}</div>
                                     <div class="text-xs text-texto-fraco">{{ $r->intervencao->equipamento->numero_serie }}</div>
                                 </td>
                                 {{-- Cliente final e local de instalação do equipamento (pedido da equipa, set. 2026).
                                      O local é o mesmo do PDF: o que está na ficha do equipamento; sem ele, a
                                      morada do local ou da sede do cliente. --}}
-                                <td class="max-w-[16rem] px-6 py-4">
+                                <td class="max-w-[16rem] px-4 py-4 lg:px-6">
                                     <div class="text-texto-forte">{{ $r->intervencao->equipamento->cliente_final ?: '—' }}</div>
                                     <div class="text-xs text-texto-fraco">{{ $r->intervencao->equipamento->localInstalacao() }}</div>
                                 </td>
-                                <td class="px-6 py-4 text-texto-medio">{{ $r->intervencao->tipo->rotulo() }}</td>
+                                <td class="px-4 py-4 lg:px-6 text-texto-medio">{{ $r->intervencao->tipo->rotulo() }}</td>
                                 {{-- TODOS os técnicos da intervenção (principal + colaboradores), não só quem redigiu. --}}
-                                <td class="px-6 py-4 text-texto-medio">{{ $r->intervencao->tecnicosLabel() ?? '—' }}</td>
-                                <td class="px-6 py-4 text-texto-medio">{{ $r->data->translatedFormat('d M Y') }}</td>
-                                <td class="px-6 py-4"><span class="etiqueta {{ $r->estado->classesEtiqueta() }}">{{ $r->estado->rotulo() }}</span></td>
-                                <td class="px-6 py-4">
+                                <td class="max-w-[11rem] px-4 py-4 text-texto-medio lg:px-6">{{ $r->intervencao->tecnicosLabel() ?? '—' }}</td>
+                                <td class="px-4 py-4 lg:px-6 text-texto-medio">{{ $r->data->translatedFormat('d M Y') }}</td>
+                                <td class="px-4 py-4 lg:px-6"><span class="etiqueta {{ $r->estado->classesEtiqueta() }}">{{ $r->estado->rotulo() }}</span></td>
+                                <td class="px-4 py-4 lg:px-6">
                                     <div class="flex items-center justify-end gap-1">
                                         @if ($r->estado === \App\Enums\EstadoRelatorio::Rascunho)
                                             <a href="{{ route('relatorios.editar', $r) }}" wire:navigate class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-verde-600 transition hover:bg-verde-50">
@@ -127,7 +130,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-12 text-center text-sm text-texto-medio">Nenhum relatório encontrado.</td>
+                                <td colspan="8" class="px-4 py-12 lg:px-6 text-center text-sm text-texto-medio">Nenhum relatório encontrado.</td>
                             </tr>
                         @endforelse
                     </tbody>
