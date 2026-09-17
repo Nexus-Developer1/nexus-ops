@@ -299,6 +299,6 @@ class DespesaAprovacaoTest extends TestCase
             ->assertOk()
             ->assertSee('Pendente de aprovação')
             ->assertSee('Almoço ACME')
-            ->assertSee('anexos/'); // miniatura do recibo
+            ->assertSee('despesas/recibos/'); // miniatura do recibo (rota própria desde 17/09)
     }
 }
