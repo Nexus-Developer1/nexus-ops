@@ -17,7 +17,6 @@
         .num { text-align: right; white-space: nowrap; }
         .dia { text-align: center; width: 7%; white-space: nowrap; }
         .tot td { font-weight: bold; }
-        .nota { font-size: 7.5px; color: #374151; padding-top: 3px; }
         .resumo td { border: 1px solid #111827; padding: 3px 6px; font-size: 9px; }
         .resumo .rot { font-weight: bold; text-transform: uppercase; }
         .suite { color: #9ca3af; font-size: 7px; letter-spacing: 2px; margin-top: 2px; }
@@ -74,9 +73,9 @@
             <th rowspan="2">Descrição</th>
             <th colspan="2">Veículos da empresa</th>
             <th rowspan="2" style="width: 9%;">Hotel</th>
-            <th rowspan="2" style="width: 9%;">Refeições <span style="text-transform: none;">a)</span></th>
+            <th rowspan="2" style="width: 9%;">Refeições</th>
             <th rowspan="2" style="width: 10%;">Táxi · Comboio<br>Avião, etc</th>
-            <th rowspan="2" style="width: 10%;">Outras despesas <span style="text-transform: none;">b)</span></th>
+            <th rowspan="2" style="width: 10%;">Outras despesas</th>
         </tr>
         <tr>
             <th style="width: 9%;">Combustíveis</th>
@@ -106,11 +105,6 @@
             @endforeach
         </tr>
     </table>
-
-    <div class="nota">
-        a) INDICAR: A - ALMOÇO · J - JANTAR (sempre que incluir refeições com outros colaboradores, indicar em descrição o respetivo nome.)<br>
-        b) Especificar em descrição.
-    </div>
 
     {{-- Resumo (rodapé da folha). --}}
     <table class="resumo" style="width: 42%; margin-left: 58%; margin-top: 8px;">
