@@ -63,8 +63,11 @@ class PaginacaoTest extends TestCase
         $this->assertStringContainsString('Seguinte', $html);
         $this->assertStringContainsString('gotoPage(2', $html);
         $this->assertStringContainsString('gotoPage(3', $html);
-        $this->assertStringContainsString('1–25 de', $html);
-        $this->assertStringContainsString('página 1 de 3', $html);
+        $this->assertStringContainsString('1–25', $html);
+        $this->assertStringContainsString('de 60', $html);
+
+        // Poucas páginas: os números à vista, sem a caixa de escrever o número.
+        $this->assertStringNotContainsString('id="pagina-page"', $html);
     }
 
     // Nenhum registo pode ficar inalcançável: percorrendo as páginas vê-se tudo, incluindo o
@@ -148,7 +151,7 @@ class PaginacaoTest extends TestCase
         $html = $componente->html();
 
         $this->assertStringContainsString('Navegação por páginas', $html);
-        $this->assertStringContainsString('1–25 de', $html);
+        $this->assertStringContainsString('1–25', $html);
 
         $vistos = [];
         foreach ([1, 2] as $pagina) {
@@ -162,6 +165,26 @@ class PaginacaoTest extends TestCase
         }
 
         $this->assertCount(30, $vistos, 'Ficaram dossiers por mostrar.');
+    }
+
+    // Com muitas páginas a barra muda de feição: em vez de alinhar 700 números, fica com
+    // primeira/anterior, a página actual numa caixa que se escreve, e seguinte/última.
+    public function test_com_muitas_paginas_a_barra_fica_compacta(): void
+    {
+        for ($i = 1; $i <= 200; $i++) {
+            Cliente::create(['nome' => 'Cliente '.str_pad((string) $i, 3, '0', STR_PAD_LEFT), 'ativo' => true]);
+        }
+
+        $componente = Livewire::actingAs($this->admin)->test(ClientesIndex::class);
+        $html = $componente->html();
+
+        $this->assertStringContainsString('id="pagina-page"', $html);   // caixa da página
+        $this->assertStringContainsString('de 8', $html);               // 200 / 25
+        $this->assertStringContainsString('Última página', $html);
+        $this->assertStringNotContainsString('gotoPage(5,', $html);     // sem parede de números
+
+        // A caixa e os saltos levam mesmo à página pedida.
+        $componente->call('gotoPage', 8)->assertSee('Cliente 200');
     }
 
     // Uma listagem nova que se esqueça do trait volta a ficar sem barra de páginas — e isso
