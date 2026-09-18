@@ -142,10 +142,19 @@
                                 <td class="px-6 py-4"><span class="etiqueta {{ $e->estado->classesEtiqueta() }}">{{ $e->estado->rotulo() }}</span></td>
                                 <td class="px-6 py-4 text-texto-medio">{{ $e->proxima_troca_baterias?->translatedFormat('d M Y') ?? '—' }}</td>
                                 <td class="px-6 py-4 text-right">
-                                    <div class="flex items-center justify-end gap-3 whitespace-nowrap">
-                                        <a href="{{ route('equipamentos.editar', $e) }}" wire:navigate class="text-sm font-medium text-verde-700 hover:underline" aria-label="Editar equipamento {{ $e->numero_serie ?? $e->id }}">Editar</a>
-                                        <button type="button" wire:click="eliminar({{ $e->id }})" wire:confirm="Eliminar o equipamento «{{ $e->numero_serie ?? $e->modelo ?? $e->id }}»? Esta ação remove-o da listagem." wire:loading.attr="disabled" wire:target="eliminar" class="text-sm font-medium text-perigo-600 hover:underline disabled:opacity-50" aria-label="Eliminar equipamento {{ $e->numero_serie ?? $e->id }}">Eliminar</button>
-                                        <a href="{{ route('equipamentos.ficha', $e) }}" wire:navigate aria-label="Ver ficha do equipamento {{ $e->numero_serie ?? $e->id }}" class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-texto-fraco transition hover:bg-white hover:text-verde-600">
+                                    {{-- Editar e Eliminar com caixa própria e um risco a separá-las: eram dois
+                                         textos colados e clicava-se no errado (pedido da equipa, set. 2026). --}}
+                                    <div class="flex items-center justify-end gap-2 whitespace-nowrap">
+                                        <a href="{{ route('equipamentos.editar', $e) }}" wire:navigate class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-transparent px-2.5 text-sm font-medium text-verde-700 transition hover:border-verde-200 hover:bg-verde-50" aria-label="Editar equipamento {{ $e->numero_serie ?? $e->id }}">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                            Editar
+                                        </a>
+                                        <span class="h-5 w-px bg-borda" aria-hidden="true"></span>
+                                        <button type="button" wire:click="eliminar({{ $e->id }})" wire:confirm="Eliminar o equipamento «{{ $e->numero_serie ?? $e->modelo ?? $e->id }}»? Esta ação remove-o da listagem." wire:loading.attr="disabled" wire:target="eliminar" class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-transparent px-2.5 text-sm font-medium text-perigo-600 transition hover:border-perigo-200 hover:bg-perigo-100 disabled:opacity-50" aria-label="Eliminar equipamento {{ $e->numero_serie ?? $e->id }}">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            Eliminar
+                                        </button>
+                                        <a href="{{ route('equipamentos.ficha', $e) }}" wire:navigate aria-label="Ver ficha do equipamento {{ $e->numero_serie ?? $e->id }}" class="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-lg text-texto-fraco transition hover:bg-white hover:text-verde-600">
                                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                                         </a>
                                     </div>
