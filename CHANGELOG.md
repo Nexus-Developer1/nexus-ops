@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-18
+
+- 🧹 **Limpeza (2/7) — JavaScript que não corria.** Sai a função de recorte do scanner de recibos, órfã desde que o recorte passou para o passo dos cantos arrastáveis (o endireitamento trata dele, mesmo quando a deteção falha), e uma atribuição sem leitor no gravar automático do editor de relatórios. O banco de ensaio do scanner deixa de invocar esse caminho, que a aplicação não tem, e passa a seguir o mesmo que o produto faz. Sem alteração de comportamento.
+
 ## 2026-09-17
 
 - 🎨 **PDF das despesas — sai a nota de rodapé.** Saem as duas linhas «a) INDICAR: A - ALMOÇO · J - JANTAR…» e «b) Especificar em descrição», e com elas os marcadores «a)» e «b)» nos cabeçalhos das colunas Refeições e Outras despesas, que só serviam para remeter para essa nota.

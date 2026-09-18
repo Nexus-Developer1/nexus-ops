@@ -26,7 +26,7 @@ function metodo(nome) {
   throw new Error('chavetas: ' + nome);
 }
 
-const NOMES = ['detetarPapel', 'quadrilateroDoPapel', 'encostarReta', 'ajustarReta', 'limiarOtsu', 'corrigirPerspetiva', 'recortar', 'aplicar', 'filtroDocumento', 'fundoLocal', 'janela'];
+const NOMES = ['detetarPapel', 'quadrilateroDoPapel', 'encostarReta', 'ajustarReta', 'limiarOtsu', 'corrigirPerspetiva', 'aplicar', 'filtroDocumento', 'fundoLocal', 'janela'];
 const scanner = eval('({' + NOMES.map(metodo).join(',') + '})');
 
 // ============================================================ fotografia simulada
@@ -228,7 +228,15 @@ for (const [nome, cfg] of Object.entries(CASOS)) {
   const t0 = Date.now();
   const det = scanner.detetarPapel(foto);
   const zona = det?.caixa ?? { x: 0, y: 0, w: foto.width, h: foto.height };
-  const plana = det?.quad ? scanner.corrigirPerspetiva(foto, det.quad) : scanner.recortar(foto, zona);
+  // Como na aplicação: os cantos são sempre quatro (detetados ou, falhando a deteção, os
+  // da fotografia inteira) e o endireitamento trata do recorte.
+  const cantos = det?.quad ?? [
+    { x: zona.x, y: zona.y },
+    { x: zona.x + zona.w, y: zona.y },
+    { x: zona.x + zona.w, y: zona.y + zona.h },
+    { x: zona.x, y: zona.y + zona.h },
+  ];
+  const plana = scanner.corrigirPerspetiva(foto, cantos);
   const ctx = plana.getContext();
   scanner.filtroDocumento(ctx, plana.width, plana.height);
   const ms = Date.now() - t0;

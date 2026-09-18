@@ -68,7 +68,6 @@ document.addEventListener('alpine:init', () => {
             const tentar = () => this.$wire.autoGravar()
                 .then(() => { this.semRede = false; })
                 .catch(() => { this.semRede = true; });
-            this.tentar = tentar;
 
             setInterval(() => { if (this.suja && !document.hidden) tentar(); }, 120000);
             document.addEventListener('visibilitychange', () => { if (this.suja && document.hidden) tentar(); });
@@ -586,21 +585,6 @@ document.addEventListener('alpine:init', () => {
         voltarAoRecorte() {
             this.fase = 'recorte';
             this.$nextTick(() => this.desenharRecorte());
-        },
-
-        // Recorte à caixa, com tecto de resolução: o recibo tem de sair legível, mas um
-        // frame 4K inteiro só engorda o ficheiro.
-        recortar(bruta, zona) {
-            const esc = Math.min(1, 2400 / Math.max(zona.w, zona.h, 1));
-            const saida = document.createElement('canvas');
-            saida.width = Math.max(1, Math.round(zona.w * esc));
-            saida.height = Math.max(1, Math.round(zona.h * esc));
-            const ctx = saida.getContext('2d');
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'high';
-            ctx.drawImage(bruta, zona.x, zona.y, zona.w, zona.h, 0, 0, saida.width, saida.height);
-
-            return saida;
         },
 
         // Põe o recorte na tela visível, com ou sem filtro. Guardar o recorte em bruto é o
