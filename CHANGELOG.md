@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-18
 
+- 🧹 **Limpeza (3/7) — ações e variáveis que nunca corriam.** Saem da listagem de relatórios os métodos `filtrarEstado` e `filtrarTipo`, que ninguém chamava (a listagem filtra por seletores ligados às propriedades; os métodos com o mesmo nome na listagem de contratos, esses, continuam a ser usados por botões). E no editor de contratos deixa de se guardar o resultado da validação numa variável que nunca era lida — a validação continua a correr, porque é ela que interrompe o gravar quando os dados estão errados.
 - 🧹 **Limpeza (2/7) — JavaScript que não corria.** Sai a função de recorte do scanner de recibos, órfã desde que o recorte passou para o passo dos cantos arrastáveis (o endireitamento trata dele, mesmo quando a deteção falha), e uma atribuição sem leitor no gravar automático do editor de relatórios. O banco de ensaio do scanner deixa de invocar esse caminho, que a aplicação não tem, e passa a seguir o mesmo que o produto faz. Sem alteração de comportamento.
 
 ## 2026-09-17

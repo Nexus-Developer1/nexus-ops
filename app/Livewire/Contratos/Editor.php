@@ -247,7 +247,9 @@ class Editor extends Component
 
     public function guardar()
     {
-        $dados = $this->validate();
+        // A validação tem de correr (interrompe o gravar se algo estiver errado); o que
+        // ela devolve é que não serve, porque os atributos são montados campo a campo.
+        $this->validate();
 
         $atributos = [
             'numero' => $this->numero,

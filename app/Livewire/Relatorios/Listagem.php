@@ -58,18 +58,6 @@ class Listagem extends Component
         $this->resetPage();
     }
 
-    public function filtrarEstado(string $estado): void
-    {
-        $this->estado = $estado;
-        $this->resetPage();
-    }
-
-    public function filtrarTipo(string $tipo): void
-    {
-        $this->tipo = $tipo;
-        $this->resetPage();
-    }
-
     // Soft delete (marca deleted_at) — recuperável; nunca DELETE físico nem apaga o PDF.
     // Se o relatório está ligado a um evento de agenda, apaga-se a unidade toda
     // (relatório + intervenção + evento) — sai da agenda e não deixa intervenção órfã.
