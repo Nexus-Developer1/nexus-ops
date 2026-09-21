@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\CabecalhosSeguranca;
 use App\Http\Middleware\ChaveApi;
+use App\Http\Middleware\Regista419;
 use App\Http\Middleware\SessaoValida;
 use App\Http\Middleware\VerificaPapel;
 use Illuminate\Foundation\Application;
@@ -18,6 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Um 419 fica no log com o componente e os métodos chamados (sem tokens). Primeiro
+        // da fila, para ver a resposta final venha o 419 de onde vier. Ver Regista419.
+        $middleware->prepend(Regista419::class);
+
         $middleware->alias([
             'papel' => VerificaPapel::class,
             'chave.api' => ChaveApi::class,
