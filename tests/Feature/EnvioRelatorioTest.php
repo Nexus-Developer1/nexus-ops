@@ -45,6 +45,23 @@ class EnvioRelatorioTest extends TestCase
         ]);
     }
 
+    // Apagado entre o clique em «Enviar» e a fila: o refresh() ignora o SoftDeletes (como a
+    // reidratação da fila), por isso sem esta guarda o cliente recebia um relatório que já
+    // não existia na aplicação (relatório externo de 21/09).
+    public function test_relatorio_apagado_depois_de_entrar_na_fila_nao_sai(): void
+    {
+        Mail::fake();
+        $relatorio = $this->relatorioPara('cliente@exemplo.pt');
+        $job = new EnviarRelatorioPorEmail($relatorio, 'destinatario@escrito.pt', 'A', 'M');
+
+        $relatorio->delete(); // soft delete, como o botão «Eliminar» de um finalizado
+
+        $job->handle(app(GeradorRelatorio::class));
+
+        Mail::assertNothingSent();
+        $this->assertSame(EstadoRelatorio::Finalizado, Relatorio::withTrashed()->find($relatorio->id)->estado);
+    }
+
     public function test_job_envia_com_valores_escritos_e_marca_enviado(): void
     {
         Mail::fake();

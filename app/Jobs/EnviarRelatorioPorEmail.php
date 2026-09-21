@@ -12,7 +12,7 @@ use App\Services\Auditor;
 use App\Services\GeradorRelatorio;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -40,16 +40,20 @@ class EnviarRelatorioPorEmail implements ShouldQueue
 
     public int $timeout = 300;
 
-    // Um relatório de cada vez (22.ª revisão de segurança): dois «Enviar» em simultâneo
-    // calculavam a mesma versão da cópia congelada e um sobrescrevia o outro. O segundo job
-    // espera pela vez (releaseAfter) em vez de ser descartado — os dois envios acontecem, com
-    // versões distintas.
-    /** @return array<int, object> */
-    public function middleware(): array
-    {
-        return [(new WithoutOverlapping('relatorio-envio:'.$this->relatorio->getKey()))->releaseAfter(15)->expireAfter(600)];
-    }
+    // Quanto tempo o 2.º «Enviar» do mesmo relatório espera pela vez do 1.º. O envio demora
+    // segundos (gerar o PDF, se faltar, e falar com o Graph); 2 minutos é folga larga e fica
+    // dentro do $timeout. Esgotado, o job falha e quem enviou é avisado (failed()).
+    public const ESPERA_SEGUNDOS = 120;
 
+    // Tempo máximo que o cadeado vive se o worker morrer a meio (nunca fica preso para sempre).
+    private const CADEADO_SEGUNDOS = 600;
+
+    // Um relatório de cada vez (22.ª revisão de segurança): dois «Enviar» em simultâneo
+    // calculavam a mesma versão da cópia congelada e um sobrescrevia o outro. O 2.º ESPERA
+    // AQUI pela vez, dentro do próprio job — a primeira versão devolvia-o à fila
+    // (WithoutOverlapping::releaseAfter), mas cada devolução conta como tentativa e, com
+    // $tries = 1, o 2.º morria sem enviar e quem carregou recebia um email de «falha»
+    // (relatório externo de 21/09). Os dois envios acontecem, com versões distintas.
     public function handle(GeradorRelatorio $gerador): void
     {
         // Defensivo: o destinatário é validado na composição, mas nunca envia em branco.
@@ -59,11 +63,27 @@ class EnviarRelatorioPorEmail implements ShouldQueue
             return;
         }
 
+        Cache::lock('relatorio-envio:'.$this->relatorio->getKey(), self::CADEADO_SEGUNDOS)
+            ->block(self::ESPERA_SEGUNDOS, fn () => $this->enviar($gerador));
+    }
+
+    private function enviar(GeradorRelatorio $gerador): void
+    {
         // O estado é verificado na composição, mas entre o clique e a fila o relatório pode
         // ter sido reaberto (voltou a rascunho) — um rascunho nunca sai para o cliente.
         $this->relatorio->refresh();
         if ($this->relatorio->estado === EstadoRelatorio::Rascunho) {
             Log::warning('Envio de relatório cancelado: voltou a rascunho antes de sair.', ['relatorio' => $this->relatorio->numero]);
+
+            return;
+        }
+
+        // Apagado entre o clique e a fila: o refresh() (como a reidratação da fila) ignora o
+        // SoftDeletes, por isso o modelo chega aqui na mesma — e só se eliminar os ENVIADOS é
+        // que está bloqueado, um finalizado apaga-se. Um relatório que já não existe na
+        // aplicação nunca sai para o cliente (relatório externo de 21/09).
+        if ($this->relatorio->trashed()) {
+            Log::warning('Envio de relatório cancelado: foi eliminado antes de sair.', ['relatorio' => $this->relatorio->numero]);
 
             return;
         }

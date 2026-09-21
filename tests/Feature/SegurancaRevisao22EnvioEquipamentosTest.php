@@ -23,7 +23,7 @@ use App\Models\Relatorio;
 use App\Models\User;
 use App\Services\GeradorRelatorio;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -89,15 +89,27 @@ class SegurancaRevisao22EnvioEquipamentosTest extends TestCase
         Mail::assertSent(RelatorioParaCliente::class, fn ($m) => $m->pdfConteudo === $congelada);
     }
 
-    public function test_job_nao_corre_duas_vezes_em_simultaneo_para_o_mesmo_relatorio(): void
+    // O 2.º «Enviar» simultâneo espera pela vez DENTRO do job e depois envia — não é
+    // devolvido à fila (cada devolução contava como tentativa e, com uma só, o 2.º morria sem
+    // enviar; relatório externo de 21/09). Aqui o teste segura o cadeado durante 1 s: o job
+    // tem de esperar por ele e sair na mesma.
+    public function test_segundo_envio_simultaneo_espera_pela_vez_e_sai(): void
     {
+        Mail::fake();
         $r = $this->relatorio();
-        $mw = (new EnviarRelatorioPorEmail($r, 'c@acme.pt', 'A', 'M'))->middleware();
 
-        $this->assertCount(1, $mw);
-        $this->assertInstanceOf(WithoutOverlapping::class, $mw[0]);
-        $this->assertSame('relatorio-envio:'.$r->id, $mw[0]->key);
-        $this->assertNotNull($mw[0]->releaseAfter); // o 2.º espera pela vez, não é descartado
+        $this->assertFalse(method_exists(EnviarRelatorioPorEmail::class, 'middleware'), 'o job já não usa WithoutOverlapping (releaseAfter gastava a única tentativa)');
+
+        $cadeado = Cache::lock('relatorio-envio:'.$r->id, 1);
+        $this->assertTrue($cadeado->get(), 'o teste tem de conseguir segurar o cadeado');
+
+        $inicio = microtime(true);
+        (new EnviarRelatorioPorEmail($r, 'c@acme.pt', 'A', 'M'))->handle(app(GeradorRelatorio::class));
+        $esperou = microtime(true) - $inicio;
+
+        $this->assertGreaterThan(0.5, $esperou, 'devia ter esperado pelo cadeado');
+        Mail::assertSent(RelatorioParaCliente::class);
+        $this->assertSame(EstadoRelatorio::Enviado, $r->fresh()->estado);
     }
 
     public function test_relatorio_que_voltou_a_rascunho_nao_sai_nem_na_fila_nem_na_pagina(): void
