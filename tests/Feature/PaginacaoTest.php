@@ -66,6 +66,25 @@ class PaginacaoTest extends TestCase
         $this->assertStringContainsString('nextPage(', $html);
     }
 
+    // A barra fala português: a aplicação está em `pt`, e sem a pasta lang/ o Laravel
+    // devolvia as chaves da barra do Livewire em inglês («Showing 1 to 10 of 60 results»).
+    public function test_a_barra_de_paginas_fala_portugues(): void
+    {
+        $this->equipamentos(60);
+
+        $html = Livewire::actingAs($this->admin)->test(EquipamentosListagem::class)->html();
+
+        // A vista do Livewire põe cada palavra e cada número no seu <span>.
+        $this->assertMatchesRegularExpression(
+            '/<span>A mostrar<\/span>\s*<span[^>]*>1<\/span>\s*<span>a<\/span>\s*<span[^>]*>10<\/span>\s*<span>de<\/span>\s*<span[^>]*>60<\/span>\s*<span>resultados<\/span>/',
+            $html,
+        );
+        $this->assertStringContainsString('Anterior', $html);
+        $this->assertStringContainsString('Seguinte', $html);
+        $this->assertStringNotContainsString('Showing', $html);
+        $this->assertStringNotContainsString('results', $html);
+    }
+
     public function test_com_uma_so_pagina_nao_se_mostra_barra_nenhuma(): void
     {
         $this->equipamentos(5);

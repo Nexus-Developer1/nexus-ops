@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-21
+
+- 🎨 **Listagens — a barra de páginas passa a falar português.** «Showing 1 to 10 of 202068 results», «Previous» e «Next» passam a «A mostrar 1 a 10 de 202068 resultados», «Anterior» e «Seguinte», em todas as listagens (equipamentos, clientes, dossiers, relatórios, despesas, auditoria…). A aplicação sempre esteve em `pt`, mas nunca teve a pasta `lang/`, por isso o Laravel devolvia as chaves da barra do Livewire tal como estão, em inglês. Entram `lang/pt.json` e `lang/pt/pagination.php`; um teste garante que o texto sai em português. Sem migração; `optimize`.
+
 ## 2026-09-18
 
 - 🎨 **Equipamentos — «Editar» e «Eliminar» deixam de estar colados.** Eram dois textos lado a lado e clicava-se no errado. Passam a ter caixa própria, com ícone, fundo ao passar o rato (verde e vermelho) e um risco fino a separá-las; a seta da ficha ganhou folga. A área de clique de cada uma cresce de ~45px para ~85px de largura e 32px de altura, e o espaço entre ambas triplica.
