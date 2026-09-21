@@ -1230,11 +1230,7 @@ document.addEventListener('alpine:init', () => {
                 // formulário e perder o que lá escreveu.
                 selectAllow: (info) => {
                     const nome = this.feriadoEm(info.start);
-                    if (nome) {
-                        this.erro = info.start.toLocaleDateString('pt-PT') + ' é feriado nacional (' + nome + ') — não é possível marcar neste dia.';
-                        clearTimeout(this.avisoFeriado);
-                        this.avisoFeriado = setTimeout(() => { this.erro = ''; }, 5000);
-                    }
+                    if (nome) this.avisarFeriado(info.start, nome);
                     return !nome;
                 },
                 select: (info) => {
@@ -1245,9 +1241,20 @@ document.addEventListener('alpine:init', () => {
                     this.calendar.unselect();
                 },
                 eventClick: (info) => {
+                    // Clicar no bloco de um FERIADO não abre nada: é só o aviso em cima, como ao
+                    // selecionar o dia. Antes o clique seguia para selecionar() com o id
+                    // "feriado-2026-10-05", que não é número — o servidor rebentava e a pessoa
+                    // via um «419 page expired» sem perceber porquê (21/09). A tolerância de
+                    // ponto (Carnaval) não bloqueia nada: o clique nela é simplesmente ignorado.
+                    if (info.event.extendedProps.kind === 'feriado') {
+                        if (!info.event.extendedProps.tolerancia) this.avisarFeriado(info.event.start, info.event.extendedProps.nome);
+                        return;
+                    }
+
                     // Segmentos de eventos multi-dia têm id "123:0" — o id do EVENTO vem
                     // sempre em extendedProps.evento_id (fallback ao id para o formato antigo).
-                    this.$wire.selecionar(Number(info.event.extendedProps.evento_id ?? info.event.id));
+                    const id = Number(info.event.extendedProps.evento_id ?? info.event.id);
+                    if (Number.isInteger(id)) this.$wire.selecionar(id);
                 },
             });
 
@@ -1255,6 +1262,14 @@ document.addEventListener('alpine:init', () => {
 
             // Refrescar quando o filtro de técnico muda (evento despachado pelo Livewire).
             window.addEventListener('agenda:refetch', () => this.calendar.refetchEvents());
+        },
+
+        // O aviso vermelho em cima da agenda, durante 5 segundos — o mesmo quer se
+        // selecione o dia, quer se clique no bloco do feriado.
+        avisarFeriado(data, nome) {
+            this.erro = data.toLocaleDateString('pt-PT') + ' é feriado nacional (' + nome + ') — não é possível marcar neste dia.';
+            clearTimeout(this.avisoFeriado);
+            this.avisoFeriado = setTimeout(() => { this.erro = ''; }, 5000);
         },
 
         // Nome do feriado nesse dia (os feriados chegam como blocos de fundo na mesma
