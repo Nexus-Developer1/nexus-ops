@@ -1124,6 +1124,12 @@ document.addEventListener('alpine:init', () => {
         },
 
         usar() {
+            // O QR code lê-se da fotografia SEM filtro: o recorte endireitado e, se o recorte o
+            // tiver cortado, a fotografia inteira. As referências ficam aqui porque o fechar()
+            // larga as telas.
+            const linha = this.$wire.linhaDigitalizacao;
+            const telas = [this.plana, this.bruta].filter(Boolean);
+
             this.$refs.tela.toBlob((blob) => {
                 const ficheiro = new File([blob], 'recibo-digitalizado.jpg', { type: 'image/jpeg' });
                 this.$wire.upload('reciboDigitalizado', ficheiro, () => {}, () => {
@@ -1131,6 +1137,68 @@ document.addEventListener('alpine:init', () => {
                 });
                 this.fechar();
             }, 'image/jpeg', 0.92);
+
+            this.lerQrDasTelas(telas, linha);
+        },
+
+        // ---- QR code das faturas: preenche o dia e o valor da linha ----
+        //
+        // Quem lê é o próprio telemóvel — nada vai para serviço nenhum. O texto segue para o
+        // servidor (lerQr), que o valida como fatura portuguesa e preenche só os campos vazios.
+        // É uma ajuda: se não houver QR ou não se ler, fica tudo à mão, como antes.
+
+        async lerQrDasTelas(telas, linha) {
+            try {
+                let texto = null;
+                for (const tela of telas) {
+                    texto = await this.textoDaTela(tela);
+                    if (texto) break;
+                }
+                await this.$wire.lerQr(linha, texto ?? '');
+            } catch (e) {
+                // sem leitura não há mal nenhum: preenche-se à mão
+            }
+        },
+
+        // «Tirar foto» e «Galeria»: o ficheiro segue para o servidor pelo wire:model, à parte;
+        // aqui só se lê o QR. Com várias fotografias, vale a primeira que tiver um.
+        async lerQrDoFicheiro(evento, linha) {
+            const ficheiros = [...(evento.target.files ?? [])]; // já, antes de qualquer await
+            try {
+                let texto = null;
+                for (const ficheiro of ficheiros) {
+                    const tela = await this.telaDoFicheiro(ficheiro);
+                    if (tela && (texto = await this.textoDaTela(tela))) break;
+                }
+                await this.$wire.lerQr(linha, texto ?? '');
+            } catch (e) {
+                // idem
+            }
+        },
+
+        async textoDaTela(tela) {
+            const { lerQrDosPixeis } = await import('./qr-fatura.js');
+            const { data, width, height } = tela.getContext('2d').getImageData(0, 0, tela.width, tela.height);
+
+            return lerQrDosPixeis(data, width, height);
+        },
+
+        // Uma fotografia de 12 MP desenhada em tamanho real ocupa ~50 MB: chega a 3000 px no
+        // lado maior, que ainda dá ao QR de um talão módulos com vários píxeis.
+        async telaDoFicheiro(ficheiro) {
+            try {
+                const bmp = await createImageBitmap(ficheiro, { imageOrientation: 'from-image' });
+                const s = Math.min(1, 3000 / Math.max(bmp.width, bmp.height));
+                const tela = document.createElement('canvas');
+                tela.width = Math.round(bmp.width * s);
+                tela.height = Math.round(bmp.height * s);
+                tela.getContext('2d').drawImage(bmp, 0, 0, tela.width, tela.height);
+                bmp.close?.();
+
+                return tela;
+            } catch (e) {
+                return null; // não é uma imagem que o browser saiba abrir
+            }
         },
 
         pararCamara() {

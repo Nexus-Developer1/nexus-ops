@@ -188,6 +188,55 @@ const comTempo = async (promessa, ms) => {
     ok(componente.erro !== '', 'avisou: "' + componente.erro + '"');
   });
 
+  // ---- QR code das faturas: a LIGAÇÃO entre o scanner e o servidor ----
+  // A leitura dos píxeis prova-se em qr-fatura.cjs; aqui substitui-se só essa parte
+  // (textoDaTela) e confirma-se que o texto chega ao servidor, para a linha certa.
+  const QR = 'A:516520741*F:20260921*O:79.00';
+  const esperar = () => new Promise((r) => setTimeout(r, 0));
+
+  await ensaio('QR code: «Usar digitalização» manda o QR ao servidor, para a linha do botão', { comImageCapture: false }, async ({ componente }) => {
+    const chamadas = [];
+    componente.$wire.linhaDigitalizacao = 2;
+    componente.$wire.lerQr = async (linha, texto) => { chamadas.push([linha, texto]); };
+    componente.textoDaTela = async () => QR;
+    await componente.abrir();
+    await componente.capturar();
+    componente.confirmarRecorte();
+    componente.usar();
+    await esperar();
+    ok(chamadas.length === 1 && chamadas[0][0] === 2 && chamadas[0][1] === QR, 'mandou o QR da linha 2: ' + JSON.stringify(chamadas));
+    ok(componente.bruta === null && componente.plana === null, 'e largou as telas ao fechar (a leitura usou as suas cópias)');
+  });
+
+  await ensaio('QR code: sem QR legível manda texto vazio (o servidor diz «preencha à mão»)', { comImageCapture: false }, async ({ componente }) => {
+    const chamadas = [];
+    componente.$wire.linhaDigitalizacao = 0;
+    componente.$wire.lerQr = async (linha, texto) => { chamadas.push([linha, texto]); };
+    componente.textoDaTela = async () => null;
+    await componente.abrir();
+    await componente.capturar();
+    componente.confirmarRecorte();
+    componente.usar();
+    await esperar();
+    ok(chamadas.length === 1 && chamadas[0][1] === '', 'mandou texto vazio: ' + JSON.stringify(chamadas));
+  });
+
+  await ensaio('QR code: foto da galeria com várias imagens — vale a primeira que tiver QR', { comImageCapture: false }, async ({ componente }) => {
+    const chamadas = [];
+    const lidas = [];
+    componente.$wire.lerQr = async (linha, texto) => { chamadas.push([linha, texto]); };
+    componente.telaDoFicheiro = async (f) => f.tela;
+    componente.textoDaTela = async (t) => { lidas.push(t.nome); return t.qr ?? null; };
+    const evento = { target: { files: [
+      { tela: { nome: 'sem-qr' } },
+      { tela: { nome: 'com-qr', qr: QR } },
+      { tela: { nome: 'terceira', qr: 'nao-devia-chegar-aqui' } },
+    ] } };
+    await componente.lerQrDoFicheiro(evento, 1);
+    ok(chamadas.length === 1 && chamadas[0][0] === 1 && chamadas[0][1] === QR, 'mandou o QR da linha 1: ' + JSON.stringify(chamadas));
+    ok(lidas.join(',') === 'sem-qr,com-qr', 'parou na primeira com QR (leu: ' + lidas.join(',') + ')');
+  });
+
   console.log(falhas ? `\nFALHAS: ${falhas}` : '\nTudo a funcionar');
   process.exit(falhas ? 1 : 0);
 })();

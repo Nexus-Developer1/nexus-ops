@@ -9,6 +9,7 @@ use App\Models\Despesa;
 use App\Models\RegistoDespesa;
 use App\Services\Auditor;
 use App\Services\Despesas\FluxoAprovacaoDespesas;
+use App\Services\Despesas\QrFatura;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -54,6 +55,12 @@ class Editor extends Component
     public $reciboDigitalizado = null;
 
     public int $linhaDigitalizacao = 0; // linha a que o scanner está a anexar
+
+    // O que o QR code do recibo de cada linha deu — só para mostrar por baixo do recibo, não se
+    // grava. #[Locked]: escreve-o apenas o servidor, no lerQr().
+    /** @var array<int, array{estado: string, data?: string, total?: string}> */
+    #[\Livewire\Attributes\Locked]
+    public array $qrLido = [];
 
     private function linhaVazia(): array
     {
@@ -114,9 +121,56 @@ class Editor extends Component
         if (count($this->linhas) <= 1) {
             return; // fica sempre pelo menos uma linha
         }
-        unset($this->linhas[$indice], $this->recibosPendentes[$indice]);
+        unset($this->linhas[$indice]);
         $this->linhas = array_values($this->linhas);
-        $this->recibosPendentes = array_values($this->recibosPendentes + []);
+        $this->recibosPendentes = $this->semLinha($this->recibosPendentes, $indice);
+        $this->qrLido = $this->semLinha($this->qrLido, $indice);
+    }
+
+    // Tira a linha $indice de um array indexado por linha e puxa as seguintes uma casa para trás.
+    // Antes fazia-se array_values(), que desalinhava tudo quando havia um buraco: sem recibos
+    // na linha 1 e com recibos na 3, remover a 1.ª punha os recibos da 3 na 2 (set. 2026).
+    private function semLinha(array $porLinha, int $indice): array
+    {
+        $novo = [];
+        foreach ($porLinha as $n => $valor) {
+            if ($n < $indice) {
+                $novo[$n] = $valor;
+            } elseif ($n > $indice) {
+                $novo[$n - 1] = $valor;
+            }
+        }
+
+        return $novo;
+    }
+
+    // Recibo com QR code (faturas portuguesas): o telemóvel lê o QR da fotografia e manda o
+    // texto; aqui valida-se como fatura e preenche-se o DIA e o VALOR da linha — só os que
+    // estiverem vazios, para nunca apagar o que a pessoa já escreveu. O resto (descrição, tipo,
+    // pago por) não vem no QR e continua à mão. Texto vazio = não havia QR legível na foto.
+    public function lerQr(int $linha, string $texto): void
+    {
+        if (! array_key_exists($linha, $this->linhas)) {
+            return;
+        }
+
+        $lido = QrFatura::ler($texto);
+        if ($lido === null) {
+            $this->qrLido[$linha] = ['estado' => trim($texto) === '' ? 'sem_qr' : 'invalido'];
+
+            return;
+        }
+
+        if (trim((string) ($this->linhas[$linha]['dia'] ?? '')) === '') {
+            $this->linhas[$linha]['dia'] = $lido['data'];
+        }
+
+        $valor = trim((string) ($this->linhas[$linha]['valor'] ?? ''));
+        if (($valor === '' || (float) $valor == 0.0) && (float) $lido['total'] > 0) {
+            $this->linhas[$linha]['valor'] = $lido['total'];
+        }
+
+        $this->qrLido[$linha] = ['estado' => 'lido'] + $lido;
     }
 
     private const REGRAS_RECIBO = ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'];

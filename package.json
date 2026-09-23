@@ -5,13 +5,14 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "testa-scanner": "node tests/js/scanner-componente.cjs && node tests/js/scanner-imagem.cjs"
+        "testa-scanner": "node tests/js/scanner-componente.cjs && node tests/js/scanner-imagem.cjs && node tests/js/qr-fatura.cjs"
     },
     "devDependencies": {
         "autoprefixer": "^10.4.20",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^2.0.0",
         "postcss": "^8.4.49",
+        "qrcode": "^1.5.4",
         "tailwindcss": "^3.4.17",
         "vite": "^7.3.6"
     },
@@ -19,6 +20,7 @@
         "@fullcalendar/core": "^6.1.20",
         "@fullcalendar/daygrid": "^6.1.20",
         "@fullcalendar/interaction": "^6.1.20",
-        "@fullcalendar/timegrid": "^6.1.20"
+        "@fullcalendar/timegrid": "^6.1.20",
+        "jsqr": "^1.4.0"
     }
 }

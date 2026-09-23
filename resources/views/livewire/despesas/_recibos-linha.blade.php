@@ -9,14 +9,30 @@
     </button>
     <label class="cursor-pointer rounded-md border border-borda p-2 text-texto-medio hover:text-verde-700" title="Tirar foto">
         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        <input type="file" wire:model="recibosLinhaUpload.{{ $n }}" accept="image/*" capture="environment" class="hidden">
+        <input type="file" wire:model="recibosLinhaUpload.{{ $n }}" @change="lerQrDoFicheiro($event, {{ $n }})" accept="image/*" capture="environment" class="hidden">
     </label>
     <label class="cursor-pointer rounded-md border border-borda p-2 text-texto-medio hover:text-verde-700" title="Escolher da galeria">
         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-        <input type="file" wire:model="recibosLinhaUpload.{{ $n }}" accept="image/*" multiple class="hidden">
+        <input type="file" wire:model="recibosLinhaUpload.{{ $n }}" @change="lerQrDoFicheiro($event, {{ $n }})" accept="image/*" multiple class="hidden">
     </label>
     <span wire:loading wire:target="recibosLinhaUpload.{{ $n }},reciboDigitalizado" class="text-xs text-texto-medio">a carregar…</span>
 </div>
+
+{{-- O que o QR code do recibo deu (faturas portuguesas): Dia e Valor já foram preenchidos se
+     estavam vazios. Se a linha tiver outra coisa, avisa — a pessoa decide qual está certo. --}}
+@php($qr = $qrLido[$n] ?? null)
+@if ($qr)
+    @if ($qr['estado'] === 'lido')
+        @php($difere = ($linha['dia'] ?? '') !== $qr['data'] || (float) ($linha['valor'] ?? 0) != (float) $qr['total'])
+        <p class="mt-1.5 text-xs {{ $difere ? 'text-aviso-500' : 'text-verde-700' }}">
+            QR do recibo: {{ \Illuminate\Support\Carbon::parse($qr['data'])->format('d/m/Y') }} · {{ number_format((float) $qr['total'], 2, ',', ' ') }} €@if ($difere) — diferente do que está na linha @endif
+        </p>
+    @else
+        <p class="mt-1.5 text-xs text-texto-fraco">
+            {{ $qr['estado'] === 'sem_qr' ? 'Sem QR code legível no recibo — preencha à mão.' : 'O QR code não é de uma fatura portuguesa — preencha à mão.' }}
+        </p>
+    @endif
+@endif
 
 @if ($gravados->isNotEmpty() || ($recibosPendentes[$n] ?? []) !== [])
     <div class="mt-1.5 flex flex-wrap gap-1.5">
