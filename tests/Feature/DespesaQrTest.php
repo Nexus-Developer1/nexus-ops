@@ -98,6 +98,38 @@ class DespesaQrTest extends TestCase
             ->set('qrLido', [0 => ['estado' => 'lido', 'data' => '2026-01-01', 'total' => '1.00']]);
     }
 
+    // «Tirar foto» manda UMA foto (sem `multiple`), não uma lista. A validação exigia lista e
+    // recusava-a com «The recibos linha upload.0 field must be an array» — o botão estava
+    // partido desde 05/08. A galeria continua a mandar várias.
+    public function test_tirar_foto_com_uma_so_foto_fica_como_recibo_da_linha(): void
+    {
+        Livewire::actingAs($this->admin())->test(Editor::class)
+            ->set('recibosLinhaUpload.0', UploadedFile::fake()->image('camara.jpg', 800, 600))
+            ->assertHasNoErrors()
+            ->assertCount('recibosPendentes.0', 1)
+            ->set('recibosLinhaUpload.0', [UploadedFile::fake()->image('g1.jpg', 800, 600), UploadedFile::fake()->image('g2.jpg', 800, 600)])
+            ->assertHasNoErrors()
+            ->assertCount('recibosPendentes.0', 3);
+    }
+
+    // Uma foto única que não é imagem continua a ser recusada — a correção não abre a porta.
+    // O HTML já nem passa o upload temporário do Livewire; o .txt passa esse (é o formato do
+    // ficheiro do teste de descarga das baterias) e tem de ser a regra de imagem a apanhá-lo.
+    public function test_foto_unica_que_nao_e_imagem_continua_recusada(): void
+    {
+        $admin = $this->admin();
+
+        Livewire::actingAs($admin)->test(Editor::class)
+            ->set('recibosLinhaUpload.0', UploadedFile::fake()->create('pagina.html', 3, 'text/html'))
+            ->assertHasErrors('recibosLinhaUpload.0')
+            ->assertSet('recibosPendentes', []);
+
+        Livewire::actingAs($admin)->test(Editor::class)
+            ->set('recibosLinhaUpload.0', UploadedFile::fake()->create('notas.txt', 1, 'text/plain'))
+            ->assertHasErrors('recibosLinhaUpload.0.0')
+            ->assertSet('recibosPendentes', []);
+    }
+
     // Remover uma linha puxa as seguintes uma casa para trás, com os recibos e o QR delas.
     // Antes, um buraco (linha sem recibos antes de uma com recibos) desalinhava-os.
     public function test_remover_uma_linha_mantem_recibos_e_qr_na_linha_certa(): void

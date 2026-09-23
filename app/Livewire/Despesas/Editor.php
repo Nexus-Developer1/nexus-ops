@@ -180,9 +180,15 @@ class Editor extends Component
     {
         // $chave é o índice da linha ("3") ou um sub-índice ("3.0") — interessa a linha.
         $linha = (int) explode('.', (string) $chave)[0];
-        $ficheiros = is_array($this->recibosLinhaUpload[$linha] ?? null)
-            ? $this->recibosLinhaUpload[$linha]
-            : array_filter([$this->recibosLinhaUpload[$linha] ?? null]);
+
+        // «Tirar foto» não tem `multiple` (tirado a 31/07: no iPhone partia o «Repetir») e manda
+        // UM ficheiro; a galeria manda uma lista. Põe-se sempre em lista ANTES de validar — a
+        // regra 'array' recusava a foto única com «The recibos linha upload.0 field must be an
+        // array», e «Tirar foto» não gravava recibo nenhum desde 05/08 (set. 2026).
+        if (! is_array($this->recibosLinhaUpload[$linha] ?? null)) {
+            $this->recibosLinhaUpload[$linha] = array_values(array_filter([$this->recibosLinhaUpload[$linha] ?? null]));
+        }
+        $ficheiros = $this->recibosLinhaUpload[$linha];
 
         $this->validate(["recibosLinhaUpload.$linha" => ['array'], "recibosLinhaUpload.$linha.*" => self::REGRAS_RECIBO]);
 

@@ -1177,10 +1177,10 @@ document.addEventListener('alpine:init', () => {
         },
 
         async textoDaTela(tela) {
-            const { lerQrDosPixeis } = await import('./qr-fatura.js');
+            const { lerQrDosPixeis } = await import('./qr-leitor.js');
             const { data, width, height } = tela.getContext('2d').getImageData(0, 0, tela.width, tela.height);
 
-            return lerQrDosPixeis(data, width, height);
+            return await lerQrDosPixeis(data, width, height);
         },
 
         // Uma fotografia de 12 MP desenhada em tamanho real ocupa ~50 MB: chega a 3000 px no
