@@ -81,7 +81,7 @@
                                 <div class="col-span-2">
                                     <label class="campo-label">Pago por <span class="text-perigo-500">*</span></label>
                                     <select wire:model="linhas.{{ $n }}.pago_por" class="campo-select font-semibold">
-                                        <option value="">— Quem pagou? —</option>
+                                        <option value="">Quem pagou?</option>
                                         @foreach (\App\Models\Despesa::PAGO_POR as $chave => $rotulo)
                                             <option value="{{ $chave }}">{{ $rotulo }}</option>
                                         @endforeach
@@ -102,7 +102,7 @@
 
                 {{-- ===== DESKTOP (lg+): tabela no formato da folha ===== --}}
                 <div class="mt-5 hidden overflow-x-auto rounded-lg border border-borda lg:block">
-                    <table class="w-full min-w-[1240px] text-sm">
+                    <table class="w-full min-w-[1260px] text-sm">
                         <thead>
                             <tr class="bg-fundo text-xs uppercase tracking-wide text-texto-medio">
                                 <th class="w-36 border-b border-r border-borda px-3 py-2 text-left font-semibold">Dia <span class="text-perigo-500">*</span></th>
@@ -110,7 +110,7 @@
                                 <th class="w-44 border-b border-r border-borda px-3 py-2 text-left font-semibold">Tipo <span class="text-perigo-500">*</span></th>
                                 <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">O que é<br><span class="font-normal normal-case text-texto-fraco">(opcional)</span></th>
                                 <th class="w-28 border-b border-r border-borda px-3 py-2 text-right font-semibold">Valor (€) <span class="text-perigo-500">*</span></th>
-                                <th class="w-44 border-b border-r border-borda px-3 py-2 text-left font-semibold">Pago por <span class="text-perigo-500">*</span></th>
+                                <th class="w-48 border-b border-r border-borda px-3 py-2 text-left font-semibold">Pago por <span class="text-perigo-500">*</span></th>
                                 <th class="w-56 border-b border-borda px-3 py-2 text-left font-semibold">Recibos <span class="text-perigo-500">*</span></th>
                                 <th class="w-10 border-b border-borda"></th>
                             </tr>
@@ -126,14 +126,14 @@
                                         <input wire:model="linhas.{{ $n }}.descricao" type="text" class="campo-input w-full min-w-[11rem] px-2 py-1.5 text-sm" placeholder="Ex: ACME - Porto">
                                     </td>
                                     <td class="border-r border-borda px-1.5 py-2">
-                                        <select wire:model.live="linhas.{{ $n }}.categoria" class="campo-select w-full px-2 py-1.5 text-sm">
+                                        <select wire:model.live="linhas.{{ $n }}.categoria" class="campo-select w-full py-1.5 pl-2 pr-8 text-sm">
                                             <option value="">— Tipo —</option>
                                             @foreach (\App\Models\Despesa::CATEGORIAS as $c)
                                                 <option value="{{ $c }}">{{ $c }}</option>
                                             @endforeach
                                         </select>
                                         @if (($linha['categoria'] ?? '') === 'Refeições')
-                                            <select wire:model="linhas.{{ $n }}.refeicao_tipo" class="campo-select mt-1 w-full px-2 py-1 text-xs">
+                                            <select wire:model="linhas.{{ $n }}.refeicao_tipo" class="campo-select mt-1 w-full py-1 pl-2 pr-8 text-xs">
                                                 <option value="">A / J?</option>
                                                 <option value="A">A — almoço</option>
                                                 <option value="J">J — jantar</option>
@@ -147,8 +147,8 @@
                                         <input wire:model.live.debounce.500ms="linhas.{{ $n }}.valor" type="number" step="0.01" min="0" inputmode="decimal" class="campo-input w-full px-2 py-1.5 text-right text-sm" placeholder="0,00">
                                     </td>
                                     <td class="border-r border-borda px-1.5 py-2">
-                                        <select wire:model="linhas.{{ $n }}.pago_por" class="campo-select w-full px-2 py-1.5 text-sm font-semibold">
-                                            <option value="">— Quem pagou? —</option>
+                                        <select wire:model="linhas.{{ $n }}.pago_por" class="campo-select w-full py-1.5 pl-2 pr-8 text-sm font-semibold">
+                                            <option value="">Quem pagou?</option>
                                             @foreach (\App\Models\Despesa::PAGO_POR as $chave => $rotulo)
                                                 <option value="{{ $chave }}">{{ $rotulo }}</option>
                                             @endforeach
