@@ -40,7 +40,7 @@ class Editor extends Component
 
     // Linhas: cada uma = uma despesa. 'dia' é escolhido no calendário (nasce VAZIO — nenhum
     // dia pré-selecionado); 'despesa_id' liga à despesa existente (edição — preserva os recibos).
-    /** @var array<int, array{despesa_id: ?int, dia: string, descricao: string, detalhe: string, categoria: string, refeicao_tipo: string, valor: string}> */
+    /** @var array<int, array{despesa_id: ?int, dia: string, descricao: string, detalhe: string, categoria: string, refeicao_tipo: string, pago_por: string, valor: string}> */
     public array $linhas = [];
 
     // Recibos PENDENTES por linha (gravam-se com a despesa dessa linha ao guardar).
@@ -64,6 +64,7 @@ class Editor extends Component
             'detalhe' => '',
             'categoria' => '',
             'refeicao_tipo' => '',
+            'pago_por' => '', // nasce vazio, como o Tipo: quem lança tem de escolher
             'valor' => '',
         ];
     }
@@ -91,6 +92,7 @@ class Editor extends Component
                 'detalhe' => $d->detalhe ?? '',
                 'categoria' => in_array($d->categoria, Despesa::CATEGORIAS, true) ? $d->categoria : 'Outras despesas',
                 'refeicao_tipo' => $d->refeicao_tipo ?? '',
+                'pago_por' => $d->pago_por ?? '',
                 'valor' => (string) $d->valor,
             ])->values()->all() ?: [$this->linhaVazia()];
 
@@ -186,6 +188,7 @@ class Editor extends Component
             'linhas.*.detalhe' => ['nullable', 'string', 'max:255'],
             'linhas.*.categoria' => ['nullable', Rule::in(array_merge([''], Despesa::CATEGORIAS))],
             'linhas.*.refeicao_tipo' => ['nullable', 'in:A,J'],
+            'linhas.*.pago_por' => ['nullable', Rule::in(array_merge([''], array_keys(Despesa::PAGO_POR)))],
             'linhas.*.valor' => ['nullable', 'numeric', 'min:0'],
         ]);
 
@@ -235,6 +238,14 @@ class Editor extends Component
                 return;
             }
 
+            // Quem pagou: obrigatório — é o que diz ao financeiro o que há a reembolsar.
+            $pagoPor = (string) ($linha['pago_por'] ?? '');
+            if (! array_key_exists($pagoPor, Despesa::PAGO_POR)) {
+                $this->addError("linhas.$n.pago_por", 'Indique quem pagou a despesa na linha '.($n + 1).'.');
+
+                return;
+            }
+
             $lancamentos[$n] = [
                 'despesa_id' => $linha['despesa_id'] ?? null,
                 'data' => $data,
@@ -243,6 +254,7 @@ class Editor extends Component
                 'categoria' => $categoria,
                 'valor' => (float) $valor,
                 'refeicao_tipo' => $categoria === 'Refeições' ? $refeicaoTipo : null,
+                'pago_por' => $pagoPor,
             ];
         }
 

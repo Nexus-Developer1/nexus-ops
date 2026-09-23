@@ -49,6 +49,7 @@ class RecibosSegurosTest extends TestCase
             ->set('linhas.0.dia', '2026-08-04')
             ->set('linhas.0.descricao', 'ACME - Porto')
             ->set('linhas.0.categoria', 'Combustíveis')
+            ->set('linhas.0.pago_por', 'tecnico')
             ->set('linhas.0.valor', '20.50')
             // Salta o botão «adicionar recibo» e põe o ficheiro diretamente nos pendentes.
             ->set('recibosPendentes.0', [$html])
@@ -77,6 +78,7 @@ class RecibosSegurosTest extends TestCase
             ->set('linhas.0.dia', '2026-08-04')
             ->set('linhas.0.descricao', 'ACME - Porto')
             ->set('linhas.0.categoria', 'Combustíveis')
+            ->set('linhas.0.pago_por', 'tecnico')
             ->set('linhas.0.valor', '20.50')
             ->set('recibosPendentes.0', [UploadedFile::fake()->image('r.jpg', 800, 600)])
             ->call('guardar')

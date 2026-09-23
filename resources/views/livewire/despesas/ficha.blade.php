@@ -95,13 +95,14 @@
 
             {{-- Linhas + recibos --}}
             <section class="cartao mt-6 overflow-x-auto">
-                <table class="w-full min-w-[640px] text-sm">
+                <table class="w-full min-w-[760px] text-sm">
                     <thead>
                         <tr class="border-b border-borda text-left text-xs uppercase tracking-wide text-texto-fraco">
                             <th class="px-6 py-3 font-semibold">Dia</th>
                             <th class="px-6 py-3 font-semibold">Descrição</th>
                             <th class="px-6 py-3 font-semibold">Tipo</th>
                             <th class="px-6 py-3 text-right font-semibold">Valor</th>
+                            <th class="px-6 py-3 font-semibold">Pago por</th>
                             <th class="px-6 py-3 font-semibold">Recibos</th>
                         </tr>
                     </thead>
@@ -115,6 +116,7 @@
                                 </td>
                                 <td class="px-6 py-3.5 text-texto-medio">{{ $d->categoria }}@if ($d->refeicao_tipo) ({{ $d->refeicao_tipo }})@endif</td>
                                 <td class="whitespace-nowrap px-6 py-3.5 text-right font-medium text-texto-forte">{{ number_format((float) $d->valor, 2, ',', ' ') }} €</td>
+                                <td class="whitespace-nowrap px-6 py-3.5 font-bold text-texto-forte">{{ $d->pagoPorRotulo() ?? '—' }}</td>
                                 <td class="px-6 py-3.5">
                                     <div class="flex flex-wrap gap-2">
                                         @forelse ($d->anexos as $a)
@@ -133,7 +135,7 @@
                         <tr class="border-t border-borda">
                             <td colspan="3" class="px-6 py-3 text-right text-xs uppercase tracking-wide text-texto-fraco">Total</td>
                             <td class="whitespace-nowrap px-6 py-3 text-right font-semibold text-texto-forte">{{ number_format($total, 2, ',', ' ') }} €</td>
-                            <td></td>
+                            <td colspan="2"></td>
                         </tr>
                     </tfoot>
                 </table>

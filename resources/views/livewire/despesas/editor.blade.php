@@ -79,6 +79,15 @@
                                     <input wire:model="linhas.{{ $n }}.detalhe" type="text" class="campo-input" placeholder="Ex: Portagem A1, almoço com cliente…">
                                 </div>
                                 <div class="col-span-2">
+                                    <label class="campo-label">Pago por <span class="text-perigo-500">*</span></label>
+                                    <select wire:model="linhas.{{ $n }}.pago_por" class="campo-select font-semibold">
+                                        <option value="">— Quem pagou? —</option>
+                                        @foreach (\App\Models\Despesa::PAGO_POR as $chave => $rotulo)
+                                            <option value="{{ $chave }}">{{ $rotulo }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-span-2">
                                     <label class="campo-label">Recibos <span class="text-perigo-500">*</span></label>
                                     @include('livewire.despesas._recibos-linha', ['n' => $n, 'linha' => $linha, 'sufixo' => 'm'])
                                 </div>
@@ -93,7 +102,7 @@
 
                 {{-- ===== DESKTOP (lg+): tabela no formato da folha ===== --}}
                 <div class="mt-5 hidden overflow-x-auto rounded-lg border border-borda lg:block">
-                    <table class="w-full min-w-[1080px] text-sm">
+                    <table class="w-full min-w-[1240px] text-sm">
                         <thead>
                             <tr class="bg-fundo text-xs uppercase tracking-wide text-texto-medio">
                                 <th class="w-36 border-b border-r border-borda px-3 py-2 text-left font-semibold">Dia <span class="text-perigo-500">*</span></th>
@@ -101,6 +110,7 @@
                                 <th class="w-44 border-b border-r border-borda px-3 py-2 text-left font-semibold">Tipo <span class="text-perigo-500">*</span></th>
                                 <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">O que é<br><span class="font-normal normal-case text-texto-fraco">(opcional)</span></th>
                                 <th class="w-28 border-b border-r border-borda px-3 py-2 text-right font-semibold">Valor (€) <span class="text-perigo-500">*</span></th>
+                                <th class="w-44 border-b border-r border-borda px-3 py-2 text-left font-semibold">Pago por <span class="text-perigo-500">*</span></th>
                                 <th class="w-56 border-b border-borda px-3 py-2 text-left font-semibold">Recibos <span class="text-perigo-500">*</span></th>
                                 <th class="w-10 border-b border-borda"></th>
                             </tr>
@@ -136,6 +146,14 @@
                                     <td class="border-r border-borda px-1.5 py-2">
                                         <input wire:model.live.debounce.500ms="linhas.{{ $n }}.valor" type="number" step="0.01" min="0" inputmode="decimal" class="campo-input w-full px-2 py-1.5 text-right text-sm" placeholder="0,00">
                                     </td>
+                                    <td class="border-r border-borda px-1.5 py-2">
+                                        <select wire:model="linhas.{{ $n }}.pago_por" class="campo-select w-full px-2 py-1.5 text-sm font-semibold">
+                                            <option value="">— Quem pagou? —</option>
+                                            @foreach (\App\Models\Despesa::PAGO_POR as $chave => $rotulo)
+                                                <option value="{{ $chave }}">{{ $rotulo }}</option>
+                                            @endforeach
+                                        </select>
+                                    </td>
                                     <td class="px-1.5 py-2">
                                         @include('livewire.despesas._recibos-linha', ['n' => $n, 'linha' => $linha, 'sufixo' => 'd'])
                                     </td>
@@ -153,7 +171,7 @@
                             <tr class="border-t border-borda bg-fundo">
                                 <td colspan="4" class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-texto-medio">Total despesas</td>
                                 <td class="px-3 py-2 text-right text-sm font-semibold text-texto-forte">{{ number_format($total, 2, ',', ' ') }} €</td>
-                                <td colspan="2"></td>
+                                <td colspan="3"></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -168,7 +186,7 @@
 
                 @error('linhas') <p class="mt-2 text-xs text-perigo-500">{{ $message }}</p> @enderror
                 @foreach ($linhas as $n => $linha)
-                    @foreach (['dia', 'descricao', 'detalhe', 'categoria', 'refeicao_tipo', 'valor', 'recibos'] as $campo)
+                    @foreach (['dia', 'descricao', 'detalhe', 'categoria', 'refeicao_tipo', 'valor', 'pago_por', 'recibos'] as $campo)
                         @error("linhas.$n.$campo") <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     @endforeach
                 @endforeach

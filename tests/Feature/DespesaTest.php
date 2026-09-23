@@ -63,6 +63,7 @@ class DespesaTest extends TestCase
             ->set('linhas.0.descricao', 'ACME - Porto')
             ->set('linhas.0.detalhe', 'Gasóleo A1')
             ->set('linhas.0.categoria', 'Combustíveis')
+            ->set('linhas.0.pago_por', 'tecnico')
             ->set('linhas.0.valor', '20.50')
             ->set('recibosLinhaUpload.0', [UploadedFile::fake()->image('r1.jpg', 800, 600)]) // recibo obrigatório
             ->call('adicionarLinha')
@@ -70,6 +71,7 @@ class DespesaTest extends TestCase
             ->set('linhas.1.descricao', 'Beta - Lisboa')
             ->set('linhas.1.detalhe', 'Almoço com cliente')
             ->set('linhas.1.categoria', 'Refeições')
+            ->set('linhas.1.pago_por', 'tecnico')
             ->set('linhas.1.refeicao_tipo', 'A')
             ->set('linhas.1.valor', '12')
             ->set('recibosLinhaUpload.1', [UploadedFile::fake()->image('r2.jpg', 800, 600)])
@@ -100,6 +102,7 @@ class DespesaTest extends TestCase
             // Sem escolher o dia → recusado.
             ->set('linhas.0.descricao', 'X')
             ->set('linhas.0.categoria', 'Hotel')
+            ->set('linhas.0.pago_por', 'tecnico')
             ->set('linhas.0.valor', '10')
             ->call('guardar')
             ->assertHasErrors('linhas.0.dia');
@@ -114,6 +117,7 @@ class DespesaTest extends TestCase
             ->set('linhas.0.dia', now()->toDateString())
             ->set('linhas.0.descricao', 'Almoço ACME')
             ->set('linhas.0.categoria', 'Refeições')
+            ->set('linhas.0.pago_por', 'tecnico')
             ->set('linhas.0.valor', '12')
             ->call('guardar')
             ->assertHasErrors('linhas.0.refeicao_tipo');
@@ -150,6 +154,7 @@ class DespesaTest extends TestCase
             ->assertSet('linhas.0.dia', '2026-08-03')
             ->assertSet('linhas.0.detalhe', 'Hotel Mar')
             ->assertSet('linhas.0.categoria', 'Hotel')
+            ->set('linhas.0.pago_por', 'tecnico')
             ->set('linhas.0.valor', '95')
             ->set('recibosLinhaUpload.0', [UploadedFile::fake()->image('r.jpg', 800, 600)]) // recibo obrigatório
             ->call('guardar')
@@ -172,6 +177,7 @@ class DespesaTest extends TestCase
             ->set('linhas.0.dia', now()->toDateString())
             ->set('linhas.0.descricao', 'Almoço ACME')
             ->set('linhas.0.categoria', 'Refeições')
+            ->set('linhas.0.pago_por', 'tecnico')
             ->set('linhas.0.refeicao_tipo', 'A')
             ->set('linhas.0.valor', '14.20')
             ->set('recibosLinhaUpload.0', [UploadedFile::fake()->image('recibo.jpg', 800, 600)])

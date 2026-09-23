@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-23
+
+- 🧰 **Despesas — cada linha diz quem pagou.** Novo campo obrigatório **«Pago por»**, com três opções: **Cartão Técnico**, **Financeiro** e **Pago pelo técnico** (este último é o que há a reembolsar). É por linha, porque no mesmo registo a portagem pode ter ido no cartão e o almoço do bolso. Nasce vazio, como o Tipo, para quem lança ter de escolher. Aparece **a negrito** na ficha do registo (coluna própria), no PDF (por baixo da descrição, para não mexer nas colunas da folha da empresa, e na legenda de cada recibo) e no próprio seletor do editor. As linhas já existentes ficam sem valor e mostram «—»; ao editá-las, o campo passa a ser pedido. Coluna nova `despesas.pago_por`. **Requer migração** e `optimize`. +5 testes, 11 ajustados.
+
 ## 2026-09-21
 
 - 🐛 **Agenda — clicar no bloco de um feriado dava «419 page expired».** O aviso vermelho em cima já aparecia ao selecionar o dia, mas o clique no próprio bloco do feriado seguia para o servidor como se fosse um evento, com o id «feriado-2026-10-05» — que não é um número — e o servidor rebentava; o Livewire mostra isso como um 419 e propõe recarregar a página. Foi o registo dos 419 (entrada abaixo) que o apanhou: `agenda.calendario`, método `selecionar`, tokens certos. Agora o clique num feriado mostra só o aviso em cima («05/10/2026 é feriado nacional (Implantação da República) — não é possível marcar neste dia») e não chama o servidor; o Carnaval, que é tolerância e não bloqueia, é simplesmente ignorado ao clicar. Requer `npm run build`.

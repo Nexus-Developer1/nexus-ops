@@ -91,8 +91,10 @@
             @php($indiceCol = $indiceCol === false ? count($colunas) - 1 : $indiceCol)
             <tr>
                 <td class="dia">{{ $d->data->format('d/m/Y') }}</td>
-                {{-- Descrição (local · serviço) + "o que é" quando preenchido. --}}
-                <td>{{ $d->descricao }}{{ $d->detalhe ? ' — ' . $d->detalhe : '' }}</td>
+                {{-- Descrição (local · serviço) + "o que é" quando preenchido; por baixo, a
+                     negrito, quem pagou (set. 2026). Fica dentro da célula para não mexer nas
+                     colunas da folha da empresa. --}}
+                <td>{{ $d->descricao }}{{ $d->detalhe ? ' — ' . $d->detalhe : '' }}@if ($d->pagoPorRotulo())<br><strong>{{ $d->pagoPorRotulo() }}</strong>@endif</td>
                 @foreach ($colunas as $i => $c)
                     <td class="num">{{ $i === $indiceCol ? $eur($d->valor) . ($d->refeicao_tipo ? ' (' . $d->refeicao_tipo . ')' : '') : '' }}</td>
                 @endforeach
@@ -142,7 +144,7 @@
             @php($primeira = false)
 
             <div class="recibo-pagina">
-                <div class="recibo-rot">{{ $d->data->format('d/m/Y') }} · {{ $d->descricao }}{{ $d->detalhe ? ' — ' . $d->detalhe : '' }} · {{ $d->categoria }} · {{ number_format((float) $d->valor, 2, ',', ' ') }} €</div>
+                <div class="recibo-rot">{{ $d->data->format('d/m/Y') }} · {{ $d->descricao }}{{ $d->detalhe ? ' — ' . $d->detalhe : '' }} · {{ $d->categoria }} · {{ number_format((float) $d->valor, 2, ',', ' ') }} €@if ($d->pagoPorRotulo()) · <strong>{{ $d->pagoPorRotulo() }}</strong>@endif</div>
                 <img class="recibo-img" style="{{ $estilo }}" src="data:{{ $anexo->mime ?: 'image/jpeg' }};base64,{{ base64_encode($conteudo) }}">
             </div>
         @endforeach

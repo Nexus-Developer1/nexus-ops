@@ -52,6 +52,7 @@ class DespesaAprovacaoTest extends TestCase
             ->set('linhas.0.dia', '2026-08-05')
             ->set('linhas.0.descricao', $descricao)
             ->set('linhas.0.categoria', 'Refeições')
+            ->set('linhas.0.pago_por', 'tecnico')
             ->set('linhas.0.refeicao_tipo', 'A')
             ->set('linhas.0.valor', $valor)
             ->set('recibosLinhaUpload.0', [UploadedFile::fake()->image('recibo.jpg', 800, 600)])
@@ -97,6 +98,7 @@ class DespesaAprovacaoTest extends TestCase
             ->set('linhas.0.dia', '2026-08-05')
             ->set('linhas.0.descricao', 'Gasóleo')
             ->set('linhas.0.categoria', 'Combustíveis')
+            ->set('linhas.0.pago_por', 'tecnico')
             ->set('linhas.0.valor', '40')
             ->call('guardar')
             ->assertHasErrors('linhas.0.recibos');

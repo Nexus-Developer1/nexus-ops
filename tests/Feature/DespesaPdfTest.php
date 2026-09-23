@@ -49,6 +49,7 @@ class DespesaPdfTest extends TestCase
             $componente->set("linhas.$i.dia", '2026-08-0'.($i + 1))
                 ->set("linhas.$i.descricao", 'Almoço '.($i + 1))
                 ->set("linhas.$i.categoria", 'Refeições')
+                ->set("linhas.$i.pago_por", 'tecnico')
                 ->set("linhas.$i.refeicao_tipo", 'A')
                 ->set("linhas.$i.valor", '12.50')
                 ->set("recibosLinhaUpload.$i", [UploadedFile::fake()->image('talao.jpg', $largura, $altura)]);

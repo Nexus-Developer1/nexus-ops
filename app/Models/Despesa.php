@@ -21,6 +21,14 @@ class Despesa extends Model
     // Categorias FIXAS (as da folha de despesas da empresa) — whitelist no editor.
     public const CATEGORIAS = ['Combustíveis', 'Outros (veículos)', 'Hotel', 'Refeições', 'Táxi / Comboio / Avião', 'Outras despesas'];
 
+    // Quem pagou (set. 2026) — chave gravada => rótulo mostrado. «Pago pelo técnico» é o que
+    // há a reembolsar; os outros dois já saíram do dinheiro da empresa.
+    public const PAGO_POR = [
+        'cartao_tecnico' => 'Cartão Técnico',
+        'financeiro' => 'Financeiro',
+        'tecnico' => 'Pago pelo técnico',
+    ];
+
     /** @var list<string> */
     protected $fillable = [
         'data',
@@ -36,6 +44,7 @@ class Despesa extends Model
         'registo_despesa_id', // documento (registo) a que esta linha pertence
         'detalhe', // "o que realmente é" (ex.: Portagem A1, Almoço com cliente)
         'refeicao_tipo', // 'A' (almoço) | 'J' (jantar) — só nas despesas de Refeições (nota a) da folha)
+        'pago_por', // chave de PAGO_POR — quem pagou a despesa
     ];
 
     /** @return array<string, string> */
@@ -46,6 +55,12 @@ class Despesa extends Model
             'valor' => 'decimal:2',
             'faturavel' => 'boolean',
         ];
+    }
+
+    // Rótulo de quem pagou, ou null nas linhas antigas (anteriores ao campo).
+    public function pagoPorRotulo(): ?string
+    {
+        return self::PAGO_POR[$this->pago_por] ?? null;
     }
 
     public function cliente(): BelongsTo

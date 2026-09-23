@@ -155,7 +155,7 @@ class AuditoriaAcoesRevisao16Test extends TestCase
     {
         Livewire::actingAs($this->admin)->test(EditorDespesas::class)
             ->set('linhas.0.dia', '2026-08-04')->set('linhas.0.descricao', 'ACME - Porto')
-            ->set('linhas.0.categoria', 'Combustíveis')->set('linhas.0.valor', '20.50')
+            ->set('linhas.0.categoria', 'Combustíveis')->set('linhas.0.pago_por', 'tecnico')->set('linhas.0.valor', '20.50')
             ->set('recibosLinhaUpload.0', [UploadedFile::fake()->image('recibo.jpg', 800, 600)])
             ->call('guardar')->assertHasNoErrors();
         $despesa = Despesa::firstOrFail();
