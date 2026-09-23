@@ -237,6 +237,63 @@ const comTempo = async (promessa, ms) => {
     ok(lidas.join(',') === 'sem-qr,com-qr', 'parou na primeira com QR (leu: ' + lidas.join(',') + ')');
   });
 
+  // ---- Texto do talão (OCR): depois do QR, o texto vai para lerTalao, da mesma linha ----
+  // O OCR em si prova-se em ocr-talao.cjs; aqui substitui-se (textoDoTalao).
+  const TALAO = 'MERCADONA\nR ENG. FREDERICO ULRICH, 3621\nMOREIRA';
+
+  await ensaio('Talão: «Usar digitalização» lê o texto do recorte e manda-o para a linha, depois do QR', { comImageCapture: false }, async ({ componente }) => {
+    const chamadas = [];
+    let lida = null;
+    componente.$wire.linhaDigitalizacao = 2;
+    componente.$wire.lerQr = async (linha) => { chamadas.push(['qr', linha]); };
+    componente.$wire.lerTalao = async (linha, texto) => { chamadas.push(['talao', linha, texto]); };
+    componente.textoDaTela = async () => QR;
+    componente.textoDoTalao = async (tela) => { lida = tela; ok(componente.aLer[2] === true, 'mostra «A ler o talão…» na linha 2'); return TALAO; };
+    await componente.abrir();
+    await componente.capturar();
+    componente.confirmarRecorte();
+    const plana = componente.plana;
+    componente.usar();
+    for (let k = 0; k < 5; k++) await esperar();
+    ok(JSON.stringify(chamadas) === JSON.stringify([['qr', 2], ['talao', 2, TALAO]]), 'QR e depois o texto, na linha 2: ' + JSON.stringify(chamadas));
+    ok(lida === plana, 'leu o recorte endireitado');
+    ok(componente.aLer[2] === false, 'e tirou o «A ler o talão…»');
+  });
+
+  await ensaio('Talão: foto da galeria — lê o texto da fotografia que tinha o QR', { comImageCapture: false }, async ({ componente }) => {
+    const lidas = [];
+    componente.$wire.lerQr = async () => {};
+    componente.$wire.lerTalao = async () => {};
+    componente.telaDoFicheiro = async (f) => f.tela;
+    componente.textoDaTela = async (t) => t.qr ?? null;
+    componente.textoDoTalao = async (t) => { lidas.push(t.nome); return TALAO; };
+    await componente.lerQrDoFicheiro({ target: { files: [{ tela: { nome: 'sem-qr' } }, { tela: { nome: 'com-qr', qr: QR } }] } }, 0);
+    ok(lidas.join(',') === 'com-qr', 'leu a do QR (leu: ' + lidas.join(',') + ')');
+  });
+
+  await ensaio('Talão: foto sem QR — lê o texto na mesma (a descrição e o tipo não precisam do QR)', { comImageCapture: false }, async ({ componente }) => {
+    const chamadas = [];
+    componente.$wire.lerQr = async (linha, texto) => { chamadas.push(['qr', texto]); };
+    componente.$wire.lerTalao = async (linha, texto) => { chamadas.push(['talao', texto]); };
+    componente.telaDoFicheiro = async (f) => f.tela;
+    componente.textoDaTela = async () => null;
+    componente.textoDoTalao = async () => TALAO;
+    await componente.lerQrDoFicheiro({ target: { files: [{ tela: { nome: 'so-foto' } }] } }, 0);
+    ok(JSON.stringify(chamadas) === JSON.stringify([['qr', ''], ['talao', TALAO]]), 'mandou os dois: ' + JSON.stringify(chamadas));
+  });
+
+  await ensaio('Talão: OCR que falha (sem rede, telemóvel antigo) não manda nada e não prende o aviso', { comImageCapture: false }, async ({ componente }) => {
+    let chamou = false;
+    componente.$wire.lerQr = async () => {};
+    componente.$wire.lerTalao = async () => { chamou = true; };
+    componente.telaDoFicheiro = async (f) => f.tela;
+    componente.textoDaTela = async () => QR;
+    componente.textoDoTalao = async () => { throw new Error('sem motor'); };
+    await componente.lerQrDoFicheiro({ target: { files: [{ tela: {} }] } }, 3);
+    ok(!chamou, 'não chamou o lerTalao');
+    ok(componente.aLer[3] === false, 'tirou o «A ler o talão…»');
+  });
+
   console.log(falhas ? `\nFALHAS: ${falhas}` : '\nTudo a funcionar');
   process.exit(falhas ? 1 : 0);
 })();

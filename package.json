@@ -5,7 +5,7 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "testa-scanner": "node tests/js/scanner-componente.cjs && node tests/js/scanner-imagem.cjs && node tests/js/qr-fatura.cjs"
+        "testa-scanner": "node tests/js/scanner-componente.cjs && node tests/js/scanner-imagem.cjs && node tests/js/qr-fatura.cjs && node tests/js/ocr-talao.cjs"
     },
     "devDependencies": {
         "autoprefixer": "^10.4.20",
@@ -22,6 +22,10 @@
         "@fullcalendar/daygrid": "^6.1.20",
         "@fullcalendar/interaction": "^6.1.20",
         "@fullcalendar/timegrid": "^6.1.20",
+        "@tesseract.js-data/por": "^1.0.0",
+        "tesseract.js": "^7.0.0",
+        "tesseract.js-core": "^7.0.0",
+        "wasm-feature-detect": "^1.9.0",
         "zxing-wasm": "^3.1.4"
     }
 }

@@ -34,6 +34,17 @@
     @endif
 @endif
 
+{{-- Texto do talão (OCR no telemóvel, uns segundos depois do QR) e o que o recibo sugeriu. --}}
+<p x-show="aLer[{{ $n }}]" x-cloak class="mt-1 text-xs text-texto-medio">A ler o talão…</p>
+@php($sugeridos = array_values(array_intersect_key(['descricao' => 'descrição', 'categoria' => 'tipo', 'refeicao_tipo' => 'almoço/jantar'], array_filter(
+    $autoPreenchido[$n] ?? [],
+    fn ($valor, $campo) => ($linha[$campo] ?? '') === $valor,
+    ARRAY_FILTER_USE_BOTH
+))))
+@if ($sugeridos !== [])
+    <p class="mt-1 text-xs text-texto-medio">Sugerido pelo recibo: {{ implode(', ', $sugeridos) }} — confirme.</p>
+@endif
+
 @if ($gravados->isNotEmpty() || ($recibosPendentes[$n] ?? []) !== [])
     <div class="mt-1.5 flex flex-wrap gap-1.5">
         @foreach ($gravados as $recibo)

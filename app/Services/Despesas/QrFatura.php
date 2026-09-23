@@ -13,13 +13,17 @@ namespace App\Services\Despesas;
  *   H:J6M3CZ6D-41625*I1:PT*I7:64.23*I8:14.77*N:14.77*O:79.00*Q:SM2T*R:192
  *
  * Das despesas só dois campos saem daqui com certeza: F (data do documento) → Dia, e O (total
- * do documento, já com IVA) → Valor. O resto não corresponde a nenhum campo da linha: A e B
- * são os NIF do vendedor e do comprador, G e H identificam o documento. (O G às vezes parece
- * trazer o local — «FR COVILHA26» — mas é só o nome da série de faturação, que cada vendedor
- * escolhe como quer; não serve.)
+ * do documento, já com IVA) → Valor. Saem também três pistas para o resto da linha:
+ *  - A, o NIF de quem vendeu, e a série de faturação (o G até à «/»): identificam a LOJA — a
+ *    série é de cada estabelecimento/terminal. É a chave da memória de fornecedores
+ *    (MemoriaFornecedor), que lembra a descrição e o tipo que se escolheram da última vez.
+ *    (O nome da série às vezes parece trazer o local — «FR COVILHA26» — mas cada vendedor dá-lhe
+ *    o nome que quer; não se lê como local.)
+ *  - IVA à taxa intermédia (I5/I6 no continente, J5/J6 nos Açores, K5/K6 na Madeira): em
+ *    despesas de deslocação é a taxa da restauração — sugere Refeições.
  *
  * O texto vem do browser: não se confia nele. Só se aceita o que tem a forma de uma fatura —
- * NIF do vendedor com 9 dígitos, data que existe, total numérico — e só esses dois valores saem.
+ * NIF do vendedor com 9 dígitos, data que existe, total numérico.
  */
 class QrFatura
 {
@@ -27,7 +31,9 @@ class QrFatura
     public const TAMANHO_MAXIMO = 1024;
 
     /**
-     * @return array{data: string, total: string}|null data em Y-m-d; total com duas casas e ponto
+     * data em Y-m-d; total com duas casas e ponto; nif do vendedor; série de faturação (ou null).
+     *
+     * @return array{data: string, total: string, nif: string, serie: ?string, intermedia: bool}|null
      */
     public static function ler(string $texto): ?array
     {
@@ -61,9 +67,25 @@ class QrFatura
             return null;
         }
 
+        // G: «TIPO SÉRIE/NÚMERO» — fica a série, sem o número do documento.
+        $serie = null;
+        if (preg_match('#^([^/]{1,60})/\d+$#', $campos['G'] ?? '', $g)) {
+            $serie = trim($g[1]) ?: null;
+        }
+
+        $intermedia = false;
+        foreach (['I5', 'I6', 'J5', 'J6', 'K5', 'K6'] as $chave) {
+            if (is_numeric($campos[$chave] ?? null) && (float) $campos[$chave] > 0) {
+                $intermedia = true;
+            }
+        }
+
         return [
             'data' => "{$d[1]}-{$d[2]}-{$d[3]}",
             'total' => number_format((float) $campos['O'], 2, '.', ''),
+            'nif' => $campos['A'],
+            'serie' => $serie,
+            'intermedia' => $intermedia,
         ];
     }
 }

@@ -28,7 +28,20 @@ class DespesaQrTest extends TestCase
 
     public function test_le_a_fatura_do_exemplo(): void
     {
-        $this->assertSame(['data' => '2026-09-21', 'total' => '79.00'], QrFatura::ler(self::EXEMPLO));
+        $this->assertSame(
+            ['data' => '2026-09-21', 'total' => '79.00', 'nif' => '516520741', 'serie' => 'FR COVILHA26', 'intermedia' => false],
+            QrFatura::ler(self::EXEMPLO),
+        );
+    }
+
+    // IVA à taxa intermédia (restauração) em qualquer das três regiões; série só com a forma certa.
+    public function test_taxa_intermedia_e_serie(): void
+    {
+        $this->assertTrue(QrFatura::ler('A:514038942*F:20260923*G:FS 7072/1*I5:3.98*I6:0.52*O:4.50')['intermedia']);
+        $this->assertTrue(QrFatura::ler('A:514038942*F:20260923*K5:3.98*K6:0.36*O:4.34')['intermedia']);
+        $this->assertFalse(QrFatura::ler('A:514038942*F:20260923*I5:0.00*I6:0.00*O:4.50')['intermedia']);
+        $this->assertNull(QrFatura::ler('A:514038942*F:20260923*O:4.50')['serie']);
+        $this->assertNull(QrFatura::ler('A:514038942*F:20260923*G:SEM NUMERO*O:4.50')['serie']);
     }
 
     public function test_recusa_o_que_nao_e_uma_fatura(): void

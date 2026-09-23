@@ -304,6 +304,7 @@ document.addEventListener('alpine:init', () => {
     // escuro, papel claro) antes de enviar ao Livewire. Precisa de HTTPS (produção tem).
     window.Alpine.data('scannerRecibo', () => ({
         aberto: false,
+        aLer: {},       // linhas cujo talão está a ser lido (OCR) — mostra «A ler o talão…»
         fase: 'camara', // camara → recorte (arrastar os cantos) → pronto
         stream: null,
         foto: null,     // ImageCapture: fotografia do sensor, quando o browser a dá
@@ -1141,15 +1142,16 @@ document.addEventListener('alpine:init', () => {
             this.lerQrDasTelas(telas, linha);
         },
 
-        // ---- QR code das faturas: preenche o dia e o valor da linha ----
+        // ---- Ler o recibo: QR code (dia e valor) e texto do talão (descrição, tipo) ----
         //
-        // Quem lê é o próprio telemóvel — nada vai para serviço nenhum. O texto segue para o
-        // servidor (lerQr), que o valida como fatura portuguesa e preenche só os campos vazios.
-        // É uma ajuda: se não houver QR ou não se ler, fica tudo à mão, como antes.
+        // Quem lê é o próprio telemóvel — nada vai para serviço nenhum. O QR segue para o
+        // servidor (lerQr), que o valida como fatura portuguesa e preenche só os campos vazios;
+        // depois, o texto do talão (OCR, uns segundos) segue para lerTalao. É uma ajuda: se não
+        // houver QR ou o texto não se ler, fica tudo à mão, como antes.
 
         async lerQrDasTelas(telas, linha) {
+            let texto = null;
             try {
-                let texto = null;
                 for (const tela of telas) {
                     texto = await this.textoDaTela(tela);
                     if (texto) break;
@@ -1158,22 +1160,47 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {
                 // sem leitura não há mal nenhum: preenche-se à mão
             }
+            if (telas[0]) await this.lerTalao(telas[0], linha);
         },
 
         // «Tirar foto» e «Galeria»: o ficheiro segue para o servidor pelo wire:model, à parte;
-        // aqui só se lê o QR. Com várias fotografias, vale a primeira que tiver um.
+        // aqui só se lê o recibo. Com várias fotografias, vale a primeira que tiver QR.
         async lerQrDoFicheiro(evento, linha) {
             const ficheiros = [...(evento.target.files ?? [])]; // já, antes de qualquer await
+            let texto = null;
+            let talao = null;
             try {
-                let texto = null;
                 for (const ficheiro of ficheiros) {
                     const tela = await this.telaDoFicheiro(ficheiro);
-                    if (tela && (texto = await this.textoDaTela(tela))) break;
+                    talao ??= tela;
+                    if (tela && (texto = await this.textoDaTela(tela))) {
+                        talao = tela;
+                        break;
+                    }
                 }
                 await this.$wire.lerQr(linha, texto ?? '');
             } catch (e) {
                 // idem
             }
+            if (talao) await this.lerTalao(talao, linha);
+        },
+
+        async lerTalao(tela, linha) {
+            this.aLer = { ...this.aLer, [linha]: true };
+            try {
+                const texto = await this.textoDoTalao(tela);
+                if (texto.trim()) await this.$wire.lerTalao(linha, texto);
+            } catch (e) {
+                // sem texto, preenche-se à mão
+            } finally {
+                this.aLer = { ...this.aLer, [linha]: false };
+            }
+        },
+
+        async textoDoTalao(tela) {
+            const { lerTexto } = await import('./ocr-leitor.js');
+
+            return await lerTexto(tela);
         },
 
         async textoDaTela(tela) {

@@ -6,9 +6,11 @@ use App\Enums\EstadoDespesa;
 use App\Livewire\Concerns\AcessoDespesas;
 use App\Models\Anexo;
 use App\Models\Despesa;
+use App\Models\MemoriaFornecedor;
 use App\Models\RegistoDespesa;
 use App\Services\Auditor;
 use App\Services\Despesas\FluxoAprovacaoDespesas;
+use App\Services\Despesas\LeitorTalao;
 use App\Services\Despesas\QrFatura;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -58,9 +60,21 @@ class Editor extends Component
 
     // O que o QR code do recibo de cada linha deu — só para mostrar por baixo do recibo, não se
     // grava. #[Locked]: escreve-o apenas o servidor, no lerQr().
-    /** @var array<int, array{estado: string, data?: string, total?: string}> */
+    /** @var array<int, array{estado: string, data?: string, total?: string, nif?: string, serie?: ?string, intermedia?: bool}> */
     #[\Livewire\Attributes\Locked]
     public array $qrLido = [];
+
+    // O que o TEXTO do talão (OCR no telemóvel) deu, por linha — já interpretado (lerTalao()).
+    /** @var array<int, array{descricao: ?string, categoria: ?string, hora: ?string}> */
+    #[\Livewire\Attributes\Locked]
+    public array $talaoLido = [];
+
+    // Valores que o recibo pôs na linha, por campo. Um campo ainda igual ao que lá se pôs não foi
+    // mexido pela pessoa — uma leitura melhor (o texto do talão chega uns segundos depois do QR)
+    // pode trocá-lo. O que a pessoa escreveu nunca se toca.
+    /** @var array<int, array<string, string>> */
+    #[\Livewire\Attributes\Locked]
+    public array $autoPreenchido = [];
 
     private function linhaVazia(): array
     {
@@ -125,6 +139,8 @@ class Editor extends Component
         $this->linhas = array_values($this->linhas);
         $this->recibosPendentes = $this->semLinha($this->recibosPendentes, $indice);
         $this->qrLido = $this->semLinha($this->qrLido, $indice);
+        $this->talaoLido = $this->semLinha($this->talaoLido, $indice);
+        $this->autoPreenchido = $this->semLinha($this->autoPreenchido, $indice);
     }
 
     // Tira a linha $indice de um array indexado por linha e puxa as seguintes uma casa para trás.
@@ -146,8 +162,9 @@ class Editor extends Component
 
     // Recibo com QR code (faturas portuguesas): o telemóvel lê o QR da fotografia e manda o
     // texto; aqui valida-se como fatura e preenche-se o DIA e o VALOR da linha — só os que
-    // estiverem vazios, para nunca apagar o que a pessoa já escreveu. O resto (descrição, tipo,
-    // pago por) não vem no QR e continua à mão. Texto vazio = não havia QR legível na foto.
+    // estiverem vazios, para nunca apagar o que a pessoa já escreveu. Com o NIF e a série do QR
+    // vêm também a descrição e o tipo da memória de fornecedores (sugerir()). Texto vazio = não
+    // havia QR legível na foto.
     public function lerQr(int $linha, string $texto): void
     {
         if (! array_key_exists($linha, $this->linhas)) {
@@ -171,6 +188,54 @@ class Editor extends Component
         }
 
         $this->qrLido[$linha] = ['estado' => 'lido'] + $lido;
+        $this->sugerir($linha);
+    }
+
+    // O TEXTO do talão, lido por OCR no telemóvel (uns segundos depois do QR): dá a descrição
+    // (loja e terra), o tipo e a hora (almoço/jantar). Só preenche o que está vazio.
+    public function lerTalao(int $linha, string $texto): void
+    {
+        if (! array_key_exists($linha, $this->linhas) || trim($texto) === '') {
+            return;
+        }
+
+        $this->talaoLido[$linha] = LeitorTalao::ler($texto);
+        $this->sugerir($linha);
+    }
+
+    // Junta o que se sabe do recibo da linha — memória de fornecedores (o que uma pessoa já
+    // confirmou) > texto do talão > taxa de IVA do QR — e preenche os campos vazios (ou ainda
+    // com o que o próprio recibo lá pôs).
+    private function sugerir(int $linha): void
+    {
+        $qr = ($this->qrLido[$linha]['estado'] ?? null) === 'lido' ? $this->qrLido[$linha] : null;
+        $talao = $this->talaoLido[$linha] ?? [];
+        $memoria = $qr ? MemoriaFornecedor::sugestao($qr['nif'], $qr['serie'] ?? null) : ['descricao' => null, 'categoria' => null];
+
+        $this->preencher($linha, 'descricao', $memoria['descricao'] ?? $talao['descricao'] ?? null);
+
+        $categoria = $memoria['categoria'] ?? $talao['categoria'] ?? (($qr['intermedia'] ?? false) ? 'Refeições' : null);
+        if ($categoria !== null && in_array($categoria, Despesa::CATEGORIAS, true)) {
+            $this->preencher($linha, 'categoria', $categoria);
+        }
+
+        if (($this->linhas[$linha]['categoria'] ?? '') === 'Refeições') {
+            $this->preencher($linha, 'refeicao_tipo', LeitorTalao::refeicao($talao['hora'] ?? null));
+        }
+    }
+
+    private function preencher(int $linha, string $campo, ?string $valor): void
+    {
+        if ($valor === null || $valor === '') {
+            return;
+        }
+
+        $atual = (string) ($this->linhas[$linha][$campo] ?? '');
+        $posto = $this->autoPreenchido[$linha][$campo] ?? null;
+        if ($atual === '' || $atual === $posto) {
+            $this->linhas[$linha][$campo] = $valor;
+            $this->autoPreenchido[$linha][$campo] = $valor;
+        }
     }
 
     private const REGRAS_RECIBO = ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'];
@@ -367,6 +432,13 @@ class Editor extends Component
                 $despesa = $registo->despesas()->create($lancamento + ['faturavel' => false, 'criado_por' => auth()->id()]);
             }
             $mantidas[] = $despesa->id;
+
+            // Memória de fornecedores: o que ficou nesta linha é o que se sugere da próxima vez
+            // que aparecer um talão deste vendedor (NIF e série vêm do QR lido nesta edição).
+            $qr = $this->qrLido[$n] ?? [];
+            if (($qr['estado'] ?? null) === 'lido' && isset($qr['nif'])) {
+                MemoriaFornecedor::aprender($qr['nif'], $qr['serie'] ?? null, $lancamento['descricao'], $lancamento['categoria']);
+            }
 
             // Recibos pendentes desta linha → object storage + metadados na despesa da linha.
             foreach ($this->recibosPendentes[$n] ?? [] as $ficheiro) {
