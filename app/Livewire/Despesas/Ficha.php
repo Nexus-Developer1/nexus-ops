@@ -38,7 +38,7 @@ class Ficha extends Component
 
         $fluxo->decidir($this->registo, auth()->user(), aprovar: true);
         $this->registo->refresh();
-        session()->flash('sucesso', 'Despesa aprovada — o colaborador e o financeiro foram avisados por email.');
+        session()->flash('sucesso', 'Despesa aprovada — o colaborador, o financeiro e a contabilidade foram avisados por email.');
     }
 
     public function rejeitar(FluxoAprovacaoDespesas $fluxo): void

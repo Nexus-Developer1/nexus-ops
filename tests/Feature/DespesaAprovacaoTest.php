@@ -235,14 +235,27 @@ class DespesaAprovacaoTest extends TestCase
         $this->assertSame(0, $this->enviadosPara(DespesaSubmetida::class, 'contabilidade@nxs.pt'));
     }
 
-    public function test_admin_tambem_pode_aprovar(): void
+    // Só o aprovador (Paulo Gouveia) aprova — um administrador já não (set. 2026): nem vê os
+    // botões, nem consegue aprovar ou rejeitar chamando a ação diretamente.
+    public function test_administrador_nao_pode_aprovar_nem_rejeitar(): void
     {
         $registo = $this->registar($this->tecnico());
-        $admin = User::create(['nome' => 'Admin', 'email' => 'a@nxs.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
+        $admin = User::create(['nome' => 'Julio Santos', 'email' => 'jsantos@nxs.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
 
-        Livewire::actingAs($admin)->test(Ficha::class, ['registo' => $registo])->call('aprovar')->assertHasNoErrors();
+        $this->assertFalse(FluxoAprovacaoDespesas::podeAprovar($admin));
 
-        $this->assertSame(EstadoDespesa::Aprovada, $registo->fresh()->estado);
+        Livewire::actingAs($admin)->test(Ficha::class, ['registo' => $registo])
+            ->assertViewHas('podeAprovar', false)
+            ->call('aprovar')
+            ->assertForbidden();
+
+        Livewire::actingAs($admin)->test(Ficha::class, ['registo' => $registo])
+            ->set('motivo', 'Sem talão.')
+            ->call('rejeitar')
+            ->assertForbidden();
+
+        $this->assertSame(EstadoDespesa::Pendente, $registo->fresh()->estado);
+        $this->assertTrue(FluxoAprovacaoDespesas::podeAprovar($this->aprovador()));
     }
 
     public function test_rejeitar_exige_motivo_e_a_correcao_volta_a_pendente(): void

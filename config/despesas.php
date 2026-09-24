@@ -8,8 +8,8 @@ $lista = fn (string $env, string $defeito) => array_values(array_filter(array_ma
 
 return [
     // Quem pode aprovar/rejeitar (emails das contas da aplicação, separados por vírgula).
-    // Os administradores podem sempre — para o fluxo não ficar bloqueado se o aprovador não
-    // tiver conta ou estiver ausente.
+    // SÓ estes — os administradores não aprovam (set. 2026). Um substituto (férias, ausência)
+    // entra acrescentando o email dele aqui.
     'aprovadores' => $lista('DESPESAS_APROVADORES', 'pgouveia@nxs.pt'),
 
     // Quem recebe os emails do processo (submissão e decisão), além de quem criou a despesa.

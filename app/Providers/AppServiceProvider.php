@@ -68,7 +68,7 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
-        // Processo de validação das despesas: aprovadores de config (pgouveia@nxs.pt) + admins.
+        // Processo de validação das despesas: só os aprovadores de config (pgouveia@nxs.pt).
         Gate::define('aprovar-despesas', fn (User $utilizador) => FluxoAprovacaoDespesas::podeAprovar($utilizador));
 
         // Política de passwords (Vaga 1): min 10 + letras + números; em produção verifica

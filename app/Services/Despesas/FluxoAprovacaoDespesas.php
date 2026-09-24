@@ -20,16 +20,17 @@ use Illuminate\Support\Facades\Notification as Notificador;
 //   rejeitada e corrigida → volta a PENDENTE (novos emails); aprovada = fechada, ninguém edita.
 class FluxoAprovacaoDespesas
 {
-    // Aprovadores: emails em config(despesas.aprovadores) + administradores (para o fluxo
-    // não ficar bloqueado se o aprovador não tiver conta ou estiver ausente).
+    // Aprovadores: SÓ os emails em config(despesas.aprovadores) — hoje o Paulo Gouveia. Os
+    // administradores já não aprovam (pedido da equipa, set. 2026: «só o Paulo Gouveia é que
+    // pode aprovar, mesmo os outros sendo admins»). Para ter um substituto, acrescenta-se o
+    // email dele a DESPESAS_APROVADORES.
     public static function podeAprovar(?User $utilizador): bool
     {
         if (! $utilizador || ! $utilizador->ativo) {
             return false;
         }
 
-        return $utilizador->ehAdmin()
-            || in_array(strtolower((string) $utilizador->email), config('despesas.aprovadores', []), true);
+        return in_array(strtolower((string) $utilizador->email), config('despesas.aprovadores', []), true);
     }
 
     public function submeter(RegistoDespesa $registo, bool $reenvio = false): void
