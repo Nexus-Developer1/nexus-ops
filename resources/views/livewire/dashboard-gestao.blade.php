@@ -152,23 +152,30 @@
                  contrato, equipamentos por tipo/estado) e "Equipamentos sem visitas recentes"
                  — as métricas continuam no ServicoMetricas para os relatórios de gestão. --}}
 
-            {{-- Renovações próximas --}}
+            {{-- Relatórios por preencher (rascunhos) — substituiu as renovações próximas. Ao
+                 finalizar, o relatório sai daqui; depois é enviá-lo. --}}
             <section class="cartao mt-6">
                 <div class="flex items-center justify-between px-6 py-5">
-                    <h2 class="text-lg font-semibold text-texto-forte">Renovações próximas</h2>
-                    <a href="{{ route('contratos') }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">Ver contratos</a>
+                    <h2 class="text-lg font-semibold text-texto-forte">Relatórios por preencher</h2>
+                    <a href="{{ route('relatorios') }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">Ver relatórios</a>
                 </div>
                 <ul class="border-t border-borda">
-                    @forelse ($renovacoes as $c)
-                        <li class="flex items-center justify-between border-b border-borda px-6 py-3.5 last:border-0">
-                            <div>
-                                <a href="{{ route('contratos.ficha', $c) }}" wire:navigate class="text-sm font-medium text-texto-forte hover:text-verde-600">{{ $c->numero }}</a>
-                                <div class="text-xs text-texto-fraco">{{ $c->cliente->nome }}</div>
-                            </div>
-                            <span class="text-sm text-aviso-500">termina {{ $c->data_fim->translatedFormat('d M Y') }}</span>
+                    @forelse ($rascunhos as $r)
+                        @php($data = $r->intervencao->data_inicio)
+                        <li class="border-b border-borda last:border-0" wire:key="rascunho-dash-{{ $r->id }}">
+                            <a href="{{ route('relatorios.editar', $r) }}" wire:navigate class="group flex items-center justify-between gap-3 px-6 py-3.5 transition hover:bg-fundo" title="Abrir o relatório">
+                                <div class="min-w-0">
+                                    <div class="truncate text-sm font-medium text-texto-forte group-hover:text-verde-600">{{ $r->intervencao->equipamento->local?->cliente?->nome ?? '—' }}</div>
+                                    <div class="truncate text-xs text-texto-fraco">{{ $r->intervencao->tipo?->rotulo() ?? 'Intervenção' }}{{ $r->intervencao->tecnicosLabel() ? ' · ' . $r->intervencao->tecnicosLabel() : '' }} · Rascunho</div>
+                                </div>
+                                <div class="shrink-0 text-right text-sm font-medium {{ $data && $data->lt(today()) ? 'text-aviso-500' : ($data?->isToday() ? 'text-verde-600' : 'text-texto-forte') }}"
+                                    @if ($data && $data->lt(today())) title="O serviço já foi feito — falta preencher o relatório" @endif>
+                                    {{ $data ? ($data->isToday() ? 'Hoje' : $data->translatedFormat('D, d M')) : 'Sem data' }}
+                                </div>
+                            </a>
                         </li>
                     @empty
-                        <li class="px-6 py-8 text-center text-sm text-texto-medio">Sem renovações próximas.</li>
+                        <li class="px-6 py-8 text-center text-sm text-texto-medio">Sem relatórios por preencher.</li>
                     @endforelse
                 </ul>
             </section>

@@ -3,9 +3,12 @@
 namespace App\Livewire;
 
 use App\Enums\EstadoEvento;
+use App\Enums\EstadoRelatorio;
 use App\Jobs\SincronizarErp;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\EventoAgenda;
+use App\Models\Intervencao;
+use App\Models\Relatorio;
 use App\Models\User;
 use App\Services\Alertas\ServicoAlertas;
 use App\Services\Gestao\ServicoMetricas;
@@ -15,7 +18,8 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 // Dashboard de gestão (CLAUDE.md §6): KPIs, agenda dos próximos dias, próximos alertas
-// e renovações próximas. Os gráficos (tipo/estado/visitas por mês), o cumprimento de SLA
+// e relatórios por preencher (os rascunhos; substituiu o cartão das renovações, set. 2026 —
+// as renovações continuam no número de cima e nos alertas). Os gráficos (tipo/estado/visitas por mês), o cumprimento de SLA
 // e os equipamentos sem visitas saíram a pedido da equipa — as métricas continuam no
 // ServicoMetricas para os relatórios de gestão.
 #[Layout('components.layouts.app', ['ativo' => 'dashboard', 'titulo' => 'Dashboard'])]
@@ -114,7 +118,17 @@ class DashboardGestao extends Component
 
         return view('livewire.dashboard-gestao', [
             'resumo' => $metricas->resumo(),
-            'renovacoes' => $metricas->renovacoesProximas(),
+            // Relatórios por preencher: os RASCUNHOS, pela data do serviço (os mais antigos
+            // primeiro — um serviço já feito com o relatório por preencher é o mais urgente).
+            // Finalizado sai daqui; depois é enviá-lo.
+            'rascunhos' => Relatorio::query()
+                ->where('estado', EstadoRelatorio::Rascunho->value)
+                ->whereHas('intervencao')
+                ->with('intervencao.equipamento.local.cliente', 'intervencao.tecnico', 'intervencao.tecnicos')
+                ->orderBy(Intervencao::select('data_inicio')->whereColumn('intervencoes.id', 'relatorios.intervencao_id'))
+                ->orderBy('id')
+                ->limit(7)
+                ->get(),
             'numAlertas' => $listaAlertas->count(),
             // Próximos alertas (baterias, renovações, visitas em atraso, SLA) — os mais graves primeiro.
             'proximosAlertas' => $alertasFiltrados->take(6),

@@ -16,7 +16,8 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 // Dashboard → cartão «Agenda — próximos 7 dias»: clicar num serviço abre o RELATÓRIO dele; sem
-// relatório (marcado sem equipamento), abre o serviço na agenda (pedido da equipa, set. 2026).
+// relatório (marcado sem equipamento), abre o serviço na agenda. E o cartão «Relatórios por
+// preencher», com os rascunhos (pedidos da equipa, set. 2026).
 class DashboardAgendaCliqueTest extends TestCase
 {
     use RefreshDatabase;
@@ -72,6 +73,49 @@ class DashboardAgendaCliqueTest extends TestCase
         $this->actingAs($admin)->get(route('agenda', ['evento' => $evento->id]))
             ->assertOk()
             ->assertSee('SERVICO-DO-PAINEL');
+    }
+
+    // ---- Cartão «Relatórios por preencher» (os rascunhos; substituiu as renovações) ----------
+
+    public function test_relatorios_por_preencher_mostra_os_rascunhos_pela_data_e_abre_o_relatorio(): void
+    {
+        $equip = Equipamento::create(['local_id' => Local::create(['cliente_id' => Cliente::create(['nome' => 'CLIENTE-X', 'ativo' => true])->id, 'designacao' => 'DC1'])->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-1']);
+        $relatorio = function (string $estado, string $data, ?string $numero = null) use ($equip) {
+            $i = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'preventiva', 'estado' => 'planeada', 'data_inicio' => $data]);
+
+            return $i->relatorio()->create(['estado' => $estado, 'numero' => $numero, 'data' => $data]);
+        };
+        $depois = $relatorio('rascunho', now()->addDays(3)->toDateString());
+        $atrasado = $relatorio('rascunho', now()->subDays(2)->toDateString());
+        $finalizado = $relatorio('finalizado', now()->addDay()->toDateString(), '2026/0001');
+        $enviado = $relatorio('enviado', now()->addDay()->toDateString(), '2026/0002');
+
+        $html = Livewire::actingAs($this->admin())->test(DashboardGestao::class)
+            ->assertSee('Relatórios por preencher')
+            ->assertSeeHtml('href="'.route('relatorios.editar', $depois).'"')
+            ->assertSeeHtml('href="'.route('relatorios.editar', $atrasado).'"')
+            ->assertSeeHtml('O serviço já foi feito — falta preencher o relatório') // o atrasado, a laranja
+            ->assertDontSeeHtml('href="'.route('relatorios.editar', $finalizado).'"')  // finalizado sai
+            ->assertDontSeeHtml('href="'.route('relatorios.editar', $enviado).'"')
+            ->assertDontSee('Sem renovações próximas.') // o cartão antigo (o número em cima fica)
+            ->html();
+
+        // O mais antigo (serviço já feito) primeiro.
+        $this->assertLessThan(
+            strpos($html, route('relatorios.editar', $depois)),
+            strpos($html, route('relatorios.editar', $atrasado)),
+        );
+    }
+
+    public function test_relatorios_por_preencher_mostra_no_maximo_sete(): void
+    {
+        $equip = Equipamento::create(['local_id' => Local::create(['cliente_id' => Cliente::create(['nome' => 'ACME', 'ativo' => true])->id, 'designacao' => 'DC1'])->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'SN-1']);
+        foreach (range(1, 9) as $n) {
+            Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'corretiva', 'estado' => 'planeada', 'data_inicio' => now()->addDays($n)->toDateString()])
+                ->relatorio()->create(['estado' => 'rascunho', 'data' => now()]);
+        }
+
+        $this->assertCount(7, Livewire::actingAs($this->admin())->test(DashboardGestao::class)->viewData('rascunhos'));
     }
 
     // Id que não existe, apagado ou que não é número: abre a agenda normal, sem detalhe.

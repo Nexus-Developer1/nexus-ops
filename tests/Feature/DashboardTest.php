@@ -45,7 +45,8 @@ class DashboardTest extends TestCase
             ->assertDontSee('Equipamentos sem visitas recentes')   // as métricas ficam no serviço
             ->assertSee('Agenda — próximos 7 dias')
             ->assertSee('Próximos alertas')
-            ->assertSee('Renovações próximas');
+            ->assertSee('Relatórios por preencher')                // substituiu o cartão das renovações
+            ->assertSee('Sem relatórios por preencher.');
     }
 
     // Dashboard: agenda dos próximos 7 dias e próximos alertas de equipamentos/contratos.
