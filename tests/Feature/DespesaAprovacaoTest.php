@@ -203,7 +203,7 @@ class DespesaAprovacaoTest extends TestCase
     }
 
     // Há despesas com aprovação no Nexus IFE e no Nexus Suporte: os emails dizem de qual é —
-    // no assunto, no cabeçalho e numa faixa no topo (set. 2026).
+    // no assunto, no cabeçalho e numa faixa no topo; sem nota nem rodapé em baixo (set. 2026).
     public function test_emails_dizem_que_a_despesa_e_do_nexus_ife(): void
     {
         $paulo = $this->aprovador();
@@ -214,7 +214,10 @@ class DespesaAprovacaoTest extends TestCase
             $html = (string) $mail->render();
 
             return str_starts_with($mail->subject, '[Nexus IFE] Despesa nº')
-                && str_contains($html, 'Despesa lançada no <strong>Nexus IFE</strong> — não é uma despesa do Nexus Suporte.')
+                && str_contains($html, 'Despesa lançada no <strong>Nexus IFE</strong>')
+                && ! str_contains($html, 'Nexus Suporte')                 // sem o «não é do Nexus Suporte»
+                && ! str_contains($html, 'Recebe este email')            // sem a nota em baixo
+                && ! str_contains($html, 'Technical Suite')              // nem o rodapé
                 && ! str_contains($html, 'Nexus Infra');
         });
 
@@ -222,7 +225,7 @@ class DespesaAprovacaoTest extends TestCase
         Notification::assertSentTo($paulo, DespesaDecidida::class, function (DespesaDecidida $n) use ($paulo) {
             $mail = $n->toMail($paulo);
 
-            return str_starts_with($mail->subject, '[Nexus IFE] Despesa nº') && str_contains((string) $mail->render(), 'não é uma despesa do Nexus Suporte');
+            return str_starts_with($mail->subject, '[Nexus IFE] Despesa nº') && str_contains((string) $mail->render(), 'Despesa lançada no <strong>Nexus IFE</strong>');
         });
     }
 

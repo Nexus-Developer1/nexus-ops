@@ -41,7 +41,7 @@
                         <td style="padding:14px 36px 0;">
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px;">
                                 <tr><td style="padding:10px 14px; font-size:14px; color:#065f46;">
-                                    Despesa lançada no <strong>{{ $aplicacao }}</strong> — não é uma despesa do Nexus Suporte.
+                                    Despesa lançada no <strong>{{ $aplicacao }}</strong>
                                 </td></tr>
                             </table>
                         </td>
@@ -98,21 +98,11 @@
 
 @include('emails._botao', ['url' => $r['url'], 'texto' => $modo === 'submetida' && $variante === 'aprovador' ? 'Ver e aprovar despesa' : 'Ver despesa', 'cor' => $modo === 'decidida' ? $cor : '#16a34a'])
 
-                            <p style="margin:0 0 6px; font-size:12px; line-height:1.6; color:#9ca3af;">
-                                @if ($modo === 'decidida')
-                                    Recebe este email porque registou a despesa ou faz parte do circuito de aprovação (aprovador / financeiro).
-                                @elseif ($variante === 'aprovador')
-                                    A aprovação ou rejeição é feita na ficha da despesa. Recebe este email porque é o aprovador das despesas.
-                                @elseif ($variante === 'criador')
-                                    Recebe este email como confirmação da submissão da sua despesa.
-                                @else
-                                    Recebe este email a título informativo, por fazer parte do circuito das despesas.
-                                @endif
-                            </p>
                         </td>
                     </tr>
 
-                    <tr><td style="padding:12px 36px 22px; font-size:11px; color:#9ca3af;">{{ $aplicacao }} · Technical Suite</td></tr>
+                    {{-- Sem nota nem rodapé em baixo (pedido da equipa, set. 2026): só um espaço a fechar. --}}
+                    <tr><td style="height:18px; line-height:18px; font-size:0;">&nbsp;</td></tr>
                 </table>
             </td>
         </tr>
