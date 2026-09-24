@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Services\Despesas\FluxoAprovacaoDespesas;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -43,7 +44,7 @@ class DespesaSubmetida extends Notification implements ShouldQueue
         };
 
         return (new MailMessage)
-            ->subject('Despesa nº '.$r['id'].' · '.$r['colaborador'].' · '.$total.$sufixo)
+            ->subject('['.FluxoAprovacaoDespesas::APLICACAO.'] Despesa nº '.$r['id'].' · '.$r['colaborador'].' · '.$total.$sufixo)
             ->view('emails.despesa', [
                 'modo' => 'submetida',
                 'variante' => $this->variante,

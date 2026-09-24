@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Services\Despesas\FluxoAprovacaoDespesas;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -30,7 +31,7 @@ class DespesaDecidida extends Notification implements ShouldQueue
         $total = number_format($r['total'], 2, ',', ' ').' €';
 
         return (new MailMessage)
-            ->subject('Despesa nº '.$r['id'].' · '.$r['colaborador'].' · '.$total.' — '.($aprovada ? 'APROVADA' : 'REJEITADA'))
+            ->subject('['.FluxoAprovacaoDespesas::APLICACAO.'] Despesa nº '.$r['id'].' · '.$r['colaborador'].' · '.$total.' — '.($aprovada ? 'APROVADA' : 'REJEITADA'))
             ->view('emails.despesa', [
                 'modo' => 'decidida',
                 'r' => $r,

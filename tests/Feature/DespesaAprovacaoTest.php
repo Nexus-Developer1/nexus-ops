@@ -128,7 +128,7 @@ class DespesaAprovacaoTest extends TestCase
                 && str_contains($html, 'Será avisado(a) por email')
                 && ! str_contains($html, 'a sua aprovação')
                 && ! str_contains($html, 'Ver e aprovar')
-                && str_contains($html, 'Nexus Infra')          // template proprio da app (tema verde)
+                && str_contains($html, 'Nexus IFE')            // template proprio da app (tema verde)
                 && ! str_contains($html, 'Regards');
         });
         Notification::assertSentOnDemand(DespesaSubmetida::class, function (DespesaSubmetida $n, $canais, $notifiable) {
@@ -200,6 +200,30 @@ class DespesaAprovacaoTest extends TestCase
         Notification::assertSentOnDemandTimes(DespesaDecidida::class, 2);      // financeiro e contabilidade
         $this->assertSame(1, $this->enviadosPara(DespesaDecidida::class, 'financeiro@nxs.pt'));
         $this->assertSame(1, $this->enviadosPara(DespesaDecidida::class, 'contabilidade@nxs.pt'));
+    }
+
+    // Há despesas com aprovação no Nexus IFE e no Nexus Suporte: os emails dizem de qual é —
+    // no assunto, no cabeçalho e numa faixa no topo (set. 2026).
+    public function test_emails_dizem_que_a_despesa_e_do_nexus_ife(): void
+    {
+        $paulo = $this->aprovador();
+        $registo = $this->registar($this->tecnico());
+
+        Notification::assertSentTo($paulo, DespesaSubmetida::class, function (DespesaSubmetida $n) use ($paulo) {
+            $mail = $n->toMail($paulo);
+            $html = (string) $mail->render();
+
+            return str_starts_with($mail->subject, '[Nexus IFE] Despesa nº')
+                && str_contains($html, 'Despesa lançada no <strong>Nexus IFE</strong> — não é uma despesa do Nexus Suporte.')
+                && ! str_contains($html, 'Nexus Infra');
+        });
+
+        app(FluxoAprovacaoDespesas::class)->decidir($registo, $paulo, true);
+        Notification::assertSentTo($paulo, DespesaDecidida::class, function (DespesaDecidida $n) use ($paulo) {
+            $mail = $n->toMail($paulo);
+
+            return str_starts_with($mail->subject, '[Nexus IFE] Despesa nº') && str_contains((string) $mail->render(), 'não é uma despesa do Nexus Suporte');
+        });
     }
 
     // Quantos emails de uma classe foram «on demand» (sem conta) para um endereço.

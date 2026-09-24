@@ -20,6 +20,11 @@ use Illuminate\Support\Facades\Notification as Notificador;
 //   rejeitada e corrigida → volta a PENDENTE (novos emails); aprovada = fechada, ninguém edita.
 class FluxoAprovacaoDespesas
 {
+    // Nome da aplicação nos emails das despesas. O Nexus Suporte (Tempos) também tem despesas
+    // com aprovação, e quem aprova tem de saber sem margem para dúvida de qual das duas é
+    // (set. 2026): vai no assunto, no cabeçalho e numa faixa no topo do email.
+    public const APLICACAO = 'Nexus IFE';
+
     // Aprovadores: SÓ os emails em config(despesas.aprovadores) — hoje o Paulo Gouveia. Os
     // administradores já não aprovam (pedido da equipa, set. 2026: «só o Paulo Gouveia é que
     // pode aprovar, mesmo os outros sendo admins»). Para ter um substituto, acrescenta-se o

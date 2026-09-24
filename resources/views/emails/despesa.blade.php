@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Despesas Nexus Infra</title>
+    <title>Despesas {{ \App\Services\Despesas\FluxoAprovacaoDespesas::APLICACAO }}</title>
 </head>
 {{-- Email do processo de validação das despesas (submissão e decisão) — mesmo layout dos
      outros emails da app (agenda, MFA): barra de cor, marca, cartão com os dados, botão verde.
@@ -11,6 +11,7 @@
      aprovação) | 'criador' (confirmação) | 'informativo' (financeiro, sem a parte de aprovar);
      $r: instantâneo (FluxoAprovacaoDespesas::instantaneo). --}}
 @php
+    $aplicacao = \App\Services\Despesas\FluxoAprovacaoDespesas::APLICACAO;
     $variante = $variante ?? '';
     $aprovada = ($r['estado'] ?? '') === 'aprovada';
     $rejeitada = ($r['estado'] ?? '') === 'rejeitada';
@@ -29,8 +30,20 @@
 
                     <tr>
                         <td style="padding:28px 36px 6px;">
-                            <div style="font-size:22px; font-weight:800; color:#16a34a; line-height:1;">Nexus Infra</div>
+                            <div style="font-size:22px; font-weight:800; color:#16a34a; line-height:1;">{{ $aplicacao }}</div>
                             <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#9ca3af; margin-top:3px;">Despesas</div>
+                        </td>
+                    </tr>
+
+                    {{-- Há despesas com aprovação em duas aplicações da suite (esta e o Nexus Suporte):
+                         diz logo em cima de qual é, para quem aprova não se enganar. --}}
+                    <tr>
+                        <td style="padding:14px 36px 0;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px;">
+                                <tr><td style="padding:10px 14px; font-size:14px; color:#065f46;">
+                                    Despesa lançada no <strong>{{ $aplicacao }}</strong> — não é uma despesa do Nexus Suporte.
+                                </td></tr>
+                            </table>
                         </td>
                     </tr>
 
@@ -99,7 +112,7 @@
                         </td>
                     </tr>
 
-                    <tr><td style="padding:12px 36px 22px; font-size:11px; color:#9ca3af;">Nexus Infra · Technical Suite</td></tr>
+                    <tr><td style="padding:12px 36px 22px; font-size:11px; color:#9ca3af;">{{ $aplicacao }} · Technical Suite</td></tr>
                 </table>
             </td>
         </tr>
