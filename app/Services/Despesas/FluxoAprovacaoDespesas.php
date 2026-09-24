@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\Notification as Notificador;
 // Processo de validação das despesas (pedido da equipa):
 //   guardar → PENDENTE + emails: ao APROVADOR o pedido de aprovação; a quem criou uma
 //   confirmação de submissão; ao financeiro um registo informativo (sem a parte de aprovar)
-//   aprovador aprova/rejeita → email de decisão IGUAL para os três
+//   aprovador aprova/rejeita → email de decisão IGUAL para os três; na APROVAÇÃO também à
+//   contabilidade (despesas.notificar_aprovacao), que só trata do que está aprovado
 //   rejeitada e corrigida → volta a PENDENTE (novos emails); aprovada = fechada, ninguém edita.
 class FluxoAprovacaoDespesas
 {
@@ -94,13 +95,13 @@ class FluxoAprovacaoDespesas
             'motivo' => $aprovar ? null : trim((string) $motivo),
         ]));
 
-        $this->notificarDecisao($registo, new DespesaDecidida($this->instantaneo($registo->fresh())));
+        $this->notificarDecisao($registo, new DespesaDecidida($this->instantaneo($registo->fresh())), $aprovar);
     }
 
-    // Decisão: o MESMO email para quem criou, aprovador e financeiro, sem duplicar quando o
-    // criador é um deles. Emails de config com conta ativa notificam a conta; os restantes
-    // vão por notificação "on demand".
-    private function notificarDecisao(RegistoDespesa $registo, Notification $notificacao): void
+    // Decisão: o MESMO email para quem criou, aprovador e financeiro — e, se foi aprovada, a
+    // contabilidade —, sem duplicar quando o criador é um deles. Emails de config com conta
+    // ativa notificam a conta; os restantes vão por notificação "on demand".
+    private function notificarDecisao(RegistoDespesa $registo, Notification $notificacao, bool $aprovada): void
     {
         $registo->loadMissing('colaborador');
         $criador = $registo->colaborador;
@@ -111,7 +112,13 @@ class FluxoAprovacaoDespesas
             $enviados[] = strtolower($criador->email);
         }
 
-        foreach (array_unique(array_merge(config('despesas.aprovadores', []), config('despesas.notificar', []))) as $email) {
+        $destinatarios = array_merge(
+            config('despesas.aprovadores', []),
+            config('despesas.notificar', []),
+            $aprovada ? config('despesas.notificar_aprovacao', []) : [],
+        );
+
+        foreach (array_unique($destinatarios) as $email) {
             if ($email === '' || in_array($email, $enviados, true)) {
                 continue;
             }

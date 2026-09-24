@@ -14,4 +14,8 @@ return [
 
     // Quem recebe os emails do processo (submissão e decisão), além de quem criou a despesa.
     'notificar' => $lista('DESPESAS_NOTIFICAR', 'pgouveia@nxs.pt,financeiro@nxs.pt'),
+
+    // Quem recebe SÓ o email de despesa APROVADA (nem a submissão, nem a rejeição): a
+    // contabilidade, que trata do que já está aprovado (set. 2026).
+    'notificar_aprovacao' => $lista('DESPESAS_NOTIFICAR_APROVACAO', 'contabilidade@nxs.pt'),
 ];

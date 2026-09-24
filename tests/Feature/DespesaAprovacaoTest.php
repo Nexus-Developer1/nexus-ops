@@ -197,7 +197,42 @@ class DespesaAprovacaoTest extends TestCase
             return str_contains($html, 'APROVADA') && str_contains($html, 'Paulo Gouveia');
         });
         Notification::assertSentTo($paulo, DespesaDecidida::class);            // criador não, mas é destinatário de config
-        Notification::assertSentOnDemandTimes(DespesaDecidida::class, 1);      // financeiro
+        Notification::assertSentOnDemandTimes(DespesaDecidida::class, 2);      // financeiro e contabilidade
+        $this->assertSame(1, $this->enviadosPara(DespesaDecidida::class, 'financeiro@nxs.pt'));
+        $this->assertSame(1, $this->enviadosPara(DespesaDecidida::class, 'contabilidade@nxs.pt'));
+    }
+
+    // Quantos emails de uma classe foram «on demand» (sem conta) para um endereço.
+    private function enviadosPara(string $classe, string $email): int
+    {
+        $n = 0;
+        foreach (Notification::sentNotifications() as $porId) {
+            foreach ($porId as $porClasse) {
+                foreach ($porClasse[$classe] ?? [] as $envio) {
+                    $n += ($envio['notifiable']->routes['mail'] ?? null) === $email ? 1 : 0;
+                }
+            }
+        }
+
+        return $n;
+    }
+
+    // A contabilidade só recebe o que está APROVADO: nem a submissão, nem a rejeição.
+    public function test_contabilidade_so_recebe_a_aprovacao(): void
+    {
+        $paulo = $this->aprovador();
+        $fluxo = app(FluxoAprovacaoDespesas::class);
+
+        $rejeitado = $this->registar($this->tecnico());
+        $fluxo->decidir($rejeitado, $paulo, false, 'Falta o talão.');
+        $this->assertSame(0, $this->enviadosPara(DespesaSubmetida::class, 'contabilidade@nxs.pt'));
+        $this->assertSame(0, $this->enviadosPara(DespesaDecidida::class, 'contabilidade@nxs.pt'));
+        $this->assertSame(1, $this->enviadosPara(DespesaDecidida::class, 'financeiro@nxs.pt'));
+
+        $aprovado = $this->registar($this->tecnico('Ana', 'ana@nxs.pt'), 'Portagem A1', '7.85');
+        $fluxo->decidir($aprovado, $paulo, true);
+        $this->assertSame(1, $this->enviadosPara(DespesaDecidida::class, 'contabilidade@nxs.pt'));
+        $this->assertSame(0, $this->enviadosPara(DespesaSubmetida::class, 'contabilidade@nxs.pt'));
     }
 
     public function test_admin_tambem_pode_aprovar(): void
