@@ -100,6 +100,14 @@ class Calendario extends Component
     {
         // Técnico = admin: vê a agenda toda por defeito (o filtro por técnico é opcional, igual
         // ao admin). Sem auto-filtro à sua própria agenda.
+
+        // /agenda?evento=ID abre logo o detalhe desse evento — é para onde o painel manda o
+        // clique num serviço que ainda não tem relatório. Id que não existe (ou apagado) é
+        // ignorado: abre a agenda sem detalhe.
+        $evento = request()->query('evento');
+        if (is_string($evento) && ctype_digit($evento) && EventoAgenda::whereKey((int) $evento)->exists()) {
+            $this->eventoSelecionadoId = (int) $evento;
+        }
     }
 
     // Duração máxima de um evento (dias). Serviços reais não passam disto; o limite existe

@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-24
+
+- 🧰 **Dashboard — clicar num serviço da agenda abre o relatório dele.** No cartão «Agenda — próximos 7 dias», cada serviço passa a ser clicável: se já tem relatório (os marcados com equipamento ou contrato ganham um rascunho logo ao gravar), abre o relatório; se não tem — um relatório precisa sempre de um equipamento, e estes foram marcados só com o cliente —, abre a **agenda já com esse serviço aberto**, onde se lhe associa o equipamento e o rascunho nasce como sempre. Ao passar o rato, a linha realça e diz qual das duas vai abrir. A agenda passa a aceitar `/agenda?evento=ID` para abrir um evento diretamente (id que não existe, apagado ou que não é número é ignorado). Sem migração; `optimize`. +4 testes.
+
 ## 2026-09-23
 
 - 🛠️ **O Nexus passa a ter fila própria no Redis (`nexus-ops`), e o financeiro não recebia o email de despesa aprovada.** As aplicações da suite partilham o Redis e o prefixo das chaves; o Nexus usava a fila `default`. Entre 22/09 às 11:00 e 23/09 às 10:04 o worker do **Nexus Tempos** também lia a `default` e apanhava trabalhos do Nexus, que rebentavam lá (a classe não existe no Tempos): perderam-se os três emails da aprovação da despesa nº 2 (a quem a criou, ao aprovador e ao financeiro), dois avisos de agenda e cinco sincronizações de eventos com o calendário do M365. E o contrário: o worker do Nexus apanhou cinco trabalhos do Tempos (lembretes, relatórios partilhados, consumo de contratos), que ficaram na lista de falhados do Nexus. O Tempos já tinha passado à fila `tempos` às 10:04. Recuperados: os três emails da aprovação e as cinco sincronizações (eventos 50 e 52); os dois avisos de agenda ficaram por reenviar (chegariam com um dia de atraso). Para não voltar a acontecer, o Nexus sai da `default`: `REDIS_QUEUE=nexus-ops` no `.env` e o worker a ler só essa (`--queue=nexus-ops`, drop-in `fila.conf` do `nexus-worker.service`). Confirmado com um trabalho real a passar pela fila nova. O portal e a Knowledgebase não usam fila (`sync`). Sem alteração de código; `.env.example` documenta a variável.

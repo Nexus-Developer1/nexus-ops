@@ -129,7 +129,7 @@ class DashboardGestao extends Component
                 ->when(ctype_digit($this->agendaTecnico), fn ($q) => $q->where(fn ($q) => $q
                     ->where('tecnico_id', (int) $this->agendaTecnico)
                     ->orWhereHas('tecnicosAdicionais', fn ($t) => $t->whereKey((int) $this->agendaTecnico))))
-                ->with(['tecnico', 'cliente'])
+                ->with(['tecnico', 'cliente', 'intervencao.relatorio'])
                 ->orderBy('inicio')
                 ->limit(8)
                 ->get(),

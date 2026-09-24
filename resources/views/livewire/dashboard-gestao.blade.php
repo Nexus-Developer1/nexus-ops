@@ -89,15 +89,23 @@
                     </div>
                     <ul class="border-t border-borda">
                         @forelse ($agendaSemana as $ev)
-                            <li class="flex items-center justify-between gap-3 border-b border-borda px-6 py-3.5 last:border-0" wire:key="agenda-dash-{{ $ev->id }}">
-                                <div class="min-w-0">
-                                    <div class="truncate text-sm font-medium text-texto-forte">{{ $ev->titulo }}</div>
-                                    <div class="truncate text-xs text-texto-fraco">{{ $ev->cliente->nome ?? '—' }}{{ $ev->tecnico ? ' · ' . $ev->tecnico->nome : '' }} · {{ $ev->estado->rotulo() }}</div>
-                                </div>
-                                <div class="shrink-0 text-right">
-                                    <div class="text-sm font-medium {{ $ev->inicio->isToday() ? 'text-verde-600' : 'text-texto-forte' }}">{{ $ev->inicio->isToday() ? 'Hoje' : $ev->inicio->translatedFormat('D, d M') }}</div>
-                                    <div class="text-xs text-texto-fraco">{{ $ev->inicio->format('H:i') }}–{{ $ev->fim->format('H:i') }}</div>
-                                </div>
+                            {{-- Clicar abre o relatório do serviço; sem relatório (serviço marcado sem
+                                 equipamento), abre o serviço na agenda — associar-lhe o equipamento
+                                 cria o rascunho. --}}
+                            @php($rel = $ev->intervencao?->relatorio)
+                            <li class="border-b border-borda last:border-0" wire:key="agenda-dash-{{ $ev->id }}">
+                                <a href="{{ $rel ? route('relatorios.editar', $rel) : route('agenda', ['evento' => $ev->id]) }}" wire:navigate
+                                    class="group flex items-center justify-between gap-3 px-6 py-3.5 transition hover:bg-fundo"
+                                    title="{{ $rel ? 'Abrir o relatório' : 'Sem relatório — abrir o serviço na agenda' }}">
+                                    <div class="min-w-0">
+                                        <div class="truncate text-sm font-medium text-texto-forte group-hover:text-verde-600">{{ $ev->titulo }}</div>
+                                        <div class="truncate text-xs text-texto-fraco">{{ $ev->cliente->nome ?? '—' }}{{ $ev->tecnico ? ' · ' . $ev->tecnico->nome : '' }} · {{ $ev->estado->rotulo() }}</div>
+                                    </div>
+                                    <div class="shrink-0 text-right">
+                                        <div class="text-sm font-medium {{ $ev->inicio->isToday() ? 'text-verde-600' : 'text-texto-forte' }}">{{ $ev->inicio->isToday() ? 'Hoje' : $ev->inicio->translatedFormat('D, d M') }}</div>
+                                        <div class="text-xs text-texto-fraco">{{ $ev->inicio->format('H:i') }}–{{ $ev->fim->format('H:i') }}</div>
+                                    </div>
+                                </a>
                             </li>
                         @empty
                             <li class="px-6 py-8 text-center text-sm text-texto-medio">{{ $agendaTecnico !== '' ? 'Sem eventos deste técnico nos próximos 7 dias.' : 'Sem eventos agendados para os próximos 7 dias.' }}</li>
