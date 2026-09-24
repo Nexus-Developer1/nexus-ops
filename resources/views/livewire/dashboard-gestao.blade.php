@@ -113,7 +113,8 @@
                     </ul>
                 </section>
 
-                <section class="cartao">
+                {{-- flex-col: o cartão estica até à altura do da agenda; vazio, a frase fica ao centro. --}}
+                <section class="cartao flex flex-col">
                     {{-- Mesmo cabeçalho do cartão da agenda: uma linha, filtro + link à direita. --}}
                     <div class="flex items-center gap-3 px-6 py-5">
                         <h2 class="min-w-0 flex-1 truncate text-lg font-semibold text-texto-forte">Próximos alertas</h2>
@@ -127,7 +128,7 @@
                             <a href="{{ route('alertas') }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">Ver alertas</a>
                         </div>
                     </div>
-                    <ul class="border-t border-borda">
+                    <ul class="flex flex-1 flex-col border-t border-borda">
                         @forelse ($proximosAlertas as $a)
                             <li class="flex items-center justify-between gap-3 border-b border-borda px-6 py-3.5 last:border-0">
                                 <div class="min-w-0">
@@ -142,7 +143,7 @@
                                 </div>
                             </li>
                         @empty
-                            <li class="px-6 py-8 text-center text-sm text-texto-medio">{{ $alertasTecnico !== '' ? 'Sem alertas atribuídos a este técnico.' : 'Sem alertas em aberto — baterias, renovações e SLA em dia.' }}</li>
+                            <li class="flex flex-1 items-center justify-center px-6 py-8 text-center text-sm text-texto-medio">{{ $alertasTecnico !== '' ? 'Sem alertas atribuídos a este técnico.' : 'Sem alertas.' }}</li>
                         @endforelse
                     </ul>
                 </section>
