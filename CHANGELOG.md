@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-25
+
+- 🎨 **Relatórios — sai a frase «Fotografias deste equipamento · pode adicionar várias»** da zona das fotografias de cada equipamento. O «A enviar…» durante o envio continua. Sem migração; `optimize`.
+
 ## 2026-09-24
 
 - 🎨 **Emails das despesas dizem que são do Nexus IFE.** O Nexus Suporte também tem despesas com aprovação, e quem aprova tem de saber de qual das duas se trata. O assunto passa a começar por **«[Nexus IFE]»**, o cabeçalho diz «Nexus IFE» (dizia «Nexus Infra», o nome antigo) e, logo em cima, uma faixa verde: «Despesa lançada no **Nexus IFE**». Saíram a nota em baixo («Recebe este email porque…») e o rodapé «Technical Suite» — o email acaba no botão. Vale para todos os emails do circuito (pedido de aprovação, confirmação, informativo, aprovada, rejeitada). O nome está num só sítio (`FluxoAprovacaoDespesas::APLICACAO`). Sem migração; `optimize` + reinício do worker. +1 teste, 1 ajustado. Visto num teste real com o Rui Moreira (despesa de teste nº 3, com o circuito de emails desviado só para ele durante o teste e reposto a seguir).

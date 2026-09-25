@@ -245,7 +245,6 @@
                                             <span x-text="toque ? 'Galeria' : 'Escolher ficheiros'">Escolher ficheiros</span>
                                         </label>
                                     </div>
-                                    <span class="text-xs font-medium" wire:loading.remove wire:target="fotos.{{ $e->id }}">Fotografias deste equipamento · pode adicionar várias</span>
                                     <span class="flex items-center gap-2 text-xs font-medium" wire:loading wire:target="fotos.{{ $e->id }}">
                                         <svg class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 018-8"/></svg>
                                         A enviar…
