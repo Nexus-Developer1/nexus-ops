@@ -157,4 +157,47 @@ class EncomendaFichaTest extends TestCase
 
         $this->actingAs($userCliente)->get(route('encomendas.ficha', $dossier))->assertRedirect(route('portal.dashboard'));
     }
+
+    // O total do cabeçalho vem AO VIVO do PHC, como as linhas: o guardado é o da última
+    // sincronização e um dossiê alterado depois dela mostrava em cima um total que não batia
+    // com o «Total das linhas» (set. 2026 — proposta 7431: 1 062,09 € em cima, 2 816 € em baixo).
+    public function test_total_do_cabecalho_e_o_do_phc_ao_vivo(): void
+    {
+        $this->app->bind(ErpSyncDriver::class, fn () => new FakeErpDriver);
+        $dossier = $this->dossier(); // guardado na última sincronização: 500 €
+        $aoVivo = (new FakeErpDriver)->obterTotalDossier($dossier->id_erp);
+        $this->assertNotEquals(500.0, $aoVivo);
+
+        Livewire::actingAs($this->admin())->test(Ficha::class, ['dossier' => $dossier])
+            ->assertViewHas('totalDebito', $aoVivo)
+            ->assertSee(number_format($aoVivo, 2, ',', ' ').' €')
+            ->assertDontSee('500,00 €');
+    }
+
+    // PHC em baixo, ou o dossiê já não está lá: fica o total da última sincronização.
+    public function test_sem_phc_fica_o_total_da_ultima_sincronizacao(): void
+    {
+        $dossier = $this->dossier();
+
+        $this->app->bind(ErpSyncDriver::class, fn () => new class extends FakeErpDriver
+        {
+            public function obterTotalDossier(string $bostamp): ?float
+            {
+                throw new RuntimeException('SQLSTATE[HY000]: Unable to connect to server');
+            }
+        });
+        Livewire::actingAs($this->admin())->test(Ficha::class, ['dossier' => $dossier])
+            ->assertViewHas('totalDebito', fn ($t) => (float) $t === 500.0)
+            ->assertSee('500,00 €');
+
+        $this->app->bind(ErpSyncDriver::class, fn () => new class extends FakeErpDriver
+        {
+            public function obterTotalDossier(string $bostamp): ?float
+            {
+                return null; // dossiê não encontrado no PHC
+            }
+        });
+        Livewire::actingAs(User::first())->test(Ficha::class, ['dossier' => $dossier])
+            ->assertSee('500,00 €');
+    }
 }

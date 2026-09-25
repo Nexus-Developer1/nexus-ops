@@ -35,4 +35,9 @@ class NullErpDriver implements ErpSyncDriver
     {
         return [];
     }
+
+    public function obterTotalDossier(string $bostamp): ?float
+    {
+        return null;
+    }
 }

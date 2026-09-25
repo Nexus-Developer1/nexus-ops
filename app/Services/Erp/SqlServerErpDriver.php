@@ -208,6 +208,14 @@ class SqlServerErpDriver implements ErpSyncDriver
         }
     }
 
+    public function obterTotalDossier(string $bostamp): ?float
+    {
+        // Só leitura, um só dossiê, bostamp por binding (nunca interpolado).
+        $r = DB::connection('erp')->selectOne('SELECT etotaldeb FROM bo WHERE bostamp = ?', [$bostamp]);
+
+        return $r !== null && $r->etotaldeb !== null ? (float) $r->etotaldeb : null;
+    }
+
     public function obterEquipamentos(?int $limite = null): iterable
     {
         // Lê os equipamentos da tabela ma do PHC pela ligação 'erp' (dblib/FreeTDS), a MESMA que

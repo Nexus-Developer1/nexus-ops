@@ -54,4 +54,11 @@ interface ErpSyncDriver
      * @return iterable<LinhaDossierErp>
      */
     public function obterLinhasDossier(string $bostamp): iterable;
+
+    /**
+     * Devolve o TOTAL (débito) de um dossiê, lido AO VIVO por bostamp (bo.etotaldeb). O dossiê
+     * pode ter mudado no PHC depois da última sincronização — a ficha mostra este, que bate
+     * certo com as linhas (também ao vivo). Null = dossiê não encontrado.
+     */
+    public function obterTotalDossier(string $bostamp): ?float;
 }

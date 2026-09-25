@@ -116,9 +116,14 @@ class Ficha extends Component
     {
         $linhas = [];
         $erroLinhas = false;
+        $totalAoVivo = null;
 
         try {
             $linhas = iterator_to_array($erp->obterLinhasDossier($this->dossier->id_erp));
+            // O total do cabeçalho também ao vivo: o guardado é o da última sincronização
+            // (8h/13h/19h), e um dossiê alterado depois dela mostrava em cima um total que não
+            // batia com as linhas em baixo (set. 2026 — proposta 7431: 1 062,09 € vs 2 816 €).
+            $totalAoVivo = $erp->obterTotalDossier($this->dossier->id_erp);
         } catch (Throwable $e) {
             // PHC em baixo/timeout → a ficha abre na mesma; o detalhe fica no log.
             $erroLinhas = true;
@@ -132,6 +137,8 @@ class Ficha extends Component
             'linhas' => $linhas,
             'erroLinhas' => $erroLinhas,
             'totalLinhas' => array_sum(array_map(fn ($l) => (float) ($l->total ?? 0), $linhas)),
+            // PHC em baixo ou dossiê não encontrado → o da última sincronização.
+            'totalDebito' => $totalAoVivo ?? $this->dossier->total_debito,
             'colunas' => self::COLUNAS,
             'numericas' => self::NUMERICAS,
             'visiveis' => $this->colunasVisiveis(),

@@ -21,7 +21,7 @@
                     <div><dt class="text-xs text-texto-fraco">Tipo</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $dossier->tipoRotulo() }}</dd></div>
                     <div><dt class="text-xs text-texto-fraco">Nº · Ano</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $dossier->obrano }} · {{ $dossier->ano }}</dd></div>
                     <div><dt class="text-xs text-texto-fraco">Data</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $dossier->data?->translatedFormat('d M Y') ?? '—' }}</dd></div>
-                    <div><dt class="text-xs text-texto-fraco">Total (débito)</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $dossier->total_debito !== null ? number_format((float) $dossier->total_debito, 2, ',', ' ').' €' : '—' }}</dd></div>
+                    <div><dt class="text-xs text-texto-fraco">Total (débito)</dt><dd class="mt-0.5 text-sm font-medium text-texto-forte">{{ $totalDebito !== null ? number_format((float) $totalDebito, 2, ',', ' ').' €' : '—' }}</dd></div>
                     @if ($cliente = $dossier->cliente)
                         <div class="sm:col-span-2"><dt class="text-xs text-texto-fraco">Cliente</dt><dd class="mt-0.5 text-sm font-medium"><a href="{{ route('clientes.detalhe', $cliente) }}" wire:navigate class="text-verde-600 hover:underline">{{ $dossier->nome }}</a></dd></div>
                     @else
