@@ -61,13 +61,14 @@ class Listagem extends Component
     // Soft delete (marca deleted_at) — recuperável; nunca DELETE físico nem apaga o PDF.
     // Se o relatório está ligado a um evento de agenda, apaga-se a unidade toda
     // (relatório + intervenção + evento) — sai da agenda e não deixa intervenção órfã.
-    // ENVIADO nunca é apagado (documento já entregue ao cliente, como na edição).
+    // Enviado — mesmo que UMA só vez, e editado depois — nunca é apagado (documento já
+    // entregue ao cliente).
     public function eliminar(int $relatorio): void
     {
         $relatorio = Relatorio::with('intervencao.eventoAgenda')->findOrFail($relatorio);
 
         // Guarda de servidor (além de esconder o botão na UI): enviado é imutável.
-        if ($relatorio->estado === EstadoRelatorio::Enviado) {
+        if ($relatorio->jaFoiEnviado()) {
             session()->flash('erro', "O relatório {$relatorio->numero} já foi enviado ao cliente e não pode ser eliminado.");
 
             return;

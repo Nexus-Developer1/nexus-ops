@@ -117,8 +117,8 @@
                                             </a>
                                         @endif
 
-                                        {{-- Enviado = documento entregue ao cliente → não se elimina (botão escondido; guarda no método). --}}
-                                        @if ($r->estado !== \App\Enums\EstadoRelatorio::Enviado)
+                                        {{-- Enviado (uma vez que seja, mesmo editado depois) = documento entregue ao cliente → não se elimina (botão escondido; guarda no método). --}}
+                                        @if (! $r->jaFoiEnviado())
                                             <button wire:click="eliminar({{ $r->id }})" wire:loading.attr="disabled" wire:target="eliminar({{ $r->id }})"
                                                 wire:confirm="{{ $r->estado === \App\Enums\EstadoRelatorio::Rascunho ? 'Eliminar este rascunho? Fica recuperável.' : 'Eliminar o relatório ' . $r->numero . '? É um documento oficial (com número e PDF). Fica recuperável.' }}"
                                                 class="inline-flex items-center justify-center rounded-lg p-1.5 text-texto-fraco transition hover:bg-perigo-100 hover:text-perigo-600 disabled:opacity-50" title="Eliminar">

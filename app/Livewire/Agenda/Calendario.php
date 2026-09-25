@@ -400,9 +400,10 @@ class Calendario extends Component
         $intervencao = $evento->intervencao;
         $relatorio = $intervencao?->relatorio;
 
-        // Relatório finalizado/enviado (tem número) nunca é apagado.
-        if ($relatorio && $relatorio->estado !== EstadoRelatorio::Rascunho) {
-            session()->flash('erro', "Este evento tem um relatório finalizado (nº {$relatorio->numero}) — não pode ser removido.");
+        // Relatório finalizado, enviado — ou enviado uma vez e reaberto — nunca é apagado.
+        if ($relatorio && ($relatorio->estado !== EstadoRelatorio::Rascunho || $relatorio->jaFoiEnviado())) {
+            $como = $relatorio->jaFoiEnviado() ? 'já enviado ao cliente' : 'finalizado';
+            session()->flash('erro', "Este evento tem um relatório {$como} (nº {$relatorio->numero}) — não pode ser removido.");
             $this->eventoSelecionadoId = null;
             $this->recarregar();
 

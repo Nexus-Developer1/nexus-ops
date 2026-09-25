@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
+use App\Livewire\Agenda\Calendario;
 use App\Livewire\Relatorios\Listagem;
 use App\Models\Cliente;
 use App\Models\Equipamento;
@@ -122,5 +123,50 @@ class EliminarRelatorioAgendaTest extends TestCase
 
         $this->assertSoftDeleted('relatorios', ['id' => $relatorio->id]);
         $this->assertNotSoftDeleted('intervencoes', ['id' => $interv->id]); // sem evento → intervenção fica
+    }
+
+    // 25.ª revisão de segurança: enviado UMA vez nunca se apaga, mesmo depois de editado. Editar
+    // um enviado volta a pô-lo em finalizado/rascunho (decisão da equipa), e a guarda antiga,
+    // que só olhava para o estado atual, deixava-o eliminar a seguir.
+    public function test_enviado_uma_vez_e_depois_editado_nunca_se_elimina(): void
+    {
+        $admin = $this->admin();
+        foreach (['finalizado', 'rascunho'] as $estadoDepoisDeEditar) {
+            $relatorio = $this->trioLigado($estadoDepoisDeEditar, '2026/0'.random_int(100, 999));
+            $relatorio->update(['enviado_em' => now()->subDay(), 'pdf_enviado_path' => 'relatorios/enviados/x-v1.pdf']);
+            $interv = $relatorio->intervencao;
+
+            Livewire::actingAs($admin)->test(Listagem::class)
+                ->assertDontSeeHtml('eliminar('.$relatorio->id.')') // sem botão
+                ->call('eliminar', $relatorio->id)
+                ->assertHasNoErrors();
+
+            $this->assertNotSoftDeleted('relatorios', ['id' => $relatorio->id]);
+            $this->assertNotSoftDeleted('intervencoes', ['id' => $interv->id]);
+            $this->assertNotSoftDeleted('eventos_agenda', ['id' => $interv->evento_agenda_id]);
+        }
+    }
+
+    // O mesmo pela agenda: remover o serviço não leva um relatório que já foi enviado.
+    public function test_agenda_nao_remove_servico_com_relatorio_ja_enviado(): void
+    {
+        $relatorio = $this->trioLigado('rascunho', '2026/0777');
+        $relatorio->update(['enviado_em' => now()->subDay()]);
+        $evento = EventoAgenda::findOrFail($relatorio->intervencao->evento_agenda_id);
+
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->call('selecionar', $evento->id)
+            ->assertSee('Relatório já enviado (nº 2026/0777) — não removível')
+            ->call('removerEvento');
+
+        $this->assertNotSoftDeleted('eventos_agenda', ['id' => $evento->id]);
+        $this->assertNotSoftDeleted('relatorios', ['id' => $relatorio->id]);
+    }
+
+    // Nunca enviado continua como sempre: finalizado ou rascunho eliminam-se.
+    public function test_nunca_enviado_continua_a_eliminar_se(): void
+    {
+        $this->assertFalse($this->trioLigado('finalizado', '2026/0888')->jaFoiEnviado());
+        $this->assertTrue($this->trioLigado('enviado', '2026/0889')->jaFoiEnviado());
     }
 }

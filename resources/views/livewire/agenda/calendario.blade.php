@@ -99,8 +99,8 @@
                             @if ($evento->intervencao_id)
                                 @php($rel = $evento->intervencao?->relatorio)
                                 @if ($evento->tipo !== \App\Enums\TipoEvento::VisitaPreventiva)
-                                    @if ($rel && $rel->estado !== \App\Enums\EstadoRelatorio::Rascunho)
-                                        <span class="mr-auto text-xs text-texto-fraco">Relatório finalizado (nº {{ $rel->numero }}) — não removível</span>
+                                    @if ($rel && ($rel->estado !== \App\Enums\EstadoRelatorio::Rascunho || $rel->jaFoiEnviado()))
+                                        <span class="mr-auto text-xs text-texto-fraco">Relatório {{ $rel->jaFoiEnviado() ? 'já enviado' : 'finalizado' }} (nº {{ $rel->numero }}) — não removível</span>
                                     @else
                                         <button wire:click="removerEvento" wire:confirm="{{ $rel ? 'Remover este evento e o rascunho de relatório associado?' : 'Remover este evento?' }}" class="botao inline-flex items-center gap-2 bg-perigo-600 px-5 py-2.5 text-white hover:bg-perigo-500">Remover</button>
                                     @endif
