@@ -81,4 +81,44 @@ class GraficoDescargaTest extends TestCase
         $this->assertStringContainsString('<svg', $html);
         $this->assertSame(1, substr_count($html, '<polyline'));
     }
+
+    // Revisão de segurança (set. 2026): valores todos iguais e MUITO grandes — escritos por
+    // engano na tabela ou vindos de um ficheiro do carregador — faziam a grelha do eixo Y somar
+    // um passo que o float já não conseguia somar: ciclo infinito, e o editor e o PDF desse
+    // relatório rebentavam de vez. Agora o gráfico sai, com uma linha direita e números finitos.
+    public function test_valores_iguais_e_enormes_nao_prendem_o_grafico(): void
+    {
+        // Se voltar a haver ciclo infinito, o teste falha em vez de ficar preso — e o limite é
+        // reposto no fim, senão cortava o resto da suite.
+        set_time_limit(20);
+
+        try {
+            $tabela = ['inicio' => ['vbat_pos' => '100000000', 'vbat_neg' => '100000000'], '1' => ['vbat_pos' => '100000000', 'vbat_neg' => '100000000']];
+            $curva = collect(range(0, 5))->map(fn ($k) => ['t' => "20:0{$k}:00", 'p' => '250000000', 'n' => '250000000'])->all();
+
+            foreach (['dados' => $tabela, 'curva' => $curva] as $prop => $valor) {
+                $html = Blade::render('<x-relatorios.grafico-descarga :'.$prop.'="$v" />', ['v' => $valor]);
+                $this->assertStringContainsString('<svg', $html, $prop);
+                $this->assertLessThanOrEqual(41, substr_count($html, 'stroke="#e5e7eb"'), "$prop: riscas com teto");
+                $this->assertDoesNotMatchRegularExpression('/\b(NAN|INF)\b/i', $html, "$prop: coordenadas finitas");
+            }
+
+            // O relatório com esses valores volta a desenhar-se (antes rebentava o editor e o PDF).
+            $relatorio = $this->relatorioComFicha($tabela);
+            $this->assertStringContainsString('Gráfico do teste de descarga', view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render());
+        } finally {
+            set_time_limit(0);
+        }
+    }
+
+    // «1e999» é numérico para o PHP mas vale infinito: fica fora do gráfico.
+    public function test_valores_infinitos_sao_ignorados(): void
+    {
+        $html = Blade::render('<x-relatorios.grafico-descarga :dados="$d" />', ['d' => [
+            'inicio' => ['vbat_pos' => '270', 'vbat_neg' => '1e999'],
+            '10' => ['vbat_pos' => '250', 'vbat_neg' => '-1e999'],
+        ]]);
+        $this->assertSame(1, substr_count($html, '<polyline'));                 // só a Vbat+
+        $this->assertDoesNotMatchRegularExpression('/\b(NAN|INF)\b/i', $html);
+    }
 }

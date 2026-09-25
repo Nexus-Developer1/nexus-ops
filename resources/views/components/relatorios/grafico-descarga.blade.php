@@ -24,7 +24,8 @@
             $p = str_replace(',', '.', trim((string) ($a['p'] ?? '')));
             $n = str_replace(',', '.', trim((string) ($a['n'] ?? '')));
 
-            return is_numeric($p) && is_numeric($n)
+            // is_finite: «1e999» é numérico mas vale infinito — não tem lugar num gráfico.
+            return is_numeric($p) && is_numeric($n) && is_finite((float) $p) && is_finite((float) $n)
                 ? ['t' => (string) ($a['t'] ?? ''), 'p' => (float) $p, 'n' => (float) $n]
                 : null;
         })
@@ -51,7 +52,7 @@
         foreach ($mapa as $serie => $col) {
             foreach (array_values($linhas) as $i => $lk) {
                 $bruto = str_replace(',', '.', trim((string) ($dados[$lk][$col] ?? '')));
-                if ($bruto !== '' && is_numeric($bruto)) {
+                if ($bruto !== '' && is_numeric($bruto) && is_finite((float) $bruto)) {
                     $pontos[$serie][$i] = (float) $bruto;
                 }
             }
@@ -73,6 +74,17 @@
         $yMin = floor($min / $passo) * $passo;
         $yMax = ceil($max / $passo) * $passo;
         if ($yMin === $yMax) { $yMax = $yMin + $passo; }
+        // Valores todos iguais e MUITO grandes (ex.: 100000000 escrito por engano): o passo mínimo
+        // perde-se na precisão do float, $yMax fica igual a $yMin e a grelha nunca acabava — o
+        // editor e o PDF do relatório rebentavam de vez (revisão de segurança, set. 2026). Aí a
+        // escala passa a ser um décimo da ordem de grandeza do valor. Os outros casos não mudam.
+        if (! ($yMax > $yMin)) {
+            $passo = pow(10, floor(log10(max(abs($max), 1))));
+            $yMin = floor($min / $passo) * $passo;
+            $yMax = $yMin + $passo;
+        }
+        // Riscas CONTADAS, com teto — somar o passo até chegar ao topo podia nunca chegar.
+        $riscas = (int) min(40, max(1, round(($yMax - $yMin) / $passo)));
 
         $mEsq = 46; $mDir = 10; $mTopo = 12;
         $mFundo = $comCurva ? 62 : 34; // horas na vertical precisam de mais pé
@@ -86,7 +98,8 @@
     @endphp
     <svg width="{{ $largura }}" height="{{ $altura }}" viewBox="0 0 {{ $largura }} {{ $altura }}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Gráfico do teste de descarga (Vbat)">
         {{-- Grelha e eixo Y --}}
-        @for ($v = $yMin; $v <= $yMax + $passo / 2; $v += $passo)
+        @for ($k = 0; $k <= $riscas; $k++)
+            @php($v = $yMin + $k * $passo)
             <line x1="{{ $mEsq }}" y1="{{ round($y($v), 1) }}" x2="{{ $largura - $mDir }}" y2="{{ round($y($v), 1) }}" stroke="#e5e7eb" stroke-width="1" />
             <text x="{{ $mEsq - 6 }}" y="{{ round($y($v) + 3, 1) }}" text-anchor="end" font-size="9" fill="#6b7280">{{ number_format($v, $decimais, ',', '') }}</text>
         @endfor

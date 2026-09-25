@@ -8,6 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-25
 
+- 🔒 **Relatórios — um valor absurdo no teste de descarga já não bloqueia o relatório.** Achado da 25.ª revisão de segurança. Com os valores de Vbat todos iguais e muito grandes (a partir de ~100 000 000 — um engano ao escrever, ou um ficheiro do carregador com valores constantes), a grelha do eixo Y somava um passo que o float já não conseguia somar e o ciclo nunca acabava: o editor desse relatório dava erro, o PDF não se gerava e o envio falhava, sem forma de corrigir pela aplicação. Agora, nesse caso, a escala passa a um décimo da ordem de grandeza do valor e as riscas são contadas, com teto de 40. Valores infinitos («1e999») ficam fora do gráfico. **Os gráficos normais saem exatamente iguais** (comparados antes/depois em 6 casos: 12 V, banco de 240 V, decimais, vírgulas, curva do ficheiro e série plana). Sem migração; `optimize`. +2 testes (falham com o código antigo).
+
 - 🎨 **Relatórios — sai a frase «Fotografias deste equipamento · pode adicionar várias»** da zona das fotografias de cada equipamento. O «A enviar…» durante o envio continua. Sem migração; `optimize`.
 
 ## 2026-09-24
