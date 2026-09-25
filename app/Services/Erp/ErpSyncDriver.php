@@ -61,4 +61,13 @@ interface ErpSyncDriver
      * certo com as linhas (também ao vivo). Null = dossiê não encontrado.
      */
     public function obterTotalDossier(string $bostamp): ?float;
+
+    /**
+     * Os totais (débito) de VÁRIOS dossiês numa só leitura ao vivo — para a listagem mostrar o
+     * valor atual de cada linha da página, não o da última sincronização.
+     *
+     * @param  list<string>  $bostamps
+     * @return array<string, float> bostamp => total (os que não estão no PHC ficam de fora)
+     */
+    public function obterTotaisDossiers(array $bostamps): array;
 }

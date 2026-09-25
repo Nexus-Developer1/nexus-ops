@@ -40,4 +40,9 @@ class NullErpDriver implements ErpSyncDriver
     {
         return null;
     }
+
+    public function obterTotaisDossiers(array $bostamps): array
+    {
+        return [];
+    }
 }

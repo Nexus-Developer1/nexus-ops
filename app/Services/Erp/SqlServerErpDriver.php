@@ -216,6 +216,26 @@ class SqlServerErpDriver implements ErpSyncDriver
         return $r !== null && $r->etotaldeb !== null ? (float) $r->etotaldeb : null;
     }
 
+    public function obterTotaisDossiers(array $bostamps): array
+    {
+        $bostamps = array_values(array_unique(array_filter(array_map('strval', $bostamps))));
+        if ($bostamps === []) {
+            return [];
+        }
+
+        // Só leitura; um marcador «?» por bostamp (binding, nunca interpolado). Uma página tem
+        // no máximo algumas dezenas — muito longe do limite de parâmetros do SQL Server.
+        $marcadores = implode(', ', array_fill(0, count($bostamps), '?'));
+        $totais = [];
+        foreach (DB::connection('erp')->select("SELECT bostamp, etotaldeb FROM bo WHERE bostamp IN ({$marcadores})", $bostamps) as $r) {
+            if ($r->etotaldeb !== null) {
+                $totais[rtrim((string) $r->bostamp)] = (float) $r->etotaldeb; // char do PHC vem com espaços
+            }
+        }
+
+        return $totais;
+    }
+
     public function obterEquipamentos(?int $limite = null): iterable
     {
         // Lê os equipamentos da tabela ma do PHC pela ligação 'erp' (dblib/FreeTDS), a MESMA que

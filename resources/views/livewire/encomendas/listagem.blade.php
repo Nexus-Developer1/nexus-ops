@@ -68,7 +68,7 @@
                                 <p class="mt-0.5 text-xs text-texto-medio">{{ $d->tipoRotulo() }} · {{ $d->obrano }}/{{ $d->ano }} · {{ $d->data?->translatedFormat('d M Y') ?? '—' }}</p>
                             </div>
                             <div class="shrink-0 text-right">
-                                <div class="text-base font-semibold text-texto-forte">{{ $d->total_debito !== null ? number_format((float) $d->total_debito, 2, ',', ' ').' €' : '—' }}</div>
+                                <div class="text-base font-semibold text-texto-forte">@php($total = $totaisAoVivo[$d->id_erp] ?? $d->total_debito){{ $total !== null ? number_format((float) $total, 2, ',', ' ').' €' : '—' }}</div>
                                 <span class="etiqueta mt-1 {{ $d->fechada ? 'bg-fundo text-texto-medio' : 'bg-verde-50 text-verde-700' }}">{{ $d->fechada ? 'Fechada' : 'Em aberto' }}</span>
                             </div>
                         </div>
@@ -101,7 +101,7 @@
                                 <td class="whitespace-nowrap px-6 py-3.5 font-medium text-texto-forte">{{ $d->obrano }}/{{ $d->ano }}</td>
                                 <td class="px-6 py-3.5 text-texto-forte">{{ $d->nome ?: '—' }}</td>
                                 <td class="whitespace-nowrap px-6 py-3.5 text-texto-medio">{{ $d->data?->translatedFormat('d M Y') ?? '—' }}</td>
-                                <td class="whitespace-nowrap px-6 py-3.5 text-right font-medium text-texto-forte">{{ $d->total_debito !== null ? number_format((float) $d->total_debito, 2, ',', ' ').' €' : '—' }}</td>
+                                <td class="whitespace-nowrap px-6 py-3.5 text-right font-medium text-texto-forte">@php($total = $totaisAoVivo[$d->id_erp] ?? $d->total_debito){{ $total !== null ? number_format((float) $total, 2, ',', ' ').' €' : '—' }}</td>
                                 <td class="whitespace-nowrap px-6 py-3.5">
                                     <span class="etiqueta {{ $d->fechada ? 'bg-fundo text-texto-medio' : 'bg-verde-50 text-verde-700' }}">{{ $d->fechada ? 'Fechada' : 'Em aberto' }}</span>
                                     {{-- Apurado no sync: o dossiê já não vem do PHC, ou mudou lá. --}}

@@ -92,6 +92,16 @@ class FakeErpDriver implements ErpSyncDriver
         return round(array_sum(array_map(fn ($l) => (float) $l->total, iterator_to_array($this->obterLinhasDossier($bostamp), false))), 2);
     }
 
+    public function obterTotaisDossiers(array $bostamps): array
+    {
+        $totais = [];
+        foreach ($bostamps as $b) {
+            $totais[(string) $b] = $this->obterTotalDossier((string) $b);
+        }
+
+        return $totais;
+    }
+
     public function obterLinhasDossier(string $bostamp): iterable
     {
         // Linhas determinísticas a partir do bostamp — para a ficha do dossiê funcionar em

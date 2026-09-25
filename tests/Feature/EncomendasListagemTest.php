@@ -7,8 +7,11 @@ use App\Livewire\Encomendas\Listagem;
 use App\Models\Cliente;
 use App\Models\Dossier;
 use App\Models\User;
+use App\Services\Erp\ErpSyncDriver;
+use App\Services\Erp\NullErpDriver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use RuntimeException;
 use Tests\TestCase;
 
 // Aba "Encomendas": listagem dos dossiês do PHC (só leitura), com filtros por tipo, estado,
@@ -67,5 +70,54 @@ class EncomendasListagemTest extends TestCase
         $userCliente = User::create(['nome' => 'C', 'email' => 'c@nexus.pt', 'password' => 'x',
             'papel' => PapelUtilizador::Cliente, 'cliente_id' => $cliente->id, 'ativo' => true]);
         $this->actingAs($userCliente)->get('/encomendas')->assertRedirect(route('portal.dashboard'));
+    }
+
+    // Os totais da página vêm AO VIVO do PHC, numa só leitura (set. 2026 — a proposta 7431 foi
+    // alterada depois da sincronização e a listagem mostrava 1 062,09 € em vez de 2 816 €).
+    public function test_totais_da_pagina_vem_do_phc_numa_so_leitura(): void
+    {
+        $alterada = $this->dossier(['id_erp' => 'BO-7431', 'obrano' => 7431, 'total_debito' => 1062.09]);
+        $this->dossier(['id_erp' => 'BO-7428', 'obrano' => 7428, 'total_debito' => 200]);
+        $this->dossier(['id_erp' => 'BO-SUMIU', 'obrano' => 7000, 'total_debito' => 55.5]);
+
+        $erp = new class extends NullErpDriver
+        {
+            public array $pedidos = [];
+
+            public function obterTotaisDossiers(array $bostamps): array
+            {
+                $this->pedidos[] = $bostamps;
+
+                return ['BO-7431' => 2816.0, 'BO-7428' => 200.0]; // o terceiro já não está no PHC
+            }
+        };
+        $this->app->instance(ErpSyncDriver::class, $erp);
+
+        Livewire::actingAs($this->admin())->test(Listagem::class)
+            ->assertSee('2 816,00 €')
+            ->assertDontSee('1 062,09 €')
+            ->assertSee('200,00 €')
+            ->assertSee('55,50 €'); // sem PHC para ele: fica o guardado
+
+        $this->assertCount(1, $erp->pedidos, 'uma só leitura para a página toda');
+        $this->assertEqualsCanonicalizing(['BO-7431', 'BO-7428', 'BO-SUMIU'], $erp->pedidos[0]);
+        $this->assertSame('1062.09', (string) $alterada->fresh()->total_debito); // a listagem só lê
+    }
+
+    // PHC em baixo: a listagem abre na mesma, com os totais da última sincronização.
+    public function test_phc_em_baixo_mostra_os_totais_guardados(): void
+    {
+        $this->dossier(['id_erp' => 'BO-7431', 'obrano' => 7431, 'total_debito' => 1062.09]);
+        $this->app->instance(ErpSyncDriver::class, new class extends NullErpDriver
+        {
+            public function obterTotaisDossiers(array $bostamps): array
+            {
+                throw new RuntimeException('SQLSTATE[HY000]: Unable to connect to server');
+            }
+        });
+
+        Livewire::actingAs($this->admin())->test(Listagem::class)
+            ->assertOk()
+            ->assertSee('1 062,09 €');
     }
 }
