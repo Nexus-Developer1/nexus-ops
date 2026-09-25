@@ -75,6 +75,12 @@ class Listagem extends Component
     public function eliminar(int $registo): void
     {
         $registo = RegistoDespesa::findOrFail($registo);
+        // Aprovada: só quem aprova a elimina (o botão nem aparece aos outros).
+        if (! $registo->podeSerEliminadoPor(auth()->user())) {
+            session()->flash('erro', 'Esta despesa já foi aprovada — só o aprovador a pode eliminar.');
+
+            return;
+        }
         $registo->despesas()->delete();
         $registo->delete();
         Auditor::registar('registo_despesas_eliminado', $registo, ['linhas' => $registo->despesas()->withTrashed()->count()]);

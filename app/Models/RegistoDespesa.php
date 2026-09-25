@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\EstadoDespesa;
+use App\Services\Despesas\FluxoAprovacaoDespesas;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,6 +44,14 @@ class RegistoDespesa extends Model
     public function podeSerEditado(): bool
     {
         return $this->estado !== EstadoDespesa::Aprovada;
+    }
+
+    // Eliminar: pendente e rejeitada, qualquer pessoa das despesas (como sempre); APROVADA, só
+    // quem aprova — a contabilidade já a recebeu, e só quem aprovou pode desfazer a aprovação
+    // (25.ª revisão de segurança, set. 2026 — decisão do utilizador: opção «só o Paulo»).
+    public function podeSerEliminadoPor(?User $utilizador): bool
+    {
+        return $this->podeSerEditado() || FluxoAprovacaoDespesas::podeAprovar($utilizador);
     }
 
     public function colaborador(): BelongsTo

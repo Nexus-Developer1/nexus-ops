@@ -17,6 +17,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -227,6 +228,63 @@ class DespesaAprovacaoTest extends TestCase
 
             return str_starts_with($mail->subject, '[Nexus IFE] Despesa nº') && str_contains((string) $mail->render(), 'Despesa lançada no <strong>Nexus IFE</strong>');
         });
+    }
+
+    // ---- 25.ª revisão de segurança: despesa APROVADA fechada também para eliminar e recibos ----
+
+    // Aprovada: só quem aprova (o Paulo) a elimina — nem o técnico dono, nem outro técnico,
+    // nem o financeiro, nem um administrador. O botão nem lhes aparece; forçado, é recusado.
+    public function test_so_o_aprovador_elimina_uma_despesa_aprovada(): void
+    {
+        $joao = $this->tecnico();
+        $paulo = $this->aprovador();
+        $aprovada = $this->registar($joao, 'Almoço fechado');
+        app(FluxoAprovacaoDespesas::class)->decidir($aprovada, $paulo, true);
+
+        $outros = [
+            $joao,
+            $this->tecnico('Ana Costa', 'ana@nxs.pt'),
+            User::create(['nome' => 'Financeiro', 'email' => 'financeiro@nxs.pt', 'password' => 'x', 'papel' => PapelUtilizador::Financeiro, 'ativo' => true]),
+            User::create(['nome' => 'Julio Santos', 'email' => 'jsantos@nxs.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]),
+        ];
+        foreach ($outros as $quem) {
+            Livewire::actingAs($quem)->test(Listagem::class)
+                ->assertDontSeeHtml('wire:click="eliminar('.$aprovada->id.')"')
+                ->call('eliminar', $aprovada->id)
+                ->assertSee('Esta despesa já foi aprovada — só o aprovador a pode eliminar.');
+            $this->assertNotSoftDeleted($aprovada->fresh());
+        }
+
+        Livewire::actingAs($paulo)->test(Listagem::class)
+            ->assertSeeHtml('wire:click="eliminar('.$aprovada->id.')"')
+            ->call('eliminar', $aprovada->id);
+        $this->assertSoftDeleted($aprovada->fresh());
+    }
+
+    // Pendentes e rejeitadas continuam como sempre: qualquer pessoa das despesas elimina.
+    public function test_pendente_continua_a_poder_ser_eliminada(): void
+    {
+        $pendente = $this->registar($this->tecnico(), 'Almoço pendente');
+
+        Livewire::actingAs($this->tecnico('Ana Costa', 'ana@nxs.pt'))->test(Listagem::class)
+            ->assertSeeHtml('wire:click="eliminar('.$pendente->id.')"')
+            ->call('eliminar', $pendente->id);
+        $this->assertSoftDeleted($pendente->fresh());
+    }
+
+    // Um editor aberto desde ANTES da aprovação já não consegue apagar o recibo depois dela.
+    public function test_recibo_de_despesa_aprovada_nao_se_apaga_com_o_editor_ja_aberto(): void
+    {
+        $joao = $this->tecnico();
+        $registo = $this->registar($joao);
+        $recibo = $registo->despesas()->first()->anexos()->firstOrFail();
+
+        $editor = Livewire::actingAs($joao)->test(Editor::class, ['registo' => $registo]); // aberto enquanto pendente
+        app(FluxoAprovacaoDespesas::class)->decidir($registo, $this->aprovador(), true);
+
+        $editor->call('removerReciboGravado', $recibo->id)->assertForbidden();
+        $this->assertModelExists($recibo);
+        Storage::disk()->assertExists($recibo->storage_key);
     }
 
     // Quantos emails de uma classe foram «on demand» (sem conta) para um endereço.

@@ -283,6 +283,9 @@ class Editor extends Component
     {
         abort_unless($this->registoId !== null, 404);
         $registo = RegistoDespesa::findOrFail($this->registoId);
+        // Aprovada = fechada, também para os recibos: um editor aberto desde antes da aprovação
+        // ainda chamava isto e apagava o comprovativo de vez (25.ª revisão de segurança).
+        abort_unless($registo->podeSerEditado(), 403, 'Despesa aprovada — não pode ser alterada.');
         // Só recibos de linhas DESTE registo.
         $anexo = Anexo::whereKey($anexoId)
             ->where('anexavel_type', Despesa::class)
