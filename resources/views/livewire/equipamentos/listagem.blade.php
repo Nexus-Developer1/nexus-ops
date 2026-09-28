@@ -11,7 +11,10 @@
     </x-topbar>
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
-        <div class="mx-auto max-w-6xl">
+        {{-- Mais larga do que as outras listagens (max-w-6xl), como as dos relatórios e das
+             despesas: com o estado do cliente e as ações (Editar, Eliminar) a tabela não cabia em
+             1152px e obrigava a arrastar para o lado (pedido da equipa, set. 2026). --}}
+        <div class="mx-auto max-w-screen-2xl">
 
             <x-toast-sucesso />
             @error('eliminar')
