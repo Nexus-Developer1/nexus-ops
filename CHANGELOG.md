@@ -6,6 +6,12 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-28
+
+- 🎨 **Relatórios — a listagem usa a largura do ecrã e deixa de precisar da barra para deslizar.** A página estava limitada a 1152px (como as outras listagens) e a tabela — oito colunas e as ações Editar, PDF, Reenviar e Eliminar — precisa de ~1185px: a coluna das ações ficava cortada. O limite desta página passa a 1536px. Medido num browser com nomes compridos: sem barra a partir de ecrãs de ~1600px (1680 e 1920 cabem); em portáteis de 1366–1536px a barra continua. Requer build e `optimize`.
+- 🧹 **Testes — oito testes da agenda falhavam só por causa do dia em que corriam.** Marcam eventos «daqui a uma semana», e a agenda recusa feriados: a 28/09, a semana seguinte caía em 05/10 (Implantação da República). As quatro classes (`AgendaTest`, `RascunhoContratoDeEventoTest`, `SaldoVisitasFase1Test`, `SyncRelatorioEventoTest`) passam a correr numa data fixa, 14/09/2026. Só testes; a aplicação não muda.
+- 🧹 **Testes — oito testes da agenda falhavam só por causa do dia em que corriam.** Marcam eventos «daqui a uma semana», e a agenda recusa feriados: a 28/09, a semana seguinte caía em 05/10 (Implantação da República). As quatro classes (`AgendaTest`, `RascunhoContratoDeEventoTest`, `SaldoVisitasFase1Test`, `SyncRelatorioEventoTest`) passam a correr numa data fixa, 14/09/2026. Só testes; a aplicação não muda.
+
 ## 2026-09-25
 
 - 🐛 **Encomendas e propostas — o «Total (débito)» da ficha passa a vir do PHC na hora.** Na proposta 7431/2026 aparecia 1 062,09 € em cima e 2 816,00 € no «Total das linhas»: o total de cima era o guardado na sincronização das 13:00, e a proposta foi alterada no PHC às 14:54 (acrescentado o segundo portátil); as linhas, essas, já eram lidas ao abrir a ficha. Agora o total do cabeçalho é lido também ao abrir (`bo.etotaldeb`, só leitura, uma consulta pela mesma ligação), e bate sempre com as linhas. Com o PHC em baixo, fica o valor da última sincronização, como antes. A **listagem das encomendas** também passou a mostrar os totais do PHC na hora — os da página toda numa só leitura (`obterTotaisDossiers`); com o PHC em baixo, ficam os guardados. A ficha do cliente e o editor de relatórios continuam com o valor da sincronização (8h/13h/19h). Sem migração; `optimize`. +4 testes.

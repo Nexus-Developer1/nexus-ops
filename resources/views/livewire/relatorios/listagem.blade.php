@@ -2,7 +2,10 @@
     <x-topbar :breadcrumb="['Início', 'Relatórios']" />
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
-        <div class="mx-auto max-w-6xl">
+        {{-- Mais larga do que as outras listagens (max-w-6xl): oito colunas + quatro ações
+             (Editar, PDF, Reenviar, Eliminar) não cabiam em 1152px e obrigavam a arrastar a
+             tabela para o lado (pedido da equipa, set. 2026). --}}
+        <div class="mx-auto max-w-screen-2xl">
 
             <x-toast-sucesso />
 

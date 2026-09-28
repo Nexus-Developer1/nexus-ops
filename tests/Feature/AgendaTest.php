@@ -28,6 +28,15 @@ class AgendaTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Data fixa (segunda-feira, 14/09/2026): estes testes marcam eventos «daqui a uma semana», e
+    // a agenda recusa feriados — a 28/09 a semana seguinte caía em 05/10 (Implantação da
+    // República) e falhavam só por causa do dia em que corriam.
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Carbon::setTestNow('2026-09-14 09:00:00');
+    }
+
     private function admin(): User
     {
         return User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
