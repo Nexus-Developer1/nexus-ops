@@ -45,7 +45,8 @@ use Livewire\WithFileUploads;
 
 // "Relatório de Intervenção Técnica": criar/retomar. Dois modos de gravação —
 // Guardar rascunho (valida só o equipamento, sem PDF) e Finalizar (validação
-// completa + gera o PDF). Sem auto-save: só grava quando o utilizador carrega.
+// completa + gera o PDF) — mais o gravar automático do rascunho (autoGravar(), chamado
+// pelo editor no browser).
 #[Layout('components.layouts.app', ['ativo' => 'relatorios', 'titulo' => 'Relatório'])]
 class Novo extends Component
 {

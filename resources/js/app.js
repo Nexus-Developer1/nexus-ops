@@ -10,7 +10,7 @@ import ptLocale from '@fullcalendar/core/locales/pt';
 let scrollAPreservar = null;
 window.preservarScroll = () => { scrollAPreservar = window.scrollY; };
 
-// Reordenar colunas por arrastar (listagem de Encomendas): tira `mover` da sua posição e
+// Reordenar colunas por arrastar (ficha das Encomendas e editor de relatórios): tira `mover` da sua posição e
 // insere-o na posição de `alvo`, devolvendo a nova ordem. O servidor revalida a whitelist.
 window.reordenar = (ordem, mover, alvo) => {
     const nova = [...(ordem || [])];
@@ -605,9 +605,6 @@ document.addEventListener('alpine:init', () => {
             this.aplicar();
         },
 
-        // A fotografia vem do sensor com a resolução que der; o recorte final fica-se pelos
-        // 2400px do lado maior, que é quanto basta para ler um recibo e não atochar o envio.
-
         // Encontra o papel: análise numa miniatura, ENCHENTE a partir do centro sobre os
         // píxeis claros e, da mancha, tira os 4 CANTOS (para endireitar a perspetiva) e a
         // caixa aparada (fallback). O limiar ancora no BRANCO do próprio papel (mediana da
@@ -940,6 +937,8 @@ document.addEventListener('alpine:init', () => {
             const lado = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
             let w = Math.round(Math.max(lado(tl, tr), lado(bl, br)));
             let h = Math.round(Math.max(lado(tl, bl), lado(tr, br)));
+            // A fotografia vem do sensor com a resolução que der; o recorte final fica-se pelos
+            // 2400px do lado maior, que é quanto basta para ler um recibo e não atochar o envio.
             const esc = Math.min(1, 2400 / Math.max(w, h, 1));
             w = Math.max(1, Math.round(w * esc));
             h = Math.max(1, Math.round(h * esc));

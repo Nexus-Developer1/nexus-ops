@@ -53,7 +53,6 @@ class Painel extends Component
         // (Os cartões-resumo por tipo e o filtro por tipo saíram a pedido da equipa — set. 2026.)
         return view('livewire.alertas.painel', [
             'alertas' => $alertas,
-            'modo' => $modo,
             'listaConcluidos' => $this->concluidos ? $servico->concluidos() : collect(),
             'equipa' => User::where('ativo', true)
                 ->whereNotNull('password')   // convite por aceitar → ainda não se atribui nada

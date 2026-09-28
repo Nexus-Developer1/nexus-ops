@@ -50,8 +50,6 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Única capacidade exclusiva do admin: gerir/convidar utilizadores. O técnico tem todo
-        // o resto (ver grupos de rotas). Usada no componente (abort_unless) e para esconder o link.
         /*
          * Marca o instante em que a sessão foi autenticada.
          *

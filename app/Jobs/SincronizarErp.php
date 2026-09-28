@@ -97,7 +97,8 @@ class SincronizarErp implements ShouldQueue
             $resultados = [];
             foreach (self::ETAPAS as $etapa => $comando) {
                 try {
-                    // O modo completo (rede de segurança semanal) ignora os hashes do incremental.
+                    // O modo completo ignora os hashes do incremental. (A rede de segurança semanal
+                    // é a CadeiaSincronizacaoCompletaErp, etapa a etapa.)
                     $codigo = $this->completo ? Artisan::call($comando, ['--completo' => true]) : Artisan::call($comando);
                 } catch (Throwable $e) {
                     // Detalhe técnico (query/host do ERP numa QueryException) fica SÓ no log —

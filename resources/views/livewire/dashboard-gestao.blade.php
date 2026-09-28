@@ -151,7 +151,7 @@
 
             {{-- Saíram a pedido da equipa: cartão "Cumprimento de SLA", gráficos (visitas de
                  contrato, equipamentos por tipo/estado) e "Equipamentos sem visitas recentes"
-                 — as métricas continuam no ServicoMetricas para os relatórios de gestão. --}}
+                 (as métricas saíram com eles; ficam no histórico do git). --}}
 
             {{-- Relatórios por preencher (rascunhos) — substituiu as renovações próximas. Ao
                  finalizar, o relatório sai daqui; depois é enviá-lo. --}}

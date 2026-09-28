@@ -113,7 +113,6 @@ class User extends Authenticatable
         };
     }
 
-    // Eventos da agenda em que esta conta é técnico ADICIONAL (pivot evento_tecnicos).
     /**
      * Quem pode SER ESCOLHIDO para um serviço, um relatório ou um alerta.
      *
@@ -169,6 +168,7 @@ class User extends Authenticatable
         return $cor;
     }
 
+    // Eventos da agenda em que esta conta é técnico ADICIONAL (pivot evento_tecnicos).
     public function eventosAdicionais(): BelongsToMany
     {
         return $this->belongsToMany(EventoAgenda::class, 'evento_tecnicos', 'user_id', 'evento_agenda_id');

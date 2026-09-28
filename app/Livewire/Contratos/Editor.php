@@ -287,14 +287,13 @@ class Editor extends Component
             }
             Auditor::registar('contrato_editado', $this->contrato, ['numero' => $this->contrato->numero, 'alteracoes' => $alteracoes]);
         } else {
-            // Contratos nascem em rascunho; a ativação gera as visitas (ver Ficha).
+            // Contratos nascem em rascunho; ativar não gera visitas — agendam-se à mão na agenda.
             $this->contrato = Contrato::create($atributos);
             $this->contrato->equipamentos()->sync($this->equipamentoIds);
             Auditor::registar('contrato_criado', $this->contrato, ['numero' => $this->contrato->numero, 'cliente_id' => $this->contrato->cliente_id]);
         }
 
-        // SLAs: substitui o conjunto (forma simples e previsível). Os planos de visita
-        // (modelo antigo) já NÃO são editados aqui — não se tocam, preservando os existentes.
+        // SLAs: substitui o conjunto (forma simples e previsível).
         $this->contrato->slas()->delete();
         foreach ($this->slas as $s) {
             // NBD e horas de resposta são mutuamente exclusivos — NBD ganha.
