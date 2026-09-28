@@ -4,12 +4,10 @@ namespace App\Livewire\Encomendas;
 
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Dossier;
-use App\Services\Erp\ErpSyncDriver;
-use Illuminate\Support\Facades\Log;
+use App\Services\Erp\LeituraErpAoVivo;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Session;
 use Livewire\Component;
-use Throwable;
 
 // Ficha de um dossiê (encomenda/proposta): o cabeçalho vem da nossa BD (dossiers), mas as
 // LINHAS são lidas AO VIVO do PHC (tabela bi) no momento de abrir — não são sincronizadas.
@@ -112,26 +110,17 @@ class Ficha extends Component
         $this->colunasOcultas = [];
     }
 
-    public function render(ErpSyncDriver $erp)
+    public function render(LeituraErpAoVivo $phc)
     {
-        $linhas = [];
-        $erroLinhas = false;
-        $totalAoVivo = null;
-
-        try {
-            $linhas = iterator_to_array($erp->obterLinhasDossier($this->dossier->id_erp));
-            // O total do cabeçalho também ao vivo: o guardado é o da última sincronização
-            // (8h/13h/19h), e um dossiê alterado depois dela mostrava em cima um total que não
-            // batia com as linhas em baixo (set. 2026 — proposta 7431: 1 062,09 € vs 2 816 €).
-            $totalAoVivo = $erp->obterTotalDossier($this->dossier->id_erp);
-        } catch (Throwable $e) {
-            // PHC em baixo/timeout → a ficha abre na mesma; o detalhe fica no log.
-            $erroLinhas = true;
-            Log::warning('Falha a obter as linhas do dossiê ao vivo do PHC.', [
-                'bostamp' => $this->dossier->id_erp,
-                'erro' => $e->getMessage(),
-            ]);
-        }
+        // Linhas e total AO VIVO do PHC (timeout curto, guardados 90 s — mostrar/esconder e
+        // reordenar colunas não voltam a perguntar —, pausa se o PHC falhar). As duas leituras
+        // são independentes: se só o total falhar, as linhas aparecem na mesma. O total guardado
+        // é o da última sincronização (8h/13h/19h) — um dossiê alterado depois dela mostrava em
+        // cima um total que não batia com as linhas (set. 2026 — proposta 7431).
+        $linhas = $phc->linhas($this->dossier->id_erp);
+        $erroLinhas = $linhas === null;
+        $linhas ??= [];
+        $totalAoVivo = $phc->total($this->dossier->id_erp);
 
         return view('livewire.encomendas.ficha', [
             'linhas' => $linhas,

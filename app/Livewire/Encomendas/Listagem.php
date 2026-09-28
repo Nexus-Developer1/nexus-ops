@@ -4,13 +4,11 @@ namespace App\Livewire\Encomendas;
 
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Dossier;
-use App\Services\Erp\ErpSyncDriver;
-use Illuminate\Support\Facades\Log;
+use App\Services\Erp\LeituraErpAoVivo;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Session;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Throwable;
 
 // Listagem dos dossiês do PHC (propostas e encomendas — tabela `dossiers`, só leitura).
 // Filtros e pesquisa vivem na sessão (como as outras listagens). São ~200 mil registos:
@@ -63,7 +61,7 @@ class Listagem extends Component
         $this->resetPage();
     }
 
-    public function render(ErpSyncDriver $erp)
+    public function render(LeituraErpAoVivo $phc)
     {
         $dossiers = Dossier::query()
             ->when($this->tipo !== '', fn ($q) => $q->where('ndos', (int) $this->tipo))
@@ -88,14 +86,11 @@ class Listagem extends Component
 
         // Totais AO VIVO das linhas desta página, numa só leitura ao PHC: o guardado é o da
         // última sincronização (8h/13h/19h) e um dossiê alterado depois dela aparecia com o
-        // total antigo (set. 2026 — proposta 7431: 1 062,09 € em vez de 2 816 €). PHC em baixo
-        // → ficam os guardados; o detalhe vai para o log.
-        $totaisAoVivo = [];
-        try {
-            $totaisAoVivo = $erp->obterTotaisDossiers($dossiers->getCollection()->pluck('id_erp')->filter()->all());
-        } catch (Throwable $e) {
-            Log::warning('Falha a obter os totais dos dossiês ao vivo do PHC (listagem).', ['erro' => $e->getMessage()]);
-        }
+        // total antigo (set. 2026 — proposta 7431: 1 062,09 € em vez de 2 816 €). Timeout
+        // curto, guardados 90 s e pausa se o PHC falhar (LeituraErpAoVivo) — a pesquisa a cada
+        // tecla não volta a perguntar, e um PHC lento não prende a aplicação. Sem resposta →
+        // ficam os da sincronização.
+        $totaisAoVivo = $phc->totais($dossiers->getCollection()->pluck('id_erp')->filter()->all());
 
         // Anos disponíveis para o filtro (distintos, do mais recente ao mais antigo).
         $anos = Dossier::query()->whereNotNull('ano')->distinct()->orderByDesc('ano')->pluck('ano');

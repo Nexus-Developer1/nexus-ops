@@ -10,7 +10,7 @@ use Tests\TestCase;
 
 // obterLinhasDossier() lê as linhas de UM dossiê ao vivo (tabela bi) por bostamp. O PHC
 // guarda linhas em branco (separadores) no dossiê — têm de ser saltadas para não sujar a
-// ficha. Aqui a ligação 'erp' aponta para SQLite em memória.
+// ficha. Aqui a ligação das leituras ao vivo ('erp_interativo') aponta para SQLite em memória.
 class SqlServerErpDriverLinhasDossierTest extends TestCase
 {
     use RefreshDatabase;
@@ -19,10 +19,10 @@ class SqlServerErpDriverLinhasDossierTest extends TestCase
     {
         parent::setUp();
 
-        config()->set('database.connections.erp', ['driver' => 'sqlite', 'database' => ':memory:']);
-        DB::purge('erp');
+        config()->set('database.connections.erp_interativo', ['driver' => 'sqlite', 'database' => ':memory:']);
+        DB::purge('erp_interativo');
 
-        Schema::connection('erp')->create('bi', function ($t) {
+        Schema::connection('erp_interativo')->create('bi', function ($t) {
             $t->string('bostamp');
             $t->integer('lordem')->nullable();
             $t->string('ref')->nullable();
@@ -42,15 +42,15 @@ class SqlServerErpDriverLinhasDossierTest extends TestCase
 
     protected function tearDown(): void
     {
-        Schema::connection('erp')->dropIfExists('bi');
-        DB::purge('erp');
+        Schema::connection('erp_interativo')->dropIfExists('bi');
+        DB::purge('erp_interativo');
 
         parent::tearDown();
     }
 
     public function test_le_linhas_por_bostamp_e_salta_as_em_branco(): void
     {
-        DB::connection('erp')->table('bi')->insert([
+        DB::connection('erp_interativo')->table('bi')->insert([
             // Linha de artigo (ordem 1).
             ['bostamp' => 'BO-1', 'lordem' => 1, 'ref' => 'UPS-NPW ', 'usr6' => 'PN-1 ', 'usr1' => 'RIELLO ',
                 'design' => 'UPS Riello NPW  ', 'binum1' => 0, 'qtt' => 2, 'qtt2' => 1, 'series' => 'SN-9',

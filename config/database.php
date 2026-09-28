@@ -133,6 +133,25 @@ return [
             ],
         ],
 
+        // A MESMA base do PHC, para as leituras AO VIVO dos ecrãs (linhas e totais dos
+        // dossiês). Timeout curto: um PHC lento não pode prender os processos que atendem os
+        // pedidos (o pool do php-fpm do Nexus tem 12) — ao fim de poucos segundos desiste e o
+        // ecrã mostra o que está guardado. As sincronizações continuam na 'erp', com os 30 s.
+        // (O timeout do DB-Library é por processo; os ecrãs só usam esta ligação e os workers
+        // das sincronizações só usam a 'erp', por isso não se pisam.)
+        'erp_interativo' => [
+            'driver' => 'dblib',
+            'host' => env('ERP_DB_HOST'),
+            'port' => env('ERP_DB_PORT', 1433),
+            'database' => env('ERP_DB_DATABASE'),
+            'username' => env('ERP_DB_USERNAME'),
+            'password' => env('ERP_DB_PASSWORD'),
+            'charset' => 'utf8',
+            'options' => [
+                PDO::ATTR_TIMEOUT => (int) env('ERP_DB_TIMEOUT_INTERATIVO', 3),
+            ],
+        ],
+
     ],
 
     /*

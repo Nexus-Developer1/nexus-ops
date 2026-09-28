@@ -26,7 +26,7 @@ use App\Models\User;
 use App\Services\Agenda\SincronizadorAgenda;
 use App\Services\Auditor;
 use App\Services\Encomendas\LigadorEncomendasManuais;
-use App\Services\Erp\ErpSyncDriver;
+use App\Services\Erp\LeituraErpAoVivo;
 use App\Services\GeradorRelatorio;
 use App\Services\Relatorios\LeitorTesteDescarga;
 use Illuminate\Database\Eloquent\Builder;
@@ -715,16 +715,10 @@ class Novo extends Component
     private function encomendasDetalhe(Collection $escolhidas): Collection
     {
         return $escolhidas->map(function (Dossier $d) {
-            $erro = false;
-            try {
-                $linhas = Cache::remember('linhas-dossier:'.$d->id_erp, 600, fn () => array_values(
-                    iterator_to_array(app(ErpSyncDriver::class)->obterLinhasDossier($d->id_erp), false),
-                ));
-            } catch (\Throwable $e) {
-                $linhas = [];
-                $erro = true;
-                Log::warning('Falha a ler as linhas da encomenda ligada ao relatório.', ['bostamp' => $d->id_erp, 'erro' => $e->getMessage()]);
-            }
+            // Timeout curto e pausa se o PHC falhar (LeituraErpAoVivo); guardadas 10 min.
+            $linhas = app(LeituraErpAoVivo::class)->linhas($d->id_erp, 600);
+            $erro = $linhas === null;
+            $linhas ??= [];
 
             return ['dossier' => $d, 'linhas' => $linhas, 'erro' => $erro];
         });

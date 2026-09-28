@@ -21,10 +21,15 @@ abstract class TestCase extends BaseTestCase
         // O container injeta o .env como variáveis reais do SO (env_file no
         // docker-compose), que vencem o phpunit.xml mesmo com force="true".
         // Sem isto, o RefreshDatabase corre na BD de DEV (`nexus`) e apaga-a.
+        // Cache e sessão também em memória (vazias em cada teste): pelo mesmo motivo, os testes
+        // escreviam no Redis de DEV, e o que um guardava (ex.: linhas do PHC) aparecia no
+        // seguinte — e em corridas seguintes (set. 2026).
         config([
             'database.connections.pgsql.database' => 'nexus_testing',
             'mail.default' => 'array',
             'queue.default' => 'sync',
+            'cache.default' => 'array',
+            'session.driver' => 'array',
         ]);
 
         // Tripwire: aborta se, por alguma razão, a BD de teste não for a esperada.

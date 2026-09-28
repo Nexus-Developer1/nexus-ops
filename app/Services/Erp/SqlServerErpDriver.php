@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\DB;
 // acesso ao ERP. Requer a extensão pdo_sqlsrv no container.
 class SqlServerErpDriver implements ErpSyncDriver
 {
+    // Leituras AO VIVO dos ecrãs (linhas e totais dos dossiês): ligação com timeout curto — ver
+    // config/database.php. As sincronizações usam a 'erp'.
+    private const AO_VIVO = 'erp_interativo';
+
     public function obterClientes(?int $limite = null): iterable
     {
         // Lê os clientes da tabela cl do PHC pela ligação 'erp' (dblib/FreeTDS), a MESMA que a
@@ -177,7 +181,7 @@ class SqlServerErpDriver implements ErpSyncDriver
         // '   ' depois do trim é vazio — tratado como ausente, não como texto).
         $limpar = fn ($v) => $v !== null && trim((string) $v) !== '' ? trim((string) $v) : null;
 
-        foreach (DB::connection('erp')->select($sql, [$bostamp]) as $r) {
+        foreach (DB::connection(self::AO_VIVO)->select($sql, [$bostamp]) as $r) {
             $ref = $limpar($r->ref);
             $descricao = $limpar($r->design);
             $qtt = $r->qtt !== null ? (float) $r->qtt : null;
@@ -211,7 +215,7 @@ class SqlServerErpDriver implements ErpSyncDriver
     public function obterTotalDossier(string $bostamp): ?float
     {
         // Só leitura, um só dossiê, bostamp por binding (nunca interpolado).
-        $r = DB::connection('erp')->selectOne('SELECT etotaldeb FROM bo WHERE bostamp = ?', [$bostamp]);
+        $r = DB::connection(self::AO_VIVO)->selectOne('SELECT etotaldeb FROM bo WHERE bostamp = ?', [$bostamp]);
 
         return $r !== null && $r->etotaldeb !== null ? (float) $r->etotaldeb : null;
     }
@@ -227,7 +231,7 @@ class SqlServerErpDriver implements ErpSyncDriver
         // no máximo algumas dezenas — muito longe do limite de parâmetros do SQL Server.
         $marcadores = implode(', ', array_fill(0, count($bostamps), '?'));
         $totais = [];
-        foreach (DB::connection('erp')->select("SELECT bostamp, etotaldeb FROM bo WHERE bostamp IN ({$marcadores})", $bostamps) as $r) {
+        foreach (DB::connection(self::AO_VIVO)->select("SELECT bostamp, etotaldeb FROM bo WHERE bostamp IN ({$marcadores})", $bostamps) as $r) {
             if ($r->etotaldeb !== null) {
                 $totais[rtrim((string) $r->bostamp)] = (float) $r->etotaldeb; // char do PHC vem com espaços
             }
