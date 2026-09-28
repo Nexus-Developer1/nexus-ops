@@ -14,8 +14,9 @@ use Illuminate\Support\Carbon;
  * O Carnaval NÃO é feriado obrigatório: é tolerância de ponto, decidida pelo Governo ano a
  * ano. Entra como «tolerância», aparece na agenda com outro aspeto e nunca impede marcações.
  *
- * Os feriados municipais (Santo António em Lisboa, S. João no Porto…) ficam de fora: mudam
- * de concelho para concelho e a equipa trabalha em todo o país.
+ * Os feriados municipais ficam de fora (mudam de concelho para concelho e a equipa trabalha em
+ * todo o país) — com UMA exceção, a pedido da equipa (set. 2026): o São João (24 de junho),
+ * feriado da zona onde a empresa está. Conta como feriado a sério: bloqueia marcações.
  */
 class FeriadosPortugal
 {
@@ -25,6 +26,7 @@ class FeriadosPortugal
         '04-25' => 'Dia da Liberdade',
         '05-01' => 'Dia do Trabalhador',
         '06-10' => 'Dia de Portugal',
+        '06-24' => 'São João',   // municipal (Porto e arredores) — pedido da equipa, set. 2026
         '08-15' => 'Assunção de Nossa Senhora',
         '10-05' => 'Implantação da República',
         '11-01' => 'Todos os Santos',

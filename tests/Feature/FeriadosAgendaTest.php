@@ -55,11 +55,13 @@ class FeriadosAgendaTest extends TestCase
         $this->assertSame('Corpo de Deus', $this->feriados()->nome('2026-06-04'));
     }
 
-    public function test_os_treze_feriados_obrigatorios_de_cada_ano(): void
+    // Os treze nacionais + o São João (municipal, pedido da equipa em set. 2026) = catorze.
+    public function test_os_feriados_de_cada_ano(): void
     {
         foreach ([2026, 2027, 2028] as $ano) {
             $obrigatorios = array_filter($this->feriados()->doAno($ano), fn ($f) => ! $f['tolerancia']);
-            $this->assertCount(13, $obrigatorios, "Ano $ano");
+            $this->assertCount(14, $obrigatorios, "Ano $ano");
+            $this->assertSame('São João', $this->feriados()->nome("$ano-06-24"));
         }
 
         $this->assertSame('Natal', $this->feriados()->nome('2026-12-25'));
