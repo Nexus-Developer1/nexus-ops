@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
+use App\Livewire\Agenda\Calendario;
 use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
@@ -11,6 +12,8 @@ use App\Models\Local;
 use App\Models\User;
 use App\Services\Agenda\SincronizadorAgenda;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 // Fase 2 do refactor da agenda: guardas explícitas do SincronizadorAgenda (ponto único
@@ -18,6 +21,14 @@ use Tests\TestCase;
 class AgendaRefactorTest extends TestCase
 {
     use RefreshDatabase;
+
+    // Data fixa (segunda-feira, 14/09/2026): os testes marcam serviços uns dias antes/depois de
+    // hoje, e a agenda recusa feriados — com a data real, alguns dias calhariam num.
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Carbon::setTestNow('2026-09-14 09:00:00');
+    }
 
     /** @return array{0: Cliente, 1: Equipamento} */
     private function contexto(): array
@@ -122,6 +133,76 @@ class AgendaRefactorTest extends TestCase
 
         $this->assertNull(app(SincronizadorAgenda::class)->eventoGravado($evento));
         $this->assertSame(0, Intervencao::count());
+    }
+
+    // ---- Pedido da equipa (set. 2026): o que conta é quando o equipamento é associado ----
+    // «Marquei o serviço sem equipamento porque não tinha os dados; quando o associo, mesmo com a
+    // data já passada, tem de dar para abrir a intervenção e fazer o relatório.»
+
+    public function test_equipamento_associado_depois_da_data_passar_cria_o_relatorio(): void
+    {
+        [$cliente, $equip] = $this->contexto();
+        $tecnico = $this->tecnicoDeTeste();
+        $evento = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Serviço', 'estado' => 'planeado',
+            'inicio' => now()->subDays(3)->setTime(14, 0), 'fim' => now()->subDays(3)->setTime(18, 0),
+            'tecnico_id' => $tecnico->id, 'tecnico_nome' => $tecnico->nome, 'cliente_id' => $cliente->id]);
+
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->call('selecionar', $evento->id)
+            ->call('abrirEdicao')
+            ->set('formEquipamentoId', $equip->id)
+            ->call('criarEvento')
+            ->assertHasNoErrors();
+
+        $evento->refresh();
+        $this->assertNotNull($evento->intervencao_id, 'ganhou intervenção → aparece «Abrir intervenção»');
+        $this->assertSame('rascunho', $evento->intervencao->relatorio->estado->value);
+    }
+
+    // Serviço antigo que JÁ tinha equipamento: mexer-lhe (corrigir o título) não cria nada.
+    public function test_servico_antigo_que_ja_tinha_equipamento_nao_ganha_relatorio_ao_editar(): void
+    {
+        [$cliente, $equip] = $this->contexto();
+        $tecnico = $this->tecnicoDeTeste();
+        $evento = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Serviço', 'estado' => 'planeado',
+            'inicio' => now()->subDays(5)->setTime(9, 0), 'fim' => now()->subDays(5)->setTime(11, 0),
+            'tecnico_id' => $tecnico->id, 'tecnico_nome' => $tecnico->nome,
+            'equipamento_id' => $equip->id, 'cliente_id' => $cliente->id]);
+
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->call('selecionar', $evento->id)
+            ->call('abrirEdicao')
+            ->set('formTitulo', 'Serviço corrigido')
+            ->call('criarEvento')
+            ->assertHasNoErrors();
+
+        $this->assertNull($evento->fresh()->intervencao_id);
+        $this->assertSame(0, Intervencao::count());
+    }
+
+    // Serviço NOVO com data já passada e com equipamento (registar trabalho feito): também cria.
+    public function test_servico_novo_com_data_passada_e_equipamento_cria_o_relatorio(): void
+    {
+        [, $equip] = $this->contexto();
+        $dia = now()->subDays(4);
+
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->set('formTitulo', 'Serviço')
+            ->set('formEquipamentoId', $equip->id)
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])
+            ->set('formInicio', $dia->format('Y-m-d').'T09:00')
+            ->set('formFim', $dia->format('Y-m-d').'T12:00')
+            ->call('criarEvento')
+            ->assertHasNoErrors();
+
+        $evento = EventoAgenda::firstOrFail();
+        $this->assertNotNull($evento->intervencao_id);
+    }
+
+    private function admin(): User
+    {
+        return User::firstOrCreate(['email' => 'admin-refactor@nexus.pt'],
+            ['nome' => 'Admin', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
     }
 
     public function test_backfill_liga_eventos_legados_a_conta_do_tecnico(): void

@@ -826,7 +826,13 @@ class Calendario extends Component
         ];
 
         // Instantâneo ANTES da edição — o email de "alterado" diz o que mudou e avisa quem saiu.
-        $antes = $this->editandoId ? NotificadorAgenda::instantaneo(EventoAgenda::findOrFail($this->editandoId)) : null;
+        $eventoAntes = $this->editandoId ? EventoAgenda::findOrFail($this->editandoId) : null;
+        $antes = $eventoAntes ? NotificadorAgenda::instantaneo($eventoAntes) : null;
+
+        // Esta gravação é a que associa o equipamento/contrato? (serviço novo que já o traz, ou
+        // editado que não tinha nenhum) → o relatório nasce mesmo com a data já passada.
+        $ambitoAcabadoDeAssociar = ($equipamentoId || $this->formContratoId)
+            && (! $eventoAntes || (! $eventoAntes->equipamento_id && ! $eventoAntes->contrato_id));
 
         // Equipamentos adicionais: só do MESMO cliente do principal (um evento tem um cliente).
         // Sem principal não há adicionais (o 1.º escolhido é sempre o principal).
@@ -877,9 +883,9 @@ class Calendario extends Component
         // "alterado" a quem ficou, "criado" a quem entrou, "removido" a quem saiu.
         $antes ? $notificador->alterado($evento, $antes) : $notificador->criado($evento);
 
-        // Camada 2 (agenda → relatórios) via ponto único: evento com equipamento OU contrato
-        // e início futuro → rascunho de relatório ligado. As guardas anti-loop vivem no serviço.
-        if ($sincronizador->eventoGravado($evento)) {
+        // Camada 2 (agenda → relatórios) via ponto único: evento com equipamento OU contrato →
+        // rascunho de relatório ligado. As guardas (anti-loop, janela de 48 h) vivem no serviço.
+        if ($sincronizador->eventoGravado($evento, $ambitoAcabadoDeAssociar)) {
             session()->flash('sucesso', 'Rascunho de relatório criado para esta intervenção.');
         }
 

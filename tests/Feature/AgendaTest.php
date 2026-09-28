@@ -350,15 +350,17 @@ class AgendaTest extends TestCase
         $this->assertDatabaseCount('relatorios', 0);
     }
 
-    public function test_evento_com_equipamento_mas_data_passada_nao_gera_rascunho(): void
+    // Mudou em set. 2026 (pedido da equipa): um serviço NOVO com data já passada e COM equipamento
+    // — registar trabalho feito — passa a criar o rascunho, porque é nessa gravação que o
+    // equipamento é associado. (Antes não criava: tratava-se como histórico.)
+    public function test_evento_novo_com_equipamento_e_data_passada_gera_rascunho(): void
     {
         Notification::fake();
         $cliente = Cliente::create(['nome' => 'ACME', 'email' => 'acme@x.pt', 'ativo' => true]);
         $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'DC1']);
         $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'fabricante' => 'APC', 'modelo' => 'X40', 'numero_serie' => 'SN-003']);
 
-        // Dia no passado: inicio < now() → o evento cria-se, mas NÃO gera rascunho (apesar de ter
-        // equipamento). (Já não há horário de cobertura nem dias úteis a evitar.)
+        // Dia no passado (uma semana antes): o evento cria-se e ganha o rascunho.
         $passado = now()->subWeekdays(5);
         Livewire::actingAs($this->admin())->test(Calendario::class)
             ->set('formTitulo', 'Inspeção')
@@ -371,8 +373,9 @@ class AgendaTest extends TestCase
         // O evento foi mesmo criado (para garantir que testamos o gancho, não a validação).
         $this->assertDatabaseHas('eventos_agenda', ['titulo' => 'Inspeção', 'equipamento_id' => $equip->id]);
 
-        $this->assertDatabaseCount('intervencoes', 0);
-        $this->assertDatabaseCount('relatorios', 0);
+        $this->assertDatabaseCount('intervencoes', 1);
+        $this->assertDatabaseCount('relatorios', 1);
+        $this->assertNotNull(EventoAgenda::where('titulo', 'Inspeção')->value('intervencao_id'));
     }
 
     public function test_reagendar_sem_conflito_persiste(): void

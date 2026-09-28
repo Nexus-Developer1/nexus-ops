@@ -20,10 +20,15 @@ class SincronizadorAgenda
         private GeradorEventoDeRelatorio $geradorEvento,
     ) {}
 
-    // Agenda → Relatórios (camada 2): evento gravado com equipamento OU contrato e início
-    // futuro → garante intervenção planeada + relatório rascunho ligados ao evento.
-    // Devolve o rascunho criado, ou null quando não há condições / já está convertido.
-    public function eventoGravado(EventoAgenda $evento): ?Relatorio
+    // Agenda → Relatórios (camada 2): evento gravado com equipamento OU contrato → garante
+    // intervenção planeada + relatório rascunho ligados ao evento. Devolve o rascunho criado,
+    // ou null quando não há condições / já está convertido.
+    //
+    // $ambitoAcabadoDeAssociar: esta gravação é a que juntou o equipamento/contrato (serviço
+    // novo, ou editado que não tinha nenhum). Aí cria SEMPRE, mesmo com a data já passada —
+    // pedido da equipa (set. 2026): «marquei sem equipamento porque não tinha os dados; quando
+    // o associo, mesmo depois, tem de dar para abrir a intervenção e fazer o relatório».
+    public function eventoGravado(EventoAgenda $evento, bool $ambitoAcabadoDeAssociar = false): ?Relatorio
     {
         // Anti-loop: evento já convertido (inclui os criados pela camada 3, que nascem
         // ligados à intervenção) nunca gera um segundo rascunho.
@@ -36,12 +41,11 @@ class SincronizadorAgenda
             return null;
         }
 
-        // Enquanto a visita não estiver TERMINADA há mais de 48 horas. Antes exigia-se que o
-        // INÍCIO estivesse no futuro, e isso deixava de fora o caso real (set. 2026): um
-        // evento criado sem equipamento, e o equipamento — registado à mão a meio da visita —
-        // associado ao evento já a decorrer. Nessa altura o relatório é precisamente o que
-        // falta criar. Eventos antigos continuam a ser registo histórico e não geram nada.
-        if ($evento->fim->lessThan(now()->subDays(2))) {
+        // Enquanto a visita não estiver TERMINADA há mais de 48 horas — exceto se esta gravação
+        // for a que associou o equipamento/contrato (ver acima). A janela existe para que mexer
+        // num serviço ANTIGO que já tinha equipamento (corrigir uma nota) não crie de repente
+        // um relatório que ninguém pediu: esses continuam registo histórico.
+        if (! $ambitoAcabadoDeAssociar && $evento->fim->lessThan(now()->subDays(2))) {
             return null;
         }
 
