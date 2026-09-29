@@ -2,7 +2,7 @@
     <x-topbar :breadcrumb="['Equipamentos', 'Editar equipamento']" />
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
-        <form wire:submit="guardar" class="mx-auto max-w-3xl">
+        <form wire:submit="guardar" class="mx-auto max-w-screen-2xl">
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Editar equipamento</h1>
                 <div class="flex items-center gap-3">

@@ -2,7 +2,7 @@
     <x-topbar :breadcrumb="['Equipamentos', 'Novo equipamento']" />
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
-        <form wire:submit="guardar" class="mx-auto max-w-3xl">
+        <form wire:submit="guardar" class="mx-auto max-w-screen-2xl">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Novo equipamento</h1>
