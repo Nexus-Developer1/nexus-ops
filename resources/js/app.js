@@ -21,6 +21,29 @@ window.reordenar = (ordem, mover, alvo) => {
     return nova;
 };
 
+// Waze a partir da morada da visita (agenda). O link web (waze.com/ul) no telemóvel abria o SITE
+// em vez da app — no Android dentro do browser/PWA não passa para a app. No telemóvel vai-se
+// direto à app: Android por «intent» (com o site como recurso se a app não estiver instalada),
+// iPhone pelo esquema waze://. No computador fica o link web normal (abre noutro separador).
+window.urlWaze = (morada, ua = navigator.userAgent) => {
+    const q = encodeURIComponent(morada);
+    const web = `https://waze.com/ul?q=${q}&navigate=yes`;
+    if (/Android/i.test(ua)) {
+        return `intent://?q=${q}&navigate=yes#Intent;scheme=waze;package=com.waze;S.browser_fallback_url=${encodeURIComponent(web)};end`;
+    }
+    if (/iPhone|iPad|iPod/i.test(ua)) {
+        return `waze://?q=${q}&navigate=yes`;
+    }
+    return null; // computador: segue o href (site do Waze)
+};
+window.abrirWaze = (evento, morada) => {
+    const url = window.urlWaze(morada);
+    if (url) {
+        evento.preventDefault();
+        window.location.href = url;
+    }
+};
+
 // Geolocalização pedida UMA vez por página (prova de presença nas fotos — Vaga 2). O prompt
 // do browser é o consentimento; negado/indisponível/timeout → null e as fotos seguem sem geo.
 let geoPromessa = null;
