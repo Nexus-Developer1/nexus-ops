@@ -4,7 +4,7 @@
 @php($gravados = isset($linha['despesa_id']) && $linha['despesa_id'] ? ($recibosPorDespesa[$linha['despesa_id']] ?? collect()) : collect())
 
 <div class="flex items-center gap-1.5">
-    <button type="button" @click="$wire.set('linhaDigitalizacao', {{ $n }}, false); abrir()" class="rounded-md border border-borda p-2 text-texto-medio hover:text-verde-700" title="Digitalizar recibo (câmara + filtro de documento)">
+    <button type="button" @click="destino = 'recibo'; $wire.set('linhaDigitalizacao', {{ $n }}, false); abrir()" class="rounded-md border border-borda p-2 text-texto-medio hover:text-verde-700" title="Digitalizar recibo (câmara + filtro de documento)">
         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0a4 4 0 11-8 0 4 4 0 018 0zM4 16H2m2-5.5L2.5 9M20 10.5L21.5 9M7 4h10l1 3H6l1-3z"/></svg>
     </button>
     <label class="cursor-pointer rounded-md border border-borda p-2 text-texto-medio hover:text-verde-700" title="Tirar foto">

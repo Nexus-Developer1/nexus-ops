@@ -223,6 +223,7 @@
                 @endforeach
                 @error('recibosLinhaUpload.*') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                 @error('reciboDigitalizado') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                @error('talaoDigitalizado') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
 
                 @if ($mostrarLevantamentos)
                     @include('livewire.despesas._levantamentos')
@@ -233,7 +234,7 @@
                 <div x-show="aberto" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
                     <div class="w-full max-w-lg rounded-xl bg-white p-4 shadow-xl">
                         <div class="flex items-center justify-between">
-                            <h3 class="text-base font-semibold text-texto-forte">Digitalizar recibo</h3>
+                            <h3 class="text-base font-semibold text-texto-forte" x-text="destino === 'talao' ? 'Digitalizar talão do multibanco' : 'Digitalizar recibo'">Digitalizar recibo</h3>
                             <button type="button" @click="fechar()" class="text-texto-fraco hover:text-texto-forte">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>

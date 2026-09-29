@@ -154,6 +154,26 @@ class DespesaLevantamentoTest extends TestCase
             ->assertHasErrors('linhas.0.pago_por');
     }
 
+    // «Digitalizar» (scanner) também serve para o talão: vai para o levantamento que abriu o scanner
+    // e conta como o talão obrigatório.
+    public function test_talao_digitalizado_vai_para_o_levantamento_certo(): void
+    {
+        $this->editorComLevantamento($this->tecnico())
+            ->call('adicionarLevantamento')
+            ->set('levantamentos.1.dia', '2026-09-23')
+            ->set('levantamentos.1.valor', '20')
+            ->set('talaoLevantamentoUpload.0', [$this->talao()])
+            ->set('levantamentoDigitalizacao', 1)
+            ->set('talaoDigitalizado', $this->talao())
+            ->assertCount('taloesPendentes.1', 1)
+            ->assertSet('talaoDigitalizado', null)
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $this->assertSame(2, Anexo::where('anexavel_type', LevantamentoDespesa::class)->count());
+        $this->assertSame(1, LevantamentoDespesa::where('valor', 20)->firstOrFail()->anexos()->count());
+    }
+
     public function test_o_talao_do_multibanco_e_obrigatorio(): void
     {
         $this->editorComLevantamento($this->tecnico())

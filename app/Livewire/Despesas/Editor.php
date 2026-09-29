@@ -65,6 +65,11 @@ class Editor extends Component
     /** @var array<int, mixed> */
     public array $talaoLevantamentoUpload = [];
 
+    // "Digitalizar" (scanner JS) do talão: a imagem chega já com o filtro; junta ao levantamento ativo.
+    public $talaoDigitalizado = null;
+
+    public int $levantamentoDigitalizacao = 0; // levantamento a que o scanner está a anexar
+
     // Recibos PENDENTES por linha (gravam-se com a despesa dessa linha ao guardar).
     /** @var array<int, array<int, TemporaryUploadedFile>> */
     public array $recibosPendentes = [];
@@ -268,6 +273,19 @@ class Editor extends Component
             $this->taloesPendentes[$indice][] = $f;
         }
         unset($this->talaoLevantamentoUpload[$indice]);
+    }
+
+    public function updatedTalaoDigitalizado(): void
+    {
+        $this->validate(['talaoDigitalizado' => self::REGRAS_RECIBO]);
+        if ($this->levantamentos === []) {
+            $this->talaoDigitalizado = null;
+
+            return;
+        }
+        $indice = max(0, min($this->levantamentoDigitalizacao, count($this->levantamentos) - 1));
+        $this->taloesPendentes[$indice][] = $this->talaoDigitalizado;
+        $this->talaoDigitalizado = null;
     }
 
     public function removerTalaoPendente(int $indice, int $ficheiro): void

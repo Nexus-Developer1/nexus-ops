@@ -317,6 +317,15 @@ document.addEventListener('alpine:init', () => {
         aCapturar: false,
         filtro: true,   // filtro de documento ligado por omissão
         erro: '',
+        // Para onde vai a digitalização: o recibo de uma linha, ou o talão do multibanco de um
+        // levantamento (este não tem QR de fatura nem se lê o texto — é só o comprovativo).
+        destino: 'recibo',
+
+        abrirTalao(indice) {
+            this.destino = 'talao';
+            this.$wire.set('levantamentoDigitalizacao', indice, false);
+            this.abrir();
+        },
 
         async abrir() {
             this.erro = '';
@@ -1129,6 +1138,18 @@ document.addEventListener('alpine:init', () => {
             // larga as telas.
             const linha = this.$wire.linhaDigitalizacao;
             const telas = [this.plana, this.bruta].filter(Boolean);
+
+            if (this.destino === 'talao') {
+                this.$refs.tela.toBlob((blob) => {
+                    const ficheiro = new File([blob], 'talao-multibanco.jpg', { type: 'image/jpeg' });
+                    this.$wire.upload('talaoDigitalizado', ficheiro, () => {}, () => {
+                        this.erro = 'Falha ao enviar a digitalização.';
+                    });
+                    this.fechar();
+                }, 'image/jpeg', 0.92);
+
+                return;
+            }
 
             this.$refs.tela.toBlob((blob) => {
                 const ficheiro = new File([blob], 'recibo-digitalizado.jpg', { type: 'image/jpeg' });
