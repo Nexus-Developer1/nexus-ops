@@ -91,6 +91,38 @@ class DespesaTest extends TestCase
             ->assertViewHas('registos', fn ($p) => $p->total() === 1);
     }
 
+    // Registo novo: departamento "IFE" e a matrícula da ÚLTIMA despesa de quem lança (não a de
+    // outra pessoa); editar um registo mostra o que ele tem.
+    public function test_registo_novo_traz_o_departamento_e_a_matricula_da_ultima_despesa(): void
+    {
+        $tecnico = $this->tecnico();
+        $outro = $this->admin();
+        RegistoDespesa::create(['criado_por' => $tecnico->id, 'matricula' => 'AA-00-AA']);
+        $ultimo = RegistoDespesa::create(['criado_por' => $tecnico->id, 'matricula' => 'BD-71-VI', 'departamento' => 'Outro']);
+        RegistoDespesa::create(['criado_por' => $tecnico->id, 'matricula' => null]); // sem matrícula não conta
+        RegistoDespesa::create(['criado_por' => $outro->id, 'matricula' => 'ZZ-99-ZZ']);
+
+        Livewire::actingAs($tecnico)->test(Editor::class)
+            ->assertSet('departamento', 'IFE')
+            ->assertSet('matricula', 'BD-71-VI')
+            ->assertSee('A da tua última despesa')
+            ->set('matricula', '11-XX-22') // foi noutra viatura — pode mudar
+            ->assertSet('matricula', '11-XX-22');
+
+        // Quem nunca lançou: matrícula vazia, sem a nota.
+        Livewire::actingAs(User::create(['nome' => 'Novo', 'email' => 'n@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]))
+            ->test(Editor::class)
+            ->assertSet('departamento', 'IFE')
+            ->assertSet('matricula', '')
+            ->assertDontSee('A da tua última despesa');
+
+        // Editar um registo existente: fica com o que ele tem.
+        Livewire::actingAs($tecnico)->test(Editor::class, ['registo' => $ultimo])
+            ->assertSet('departamento', 'Outro')
+            ->assertSet('matricula', 'BD-71-VI')
+            ->assertDontSee('A da tua última despesa');
+    }
+
     // Dia: calendário SEM pré-seleção — nasce vazio e é obrigatório.
     public function test_dia_nasce_vazio_e_e_obrigatorio(): void
     {

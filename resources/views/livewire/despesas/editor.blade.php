@@ -25,6 +25,9 @@
                     <div>
                         <label class="campo-label">Matrícula</label>
                         <input wire:model="matricula" type="text" class="campo-input" placeholder="Ex: BD-71-VI">
+                        @if ($matriculaSugerida)
+                            <p class="mt-1 text-xs text-texto-fraco">A da tua última despesa — muda-a se foste noutra viatura.</p>
+                        @endif
                     </div>
                     <div>
                         <label class="campo-label">Departamento</label>

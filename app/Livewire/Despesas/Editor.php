@@ -41,6 +41,10 @@ class Editor extends Component
 
     public string $departamento = '';
 
+    // A matrícula veio da última despesa (registo novo) — só para mostrar a nota por baixo.
+    #[\Livewire\Attributes\Locked]
+    public bool $matriculaSugerida = false;
+
     // Linhas: cada uma = uma despesa. 'dia' é escolhido no calendário (nasce VAZIO — nenhum
     // dia pré-selecionado); 'despesa_id' liga à despesa existente (edição — preserva os recibos).
     /** @var array<int, array{despesa_id: ?int, dia: string, descricao: string, detalhe: string, categoria: string, refeicao_tipo: string, pago_por: string, valor: string}> */
@@ -121,6 +125,14 @@ class Editor extends Component
         }
 
         $this->linhas = [$this->linhaVazia()];
+
+        // Registo novo: o departamento nasce "IFE" e a matrícula com a da última despesa desta
+        // pessoa (quase sempre a mesma viatura) — ambos editáveis, para quando vai noutra.
+        $this->departamento = 'IFE';
+        $this->matricula = (string) RegistoDespesa::where('criado_por', auth()->id())
+            ->whereNotNull('matricula')->where('matricula', '!=', '')
+            ->latest('id')->value('matricula');
+        $this->matriculaSugerida = $this->matricula !== '';
     }
 
     public function adicionarLinha(): void
