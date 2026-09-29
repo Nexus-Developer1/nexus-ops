@@ -205,7 +205,9 @@
                 @error('recibosLinhaUpload.*') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                 @error('reciboDigitalizado') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
 
-                @include('livewire.despesas._levantamentos')
+                @if ($mostrarLevantamentos)
+                    @include('livewire.despesas._levantamentos')
+                @endif
 
                 {{-- Modal do scanner: câmara em direto → capturar → filtro de documento → usar/repetir.
                      O recibo digitalizado cai na LINHA do botão que o abriu (linhaDigitalizacao). --}}

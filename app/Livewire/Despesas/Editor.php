@@ -205,6 +205,27 @@ class Editor extends Component
         $this->taloesPendentes = $this->semLinha($this->taloesPendentes, $indice);
     }
 
+    // Ao escolher «Dinheiro levantado» numa linha, a secção dos levantamentos aparece (ver
+    // mostrarLevantamentos()) já com um levantamento por preencher.
+    public function updatedLinhas($valor, $chave): void
+    {
+        if (str_ends_with((string) $chave, '.pago_por') && $valor === Despesa::DINHEIRO_LEVANTADO && $this->levantamentos === []) {
+            $this->adicionarLevantamento();
+        }
+    }
+
+    // A secção «Levantamentos do cartão» só aparece com uma linha paga com «Dinheiro levantado»
+    // (pedido da equipa, set. 2026) — ou se algum levantamento já tem dados, para nunca esconder
+    // o que está gravado ou escrito.
+    private function mostrarLevantamentos(): bool
+    {
+        return collect($this->linhas)->contains(fn ($l) => ($l['pago_por'] ?? '') === Despesa::DINHEIRO_LEVANTADO)
+            || collect($this->levantamentos)->keys()->contains(fn ($i) => ! empty($this->levantamentos[$i]['levantamento_id'])
+                || trim((string) ($this->levantamentos[$i]['dia'] ?? '')) !== ''
+                || trim((string) ($this->levantamentos[$i]['valor'] ?? '')) !== ''
+                || ($this->taloesPendentes[$i] ?? []) !== []);
+    }
+
     // Câmara / galeria do talão de um levantamento: valida e junta aos pendentes dele.
     public function updatedTalaoLevantamentoUpload($valor, $chave): void
     {
@@ -706,6 +727,7 @@ class Editor extends Component
             'total' => $total,
             'recibosPorDespesa' => $recibosPorDespesa,
             'contasDinheiro' => $contasDinheiro,
+            'mostrarLevantamentos' => $this->mostrarLevantamentos(),
             'taloesPorLevantamento' => $taloesPorLevantamento,
         ]);
     }

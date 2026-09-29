@@ -54,8 +54,7 @@ class DespesaLevantamentoTest extends TestCase
             ->set('linhas.0.pago_por', Despesa::DINHEIRO_LEVANTADO)
             ->set('linhas.0.valor', '12.50')
             ->set('recibosLinhaUpload.0', [UploadedFile::fake()->image('r.jpg', 800, 600)])
-            ->call('adicionarLevantamento')
-            ->set('levantamentos.0.dia', '2026-09-22')
+            ->set('levantamentos.0.dia', '2026-09-22') // o levantamento nasceu com o «Dinheiro levantado»
             ->set('levantamentos.0.valor', '100');
     }
 
@@ -85,6 +84,26 @@ class DespesaLevantamentoTest extends TestCase
             ->assertSee('Levantamentos do cartão')
             ->assertSee('Sobra (a devolver)')
             ->assertSee('87,50 €');
+    }
+
+    // A secção só aparece com uma linha paga com «Dinheiro levantado», e já com um levantamento
+    // por preencher; volta a esconder-se se se mudar de ideias antes de escrever nada nele.
+    public function test_a_seccao_so_aparece_com_dinheiro_levantado(): void
+    {
+        Livewire::actingAs($this->tecnico())->test(Editor::class)
+            ->assertDontSee('Levantamentos do cartão')
+            ->set('linhas.0.pago_por', 'cartao_tecnico')
+            ->assertDontSee('Levantamentos do cartão')
+            ->set('linhas.0.pago_por', Despesa::DINHEIRO_LEVANTADO)
+            ->assertSee('Levantamentos do cartão')
+            ->assertCount('levantamentos', 1)
+            ->set('linhas.0.pago_por', 'tecnico')
+            ->assertDontSee('Levantamentos do cartão')
+            ->set('linhas.0.pago_por', Despesa::DINHEIRO_LEVANTADO)
+            ->assertCount('levantamentos', 1)             // não duplica
+            ->set('levantamentos.0.valor', '50')
+            ->set('linhas.0.pago_por', 'tecnico')
+            ->assertSee('Levantamentos do cartão');        // com dados, não se esconde
     }
 
     public function test_o_talao_do_multibanco_e_obrigatorio(): void
