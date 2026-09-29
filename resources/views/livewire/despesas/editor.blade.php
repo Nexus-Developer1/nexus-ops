@@ -9,7 +9,10 @@
     </x-topbar>
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
-        <div class="mx-auto max-w-6xl">
+        {{-- Mais largo do que o normal (max-w-6xl), como as listagens: a tabela das linhas (dia,
+             descrição, tipo, o que é, valor, pago por, recibos) não cabia em 1152px e obrigava
+             a arrastar para o lado (pedido da equipa, set. 2026). --}}
+        <div class="mx-auto max-w-screen-2xl">
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ $registoId ? 'Editar registo de despesas' : 'Registo de despesas' }}</h1>
 
             <form wire:submit="guardar" class="cartao mt-6 p-4 sm:mt-8 sm:p-8" x-data="scannerRecibo">
@@ -101,8 +104,11 @@
                 </div>
 
                 {{-- ===== DESKTOP (lg+): tabela no formato da folha ===== --}}
+                {{-- Sem largura mínima para a tabela toda: cada campo tem a sua (o Tipo e o Pago
+                     por cabem inteiros; descrição e «o que é» apertam até 11rem). Assim a tabela
+                     usa o espaço que houver e só precisa de arrastar em ecrãs pequenos. --}}
                 <div class="mt-5 hidden overflow-x-auto rounded-lg border border-borda lg:block">
-                    <table class="w-full min-w-[1260px] text-sm">
+                    <table class="w-full text-sm">
                         <thead>
                             <tr class="bg-fundo text-xs uppercase tracking-wide text-texto-medio">
                                 <th class="w-36 border-b border-r border-borda px-3 py-2 text-left font-semibold">Dia <span class="text-perigo-500">*</span></th>
@@ -120,13 +126,13 @@
                                 <tr wire:key="linha-d-{{ $n }}" class="border-b border-borda/60 align-top">
                                     <td class="border-r border-borda px-1.5 py-2">
                                         {{-- Calendário SEM dia pré-selecionado (nasce vazio). --}}
-                                        <input wire:model="linhas.{{ $n }}.dia" type="date" class="campo-input w-full px-2 py-1.5 text-sm">
+                                        <input wire:model="linhas.{{ $n }}.dia" type="date" class="campo-input w-full min-w-[8.5rem] px-2 py-1.5 text-sm">
                                     </td>
                                     <td class="border-r border-borda px-1.5 py-2">
                                         <input wire:model="linhas.{{ $n }}.descricao" type="text" class="campo-input w-full min-w-[11rem] px-2 py-1.5 text-sm" placeholder="Ex: ACME - Porto">
                                     </td>
                                     <td class="border-r border-borda px-1.5 py-2">
-                                        <select wire:model.live="linhas.{{ $n }}.categoria" class="campo-select w-full py-1.5 pl-2 pr-8 text-sm">
+                                        <select wire:model.live="linhas.{{ $n }}.categoria" class="campo-select w-full min-w-[11.5rem] py-1.5 pl-2 pr-8 text-sm">
                                             <option value="">— Tipo —</option>
                                             @foreach (\App\Models\Despesa::CATEGORIAS as $c)
                                                 <option value="{{ $c }}">{{ $c }}</option>
@@ -144,10 +150,10 @@
                                         <input wire:model="linhas.{{ $n }}.detalhe" type="text" class="campo-input w-full min-w-[11rem] px-2 py-1.5 text-sm" placeholder="Ex: Portagem A1, almoço com cliente…">
                                     </td>
                                     <td class="border-r border-borda px-1.5 py-2">
-                                        <input wire:model.live.debounce.500ms="linhas.{{ $n }}.valor" type="number" step="0.01" min="0" inputmode="decimal" class="campo-input w-full px-2 py-1.5 text-right text-sm" placeholder="0,00">
+                                        <input wire:model.live.debounce.500ms="linhas.{{ $n }}.valor" type="number" step="0.01" min="0" inputmode="decimal" class="campo-input w-full min-w-[5.5rem] px-2 py-1.5 text-right text-sm" placeholder="0,00">
                                     </td>
                                     <td class="border-r border-borda px-1.5 py-2">
-                                        <select wire:model="linhas.{{ $n }}.pago_por" class="campo-select w-full py-1.5 pl-2 pr-8 text-sm font-semibold">
+                                        <select wire:model="linhas.{{ $n }}.pago_por" class="campo-select w-full min-w-[11rem] py-1.5 pl-2 pr-8 text-sm font-semibold">
                                             <option value="">Quem pagou?</option>
                                             @foreach (\App\Models\Despesa::PAGO_POR as $chave => $rotulo)
                                                 <option value="{{ $chave }}">{{ $rotulo }}</option>

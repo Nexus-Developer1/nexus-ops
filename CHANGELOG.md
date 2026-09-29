@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-29
+
+- 🎨 **Despesas — o editor (novo registo / editar) também usa a largura do ecrã, sem barra para deslizar.** A página passa de 1152px a 1536px, como as listagens, e a tabela das linhas deixa de ter uma largura mínima fixa de 1260px: cada campo passa a ter a sua (o Tipo e o «Pago por» cabem inteiros, a descrição e o «o que é» apertam até 11rem). Precisa agora de ~1173px — medido num browser, cabe sem barra a partir de ecrãs de ~1600px; em portáteis de 1366–1536px a barra continua. Requer build e `optimize`.
+
 ## 2026-09-28
 
 - 🧰 **Agenda — o São João (24 de junho) passa a feriado.** É feriado municipal (Porto e arredores), e os municipais ficavam de fora; a pedido da equipa, este entra. Conta como os nacionais: aparece na agenda como feriado e **bloqueia marcações nesse dia**. Os outros municipais continuam de fora. Sem migração; `optimize`. 1 teste ajustado (13 → 14 feriados por ano).
