@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\PapelUtilizador;
 use App\Livewire\Despesas\Editor;
 use App\Livewire\Despesas\Listagem;
+use App\Models\Cliente;
 use App\Models\Despesa;
 use App\Models\RegistoDespesa;
 use App\Models\User;
@@ -121,6 +122,26 @@ class DespesaTest extends TestCase
             ->assertSet('departamento', 'Outro')
             ->assertSet('matricula', 'BD-71-VI')
             ->assertDontSee('A da tua última despesa');
+    }
+
+    // Descrição = o cliente: pesquisa pelo nome (sem acentos) ou NIF, só clientes ativos, só com
+    // 2+ letras, poucos resultados; um «%» escrito é texto, não «qualquer coisa».
+    public function test_descricao_pesquisa_o_cliente(): void
+    {
+        Cliente::create(['nome' => 'BNP PARIBAS, S.A.', 'nif' => '503511714', 'ativo' => true]);
+        Cliente::create(['nome' => 'Câmara Municipal da Maia', 'nif' => '505387131', 'ativo' => true]);
+        Cliente::create(['nome' => 'Parisiense Antiga', 'ativo' => false]);
+        $tecnico = $this->tecnico();
+        $procurar = fn (string $texto) => Livewire::actingAs($tecnico)->test(Editor::class)
+            ->call('procurarClientes', $texto)->effects['returns'][0];
+
+        $this->assertSame(['BNP PARIBAS, S.A.'], array_column($procurar('paribas'), 'nome'));
+        $this->assertSame(['Câmara Municipal da Maia'], array_column($procurar('camara'), 'nome')); // sem acento
+        $this->assertSame(['BNP PARIBAS, S.A.'], array_column($procurar('5035117'), 'nome'));      // NIF
+        $this->assertSame([], $procurar('Parisiense'));  // inativo
+        $this->assertSame([], $procurar('b'));           // 1 letra: nada
+        $this->assertSame([], $procurar('%'));
+        $this->assertSame([], $procurar('%%'));          // «%» é texto
     }
 
     // Dia: calendário SEM pré-seleção — nasce vazio e é obrigatório.

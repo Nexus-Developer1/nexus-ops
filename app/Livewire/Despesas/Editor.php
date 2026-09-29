@@ -5,6 +5,7 @@ namespace App\Livewire\Despesas;
 use App\Enums\EstadoDespesa;
 use App\Livewire\Concerns\AcessoDespesas;
 use App\Models\Anexo;
+use App\Models\Cliente;
 use App\Models\Despesa;
 use App\Models\MemoriaFornecedor;
 use App\Models\RegistoDespesa;
@@ -21,8 +22,8 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 // REGISTO de despesas: cabeçalho (colaborador, matrícula, departamento) + linhas — cada
-// linha é UMA despesa: dia (escrito à mão), descrição (local · serviço), "o que é"
-// (detalhe), tipo (categoria da folha), valor e os RECIBOS anexados à própria linha.
+// linha é UMA despesa: dia (escrito à mão), descrição (o CLIENTE — com pesquisa), "o que é"
+// (detalhe: o restaurante/posto que o recibo diz), tipo (categoria da folha), valor e os RECIBOS anexados à própria linha.
 // O registo aparece na listagem como uma só entrada e tem PDF transferível.
 #[Layout('components.layouts.app', ['ativo' => 'despesas', 'titulo' => 'Despesa'])]
 class Editor extends Component
@@ -135,6 +136,38 @@ class Editor extends Component
         $this->matriculaSugerida = $this->matricula !== '';
     }
 
+    /**
+     * Pesquisa de clientes para a DESCRIÇÃO de uma linha (nome sem acentos ou NIF), chamada pelo
+     * browser enquanto se escreve. Poucos resultados e só com 2+ letras — nunca a lista toda.
+     *
+     * @return list<array{id: int, nome: string, nif: ?string}>
+     */
+    public function procurarClientes(string $texto): array
+    {
+        $texto = mb_substr(trim($texto), 0, 100);
+        if (mb_strlen($texto) < 2) {
+            return [];
+        }
+
+        $semAcentos = fn (string $v) => str_replace(
+            ['á', 'à', 'â', 'ã', 'ä', 'ç', 'é', 'è', 'ê', 'ë', 'í', 'ì', 'î', 'ï', 'ó', 'ò', 'ô', 'õ', 'ö', 'ú', 'ù', 'û', 'ü'],
+            ['a', 'a', 'a', 'a', 'a', 'c', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u'],
+            mb_strtolower($v),
+        );
+        $like = fn (string $v) => '%'.addcslashes($v, '%_\\').'%';
+
+        return Cliente::query()
+            ->where('ativo', true)
+            ->where(fn ($q) => $q
+                ->whereRaw("translate(lower(nome), 'áàâãäçéèêëíìîïóòôõöúùûü', 'aaaaaceeeeiiiiooooouuuu') like ?", [$like($semAcentos($texto))])
+                ->orWhere('nif', 'ilike', $like($texto)))
+            ->orderBy('nome')
+            ->limit(8)
+            ->get(['id', 'nome', 'nif'])
+            ->map(fn (Cliente $c) => ['id' => $c->id, 'nome' => $c->nome, 'nif' => trim((string) $c->nif) ?: null]) // o NIF do PHC vem com espaços
+            ->all();
+    }
+
     public function adicionarLinha(): void
     {
         if (count($this->linhas) < 31) {
@@ -203,8 +236,8 @@ class Editor extends Component
         $this->sugerir($linha);
     }
 
-    // O TEXTO do talão, lido por OCR no telemóvel (uns segundos depois do QR): dá a descrição
-    // (loja e terra), o tipo e a hora (almoço/jantar). Só preenche o que está vazio.
+    // O TEXTO do talão, lido por OCR no telemóvel (uns segundos depois do QR): dá a loja e a terra
+    // (vão para o «o que é»), o tipo e a hora (almoço/jantar). Só preenche o que está vazio.
     public function lerTalao(int $linha, string $texto): void
     {
         if (! array_key_exists($linha, $this->linhas) || trim($texto) === '') {
@@ -224,7 +257,9 @@ class Editor extends Component
         $talao = $this->talaoLido[$linha] ?? [];
         $memoria = $qr ? MemoriaFornecedor::sugestao($qr['nif'], $qr['serie'] ?? null) : ['descricao' => null, 'categoria' => null];
 
-        $this->preencher($linha, 'descricao', $memoria['descricao'] ?? $talao['descricao'] ?? null);
+        // A loja/restaurante vai para o «o que é»: a DESCRIÇÃO é o cliente, que só a pessoa sabe
+        // (pedido da equipa, set. 2026 — antes o recibo punha lá o restaurante).
+        $this->preencher($linha, 'detalhe', $memoria['descricao'] ?? $talao['descricao'] ?? null);
 
         $categoria = $memoria['categoria'] ?? $talao['categoria'] ?? (($qr['intermedia'] ?? false) ? 'Refeições' : null);
         if ($categoria !== null && in_array($categoria, Despesa::CATEGORIAS, true)) {
@@ -358,7 +393,7 @@ class Editor extends Component
 
             $descricao = trim((string) ($linha['descricao'] ?? ''));
             if ($descricao === '') {
-                $this->addError("linhas.$n.descricao", 'Indique a descrição (local · serviço) na linha '.($n + 1).'.');
+                $this->addError("linhas.$n.descricao", 'Indique o cliente (descrição) na linha '.($n + 1).'.');
 
                 return;
             }
@@ -452,7 +487,7 @@ class Editor extends Component
             // que aparecer um talão deste vendedor (NIF e série vêm do QR lido nesta edição).
             $qr = $this->qrLido[$n] ?? [];
             if (($qr['estado'] ?? null) === 'lido' && isset($qr['nif'])) {
-                MemoriaFornecedor::aprender($qr['nif'], $qr['serie'] ?? null, $lancamento['descricao'], $lancamento['categoria']);
+                MemoriaFornecedor::aprender($qr['nif'], $qr['serie'] ?? null, trim((string) $lancamento['detalhe']) ?: null, $lancamento['categoria']);
             }
 
             // Recibos pendentes desta linha → object storage + metadados na despesa da linha.

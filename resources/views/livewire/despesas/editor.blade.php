@@ -61,8 +61,8 @@
                                     <input wire:model.live.debounce.500ms="linhas.{{ $n }}.valor" type="number" step="0.01" min="0" inputmode="decimal" class="campo-input text-right" placeholder="0,00">
                                 </div>
                                 <div class="col-span-2">
-                                    <label class="campo-label">Descrição <span class="text-perigo-500">*</span> <span class="text-xs font-normal normal-case text-texto-fraco">(local · serviço)</span></label>
-                                    <input wire:model="linhas.{{ $n }}.descricao" type="text" class="campo-input" placeholder="Ex: ACME - Porto">
+                                    <label class="campo-label">Descrição <span class="text-perigo-500">*</span> <span class="text-xs font-normal normal-case text-texto-fraco">(cliente)</span></label>
+                                    @include('livewire.despesas._descricao-cliente', ['n' => $n, 'classes' => 'campo-input'])
                                 </div>
                                 <div class="col-span-2 grid grid-cols-2 gap-3">
                                     <div>
@@ -87,7 +87,7 @@
                                 </div>
                                 <div class="col-span-2">
                                     <label class="campo-label">O que é</label>
-                                    <input wire:model="linhas.{{ $n }}.detalhe" type="text" class="campo-input" placeholder="Ex: Portagem A1, almoço com cliente…">
+                                    <input wire:model="linhas.{{ $n }}.detalhe" type="text" class="campo-input" placeholder="Ex: Restaurante O Cantinho - Coimbra, portagem A1…">
                                 </div>
                                 <div class="col-span-2">
                                     <label class="campo-label">Pago por <span class="text-perigo-500">*</span></label>
@@ -117,7 +117,7 @@
                             <tr class="bg-fundo text-xs uppercase tracking-wide text-texto-medio">
                                 <th class="w-56 border-b border-r border-borda px-3 py-2 text-left font-semibold">Recibos <span class="text-perigo-500">*</span><br><span class="font-normal normal-case text-texto-fraco">(começa por aqui)</span></th>
                                 <th class="w-36 border-b border-r border-borda px-3 py-2 text-left font-semibold">Dia <span class="text-perigo-500">*</span></th>
-                                <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">Descrição <span class="text-perigo-500">*</span><br><span class="font-normal normal-case text-texto-fraco">(local · serviço)</span></th>
+                                <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">Descrição <span class="text-perigo-500">*</span><br><span class="font-normal normal-case text-texto-fraco">(cliente)</span></th>
                                 <th class="w-44 border-b border-r border-borda px-3 py-2 text-left font-semibold">Tipo <span class="text-perigo-500">*</span></th>
                                 <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">O que é<br><span class="font-normal normal-case text-texto-fraco">(opcional)</span></th>
                                 <th class="w-28 border-b border-r border-borda px-3 py-2 text-right font-semibold">Valor (€) <span class="text-perigo-500">*</span></th>
@@ -138,7 +138,7 @@
                                         <input wire:model="linhas.{{ $n }}.dia" type="date" class="campo-input w-full min-w-[8.5rem] px-2 py-1.5 text-sm">
                                     </td>
                                     <td class="border-r border-borda px-1.5 py-2">
-                                        <input wire:model="linhas.{{ $n }}.descricao" type="text" class="campo-input w-full min-w-[11rem] px-2 py-1.5 text-sm" placeholder="Ex: ACME - Porto">
+                                        @include('livewire.despesas._descricao-cliente', ['n' => $n, 'classes' => 'campo-input w-full min-w-[11rem] px-2 py-1.5 text-sm'])
                                     </td>
                                     <td class="border-r border-borda px-1.5 py-2">
                                         <select wire:model.live="linhas.{{ $n }}.categoria" class="campo-select w-full min-w-[11.5rem] py-1.5 pl-2 pr-8 text-sm">
@@ -156,7 +156,7 @@
                                         @endif
                                     </td>
                                     <td class="border-r border-borda px-1.5 py-2">
-                                        <input wire:model="linhas.{{ $n }}.detalhe" type="text" class="campo-input w-full min-w-[11rem] px-2 py-1.5 text-sm" placeholder="Ex: Portagem A1, almoço com cliente…">
+                                        <input wire:model="linhas.{{ $n }}.detalhe" type="text" class="campo-input w-full min-w-[11rem] px-2 py-1.5 text-sm" placeholder="Ex: Restaurante O Cantinho - Coimbra, portagem A1…">
                                     </td>
                                     <td class="border-r border-borda px-1.5 py-2">
                                         <input wire:model.live.debounce.500ms="linhas.{{ $n }}.valor" type="number" step="0.01" min="0" inputmode="decimal" class="campo-input w-full min-w-[5.5rem] px-2 py-1.5 text-right text-sm" placeholder="0,00">

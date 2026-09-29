@@ -32,8 +32,18 @@ class MemoriaFornecedor extends Model
         ];
     }
 
-    public static function aprender(string $nif, ?string $serie, string $descricao, string $categoria): void
+    // $descricao = o «o que é» da linha (a loja/restaurante — set. 2026; antes era a descrição,
+    // que passou a ser o cliente). Vazio: aprende só o tipo e não mexe na loja que já sabia.
+    public static function aprender(string $nif, ?string $serie, ?string $descricao, string $categoria): void
     {
+        if ($descricao === null || $descricao === '') {
+            foreach (array_unique(['', (string) $serie]) as $s) {
+                static::updateOrCreate(['nif' => $nif, 'serie' => $s], ['categoria' => $categoria]);
+            }
+
+            return;
+        }
+
         if ($serie) {
             static::updateOrCreate(['nif' => $nif, 'serie' => $serie], ['descricao' => $descricao, 'categoria' => $categoria]);
         }

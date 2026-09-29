@@ -13,8 +13,9 @@ use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyExceptio
 use Livewire\Livewire;
 use Tests\TestCase;
 
-// O TEXTO do talão (OCR no telemóvel) preenche o que o QR não traz: descrição (loja - terra),
-// tipo e almoço/jantar. A memória de fornecedores lembra o que se confirmou da última vez.
+// O TEXTO do talão (OCR no telemóvel) preenche o que o QR não traz: o «o que é» (loja - terra),
+// tipo e almoço/jantar. A DESCRIÇÃO é o cliente — o recibo nunca lá mexe (set. 2026). A memória
+// de fornecedores lembra o que se confirmou da última vez.
 class DespesaTalaoTest extends TestCase
 {
     use RefreshDatabase;
@@ -143,21 +144,24 @@ class DespesaTalaoTest extends TestCase
             ->call('lerTalao', 0, self::MERCADONA_OCR)
             ->assertSet('linhas.0.dia', '2026-09-23')
             ->assertSet('linhas.0.valor', '4.50')
-            ->assertSet('linhas.0.descricao', 'Mercadona - Moreira')
+            ->assertSet('linhas.0.detalhe', 'Mercadona - Moreira') // a loja vai para o «o que é»
+            ->assertSet('linhas.0.descricao', '')                   // o cliente é à mão
             ->assertSet('linhas.0.categoria', 'Refeições')
             ->assertSet('linhas.0.refeicao_tipo', 'A')
             ->assertSet('linhas.0.pago_por', '') // à mão
-            ->assertSee('Sugerido pelo recibo: descrição, tipo, almoço/jantar — confirme.');
+            ->assertSee('Sugerido pelo recibo: tipo, almoço/jantar, o que é — confirme.');
     }
 
     public function test_nunca_troca_o_que_a_pessoa_escreveu(): void
     {
         Livewire::actingAs($this->admin())->test(Editor::class)
-            ->set('linhas.0.descricao', 'Almoço com cliente ACME')
+            ->set('linhas.0.descricao', 'ACME')
+            ->set('linhas.0.detalhe', 'Almoço com cliente')
             ->set('linhas.0.categoria', 'Outras despesas')
             ->call('lerQr', 0, self::MERCADONA_QR)
             ->call('lerTalao', 0, self::MERCADONA_OCR)
-            ->assertSet('linhas.0.descricao', 'Almoço com cliente ACME')
+            ->assertSet('linhas.0.descricao', 'ACME')
+            ->assertSet('linhas.0.detalhe', 'Almoço com cliente')
             ->assertSet('linhas.0.categoria', 'Outras despesas')
             ->assertDontSee('Sugerido pelo recibo');
     }
@@ -186,7 +190,7 @@ class DespesaTalaoTest extends TestCase
         Livewire::actingAs($this->admin())->test(Editor::class)
             ->call('lerQr', 0, '')
             ->call('lerTalao', 0, self::GALP_OCR)
-            ->assertSet('linhas.0.descricao', 'Galp - Maia')
+            ->assertSet('linhas.0.detalhe', 'Galp - Maia')
             ->assertSet('linhas.0.categoria', 'Combustíveis')
             ->assertSet('linhas.0.dia', ''); // o dia só do QR
     }
@@ -197,7 +201,7 @@ class DespesaTalaoTest extends TestCase
             ->call('lerTalao', 5, self::GALP_OCR)
             ->call('lerTalao', 0, '   ')
             ->assertSet('talaoLido', [])
-            ->assertSet('linhas.0.descricao', '');
+            ->assertSet('linhas.0.detalhe', '');
     }
 
     public function test_o_que_o_recibo_sugeriu_nao_se_escreve_a_partir_do_browser(): void
@@ -223,16 +227,18 @@ class DespesaTalaoTest extends TestCase
 
         $this->assertSame([0], array_keys($editor->get('talaoLido')));
         $this->assertSame([0], array_keys($editor->get('autoPreenchido')));
-        $this->assertSame('Galp - Maia', $editor->get('linhas.0.descricao'));
+        $this->assertSame('Galp - Maia', $editor->get('linhas.0.detalhe'));
     }
 
     // ---- Memória de fornecedores ----------------------------------------------------------
 
-    private function gravarLinha(User $quem, string $qr, string $descricao, string $categoria): void
+    // $detalhe = o «o que é» (a loja); a descrição é sempre um cliente.
+    private function gravarLinha(User $quem, string $qr, string $detalhe, string $categoria): void
     {
         Livewire::actingAs($quem)->test(Editor::class)
             ->call('lerQr', 0, $qr)
-            ->set('linhas.0.descricao', $descricao)
+            ->set('linhas.0.descricao', 'Cliente ACME')
+            ->set('linhas.0.detalhe', $detalhe)
             ->set('linhas.0.categoria', $categoria)
             ->set('linhas.0.refeicao_tipo', 'A')
             ->set('linhas.0.pago_por', 'tecnico')
@@ -252,9 +258,10 @@ class DespesaTalaoTest extends TestCase
 
         Livewire::actingAs($admin)->test(Editor::class)
             ->call('lerQr', 0, self::MERCADONA_QR)
-            ->assertSet('linhas.0.descricao', 'Mercadona - Moreira da Maia') // logo pelo QR, sem esperar pelo texto
+            ->assertSet('linhas.0.detalhe', 'Mercadona - Moreira da Maia') // logo pelo QR, sem esperar pelo texto
+            ->assertSet('linhas.0.descricao', '')                          // o cliente nunca se aprende
             ->call('lerTalao', 0, self::MERCADONA_OCR)
-            ->assertSet('linhas.0.descricao', 'Mercadona - Moreira da Maia');
+            ->assertSet('linhas.0.detalhe', 'Mercadona - Moreira da Maia');
     }
 
     // Numa cadeia (o mesmo NIF em várias lojas), a descrição de uma loja não serve para outra:
@@ -270,10 +277,10 @@ class DespesaTalaoTest extends TestCase
         $outraLoja = str_replace(['70720232026001', 'I5:3.98*I6:0.52'], ['71110012026001', 'I7:3.66*I8:0.84'], self::MERCADONA_QR);
         Livewire::actingAs($admin)->test(Editor::class)
             ->call('lerQr', 0, $outraLoja)
-            ->assertSet('linhas.0.descricao', '')
+            ->assertSet('linhas.0.detalhe', '')
             ->assertSet('linhas.0.categoria', 'Refeições') // do NIF, mesmo sem IVA a 13 %
             ->call('lerTalao', 0, str_replace('MOREIRA', 'AVEIRO', self::MERCADONA_OCR))
-            ->assertSet('linhas.0.descricao', 'Mercadona - Aveiro');
+            ->assertSet('linhas.0.detalhe', 'Mercadona - Aveiro');
     }
 
     // Corrigir a descrição da MESMA loja não a transforma numa cadeia.
@@ -295,6 +302,7 @@ class DespesaTalaoTest extends TestCase
     {
         Livewire::actingAs($this->admin())->test(Editor::class)
             ->call('lerTalao', 0, self::GALP_OCR)
+            ->set('linhas.0.descricao', 'Cliente ACME') // o cliente é sempre à mão
             ->set('linhas.0.dia', '2026-09-22')
             ->set('linhas.0.valor', '65')
             ->set('linhas.0.pago_por', 'tecnico')
@@ -303,5 +311,32 @@ class DespesaTalaoTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame(0, MemoriaFornecedor::count());
+    }
+
+    // «O que é» vazio ao gravar: aprende o tipo, mas não apaga a loja que já sabia.
+    public function test_sem_o_que_e_aprende_so_o_tipo(): void
+    {
+        $admin = $this->admin();
+        $this->gravarLinha($admin, self::GALP_QR, 'Galp - Maia', 'Combustíveis');
+        $this->gravarLinha($admin, self::GALP_QR, '', 'Outros (veículos)');
+
+        $this->assertSame(
+            ['descricao' => 'Galp - Maia', 'categoria' => 'Outros (veículos)'],
+            MemoriaFornecedor::sugestao('504499777', 'FS 0412'),
+        );
+    }
+
+    // A migração esquece o texto aprendido (vinha da descrição, que pode ser um cliente) e
+    // deixa o tipo.
+    public function test_migracao_esquece_as_descricoes_e_deixa_o_tipo(): void
+    {
+        MemoriaFornecedor::create(['nif' => '504499777', 'serie' => '', 'descricao' => 'BNP Paribas', 'categoria' => 'Combustíveis', 'varias_lojas' => true]);
+
+        (require database_path('migrations/2026_09_29_000002_memoria_fornecedores_esquece_as_descricoes.php'))->up();
+
+        $m = MemoriaFornecedor::firstOrFail();
+        $this->assertNull($m->descricao);
+        $this->assertFalse($m->varias_lojas);
+        $this->assertSame('Combustíveis', $m->categoria);
     }
 }

@@ -36,7 +36,7 @@
 
 {{-- Texto do talão (OCR no telemóvel, uns segundos depois do QR) e o que o recibo sugeriu. --}}
 <p x-show="aLer[{{ $n }}]" x-cloak class="mt-1 text-xs text-texto-medio">A ler o talão…</p>
-@php($sugeridos = array_values(array_intersect_key(['descricao' => 'descrição', 'categoria' => 'tipo', 'refeicao_tipo' => 'almoço/jantar'], array_filter(
+@php($sugeridos = array_values(array_intersect_key(['categoria' => 'tipo', 'refeicao_tipo' => 'almoço/jantar', 'detalhe' => 'o que é'], array_filter(
     $autoPreenchido[$n] ?? [],
     fn ($valor, $campo) => ($linha[$campo] ?? '') === $valor,
     ARRAY_FILTER_USE_BOTH
