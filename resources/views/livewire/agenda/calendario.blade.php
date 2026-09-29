@@ -78,6 +78,26 @@
                             @if ($evento->cliente)
                                 <div class="flex justify-between gap-4"><dt class="text-texto-fraco">Cliente</dt><dd class="text-right font-medium text-texto-forte">{{ $evento->cliente->nome }}</dd></div>
                             @endif
+                            {{-- Morada da visita + navegação (abre a app no telemóvel). --}}
+                            @if ($morada = $evento->moradaDaVisita())
+                                @php($mapa = \App\Models\EventoAgenda::linksMapa($morada))
+                                <div class="flex justify-between gap-4">
+                                    <dt class="text-texto-fraco">Morada</dt>
+                                    <dd class="text-right">
+                                        <div class="font-medium text-texto-forte">{{ $morada }}</div>
+                                        <div class="mt-2 flex flex-wrap justify-end gap-2">
+                                            <a href="{{ $mapa['maps'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 rounded-lg border border-borda px-2.5 py-1 text-xs font-medium text-texto-forte transition hover:bg-fundo">
+                                                <svg class="h-3.5 w-3.5 text-verde-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                                Google Maps
+                                            </a>
+                                            <a href="{{ $mapa['waze'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 rounded-lg border border-borda px-2.5 py-1 text-xs font-medium text-texto-forte transition hover:bg-fundo">
+                                                <svg class="h-3.5 w-3.5 text-info-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                                                Waze
+                                            </a>
+                                        </div>
+                                    </dd>
+                                </div>
+                            @endif
                             @if ($evento->equipamento)
                                 <div class="flex justify-between gap-4"><dt class="text-texto-fraco">Equipamento</dt><dd class="text-right font-medium text-texto-forte">{{ trim($evento->equipamento->fabricante . ' ' . $evento->equipamento->modelo) ?: $evento->equipamento->numero_serie }}</dd></div>
                             @endif
@@ -315,11 +335,19 @@
                                 @endif
                             </div>
 
+                            {{-- Morada da visita: vem do local do equipamento ou do cliente; muda-se à mão
+                                 (ex.: a obra é noutro sítio). Dá os botões Google Maps / Waze no detalhe. --}}
+                            <div>
+                                <label class="campo-label" for="morada-evento">Morada da visita</label>
+                                <input id="morada-evento" wire:model="formMorada" type="text" class="campo-input" placeholder="Rua, nº, código postal, localidade" autocomplete="off">
+                                @error('formMorada') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            </div>
+
                             {{-- Notas livres: morada, contactos no local, indicações de acesso, o que levar…
                                  Vão no detalhe, no email/convite aos técnicos, no feed e no calendário partilhado. --}}
                             <div>
                                 <label class="campo-label" for="notas-evento">Notas</label>
-                                <textarea id="notas-evento" wire:model="formNotas" rows="3" class="campo-input" placeholder="Morada, contactos, indicações de acesso…"></textarea>
+                                <textarea id="notas-evento" wire:model="formNotas" rows="3" class="campo-input" placeholder="Contactos, indicações de acesso…"></textarea>
                                 @error('formNotas') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                             </div>
 

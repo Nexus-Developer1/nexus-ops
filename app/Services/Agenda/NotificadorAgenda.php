@@ -22,7 +22,7 @@ class NotificadorAgenda
     /** @return array<string, mixed> */
     public static function instantaneo(EventoAgenda $e): array
     {
-        $e->loadMissing(['tecnico', 'tecnicosAdicionais', 'cliente', 'equipamento', 'equipamentosAdicionais', 'contrato']);
+        $e->loadMissing(['tecnico', 'tecnicosAdicionais', 'cliente', 'local', 'equipamento', 'equipamentosAdicionais', 'contrato']);
 
         return [
             'id' => $e->id,
@@ -31,6 +31,7 @@ class NotificadorAgenda
             'titulo' => $e->titulo,
             'motivo' => $e->motivo ? (string) $e->motivo : null,
             'notas' => $e->notas ? (string) $e->notas : null,
+            'morada' => $e->moradaDaVisita(),
             'inicio' => $e->inicio->toIso8601String(),
             'fim' => $e->fim->toIso8601String(),
             'segmentos' => array_map(fn ($s) => [$s[0]->toIso8601String(), $s[1]->toIso8601String()], $e->segmentos()),
@@ -108,7 +109,7 @@ class NotificadorAgenda
 
     private function mudouAlgo(array $a, array $d): bool
     {
-        foreach (['titulo', 'motivo', 'notas', 'inicio', 'fim', 'segmentos', 'tecnicos_nomes', 'cliente', 'equipamento', 'contrato'] as $campo) {
+        foreach (['titulo', 'motivo', 'notas', 'morada', 'inicio', 'fim', 'segmentos', 'tecnicos_nomes', 'cliente', 'equipamento', 'contrato'] as $campo) {
             if (($a[$campo] ?? null) != ($d[$campo] ?? null)) {
                 return true;
             }

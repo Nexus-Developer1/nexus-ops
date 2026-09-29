@@ -65,8 +65,10 @@ class GeradorIcs
             ->description($this->descricao($e))
             ->url(route('agenda'));
 
-        if ($e['cliente'] ?? null) {
-            $evento->address((string) $e['cliente']);
+        // Localização do convite: a morada da visita (o calendário do telemóvel abre o mapa);
+        // sem morada, o nome do cliente, como antes.
+        if (($e['morada'] ?? null) || ($e['cliente'] ?? null)) {
+            $evento->address((string) (($e['morada'] ?? null) ?: $e['cliente']));
         }
 
         $ics = Calendar::create('Nexus Infra · Agenda')
@@ -95,6 +97,7 @@ class GeradorIcs
             ($e['motivo'] ?? null) ? 'Assunto: '.$e['motivo'] : null,
             ($e['tecnicos_nomes'] ?? '') !== '' ? 'Técnicos: '.$e['tecnicos_nomes'] : null,
             ($e['cliente'] ?? null) ? 'Cliente: '.$e['cliente'] : null,
+            ($e['morada'] ?? null) ? 'Morada: '.$e['morada'] : null,
             ($e['equipamento'] ?? null) ? 'Equipamento: '.$e['equipamento'] : null,
             ($e['contrato'] ?? null) ? 'Contrato: '.$e['contrato'] : null,
             ($e['notas'] ?? null) ? "Notas:\n".$e['notas'] : null,
@@ -118,6 +121,7 @@ class GeradorIcs
             ($e['motivo'] ?? null) ? 'Assunto: <strong>'.e((string) $e['motivo']).'</strong>' : null,
             ($e['tecnicos_nomes'] ?? '') !== '' ? 'Técnicos: <strong>'.e($e['tecnicos_nomes']).'</strong>' : null,
             ($e['cliente'] ?? null) ? 'Cliente: <strong>'.e($e['cliente']).'</strong>' : null,
+            ($e['morada'] ?? null) ? 'Morada: '.e((string) $e['morada']).' · <a href="'.e(EventoAgenda::linksMapa((string) $e['morada'])['maps']).'">Google Maps</a> · <a href="'.e(EventoAgenda::linksMapa((string) $e['morada'])['waze']).'">Waze</a>' : null,
             ($e['equipamento'] ?? null) ? 'Equipamento: '.e($e['equipamento']) : null,
             ($e['contrato'] ?? null) ? 'Contrato: '.e($e['contrato']) : null,
             ($e['notas'] ?? null) ? 'Notas:<br>'.nl2br(e((string) $e['notas'])) : null,

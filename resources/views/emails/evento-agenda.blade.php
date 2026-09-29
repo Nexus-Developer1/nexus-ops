@@ -46,6 +46,10 @@
                                 @if ($evento['cliente'])<tr><td style="padding:0 16px 4px; font-size:14px; color:#374151;"><span style="color:#6b7280;">Cliente:</span> {{ $evento['cliente'] }}</td></tr>@endif
                                 @if ($evento['equipamento'])<tr><td style="padding:0 16px 4px; font-size:14px; color:#374151;"><span style="color:#6b7280;">Equipamento:</span> {{ $evento['equipamento'] }}</td></tr>@endif
                                 @if ($evento['contrato'])<tr><td style="padding:0 16px 4px; font-size:14px; color:#374151;"><span style="color:#6b7280;">Contrato:</span> {{ $evento['contrato'] }}</td></tr>@endif
+                                @if ($evento['morada'] ?? null)
+                                    @php($mapa = \App\Models\EventoAgenda::linksMapa($evento['morada']))
+                                    <tr><td style="padding:0 16px 4px; font-size:14px; color:#374151;"><span style="color:#6b7280;">Morada:</span> {{ $evento['morada'] }} · <a href="{{ $mapa['maps'] }}" style="color:#16a34a;">Google Maps</a> · <a href="{{ $mapa['waze'] }}" style="color:#16a34a;">Waze</a></td></tr>
+                                @endif
                                 @if ($evento['notas'] ?? null)<tr><td style="padding:0 16px 4px; font-size:14px; color:#374151; white-space:pre-line;"><span style="color:#6b7280;">Notas:</span> {{ $evento['notas'] }}</td></tr>@endif
                                 <tr><td style="padding:6px 16px 14px;"></td></tr>
                             </table>

@@ -90,6 +90,7 @@ class AgendadorEvento
                         'titulo' => $atributos['titulo'],
                         'motivo' => $atributos['motivo'] ?? null,
                         'notas' => $atributos['notas'] ?? null,
+                        'morada' => $atributos['morada'] ?? null,
                         'inicio' => $inicio,
                         'fim' => $fim,
                         'tecnico_id' => $atributos['tecnico_id'],

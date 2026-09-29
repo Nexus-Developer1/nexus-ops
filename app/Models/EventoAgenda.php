@@ -39,6 +39,7 @@ class EventoAgenda extends Model
         'titulo',
         'motivo', // assunto/motivo (opcional): PARA QUÊ — o titulo é o TIPO de evento
         'notas', // texto livre: morada, contactos, indicações de acesso…
+        'morada', // morada da visita (botões Google Maps / Waze) — ver moradaDaVisita()
         'inicio',
         'fim',
         'estado',
@@ -137,6 +138,43 @@ class EventoAgenda extends Model
     public function equipamentosAdicionais(): BelongsToMany
     {
         return $this->belongsToMany(Equipamento::class, 'evento_equipamentos', 'evento_agenda_id', 'equipamento_id')->withTimestamps();
+    }
+
+    /**
+     * Morada da visita: a escrita no serviço; sem ela, a do local do equipamento e, por fim, a
+     * do cliente (com o código postal) — assim também os serviços antigos têm os botões de mapa.
+     */
+    public function moradaDaVisita(): ?string
+    {
+        if (trim((string) $this->morada) !== '') {
+            return trim((string) $this->morada);
+        }
+
+        return self::moradaSugerida($this->local, $this->cliente);
+    }
+
+    /** A morada que o serviço propõe a partir do local (do equipamento) ou do cliente. */
+    public static function moradaSugerida(?Local $local, ?Cliente $cliente): ?string
+    {
+        if ($local && trim((string) $local->morada) !== '') {
+            return trim((string) $local->morada);
+        }
+        if ($cliente && trim((string) $cliente->morada) !== '') {
+            return trim(trim((string) $cliente->morada).(trim((string) $cliente->codpost) !== '' ? ', '.trim((string) $cliente->codpost) : ''));
+        }
+
+        return null;
+    }
+
+    /** Links de navegação para a morada (abrem as apps no telemóvel). */
+    public static function linksMapa(string $morada): array
+    {
+        $q = rawurlencode($morada);
+
+        return [
+            'maps' => 'https://www.google.com/maps/search/?api=1&query='.$q,
+            'waze' => 'https://waze.com/ul?q='.$q.'&navigate=yes',
+        ];
     }
 
     // Ids de TODOS os técnicos do evento (principal + adicionais) — conflitos e iCal.

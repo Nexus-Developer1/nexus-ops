@@ -143,6 +143,14 @@ class Calendario extends Component
     // Notas livres do evento (morada, contactos no local, indicações de acesso, o que levar…).
     public string $formNotas = '';
 
+    // Morada da visita (botões Google Maps / Waze no detalhe). Preenche-se sozinha com a do local
+    // do equipamento ou a do cliente; o que a pessoa escrever não se troca. moradaAuto guarda o
+    // que foi posto automaticamente (só o servidor a escreve).
+    public string $formMorada = '';
+
+    #[Locked]
+    public string $moradaAuto = '';
+
     // Alertas programados do evento: linhas {data, texto} — mesma mecânica dos alertas do
     // contrato/equipamento (painel de alertas + email diário), com o texto que se quiser.
     /** @var list<array{data: string, texto: string}> */
@@ -455,6 +463,7 @@ class Calendario extends Component
             'formEquipamentoId' => 'equipamento',
             'formMotivo' => 'assunto',
             'formNotas' => 'notas',
+            'formMorada' => 'morada',
             'formInicio' => 'início',
             'formFim' => 'fim',
             'formHorasDias.*.inicio' => 'hora de início do dia',
@@ -467,7 +476,7 @@ class Calendario extends Component
     {
         abort_if(auth()->user()->ehCliente(), 403);
 
-        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formMotivo', 'formNotas', 'formAlertas', 'formTecnicoIds', 'formClienteId', 'formClienteBusca', 'formEquipamentoId', 'formEquipamentoBusca', 'formEquipamentosExtra', 'formContratoId', 'formCobertura', 'formHorasDias', 'formNotificar', 'formDiaInteiro']);
+        $this->reset(['editandoId', 'editandoConvertido', 'formTitulo', 'formMotivo', 'formNotas', 'formMorada', 'moradaAuto', 'formAlertas', 'formTecnicoIds', 'formClienteId', 'formClienteBusca', 'formEquipamentoId', 'formEquipamentoBusca', 'formEquipamentosExtra', 'formContratoId', 'formCobertura', 'formHorasDias', 'formNotificar', 'formDiaInteiro']);
 
         // A agenda manda o DIA (sem hora) — as horas reais escrevem-se no formulário e podem
         // abranger vários dias. Sem hora, arranca na abertura e propõe 1h (fácil de ajustar).
@@ -501,6 +510,11 @@ class Calendario extends Component
         $this->formTitulo = $evento->titulo;
         $this->formMotivo = (string) $evento->motivo;
         $this->formNotas = (string) $evento->notas;
+        // Serviço antigo sem morada → propõe a do local/cliente (como no detalhe).
+        $this->moradaAuto = trim((string) $evento->morada) === ''
+            ? (string) EventoAgenda::moradaSugerida($evento->local, $evento->cliente)
+            : '';
+        $this->formMorada = trim((string) $evento->morada) !== '' ? (string) $evento->morada : $this->moradaAuto;
         $this->formAlertas = $evento->alertas()->orderBy('data')->get()
             ->map(fn ($a) => ['data' => $a->data->toDateString(), 'texto' => $a->texto])
             ->all();
@@ -573,6 +587,20 @@ class Calendario extends Component
 
         // A caixa fica sempre livre para a próxima pesquisa — o escolhido mostra-se no chip.
         $this->formEquipamentoBusca = '';
+        $this->sugerirMorada();
+    }
+
+    // Põe a morada do local do equipamento principal (ou a do cliente) — só se o campo estiver
+    // vazio ou ainda com a que foi posta automaticamente (nunca troca o que a pessoa escreveu).
+    private function sugerirMorada(): void
+    {
+        if (trim($this->formMorada) !== '' && $this->formMorada !== $this->moradaAuto) {
+            return;
+        }
+
+        $local = $this->formEquipamentoId ? Equipamento::with('local')->find($this->formEquipamentoId)?->local : null;
+        $cliente = $this->formClienteId ? Cliente::find($this->formClienteId) : null;
+        $this->formMorada = $this->moradaAuto = (string) EventoAgenda::moradaSugerida($local, $cliente);
     }
 
     // Tirar o principal (só em eventos sem relatório): o 1.º adicional sobe a principal.
@@ -617,6 +645,7 @@ class Calendario extends Component
 
         $this->formClienteId = $cliente->id;
         $this->formClienteBusca = '';
+        $this->sugerirMorada();
     }
 
     // Tirar o cliente: os equipamentos (que são dele) saem também.
@@ -643,6 +672,7 @@ class Calendario extends Component
         $this->formClienteBusca = '';
         $this->formEquipamentoId = null;
         $this->formEquipamentosExtra = [];
+        $this->sugerirMorada(); // a que veio do cliente sai; a escrita à mão fica
     }
 
     // Dobra de acentos para pesquisa (igual ao combobox de cliente).
@@ -701,6 +731,7 @@ class Calendario extends Component
             'formTitulo' => ['required', 'string', 'max:255'],
             'formMotivo' => ['nullable', 'string', 'max:255'],
             'formNotas' => ['nullable', 'string', 'max:5000'],
+            'formMorada' => ['nullable', 'string', 'max:500'],
             'formAlertas' => ['array', 'max:24'],
             'formAlertas.*.data' => ['required', 'date'],
             'formAlertas.*.texto' => ['required', 'string', 'max:255'],
@@ -808,6 +839,7 @@ class Calendario extends Component
             'titulo' => $titulo,
             'motivo' => trim($this->formMotivo) !== '' ? trim($this->formMotivo) : null,
             'notas' => trim($this->formNotas) !== '' ? trim($this->formNotas) : null,
+            'morada' => trim($this->formMorada) !== '' ? trim($this->formMorada) : null,
             'inicio' => $inicio,
             'fim' => $fim,
             // Conta do técnico + nome desnormalizado: o id liga conflitos/iCal;
@@ -908,7 +940,7 @@ class Calendario extends Component
         $nomesTecnicos = $fonte->legenda();
 
         $evento = $this->eventoSelecionadoId
-            ? EventoAgenda::with(['cliente', 'equipamento', 'tecnico', 'intervencao.relatorio'])->find($this->eventoSelecionadoId)
+            ? EventoAgenda::with(['cliente', 'local', 'equipamento', 'tecnico', 'intervencao.relatorio'])->find($this->eventoSelecionadoId)
             : null;
 
         // Pesquisa de equipamentos server-side (nº série/fabricante/modelo, sem acentos), limitada.
