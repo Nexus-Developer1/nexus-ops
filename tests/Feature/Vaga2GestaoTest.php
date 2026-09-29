@@ -88,4 +88,16 @@ class Vaga2GestaoTest extends TestCase
             ->assertSee('2026/0017')
             ->assertSeeHtml($link);
     }
+
+    public function test_equipamentos_da_ficha_do_cliente_abrem_a_ficha_do_equipamento(): void
+    {
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sede']);
+        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional',
+            'fabricante' => 'Riello', 'modelo' => 'NPW', 'numero_serie' => 'EQ-LINK-1']);
+
+        Livewire::actingAs($this->admin())->test(Detalhe::class, ['cliente' => $cliente])
+            ->assertSee('EQ-LINK-1')
+            ->assertSeeHtml('href="'.route('equipamentos.ficha', $equip).'"');
+    }
 }

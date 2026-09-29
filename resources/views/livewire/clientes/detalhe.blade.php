@@ -63,13 +63,14 @@
                 </div>
                 <div class="mt-4 space-y-2">
                     @forelse ($equipamentos as $eq)
-                        <div class="flex items-center justify-between gap-3 rounded-lg border border-borda px-3 py-2" wire:key="eq-{{ $eq->id }}">
+                        <a href="{{ route('equipamentos.ficha', $eq) }}" wire:navigate title="Abrir a ficha do equipamento"
+                            class="group flex items-center justify-between gap-3 rounded-lg border border-borda px-3 py-2 transition hover:border-verde-600 hover:bg-fundo" wire:key="eq-{{ $eq->id }}">
                             <div class="min-w-0">
-                                <div class="truncate text-sm font-medium text-texto-forte">{{ trim($eq->fabricante . ' ' . $eq->modelo) ?: '—' }}</div>
+                                <div class="truncate text-sm font-medium text-texto-forte group-hover:text-verde-600">{{ trim($eq->fabricante . ' ' . $eq->modelo) ?: '—' }}</div>
                                 <div class="truncate text-xs text-texto-fraco">Nº série: {{ $eq->numero_serie ?? '—' }} · {{ $eq->local?->designacao ?? '—' }}</div>
                             </div>
                             <span class="etiqueta {{ $eq->estado->classesEtiqueta() }} shrink-0">{{ $eq->estado->rotulo() }}</span>
-                        </div>
+                        </a>
                     @empty
                         <p class="text-sm text-texto-medio">Sem equipamentos associados.</p>
                     @endforelse
