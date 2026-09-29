@@ -7,7 +7,7 @@
     </x-topbar>
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
-        <div class="mx-auto max-w-6xl">
+        <div class="mx-auto max-w-screen-2xl">
 
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Equipamentos</h1>
             <p class="mt-2 text-sm text-texto-medio">{{ $cliente->nome }} · {{ $equipamentos->total() }} {{ \Illuminate\Support\Str::plural('equipamento', $equipamentos->total()) }}</p>

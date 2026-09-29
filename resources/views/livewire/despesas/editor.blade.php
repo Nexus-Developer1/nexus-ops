@@ -9,9 +9,9 @@
     </x-topbar>
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
-        {{-- Mais largo do que o normal (max-w-6xl), como as listagens: a tabela das linhas (dia,
+        {{-- Largura comum das páginas (max-w-screen-2xl, set. 2026): a tabela das linhas (dia,
              descrição, tipo, o que é, valor, pago por, recibos) não cabia em 1152px e obrigava
-             a arrastar para o lado (pedido da equipa, set. 2026). --}}
+             a arrastar para o lado. --}}
         <div class="mx-auto max-w-screen-2xl">
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ $registoId ? 'Editar registo de despesas' : 'Registo de despesas' }}</h1>
 

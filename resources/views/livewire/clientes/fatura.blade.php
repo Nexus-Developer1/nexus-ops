@@ -7,7 +7,7 @@
     </x-topbar>
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
-        <div class="mx-auto max-w-5xl">
+        <div class="mx-auto max-w-screen-2xl">
 
             @php
                 $totalSeries = $linhas->sum(fn ($l) => filled($l->series) ? substr_count($l->series, ',') + 1 : 0);

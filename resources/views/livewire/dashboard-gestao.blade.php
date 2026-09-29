@@ -2,7 +2,7 @@
     <x-topbar :breadcrumb="['Início', 'Dashboard']" />
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
-        {{-- Largura das listagens (max-w-screen-2xl), para as páginas ficarem todas iguais (set. 2026). --}}
+        {{-- Largura comum das páginas (max-w-screen-2xl, set. 2026). --}}
         <div class="mx-auto max-w-screen-2xl">
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>

@@ -7,9 +7,8 @@
     </x-topbar>
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
-        {{-- Mais larga do que as outras listagens (max-w-6xl), como a dos relatórios: as ações
-             (Ver, Editar, PDF, Recibo, Eliminar) não cabiam em 1152px e obrigavam a arrastar a
-             tabela para o lado (pedido da equipa, set. 2026). --}}
+        {{-- Largura comum das páginas (max-w-screen-2xl, set. 2026): as ações (Ver, Editar, PDF,
+             Recibo, Eliminar) não cabiam em 1152px e obrigavam a arrastar a tabela para o lado. --}}
         <div class="mx-auto max-w-screen-2xl">
 
             <x-toast-sucesso />
