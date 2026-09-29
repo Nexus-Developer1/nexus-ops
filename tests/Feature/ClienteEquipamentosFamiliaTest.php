@@ -9,6 +9,7 @@ use App\Models\Equipamento;
 use App\Models\Local;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Js;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -59,6 +60,25 @@ class ClienteEquipamentosFamiliaTest extends TestCase
     {
         Livewire::actingAs($this->admin)->test(Equipamentos::class, ['cliente' => $this->cliente])
             ->assertSeeHtml(route('equipamentos.ficha', $this->ups));   // URL com o mastamp (id_erp)
+    }
+
+    // 26.ª revisão de segurança: a família vem do PHC e entrava entre plicas num wire:click (que
+    // é avaliado como JavaScript) — um apóstrofo partia o botão e um nome feito de propósito
+    // corria código no browser. Agora vai por @js, sempre como texto.
+    public function test_familia_com_apostrofo_ou_codigo_vai_como_texto(): void
+    {
+        $local = Local::where('cliente_id', $this->cliente->id)->firstOrFail();
+        $maliciosa = "');alert(1)//";
+        foreach (["D'Ávila", $maliciosa] as $k => $fam) {
+            Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional',
+                'fabricante' => 'Riello', 'modelo' => 'X', 'numero_serie' => 'SN-X'.$k, 'familia' => $fam, 'faminome' => 'FAM'.$k]);
+        }
+
+        Livewire::actingAs($this->admin)->test(Equipamentos::class, ['cliente' => $this->cliente])
+            ->assertSeeHtml('wire:click="filtrarFamilia('.Js::from($maliciosa).')"')
+            ->assertDontSeeHtml("filtrarFamilia('".$maliciosa."')")
+            ->call('filtrarFamilia', "D'Ávila")   // o filtro funciona com o apóstrofo
+            ->assertSee('SN-X0')->assertDontSee('SN-U1');
     }
 
     public function test_cliente_com_uma_so_familia_nao_mostra_chips(): void

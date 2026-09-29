@@ -26,7 +26,10 @@
                             Todas
                         </button>
                         @foreach ($familias as $f)
-                            <button type="button" wire:click="filtrarFamilia('{{ $f->familia }}')" wire:key="fam-{{ $f->familia }}"
+                            {{-- @js: a família vem do PHC e o wire:click é avaliado como JavaScript —
+                                 entre plicas à mão, um apóstrofo no nome partia o botão e um nome feito
+                                 de propósito corria código no browser (26.ª revisão de segurança). --}}
+                            <button type="button" wire:click="filtrarFamilia(@js($f->familia))" wire:key="fam-{{ $f->familia }}"
                                 class="rounded-full border px-3 py-1 text-xs font-medium transition {{ $familia === $f->familia ? 'border-verde-600 bg-verde-50 text-verde-700' : 'border-borda text-texto-medio hover:bg-fundo' }}">
                                 {{ $f->nome ?: $f->familia }} <span class="text-texto-fraco">({{ $f->n }})</span>
                             </button>
