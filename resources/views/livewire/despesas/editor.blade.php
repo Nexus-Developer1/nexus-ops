@@ -46,6 +46,11 @@
                                 @endif
                             </div>
                             <div class="grid grid-cols-2 gap-3">
+                                {{-- Recibos primeiro: o scan/foto preenche o resto (como na tabela). --}}
+                                <div class="col-span-2">
+                                    <label class="campo-label">Recibos <span class="text-perigo-500">*</span> <span class="text-xs font-normal normal-case text-texto-fraco">(começa por aqui)</span></label>
+                                    @include('livewire.despesas._recibos-linha', ['n' => $n, 'linha' => $linha, 'sufixo' => 'm'])
+                                </div>
                                 <div>
                                     <label class="campo-label">Dia <span class="text-perigo-500">*</span></label>
                                     {{-- Calendário SEM dia pré-selecionado (nasce vazio). --}}
@@ -93,10 +98,6 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="col-span-2">
-                                    <label class="campo-label">Recibos <span class="text-perigo-500">*</span></label>
-                                    @include('livewire.despesas._recibos-linha', ['n' => $n, 'linha' => $linha, 'sufixo' => 'm'])
-                                </div>
                             </div>
                         </div>
                     @endforeach
@@ -114,19 +115,24 @@
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="bg-fundo text-xs uppercase tracking-wide text-texto-medio">
+                                <th class="w-56 border-b border-r border-borda px-3 py-2 text-left font-semibold">Recibos <span class="text-perigo-500">*</span><br><span class="font-normal normal-case text-texto-fraco">(começa por aqui)</span></th>
                                 <th class="w-36 border-b border-r border-borda px-3 py-2 text-left font-semibold">Dia <span class="text-perigo-500">*</span></th>
                                 <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">Descrição <span class="text-perigo-500">*</span><br><span class="font-normal normal-case text-texto-fraco">(local · serviço)</span></th>
                                 <th class="w-44 border-b border-r border-borda px-3 py-2 text-left font-semibold">Tipo <span class="text-perigo-500">*</span></th>
                                 <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">O que é<br><span class="font-normal normal-case text-texto-fraco">(opcional)</span></th>
                                 <th class="w-28 border-b border-r border-borda px-3 py-2 text-right font-semibold">Valor (€) <span class="text-perigo-500">*</span></th>
                                 <th class="w-48 border-b border-r border-borda px-3 py-2 text-left font-semibold">Pago por <span class="text-perigo-500">*</span></th>
-                                <th class="w-56 border-b border-borda px-3 py-2 text-left font-semibold">Recibos <span class="text-perigo-500">*</span></th>
                                 <th class="w-10 border-b border-borda"></th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($linhas as $n => $linha)
                                 <tr wire:key="linha-d-{{ $n }}" class="border-b border-borda/60 align-top">
+                                    {{-- Recibos à cabeça: o scan/foto lê o QR e o talão e preenche o dia, o valor,
+                                         a descrição e o tipo — começa-se por aqui (pedido da equipa, set. 2026). --}}
+                                    <td class="border-r border-borda px-1.5 py-2">
+                                        @include('livewire.despesas._recibos-linha', ['n' => $n, 'linha' => $linha, 'sufixo' => 'd'])
+                                    </td>
                                     <td class="border-r border-borda px-1.5 py-2">
                                         {{-- Calendário SEM dia pré-selecionado (nasce vazio). --}}
                                         <input wire:model="linhas.{{ $n }}.dia" type="date" class="campo-input w-full min-w-[8.5rem] px-2 py-1.5 text-sm">
@@ -163,9 +169,6 @@
                                             @endforeach
                                         </select>
                                     </td>
-                                    <td class="px-1.5 py-2">
-                                        @include('livewire.despesas._recibos-linha', ['n' => $n, 'linha' => $linha, 'sufixo' => 'd'])
-                                    </td>
                                     <td class="px-1 py-2 text-center">
                                         @if (count($linhas) > 1)
                                             <button type="button" wire:click="removerLinha({{ $n }})" class="mt-1.5 text-texto-fraco hover:text-perigo-600" title="Remover linha">
@@ -178,9 +181,9 @@
                         </tbody>
                         <tfoot>
                             <tr class="border-t border-borda bg-fundo">
-                                <td colspan="4" class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-texto-medio">Total despesas</td>
+                                <td colspan="5" class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-texto-medio">Total despesas</td>
                                 <td class="px-3 py-2 text-right text-sm font-semibold text-texto-forte">{{ number_format($total, 2, ',', ' ') }} €</td>
-                                <td colspan="3"></td>
+                                <td colspan="2"></td>
                             </tr>
                         </tfoot>
                     </table>
