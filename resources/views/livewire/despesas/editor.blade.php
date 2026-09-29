@@ -48,7 +48,7 @@
                             <div class="grid grid-cols-2 gap-3">
                                 {{-- Recibos primeiro: o scan/foto preenche o resto (como na tabela). --}}
                                 <div class="col-span-2">
-                                    <label class="campo-label">Recibos <span class="text-perigo-500">*</span> <span class="text-xs font-normal normal-case text-texto-fraco">(começa por aqui)</span></label>
+                                    <label class="campo-label">Recibos <span class="text-perigo-500">*</span></label>
                                     @include('livewire.despesas._recibos-linha', ['n' => $n, 'linha' => $linha, 'sufixo' => 'm'])
                                 </div>
                                 <div>
@@ -115,7 +115,7 @@
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="bg-fundo text-xs uppercase tracking-wide text-texto-medio">
-                                <th class="w-56 border-b border-r border-borda px-3 py-2 text-left font-semibold">Recibos <span class="text-perigo-500">*</span><br><span class="font-normal normal-case text-texto-fraco">(começa por aqui)</span></th>
+                                <th class="w-56 border-b border-r border-borda px-3 py-2 text-left font-semibold">Recibos <span class="text-perigo-500">*</span></th>
                                 <th class="w-36 border-b border-r border-borda px-3 py-2 text-left font-semibold">Dia <span class="text-perigo-500">*</span></th>
                                 <th class="border-b border-r border-borda px-3 py-2 text-left font-semibold">Descrição <span class="text-perigo-500">*</span><br><span class="font-normal normal-case text-texto-fraco">(cliente)</span></th>
                                 <th class="w-44 border-b border-r border-borda px-3 py-2 text-left font-semibold">Tipo <span class="text-perigo-500">*</span></th>
