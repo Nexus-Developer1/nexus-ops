@@ -2,11 +2,8 @@
      multibanco (obrigatório). As despesas pagas com esse dinheiro levam «Dinheiro levantado» em
      «Pago por», e as contas por baixo dizem quanto sobra (a devolver). --}}
 <div class="mt-6 rounded-lg border border-borda p-4">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-            <h3 class="text-sm font-semibold text-texto-forte">Levantamentos do cartão</h3>
-            <p class="mt-0.5 text-xs text-texto-fraco">Dinheiro levantado no multibanco com o cartão do técnico. As despesas pagas com ele levam «Dinheiro levantado» em «Pago por».</p>
-        </div>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h3 class="text-sm font-semibold text-texto-forte">Levantamentos do cartão</h3>
         <button type="button" wire:click="adicionarLevantamento" class="botao-secundario w-full shrink-0 justify-center sm:w-auto">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
             Levantamento
