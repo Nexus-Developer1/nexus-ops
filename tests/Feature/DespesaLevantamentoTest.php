@@ -51,7 +51,8 @@ class DespesaLevantamentoTest extends TestCase
             ->set('linhas.0.descricao', 'BNP PARIBAS, S.A.')
             ->set('linhas.0.categoria', 'Refeições')
             ->set('linhas.0.refeicao_tipo', 'A')
-            ->set('linhas.0.pago_por', Despesa::DINHEIRO_LEVANTADO)
+            ->set('linhas.0.pago_por', 'cartao_tecnico')
+            ->set('linhas.0.cartao_forma', 'dinheiro')
             ->set('linhas.0.valor', '12.50')
             ->set('recibosLinhaUpload.0', [UploadedFile::fake()->image('r.jpg', 800, 600)])
             ->set('levantamentos.0.dia', '2026-09-22') // o levantamento nasceu com o «Dinheiro levantado»
@@ -86,24 +87,71 @@ class DespesaLevantamentoTest extends TestCase
             ->assertSee('87,50 €');
     }
 
-    // A secção só aparece com uma linha paga com «Dinheiro levantado», e já com um levantamento
-    // por preencher; volta a esconder-se se se mudar de ideias antes de escrever nada nele.
-    public function test_a_seccao_so_aparece_com_dinheiro_levantado(): void
+    // «Pago por» tem só 3 opções; com o Cartão Técnico aparece «Multibanco / Dinheiro levantado»
+    // (nasce Multibanco). A secção dos levantamentos só aparece com Dinheiro levantado, já com um
+    // levantamento por preencher, e esconde-se se se mudar de ideias antes de escrever nele.
+    public function test_cartao_tecnico_multibanco_ou_dinheiro_levantado(): void
     {
         Livewire::actingAs($this->tecnico())->test(Editor::class)
+            ->assertDontSee('Dinheiro levantado')
             ->assertDontSee('Levantamentos do cartão')
             ->set('linhas.0.pago_por', 'cartao_tecnico')
+            ->assertSet('linhas.0.cartao_forma', 'multibanco')
+            ->assertSee('Dinheiro levantado')                 // a escolha aparece
             ->assertDontSee('Levantamentos do cartão')
-            ->set('linhas.0.pago_por', Despesa::DINHEIRO_LEVANTADO)
+            ->set('linhas.0.cartao_forma', 'dinheiro')
             ->assertSee('Levantamentos do cartão')
             ->assertCount('levantamentos', 1)
             ->set('linhas.0.pago_por', 'tecnico')
+            ->assertSet('linhas.0.cartao_forma', '')
             ->assertDontSee('Levantamentos do cartão')
-            ->set('linhas.0.pago_por', Despesa::DINHEIRO_LEVANTADO)
+            ->set('linhas.0.pago_por', 'cartao_tecnico')
+            ->set('linhas.0.cartao_forma', 'dinheiro')
             ->assertCount('levantamentos', 1)             // não duplica
             ->set('levantamentos.0.valor', '50')
-            ->set('linhas.0.pago_por', 'tecnico')
+            ->set('linhas.0.cartao_forma', 'multibanco')
             ->assertSee('Levantamentos do cartão');        // com dados, não se esconde
+    }
+
+    // Grava-se como antes (multibanco = «cartao_tecnico», dinheiro = «dinheiro_levantado») e, ao
+    // editar, volta a aparecer como Cartão Técnico + a forma certa.
+    public function test_grava_e_reabre_a_forma_do_cartao(): void
+    {
+        $tecnico = $this->tecnico();
+        $this->editorComLevantamento($tecnico)
+            ->call('adicionarLinha')
+            ->set('linhas.1.dia', '2026-09-23')
+            ->set('linhas.1.descricao', 'BNP PARIBAS, S.A.')
+            ->set('linhas.1.categoria', 'Combustíveis')
+            ->set('linhas.1.pago_por', 'cartao_tecnico')      // fica Multibanco
+            ->set('linhas.1.valor', '40')
+            ->set('recibosLinhaUpload.1', [UploadedFile::fake()->image('r2.jpg', 800, 600)])
+            ->set('talaoLevantamentoUpload.0', [$this->talao()])
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $registo = RegistoDespesa::firstOrFail();
+        $this->assertEqualsCanonicalizing([Despesa::DINHEIRO_LEVANTADO, 'cartao_tecnico'], $registo->despesas()->pluck('pago_por')->all());
+        $this->assertSame(12.5, $registo->contasDoDinheiro()['gasto']); // o multibanco não conta como dinheiro
+
+        Livewire::actingAs($tecnico)->test(Editor::class, ['registo' => $registo])
+            ->assertSet('linhas.0.pago_por', 'cartao_tecnico')
+            ->assertSet('linhas.0.cartao_forma', 'dinheiro')
+            ->assertSet('linhas.1.pago_por', 'cartao_tecnico')
+            ->assertSet('linhas.1.cartao_forma', 'multibanco');
+
+        Livewire::actingAs($tecnico)->test(Ficha::class, ['registo' => $registo])
+            ->assertSee('Cartão Técnico — dinheiro levantado');
+    }
+
+    // Já não se pode mandar «dinheiro_levantado» direto no «Pago por» (não é uma opção).
+    public function test_dinheiro_levantado_nao_e_opcao_do_pago_por(): void
+    {
+        $this->editorComLevantamento($this->tecnico())
+            ->set('linhas.0.pago_por', Despesa::DINHEIRO_LEVANTADO)
+            ->set('talaoLevantamentoUpload.0', [$this->talao()])
+            ->call('guardar')
+            ->assertHasErrors('linhas.0.pago_por');
     }
 
     public function test_o_talao_do_multibanco_e_obrigatorio(): void

@@ -89,14 +89,25 @@
                                     <label class="campo-label">O que é</label>
                                     <input wire:model="linhas.{{ $n }}.detalhe" type="text" class="campo-input" placeholder="Ex: Restaurante O Cantinho - Coimbra, portagem A1…">
                                 </div>
-                                <div class="col-span-2">
-                                    <label class="campo-label">Pago por <span class="text-perigo-500">*</span></label>
-                                    <select wire:model.live="linhas.{{ $n }}.pago_por" class="campo-select font-semibold">
-                                        <option value="">Quem pagou?</option>
-                                        @foreach (\App\Models\Despesa::PAGO_POR as $chave => $rotulo)
-                                            <option value="{{ $chave }}">{{ $rotulo }}</option>
-                                        @endforeach
-                                    </select>
+                                <div class="col-span-2 grid grid-cols-1 gap-3">
+                                    <div>
+                                        <label class="campo-label">Pago por <span class="text-perigo-500">*</span></label>
+                                        <select wire:model.live="linhas.{{ $n }}.pago_por" class="campo-select font-semibold">
+                                            <option value="">Quem pagou?</option>
+                                            @foreach (\App\Models\Despesa::PAGO_POR as $chave => $rotulo)
+                                                <option value="{{ $chave }}">{{ $rotulo }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    @if (($linha['pago_por'] ?? '') === 'cartao_tecnico')
+                                        <div>
+                                            <label class="campo-label">Como <span class="text-perigo-500">*</span></label>
+                                            <select wire:model.live="linhas.{{ $n }}.cartao_forma" class="campo-select">
+                                                <option value="multibanco">Multibanco</option>
+                                                <option value="dinheiro">Dinheiro levantado</option>
+                                            </select>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -168,6 +179,14 @@
                                                 <option value="{{ $chave }}">{{ $rotulo }}</option>
                                             @endforeach
                                         </select>
+                                        {{-- Cartão Técnico: no multibanco ou com dinheiro levantado dele (este abre
+                                             os «Levantamentos do cartão» por baixo) — como o A/J das refeições. --}}
+                                        @if (($linha['pago_por'] ?? '') === 'cartao_tecnico')
+                                            <select wire:model.live="linhas.{{ $n }}.cartao_forma" class="campo-select mt-1 w-full py-1 pl-2 pr-8 text-xs">
+                                                <option value="multibanco">Multibanco</option>
+                                                <option value="dinheiro">Dinheiro levantado</option>
+                                            </select>
+                                        @endif
                                     </td>
                                     <td class="px-1 py-2 text-center">
                                         @if (count($linhas) > 1)
@@ -198,7 +217,7 @@
 
                 @error('linhas') <p class="mt-2 text-xs text-perigo-500">{{ $message }}</p> @enderror
                 @foreach ($linhas as $n => $linha)
-                    @foreach (['dia', 'descricao', 'detalhe', 'categoria', 'refeicao_tipo', 'valor', 'pago_por', 'recibos'] as $campo)
+                    @foreach (['dia', 'descricao', 'detalhe', 'categoria', 'refeicao_tipo', 'valor', 'pago_por', 'cartao_forma', 'recibos'] as $campo)
                         @error("linhas.$n.$campo") <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     @endforeach
                 @endforeach

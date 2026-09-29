@@ -105,6 +105,7 @@ class Editor extends Component
             'categoria' => '',
             'refeicao_tipo' => '',
             'pago_por' => '', // nasce vazio, como o Tipo: quem lança tem de escolher
+            'cartao_forma' => '', // com o Cartão Técnico: 'multibanco' ou 'dinheiro' (levantado)
             'valor' => '',
         ];
     }
@@ -132,7 +133,13 @@ class Editor extends Component
                 'detalhe' => $d->detalhe ?? '',
                 'categoria' => in_array($d->categoria, Despesa::CATEGORIAS, true) ? $d->categoria : 'Outras despesas',
                 'refeicao_tipo' => $d->refeicao_tipo ?? '',
-                'pago_por' => $d->pago_por ?? '',
+                // «Dinheiro levantado» grava-se à parte; no ecrã é Cartão Técnico + dinheiro.
+                'pago_por' => $d->pago_por === Despesa::DINHEIRO_LEVANTADO ? 'cartao_tecnico' : ($d->pago_por ?? ''),
+                'cartao_forma' => match ($d->pago_por) {
+                    Despesa::DINHEIRO_LEVANTADO => 'dinheiro',
+                    'cartao_tecnico' => 'multibanco',
+                    default => '',
+                },
                 'valor' => (string) $d->valor,
             ])->values()->all() ?: [$this->linhaVazia()];
 
@@ -205,13 +212,33 @@ class Editor extends Component
         $this->taloesPendentes = $this->semLinha($this->taloesPendentes, $indice);
     }
 
-    // Ao escolher «Dinheiro levantado» numa linha, a secção dos levantamentos aparece (ver
+    // Cartão Técnico → aparece a escolha «Multibanco / Dinheiro levantado» (nasce Multibanco, o
+    // caso de todos os dias). Dinheiro levantado → a secção dos levantamentos aparece (ver
     // mostrarLevantamentos()) já com um levantamento por preencher.
     public function updatedLinhas($valor, $chave): void
     {
-        if (str_ends_with((string) $chave, '.pago_por') && $valor === Despesa::DINHEIRO_LEVANTADO && $this->levantamentos === []) {
+        $partes = explode('.', (string) $chave);
+        $n = (int) $partes[0];
+        $campo = $partes[1] ?? '';
+        if (! array_key_exists($n, $this->linhas)) {
+            return;
+        }
+
+        if ($campo === 'pago_por') {
+            $this->linhas[$n]['cartao_forma'] = $valor === 'cartao_tecnico'
+                ? (($this->linhas[$n]['cartao_forma'] ?? '') ?: 'multibanco')
+                : '';
+        }
+
+        if ($this->pagaComDinheiro($this->linhas[$n]) && $this->levantamentos === []) {
             $this->adicionarLevantamento();
         }
+    }
+
+    // A linha foi paga com dinheiro levantado do cartão do técnico?
+    private function pagaComDinheiro(array $linha): bool
+    {
+        return ($linha['pago_por'] ?? '') === 'cartao_tecnico' && ($linha['cartao_forma'] ?? '') === 'dinheiro';
     }
 
     // A secção «Levantamentos do cartão» só aparece com uma linha paga com «Dinheiro levantado»
@@ -219,7 +246,7 @@ class Editor extends Component
     // o que está gravado ou escrito.
     private function mostrarLevantamentos(): bool
     {
-        return collect($this->linhas)->contains(fn ($l) => ($l['pago_por'] ?? '') === Despesa::DINHEIRO_LEVANTADO)
+        return collect($this->linhas)->contains(fn ($l) => $this->pagaComDinheiro($l))
             || collect($this->levantamentos)->keys()->contains(fn ($i) => ! empty($this->levantamentos[$i]['levantamento_id'])
                 || trim((string) ($this->levantamentos[$i]['dia'] ?? '')) !== ''
                 || trim((string) ($this->levantamentos[$i]['valor'] ?? '')) !== ''
@@ -467,6 +494,7 @@ class Editor extends Component
             'linhas.*.categoria' => ['nullable', Rule::in(array_merge([''], Despesa::CATEGORIAS))],
             'linhas.*.refeicao_tipo' => ['nullable', 'in:A,J'],
             'linhas.*.pago_por' => ['nullable', Rule::in(array_merge([''], array_keys(Despesa::PAGO_POR)))],
+            'linhas.*.cartao_forma' => ['nullable', 'in:multibanco,dinheiro'],
             'linhas.*.valor' => ['nullable', 'numeric', 'min:0'],
         ]);
 
@@ -522,6 +550,19 @@ class Editor extends Component
                 $this->addError("linhas.$n.pago_por", 'Indique quem pagou a despesa na linha '.($n + 1).'.');
 
                 return;
+            }
+
+            // Cartão Técnico: multibanco ou dinheiro levantado (este grava-se com a chave própria).
+            if ($pagoPor === 'cartao_tecnico') {
+                $forma = (string) ($linha['cartao_forma'] ?? '');
+                if (! in_array($forma, ['multibanco', 'dinheiro'], true)) {
+                    $this->addError("linhas.$n.cartao_forma", 'Indique se o Cartão Técnico foi no multibanco ou com dinheiro levantado — linha '.($n + 1).'.');
+
+                    return;
+                }
+                if ($forma === 'dinheiro') {
+                    $pagoPor = Despesa::DINHEIRO_LEVANTADO;
+                }
             }
 
             $lancamentos[$n] = [
@@ -711,7 +752,7 @@ class Editor extends Component
         $soma = fn (array $itens) => collect($itens)->sum(fn ($l) => is_numeric($l['valor'] ?? null) ? (float) $l['valor'] : 0.0);
         $contasDinheiro = RegistoDespesa::contas(
             $soma($this->levantamentos),
-            $soma(array_filter($this->linhas, fn ($l) => ($l['pago_por'] ?? '') === Despesa::DINHEIRO_LEVANTADO)),
+            $soma(array_filter($this->linhas, fn ($l) => $this->pagaComDinheiro($l))),
         );
 
         // Talões gravados por levantamento_id (edição).

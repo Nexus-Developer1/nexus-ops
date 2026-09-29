@@ -21,16 +21,22 @@ class Despesa extends Model
     // Categorias FIXAS (as da folha de despesas da empresa) — whitelist no editor.
     public const CATEGORIAS = ['Combustíveis', 'Outros (veículos)', 'Hotel', 'Refeições', 'Táxi / Comboio / Avião', 'Outras despesas'];
 
-    // Quem pagou (set. 2026) — chave gravada => rótulo mostrado. «Pago pelo técnico» é o que
-    // há a reembolsar; os outros já saíram do dinheiro da empresa. «Dinheiro levantado» = pago
-    // com dinheiro levantado do cartão do técnico (os levantamentos vivem no registo).
-    public const DINHEIRO_LEVANTADO = 'dinheiro_levantado';
-
+    // Quem pagou (set. 2026) — as opções do «Pago por», chave gravada => rótulo. «Pago pelo
+    // técnico» é o que há a reembolsar; os outros já saíram do dinheiro da empresa.
     public const PAGO_POR = [
         'cartao_tecnico' => 'Cartão Técnico',
-        self::DINHEIRO_LEVANTADO => 'Dinheiro levantado',
         'financeiro' => 'Financeiro',
         'tecnico' => 'Pago pelo técnico',
+    ];
+
+    // Com o Cartão Técnico escolhe-se ainda COMO: no multibanco (pago com o cartão) ou com
+    // dinheiro levantado dele (os levantamentos vivem no registo). O dinheiro levantado grava-se
+    // com esta chave própria em pago_por — não é uma opção do «Pago por» (pedido da equipa).
+    public const DINHEIRO_LEVANTADO = 'dinheiro_levantado';
+
+    /** Rótulos de tudo o que pode estar gravado em pago_por (ficha, PDF). */
+    public const ROTULOS_PAGO_POR = self::PAGO_POR + [
+        self::DINHEIRO_LEVANTADO => 'Cartão Técnico — dinheiro levantado',
     ];
 
     /** @var list<string> */
@@ -64,7 +70,7 @@ class Despesa extends Model
     // Rótulo de quem pagou, ou null nas linhas antigas (anteriores ao campo).
     public function pagoPorRotulo(): ?string
     {
-        return self::PAGO_POR[$this->pago_por] ?? null;
+        return self::ROTULOS_PAGO_POR[$this->pago_por] ?? null;
     }
 
     public function cliente(): BelongsTo
