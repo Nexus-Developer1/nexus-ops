@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-29
 
+- 🎨 **Painel (dashboard) com a mesma largura das listagens.** Passa de 1152px a 1536px (`max-w-screen-2xl`), como relatórios, despesas e equipamentos — os cartões e as listas da agenda, dos alertas e dos relatórios por preencher esticam com o ecrã. Requer build e `optimize`.
 - 🔒 **Clientes — os botões das famílias de equipamentos já não correm código vindo do PHC.** Achado da 25.ª/26.ª revisões de segurança. Na ficha do cliente (separador Equipamentos), o nome da família vinha do PHC e entrava entre plicas no `wire:click` do botão, que o browser corre como JavaScript: um apóstrofo no nome («D'Ávila») partia o botão, e um nome feito de propósito por quem escreve no PHC corria código no browser de quem abrisse a página. Passa a ir por `@js`, sempre como texto — como já estava na ficha do equipamento. Para quem usa, nada muda (hoje não há famílias com esses caracteres). Sem migração; `optimize`. +1 teste (falha com o código antigo).
 - 🎨 **Despesas — o editor (novo registo / editar) também usa a largura do ecrã, sem barra para deslizar.** A página passa de 1152px a 1536px, como as listagens, e a tabela das linhas deixa de ter uma largura mínima fixa de 1260px: cada campo passa a ter a sua (o Tipo e o «Pago por» cabem inteiros, a descrição e o «o que é» apertam até 11rem). Precisa agora de ~1173px — medido num browser, cabe sem barra a partir de ecrãs de ~1600px; em portáteis de 1366–1536px a barra continua. Requer build e `optimize`.
 
