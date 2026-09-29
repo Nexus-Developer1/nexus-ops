@@ -86,16 +86,17 @@
                 </div>
                 <div class="mt-4 space-y-2">
                     @forelse ($relatorios as $rl)
-                        <div class="flex items-center justify-between gap-3 rounded-lg border border-borda px-3 py-2" wire:key="rl-{{ $rl->id }}">
+                        <a href="{{ route('relatorios.editar', $rl) }}" wire:navigate title="Abrir o relatório"
+                            class="group flex items-center justify-between gap-3 rounded-lg border border-borda px-3 py-2 transition hover:border-verde-600 hover:bg-fundo" wire:key="rl-{{ $rl->id }}">
                             <div class="min-w-0">
-                                <div class="truncate text-sm font-medium text-texto-forte">{{ $rl->numero }}</div>
+                                <div class="truncate text-sm font-medium text-texto-forte group-hover:text-verde-600">{{ $rl->numero ?? 'Rascunho' }}</div>
                                 <div class="truncate text-xs text-texto-fraco">
                                     {{ $rl->data?->translatedFormat('d M Y') ?? '—' }}
                                     @if ($rl->intervencao?->equipamento?->numero_serie) · {{ $rl->intervencao->equipamento->numero_serie }} @endif
                                 </div>
                             </div>
                             <span class="etiqueta {{ $rl->estado->classesEtiqueta() }} shrink-0">{{ $rl->estado->rotulo() }}</span>
-                        </div>
+                        </a>
                     @empty
                         <p class="text-sm text-texto-medio">Sem relatórios.</p>
                     @endforelse

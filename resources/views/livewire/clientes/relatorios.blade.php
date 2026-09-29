@@ -32,7 +32,9 @@
                     <tbody>
                         @forelse ($relatorios as $rl)
                             <tr class="border-b border-borda transition last:border-0 hover:bg-fundo" wire:key="rl-{{ $rl->id }}">
-                                <td class="px-6 py-4 font-medium text-texto-forte">{{ $rl->numero }}</td>
+                                <td class="px-6 py-4 font-medium">
+                                    <a href="{{ route('relatorios.editar', $rl) }}" wire:navigate class="text-verde-600 hover:underline" title="Abrir o relatório">{{ $rl->numero ?? 'Rascunho' }}</a>
+                                </td>
                                 <td class="px-6 py-4 text-texto-medio">{{ $rl->data?->translatedFormat('d M Y') ?? '—' }}</td>
                                 <td class="px-6 py-4 text-texto-medio">{{ $rl->intervencao?->equipamento?->numero_serie ?? '—' }}</td>
                                 <td class="px-6 py-4"><span class="etiqueta {{ $rl->estado->classesEtiqueta() }}">{{ $rl->estado->rotulo() }}</span></td>

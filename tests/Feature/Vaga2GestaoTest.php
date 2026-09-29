@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
 use App\Livewire\Clientes\Detalhe;
+use App\Livewire\Clientes\Relatorios;
 use App\Livewire\Contratos\Ficha;
 use App\Models\Cliente;
 use App\Models\Contrato;
@@ -65,5 +66,26 @@ class Vaga2GestaoTest extends TestCase
             ->assertSee('Sem contrato')
             ->assertViewHas('visitasExtraTotal', 1)
             ->assertViewHas('semContratoTotal', 1);
+    }
+
+    public function test_relatorios_do_cliente_abrem_o_relatorio(): void
+    {
+        $cliente = Cliente::create(['nome' => 'ACME', 'ativo' => true]);
+        $local = Local::create(['cliente_id' => $cliente->id, 'designacao' => 'Sede']);
+        $equip = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional',
+            'fabricante' => 'Riello', 'modelo' => 'NPW', 'numero_serie' => 'REL-1']);
+        $relatorio = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'corretiva', 'estado' => 'concluida',
+            'data_inicio' => now()->subDay()])->garantirRascunho();
+        $relatorio->update(['numero' => '2026/0017', 'estado' => 'enviado']);
+        $link = 'href="'.route('relatorios.editar', $relatorio).'"';
+
+        // Na ficha do cliente e na página "Ver todos": o relatório é um link para a sua página.
+        $admin = $this->admin();
+        Livewire::actingAs($admin)->test(Detalhe::class, ['cliente' => $cliente])
+            ->assertSee('2026/0017')
+            ->assertSeeHtml($link);
+        Livewire::actingAs($admin)->test(Relatorios::class, ['cliente' => $cliente])
+            ->assertSee('2026/0017')
+            ->assertSeeHtml($link);
     }
 }
