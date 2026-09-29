@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Anexo;
 use App\Models\Despesa;
+use App\Models\LevantamentoDespesa;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 
@@ -11,8 +12,13 @@ class AnexoController
 {
     public function recibo(Anexo $anexo): Response
     {
-        abort_unless($anexo->anexavel_type === (new Despesa)->getMorphClass(), 404);
-        abort_unless(Despesa::whereKey($anexo->anexavel_id)->whereHas('registo')->exists(), 404);
+        // Recibo de uma despesa OU talão do multibanco de um levantamento — de um registo que exista.
+        $modelo = match ($anexo->anexavel_type) {
+            (new Despesa)->getMorphClass() => Despesa::class,
+            (new LevantamentoDespesa)->getMorphClass() => LevantamentoDespesa::class,
+            default => abort(404),
+        };
+        abort_unless($modelo::whereKey($anexo->anexavel_id)->whereHas('registo')->exists(), 404);
 
         return $this->ver($anexo);
     }

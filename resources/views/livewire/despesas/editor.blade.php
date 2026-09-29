@@ -91,7 +91,7 @@
                                 </div>
                                 <div class="col-span-2">
                                     <label class="campo-label">Pago por <span class="text-perigo-500">*</span></label>
-                                    <select wire:model="linhas.{{ $n }}.pago_por" class="campo-select font-semibold">
+                                    <select wire:model.live="linhas.{{ $n }}.pago_por" class="campo-select font-semibold">
                                         <option value="">Quem pagou?</option>
                                         @foreach (\App\Models\Despesa::PAGO_POR as $chave => $rotulo)
                                             <option value="{{ $chave }}">{{ $rotulo }}</option>
@@ -162,7 +162,7 @@
                                         <input wire:model.live.debounce.500ms="linhas.{{ $n }}.valor" type="number" step="0.01" min="0" inputmode="decimal" class="campo-input w-full min-w-[5.5rem] px-2 py-1.5 text-right text-sm" placeholder="0,00">
                                     </td>
                                     <td class="border-r border-borda px-1.5 py-2">
-                                        <select wire:model="linhas.{{ $n }}.pago_por" class="campo-select w-full min-w-[11rem] py-1.5 pl-2 pr-8 text-sm font-semibold">
+                                        <select wire:model.live="linhas.{{ $n }}.pago_por" class="campo-select w-full min-w-[11rem] py-1.5 pl-2 pr-8 text-sm font-semibold">
                                             <option value="">Quem pagou?</option>
                                             @foreach (\App\Models\Despesa::PAGO_POR as $chave => $rotulo)
                                                 <option value="{{ $chave }}">{{ $rotulo }}</option>
@@ -204,6 +204,8 @@
                 @endforeach
                 @error('recibosLinhaUpload.*') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                 @error('reciboDigitalizado') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+
+                @include('livewire.despesas._levantamentos')
 
                 {{-- Modal do scanner: câmara em direto → capturar → filtro de documento → usar/repetir.
                      O recibo digitalizado cai na LINHA do botão que o abriu (linhaDigitalizacao). --}}

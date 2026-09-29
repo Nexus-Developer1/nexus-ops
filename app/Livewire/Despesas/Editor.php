@@ -7,6 +7,7 @@ use App\Livewire\Concerns\AcessoDespesas;
 use App\Models\Anexo;
 use App\Models\Cliente;
 use App\Models\Despesa;
+use App\Models\LevantamentoDespesa;
 use App\Models\MemoriaFornecedor;
 use App\Models\RegistoDespesa;
 use App\Services\Auditor;
@@ -50,6 +51,19 @@ class Editor extends Component
     // dia pré-selecionado); 'despesa_id' liga à despesa existente (edição — preserva os recibos).
     /** @var array<int, array{despesa_id: ?int, dia: string, descricao: string, detalhe: string, categoria: string, refeicao_tipo: string, pago_por: string, valor: string}> */
     public array $linhas = [];
+
+    // Levantamentos de dinheiro do cartão do técnico (set. 2026): dia, valor e o talão do
+    // multibanco (obrigatório). 'levantamento_id' liga ao gravado (edição — preserva o talão);
+    // vem do browser, por isso só se usa filtrado aos levantamentos DESTE registo.
+    /** @var array<int, array{levantamento_id: ?int, dia: string, valor: string}> */
+    public array $levantamentos = [];
+
+    // Talões PENDENTES por levantamento e o alvo de upload (câmara/galeria), como nos recibos.
+    /** @var array<int, array<int, TemporaryUploadedFile>> */
+    public array $taloesPendentes = [];
+
+    /** @var array<int, mixed> */
+    public array $talaoLevantamentoUpload = [];
 
     // Recibos PENDENTES por linha (gravam-se com a despesa dessa linha ao guardar).
     /** @var array<int, array<int, TemporaryUploadedFile>> */
@@ -122,6 +136,12 @@ class Editor extends Component
                 'valor' => (string) $d->valor,
             ])->values()->all() ?: [$this->linhaVazia()];
 
+            $this->levantamentos = $registo->levantamentos()->get()->map(fn (LevantamentoDespesa $l) => [
+                'levantamento_id' => $l->id,
+                'dia' => $l->data->toDateString(),
+                'valor' => (string) $l->valor,
+            ])->values()->all();
+
             return;
         }
 
@@ -166,6 +186,62 @@ class Editor extends Component
             ->get(['id', 'nome', 'nif'])
             ->map(fn (Cliente $c) => ['id' => $c->id, 'nome' => $c->nome, 'nif' => trim((string) $c->nif) ?: null]) // o NIF do PHC vem com espaços
             ->all();
+    }
+
+    // --- Levantamentos do cartão ---------------------------------------------------------
+
+    public function adicionarLevantamento(): void
+    {
+        if (count($this->levantamentos) < 10) {
+            $this->levantamentos[] = ['levantamento_id' => null, 'dia' => '', 'valor' => ''];
+        }
+    }
+
+    // Tira da grelha; um levantamento já gravado (e o talão) só se apaga ao guardar.
+    public function removerLevantamento(int $indice): void
+    {
+        unset($this->levantamentos[$indice]);
+        $this->levantamentos = array_values($this->levantamentos);
+        $this->taloesPendentes = $this->semLinha($this->taloesPendentes, $indice);
+    }
+
+    // Câmara / galeria do talão de um levantamento: valida e junta aos pendentes dele.
+    public function updatedTalaoLevantamentoUpload($valor, $chave): void
+    {
+        $indice = (int) explode('.', (string) $chave)[0];
+        if (! is_array($this->talaoLevantamentoUpload[$indice] ?? null)) {
+            $this->talaoLevantamentoUpload[$indice] = array_values(array_filter([$this->talaoLevantamentoUpload[$indice] ?? null]));
+        }
+        $ficheiros = $this->talaoLevantamentoUpload[$indice];
+
+        $this->validate(["talaoLevantamentoUpload.$indice" => ['array'], "talaoLevantamentoUpload.$indice.*" => self::REGRAS_RECIBO]);
+
+        foreach ($ficheiros as $f) {
+            $this->taloesPendentes[$indice][] = $f;
+        }
+        unset($this->talaoLevantamentoUpload[$indice]);
+    }
+
+    public function removerTalaoPendente(int $indice, int $ficheiro): void
+    {
+        unset($this->taloesPendentes[$indice][$ficheiro]);
+        $this->taloesPendentes[$indice] = array_values($this->taloesPendentes[$indice] ?? []);
+    }
+
+    // Remove um talão JÁ GRAVADO — só de levantamentos DESTE registo, e nunca numa aprovada.
+    public function removerTalaoGravado(int $anexoId): void
+    {
+        abort_unless($this->registoId !== null, 404);
+        $registo = RegistoDespesa::findOrFail($this->registoId);
+        abort_unless($registo->podeSerEditado(), 403, 'Despesa aprovada — não pode ser alterada.');
+        $anexo = Anexo::whereKey($anexoId)
+            ->where('anexavel_type', LevantamentoDespesa::class)
+            ->whereIn('anexavel_id', $registo->levantamentos()->pluck('id'))
+            ->firstOrFail();
+        Storage::disk()->delete($anexo->storage_key);
+        $anexo->delete();
+
+        Auditor::registar('talao_levantamento_removido', $registo, ['levantamento_id' => $anexo->anexavel_id, 'ficheiro' => $anexo->nome_ficheiro]);
     }
 
     public function adicionarLinha(): void
@@ -355,6 +431,12 @@ class Editor extends Component
             'recibosPendentes' => ['array'],
             'recibosPendentes.*' => ['array'],
             'recibosPendentes.*.*' => self::REGRAS_RECIBO,
+            'taloesPendentes' => ['array'],
+            'taloesPendentes.*' => ['array'],
+            'taloesPendentes.*.*' => self::REGRAS_RECIBO,
+            'levantamentos' => ['array', 'max:10'],
+            'levantamentos.*.dia' => ['nullable', 'date'],
+            'levantamentos.*.valor' => ['nullable', 'numeric', 'min:0'],
             'matricula' => ['nullable', 'string', 'max:50'],
             'departamento' => ['nullable', 'string', 'max:100'],
             'linhas' => ['array', 'max:31'],
@@ -456,6 +538,40 @@ class Editor extends Component
             }
         }
 
+        // Levantamentos: dia, valor > 0 e o talão do multibanco (OBRIGATÓRIO, como os recibos).
+        // Um novo em branco é ignorado; um já gravado esvaziado é erro (remove-se com o ×).
+        $taloesGravados = $this->registoId
+            ? Anexo::where('anexavel_type', LevantamentoDespesa::class)
+                ->whereIn('anexavel_id', RegistoDespesa::findOrFail($this->registoId)->levantamentos()->pluck('id'))
+                ->pluck('anexavel_id')->map(fn ($id) => (int) $id)->all()
+            : [];
+        $levantamentos = [];
+        foreach ($this->levantamentos as $i => $l) {
+            $dia = trim((string) ($l['dia'] ?? ''));
+            $valor = trim((string) ($l['valor'] ?? ''));
+            $id = isset($l['levantamento_id']) && $l['levantamento_id'] ? (int) $l['levantamento_id'] : null;
+            $temPendente = ($this->taloesPendentes[$i] ?? []) !== [];
+            if (! $id && $dia === '' && $valor === '' && ! $temPendente) {
+                continue;
+            }
+            if ($dia === '') {
+                $this->addError("levantamentos.$i.dia", 'Escolha o dia do levantamento '.($i + 1).'.');
+
+                return;
+            }
+            if ($valor === '' || (float) $valor <= 0) {
+                $this->addError("levantamentos.$i.valor", 'Indique o valor levantado (levantamento '.($i + 1).').');
+
+                return;
+            }
+            if (! $temPendente && ! ($id && in_array($id, $taloesGravados, true))) {
+                $this->addError("levantamentos.$i.talao", 'Anexe o talão do multibanco no levantamento '.($i + 1).' — é obrigatório.');
+
+                return;
+            }
+            $levantamentos[$i] = ['levantamento_id' => $id, 'data' => Carbon::parse($dia)->toDateString(), 'valor' => (float) $valor];
+        }
+
         $cabecalho = [
             'matricula' => trim($this->matricula) ?: null,
             'departamento' => trim($this->departamento) ?: null,
@@ -505,6 +621,39 @@ class Editor extends Component
 
         $registo->despesas()->whereNotIn('id', $mantidas)->delete(); // linhas removidas da grelha
 
+        // Levantamentos: o mesmo sincronismo por id (só os DESTE registo), com o talão.
+        $mantidos = [];
+        foreach ($levantamentos as $i => $dados) {
+            $id = $dados['levantamento_id'];
+            unset($dados['levantamento_id']);
+
+            if ($id && ($levantamento = $registo->levantamentos()->whereKey($id)->first())) {
+                $levantamento->update($dados);
+            } else {
+                $levantamento = $registo->levantamentos()->create($dados);
+            }
+            $mantidos[] = $levantamento->id;
+
+            foreach ($this->taloesPendentes[$i] ?? [] as $ficheiro) {
+                $levantamento->anexos()->create([
+                    'nome_ficheiro' => $ficheiro->getClientOriginalName() ?: 'talao.jpg',
+                    'storage_key' => $ficheiro->store('anexos/levantamentos/'.$levantamento->id),
+                    'mime' => $ficheiro->getMimeType(),
+                    'tamanho' => $ficheiro->getSize(),
+                    'criado_por' => auth()->id(),
+                ]);
+            }
+        }
+        // Removidos da grelha: vão com o talão (ficheiro e metadados).
+        foreach ($registo->levantamentos()->whereNotIn('id', $mantidos)->with('anexos')->get() as $removido) {
+            foreach ($removido->anexos as $anexo) {
+                Storage::disk()->delete($anexo->storage_key);
+                $anexo->delete();
+            }
+            $removido->delete();
+            Auditor::registar('levantamento_removido', $registo, ['levantamento_id' => $removido->id, 'valor' => (float) $removido->valor]);
+        }
+
         // Processo de validação: registo novo → submete (pendente + email a quem criou, ao
         // aprovador e ao financeiro); rejeitado e corrigido → volta a submeter; pendente
         // editado → continua pendente, sem novo email.
@@ -537,9 +686,27 @@ class Editor extends Component
                 ->groupBy('anexavel_id')
             : collect();
 
+        // Contas do dinheiro levantado, ao vivo: levantado vs. linhas «Dinheiro levantado».
+        $soma = fn (array $itens) => collect($itens)->sum(fn ($l) => is_numeric($l['valor'] ?? null) ? (float) $l['valor'] : 0.0);
+        $contasDinheiro = RegistoDespesa::contas(
+            $soma($this->levantamentos),
+            $soma(array_filter($this->linhas, fn ($l) => ($l['pago_por'] ?? '') === Despesa::DINHEIRO_LEVANTADO)),
+        );
+
+        // Talões gravados por levantamento_id (edição).
+        $taloesPorLevantamento = $this->registoId
+            ? Anexo::where('anexavel_type', LevantamentoDespesa::class)
+                ->whereIn('anexavel_id', RegistoDespesa::findOrFail($this->registoId)->levantamentos()->pluck('id'))
+                ->orderBy('id')
+                ->get()
+                ->groupBy('anexavel_id')
+            : collect();
+
         return view('livewire.despesas.editor', [
             'total' => $total,
             'recibosPorDespesa' => $recibosPorDespesa,
+            'contasDinheiro' => $contasDinheiro,
+            'taloesPorLevantamento' => $taloesPorLevantamento,
         ]);
     }
 }

@@ -22,9 +22,13 @@ class Despesa extends Model
     public const CATEGORIAS = ['Combustíveis', 'Outros (veículos)', 'Hotel', 'Refeições', 'Táxi / Comboio / Avião', 'Outras despesas'];
 
     // Quem pagou (set. 2026) — chave gravada => rótulo mostrado. «Pago pelo técnico» é o que
-    // há a reembolsar; os outros dois já saíram do dinheiro da empresa.
+    // há a reembolsar; os outros já saíram do dinheiro da empresa. «Dinheiro levantado» = pago
+    // com dinheiro levantado do cartão do técnico (os levantamentos vivem no registo).
+    public const DINHEIRO_LEVANTADO = 'dinheiro_levantado';
+
     public const PAGO_POR = [
         'cartao_tecnico' => 'Cartão Técnico',
+        self::DINHEIRO_LEVANTADO => 'Dinheiro levantado',
         'financeiro' => 'Financeiro',
         'tecnico' => 'Pago pelo técnico',
     ];

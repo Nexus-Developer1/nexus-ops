@@ -94,6 +94,19 @@
                                         @endif
                                     </table>
                                 </td></tr>
+                                {{-- Dinheiro levantado do cartão (quando o registo o tem): levantado, gasto e o que sobra. --}}
+                                @if (! empty($r['dinheiro']))
+                                    @php($d = $r['dinheiro'])
+                                    <tr><td style="padding:0 16px 12px; font-size:13px; color:#374151;">
+                                        <span style="color:#6b7280;">Dinheiro levantado do cartão:</span>
+                                        {{ number_format($d['levantado'], 2, ',', ' ') }} € · gasto {{ number_format($d['gasto'], 2, ',', ' ') }} € ·
+                                        @if ($d['saldo'] >= 0)
+                                            <strong>sobra {{ number_format($d['saldo'], 2, ',', ' ') }} € (a devolver)</strong>
+                                        @else
+                                            <strong style="color:#b45309;">gasto a mais {{ number_format(-$d['saldo'], 2, ',', ' ') }} €</strong>
+                                        @endif
+                                    </td></tr>
+                                @endif
                             </table>
 
 @include('emails._botao', ['url' => $r['url'], 'texto' => $modo === 'submetida' && $variante === 'aprovador' ? 'Ver e aprovar despesa' : 'Ver despesa', 'cor' => $modo === 'decidida' ? $cor : '#16a34a'])

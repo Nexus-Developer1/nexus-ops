@@ -112,6 +112,23 @@
     <table class="resumo" style="width: 42%; margin-left: 58%; margin-top: 8px;">
         <tr><td class="rot">Total despesas</td><td class="num">{{ number_format($total, 2, ',', ' ') }} €</td></tr>
     </table>
+
+    {{-- Dinheiro levantado do cartão (set. 2026): os levantamentos e as contas. --}}
+    @php($levantamentos = $registo->levantamentos()->with('anexos')->get())
+    @php($contasDinheiro = $registo->contasDoDinheiro())
+    @if ($levantamentos->isNotEmpty() || $contasDinheiro)
+        <table class="resumo" style="width: 42%; margin-left: 58%; margin-top: 8px;">
+            <tr><td class="rot" colspan="2">Dinheiro levantado do cartão</td></tr>
+            @foreach ($levantamentos as $lev)
+                <tr><td>Levantamento {{ $lev->data->format('d/m/Y') }}</td><td class="num">{{ number_format((float) $lev->valor, 2, ',', ' ') }} €</td></tr>
+            @endforeach
+            @if ($contasDinheiro)
+                <tr><td class="rot">Levantado</td><td class="num">{{ number_format($contasDinheiro['levantado'], 2, ',', ' ') }} €</td></tr>
+                <tr><td class="rot">Gasto em dinheiro</td><td class="num">{{ number_format($contasDinheiro['gasto'], 2, ',', ' ') }} €</td></tr>
+                <tr><td class="rot">{{ $contasDinheiro['saldo'] >= 0 ? 'Sobra (a devolver)' : 'Gasto a mais' }}</td><td class="num">{{ number_format(abs($contasDinheiro['saldo']), 2, ',', ' ') }} €</td></tr>
+            @endif
+        </table>
+    @endif
     @endunless
 
     {{-- Recibos digitalizados: UM POR PÁGINA, a ocupar a página toda.
@@ -149,5 +166,26 @@
             </div>
         @endforeach
     @endforeach
+
+    {{-- Talões do multibanco dos levantamentos — só no PDF completo (o PDF «só recibos» é o
+         dos talões das despesas, para a faturação). Mesma regra de tamanho dos recibos. --}}
+    @unless ($apenasRecibos ?? false)
+        @foreach ($levantamentos as $lev)
+            @foreach ($lev->anexos as $anexo)
+                @php($conteudo = \Illuminate\Support\Facades\Storage::disk()->get($anexo->storage_key))
+                @continue($conteudo === null)
+                @php($medidas = @getimagesizefromstring($conteudo))
+                @php($forma = $medidas && ! empty($medidas[1]) ? $medidas[0] / $medidas[1] : 0.7)
+                @php($estilo = $forma > $formaCaixa
+                    ? 'width: ' . $caixa['largura'] . 'px; height: auto;'
+                    : 'height: ' . $caixa['imagem'] . 'px; width: auto;')
+                <div style="page-break-before: always;"></div>
+                <div class="recibo-pagina">
+                    <div class="recibo-rot">{{ $lev->data->format('d/m/Y') }} · Levantamento do cartão · {{ number_format((float) $lev->valor, 2, ',', ' ') }} € · <strong>Talão do multibanco</strong></div>
+                    <img class="recibo-img" style="{{ $estilo }}" src="data:{{ $anexo->mime ?: 'image/jpeg' }};base64,{{ base64_encode($conteudo) }}">
+                </div>
+            @endforeach
+        @endforeach
+    @endunless
 </body>
 </html>

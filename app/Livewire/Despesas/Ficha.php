@@ -69,6 +69,8 @@ class Ficha extends Component
         return view('livewire.despesas.ficha', [
             'linhas' => $linhas,
             'total' => (float) $linhas->sum('valor'),
+            'levantamentos' => $this->registo->levantamentos()->with('anexos')->get(),
+            'contasDinheiro' => $this->registo->contasDoDinheiro(),
             'podeAprovar' => Gate::allows('aprovar-despesas'),
             'podeEditar' => $this->registo->podeSerEditado(),
         ]);

@@ -64,6 +64,37 @@ class RegistoDespesa extends Model
         return $this->hasMany(Despesa::class, 'registo_despesa_id');
     }
 
+    // Levantamentos de dinheiro do cartão do técnico (com o talão do multibanco).
+    public function levantamentos(): HasMany
+    {
+        return $this->hasMany(LevantamentoDespesa::class, 'registo_despesa_id')->orderBy('data')->orderBy('id');
+    }
+
+    /**
+     * Contas do dinheiro levantado: quanto se levantou, quanto se gastou dele (linhas «Dinheiro
+     * levantado») e o saldo — positivo = sobra (a devolver), negativo = gastou-se mais do que se
+     * levantou. Null quando o registo não mexe em dinheiro levantado.
+     *
+     * @return array{levantado: float, gasto: float, saldo: float}|null
+     */
+    public function contasDoDinheiro(): ?array
+    {
+        return self::contas(
+            (float) $this->levantamentos()->sum('valor'),
+            (float) $this->despesas()->where('pago_por', Despesa::DINHEIRO_LEVANTADO)->sum('valor'),
+        );
+    }
+
+    /** A mesma conta, para o editor (valores ainda por gravar). */
+    public static function contas(float $levantado, float $gasto): ?array
+    {
+        if ($levantado <= 0 && $gasto <= 0) {
+            return null;
+        }
+
+        return ['levantado' => $levantado, 'gasto' => $gasto, 'saldo' => round($levantado - $gasto, 2)];
+    }
+
     // (A relação anexos() saiu: desde a migração 2026_08_05_000004, os recibos anexam-se
     // sempre às LINHAS — Despesa::anexos() — e nenhum código lê anexos do registo.)
 

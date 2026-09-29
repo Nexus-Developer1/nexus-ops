@@ -141,6 +141,35 @@
                 </table>
             </section>
 
+            {{-- Dinheiro levantado do cartão: os levantamentos (com o talão) e as contas. --}}
+            @if ($levantamentos->isNotEmpty() || $contasDinheiro)
+                <section class="cartao mt-6 p-6">
+                    <h2 class="text-sm font-semibold text-texto-forte">Levantamentos do cartão</h2>
+                    @if ($levantamentos->isNotEmpty())
+                        <ul class="mt-3 divide-y divide-borda">
+                            @foreach ($levantamentos as $lev)
+                                <li class="flex flex-wrap items-center justify-between gap-3 py-3" wire:key="lev-{{ $lev->id }}">
+                                    <div class="text-sm">
+                                        <span class="text-texto-medio">{{ $lev->data->translatedFormat('d M Y') }}</span>
+                                        <span class="ml-3 font-semibold text-texto-forte">{{ number_format((float) $lev->valor, 2, ',', ' ') }} €</span>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                        @forelse ($lev->anexos as $a)
+                                            <a href="{{ route('despesas.recibos.ver', $a) }}" target="_blank" class="block overflow-hidden rounded border border-borda" title="Talão do multibanco">
+                                                <img src="{{ route('despesas.recibos.ver', $a) }}" alt="Talão" class="h-16 w-16 object-cover">
+                                            </a>
+                                        @empty
+                                            <span class="text-xs text-perigo-500">Sem talão</span>
+                                        @endforelse
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                    @include('livewire.despesas._contas-dinheiro', ['contas' => $contasDinheiro])
+                </section>
+            @endif
+
             <div class="mt-6">
                 <a href="{{ route('despesas') }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">← Voltar às despesas</a>
             </div>

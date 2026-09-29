@@ -159,6 +159,7 @@ class FluxoAprovacaoDespesas
                 'descricao' => trim($d->descricao.($d->detalhe ? ' — '.$d->detalhe : '')),
                 'valor' => (float) $d->valor,
             ])->all(),
+            'dinheiro' => $registo->contasDoDinheiro(), // levantado / gasto / saldo, ou null
             'url' => route('despesas.registo.ficha', $registo),
         ];
     }
