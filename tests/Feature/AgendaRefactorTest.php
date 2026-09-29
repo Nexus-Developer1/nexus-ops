@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\PapelUtilizador;
 use App\Livewire\Agenda\Calendario;
+use App\Livewire\Relatorios\Novo;
 use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
@@ -197,6 +198,96 @@ class AgendaRefactorTest extends TestCase
 
         $evento = EventoAgenda::firstOrFail();
         $this->assertNotNull($evento->intervencao_id);
+    }
+
+    // ---- O relatório tem sempre o horário da agenda (pedido da equipa, set. 2026) ----
+
+    /** Serviço de DOIS dias com equipamento, gravado pela agenda → rascunho. */
+    private function servicoDeDoisDias(): EventoAgenda
+    {
+        [, $equip] = $this->contexto();
+        Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->set('formTitulo', 'Serviço')
+            ->set('formEquipamentoId', $equip->id)
+            ->set('formTecnicoIds', [$this->tecnicoDeTeste()->id])
+            ->set('formInicio', '2026-09-24T14:00')
+            ->set('formFim', '2026-09-25T02:00')
+            ->call('criarEvento')
+            ->assertHasNoErrors();
+
+        return EventoAgenda::firstOrFail();
+    }
+
+    public function test_rascunho_criado_pela_agenda_leva_o_horario_com_a_data_do_fim(): void
+    {
+        $evento = $this->servicoDeDoisDias();
+        $i = $evento->intervencao;
+
+        $this->assertSame('2026-09-24', $i->data_inicio->toDateString());
+        $this->assertSame('2026-09-25 02:00', $i->data_fim->format('Y-m-d H:i'));
+        $this->assertSame('14:00', substr($i->hora_inicio, 0, 5));
+        $this->assertSame('02:00', substr($i->hora_fim, 0, 5));
+
+        // E é isso que o editor do relatório mostra, sem ninguém escrever nada.
+        Livewire::actingAs($this->admin())->test(Novo::class, ['relatorio' => $i->relatorio])
+            ->assertSet('data', '2026-09-24')
+            ->assertSet('data_fim', '2026-09-25')
+            ->assertSet('hora_inicio', '14:00')
+            ->assertSet('hora_fim', '02:00');
+    }
+
+    // Arrastar o serviço no calendário muda também o relatório (antes só mudava o evento).
+    public function test_arrastar_o_servico_muda_o_horario_do_relatorio(): void
+    {
+        $evento = $this->servicoDeDoisDias();
+
+        $r = Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->call('reagendar', $evento->id, '2026-09-28T20:00', '2026-09-29T04:30', null)
+            ->effects['returns'][0] ?? null;
+        $this->assertTrue($r['ok'] ?? false);
+
+        $i = $evento->fresh()->intervencao;
+        $this->assertSame('2026-09-28', $i->data_inicio->toDateString());
+        $this->assertSame('2026-09-29 04:30', $i->data_fim->format('Y-m-d H:i'));
+        $this->assertSame('20:00', substr($i->hora_inicio, 0, 5));
+        $this->assertSame('04:30', substr($i->hora_fim, 0, 5));
+    }
+
+    // Relatório já finalizado: o serviço não se arrasta (ficariam com datas diferentes).
+    public function test_servico_com_relatorio_finalizado_nao_se_arrasta(): void
+    {
+        $evento = $this->servicoDeDoisDias();
+        $evento->intervencao->relatorio->update(['estado' => 'finalizado', 'numero' => '2026/0900']);
+
+        $r = Livewire::actingAs($this->admin())->test(Calendario::class)
+            ->call('reagendar', $evento->id, '2026-09-28T20:00', '2026-09-29T04:30', null)
+            ->effects['returns'][0] ?? null;
+
+        $this->assertFalse($r['ok'] ?? true);
+        $this->assertStringContainsString('2026/0900', $r['mensagem']);
+        $this->assertSame('2026-09-24 14:00', $evento->fresh()->inicio->format('Y-m-d H:i'));
+    }
+
+    // Os rascunhos que já existiam ficam com o horário da agenda; os enviados não se tocam.
+    public function test_acerto_dos_rascunhos_existentes(): void
+    {
+        $rascunho = $this->servicoDeDoisDias();
+        $rascunho->intervencao->update(['data_fim' => null, 'hora_fim' => '00:00']); // como estava antes
+
+        [, $equip2] = $this->contexto();
+        $enviado = EventoAgenda::create(['tipo' => 'outro', 'titulo' => 'Antigo', 'estado' => 'concluido',
+            'inicio' => Carbon::parse('2026-09-01 09:00'), 'fim' => Carbon::parse('2026-09-01 10:00'), 'equipamento_id' => $equip2->id]);
+        $iEnv = Intervencao::create(['equipamento_id' => $equip2->id, 'tipo' => 'preventiva', 'estado' => 'concluida',
+            'data_inicio' => '2026-09-01', 'hora_inicio' => '09:00', 'hora_fim' => '10:30', 'evento_agenda_id' => $enviado->id]);
+        $enviado->update(['intervencao_id' => $iEnv->id]);
+        $iEnv->relatorio()->create(['estado' => 'enviado', 'numero' => '2026/0901', 'data' => '2026-09-01']);
+
+        (require database_path('migrations/2026_09_29_000001_sincroniza_horario_dos_rascunhos_com_a_agenda.php'))->up();
+
+        $i = $rascunho->fresh()->intervencao;
+        $this->assertSame('2026-09-25 02:00', $i->data_fim->format('Y-m-d H:i'));
+        $this->assertSame('02:00', substr($i->hora_fim, 0, 5));
+        $this->assertSame('10:30', substr($iEnv->fresh()->hora_fim, 0, 5), 'o enviado regista o que aconteceu — não se toca');
     }
 
     private function admin(): User

@@ -57,10 +57,7 @@ class GeradorRascunhoDeEvento
                 'evento_agenda_id' => $evento->id,
                 'tipo' => TipoIntervencao::Preventiva, // visita agendada, não correção
                 'estado' => EstadoIntervencao::Planeada,
-                'data_inicio' => $evento->inicio->toDateString(),
-                'hora_inicio' => $evento->inicio->format('H:i'),
-                'hora_fim' => $evento->fim->format('H:i'),
-            ]);
+            ] + Intervencao::datasDoEvento($evento->inicio, $evento->fim)); // horário da agenda, com a data do fim
 
             // Cobertos do relatório = os DO CONTRATO (modo contrato, para abrir com a ficha de
             // medições por equipamento) + os ADICIONAIS escolhidos no evento, menos o principal.

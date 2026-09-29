@@ -3,9 +3,11 @@
 namespace App\Services\Agenda;
 
 use App\Enums\EstadoEvento;
+use App\Enums\EstadoRelatorio;
 use App\Enums\TipoEvento;
 use App\Livewire\Agenda\Calendario;
 use App\Models\EventoAgenda;
+use App\Models\Intervencao;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -96,11 +98,7 @@ class AgendadorEvento
                         'horas_dias' => $atributos['horas_dias'] ?? null,
                     ]);
 
-                    $evento->intervencao->update(array_filter([
-                        'data_inicio' => $inicio->toDateString(),
-                        'data_fim' => $fim, // término real (data + hora do fim do evento)
-                        'hora_inicio' => $inicio->format('H:i'),
-                        'hora_fim' => $fim->format('H:i'),
+                    $evento->intervencao->update(Intervencao::datasDoEvento($inicio, $fim) + array_filter([
                         // Só propaga o técnico quando foi escolhido (não apaga o principal do relatório).
                         'tecnico_id' => $atributos['tecnico_id'],
                     ]));
@@ -168,6 +166,13 @@ class AgendadorEvento
             return ['ok' => false, 'mensagem' => $razao];
         }
 
+        // Relatório já finalizado/enviado = documento oficial: o serviço não se muda pela agenda
+        // (mudar só o evento deixava a agenda e o relatório com datas diferentes). Como na edição.
+        $relatorio = $evento->intervencao?->relatorio;
+        if ($relatorio && $relatorio->estado !== EstadoRelatorio::Rascunho) {
+            return ['ok' => false, 'mensagem' => 'Este serviço já tem o relatório '.($relatorio->numero ?? '').' finalizado — muda-se no próprio relatório, não na agenda.'];
+        }
+
         return DB::transaction(function () use ($evento, $novoInicio, $novoFim) {
             $this->detetor->travarAgendaDe($evento->tecnicoIdsTodos() !== []
                 ? $evento->tecnicoIdsTodos()
@@ -189,6 +194,10 @@ class AgendadorEvento
             // O arrasto define um intervalo contínuo novo — horas por dia anteriores deixariam
             // de corresponder (a UI nem oferece arrasto a eventos segmentados; guarda defensiva).
             $evento->update(['inicio' => $novoInicio, 'fim' => $novoFim, 'horas_dias' => null]);
+
+            // Relatório ainda em rascunho: o horário novo passa para ele (o relatório tem sempre
+            // o horário da agenda — pedido da equipa, set. 2026). Antes, arrastar só mexia no evento.
+            $evento->intervencao?->update(Intervencao::datasDoEvento($novoInicio, $novoFim));
 
             return ['ok' => true];
         });

@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 // Intervenção / ordem de trabalho sobre um equipamento.
 class Intervencao extends Model
@@ -57,6 +58,25 @@ class Intervencao extends Model
             'data_inicio' => 'datetime',
             'data_fim' => 'datetime',
             'pedido_em' => 'datetime', // relógio real do SLA de resposta (Vaga 2)
+        ];
+    }
+
+    /**
+     * Datas e horas da intervenção a partir do intervalo do serviço na agenda — a MESMA regra
+     * nos três sítios onde a agenda as passa ao relatório (rascunho criado pela agenda, edição e
+     * arrasto do serviço), para o relatório ter sempre o horário da agenda (pedido da equipa,
+     * set. 2026). O fim leva a DATA do fim: num serviço de dois dias (14h de 25/09 às 02h de
+     * 26/09) o relatório fica «de 25/09 14:00 a 26/09 02:00», e não «25/09, 14:00–02:00».
+     *
+     * @return array{data_inicio: string, data_fim: Carbon, hora_inicio: string, hora_fim: string}
+     */
+    public static function datasDoEvento(Carbon $inicio, Carbon $fim): array
+    {
+        return [
+            'data_inicio' => $inicio->toDateString(),
+            'data_fim' => $fim->copy(), // término real (data + hora do fim do serviço)
+            'hora_inicio' => $inicio->format('H:i'),
+            'hora_fim' => $fim->format('H:i'),
         ];
     }
 
