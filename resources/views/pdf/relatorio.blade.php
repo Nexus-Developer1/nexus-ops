@@ -508,9 +508,12 @@
                         <div class="legenda-grafico">Gráfico do teste de descarga — tensão das baterias (Vbat+ / Vbat−) ao longo do teste</div>
                     </div>
                 @endif
+                {{-- Cabeçalho Item / OK / NOK como no «Relatório final» (faltava — pedido da equipa,
+                     set. 2026); sem largura fixa na 1.ª coluna, as colunas OK/NOK alinham com as de baixo. --}}
                 <table class="ficha-tab">
+                    <tr><th>Item</th><th class="cel-ok">OK</th><th class="cel-nok">NOK</th></tr>
                     <tr>
-                        <td style="width:60%;">Baterias em funcionamento</td>
+                        <td>Baterias em funcionamento</td>
                         <td class="cel-ok">{{ $marca($ficha->baterias_funcionamento, 'ok') }}</td>
                         <td class="cel-nok">{{ $marca($ficha->baterias_funcionamento, 'nok') }}</td>
                     </tr>

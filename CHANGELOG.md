@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-30
 
+- 🎨 **Relatórios (PDF) — o «Teste de descarga de baterias» ganha o cabeçalho Item / OK / NOK.** A linha «Baterias em funcionamento» tinha as marcas ✓/✗ sem se dizer qual das colunas era o OK e qual o NOK (o «Relatório final» logo abaixo já tinha o cabeçalho). Passa a ter, e as colunas OK/NOK ficam alinhadas com as do «Relatório final». Os relatórios já enviados não mudam. Verificado num PDF gerado. Requer `optimize`. +1 teste.
 - 🎨 **Relatórios (PDF) — as notas finais das fichas de medição também no resumo.** As «Notas finais» escritas em cada ficha de medições só apareciam na página da ficha. Passam a aparecer também no resumo da 1.ª página, numa caixa «Notas finais» logo a seguir à tabela «Equipamentos verificados» e antes das «Anomalias detetadas» — o cliente lê o estado de cada equipamento sem ir às fichas técnicas. Com mais de um equipamento, cada nota leva o equipamento e o nº de série (como as recomendações). Continuam também na própria ficha. Sem notas, a caixa não aparece. Os relatórios já enviados não mudam (o PDF enviado fica guardado tal como foi). Verificado num PDF gerado. Requer `optimize`. +1 teste.
 
 ## 2026-09-29

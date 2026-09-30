@@ -255,6 +255,24 @@ class PdfFichaMedicaoTest extends TestCase
         $this->assertStringNotContainsString('class="notas"', $html);
     }
 
+    // «Teste de descarga de baterias»: a tabela tem o cabeçalho Item / OK / NOK, como as outras.
+    public function test_tabela_das_baterias_tem_cabecalho_ok_nok(): void
+    {
+        [$contrato, , $e1] = $this->contexto();
+        $relatorio = $this->relatorioContrato($contrato, $e1);
+        FichaMedicao::create([
+            'intervencao_id' => $relatorio->intervencao->id, 'equipamento_id' => $e1->id, 'tipo_equipamento' => 'ups',
+            'baterias_funcionamento' => 'ok',
+        ]);
+
+        $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
+        $seccao = substr($html, strpos($html, 'Teste de descarga de baterias'));
+        $tabela = substr($seccao, strpos($seccao, '<table class="ficha-tab">'));
+        $tabela = substr($tabela, 0, strpos($tabela, 'Baterias em funcionamento'));
+
+        $this->assertStringContainsString('<th>Item</th><th class="cel-ok">OK</th><th class="cel-nok">NOK</th>', $tabela);
+    }
+
     // Ficha sem recomendação → a secção NÃO aparece (não força blocos vazios).
     public function test_pdf_sem_recomendacao_nao_mostra_seccao(): void
     {
