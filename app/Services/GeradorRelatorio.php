@@ -94,7 +94,8 @@ class GeradorRelatorio
     /**
      * PRÉ-VISUALIZAÇÃO (pedido da equipa, set. 2026): o PDF tal como está o rascunho, para o ler
      * antes de finalizar. Gerado na hora e devolvido — não fica guardado, não mexe no pdf_path
-     * nem dá número; leva a marca «PRÉ-VISUALIZAÇÃO» para nunca passar pelo documento final.
+     * nem dá número; o cabeçalho e o rodapé dizem que é uma pré-visualização (a marca de água
+     * a meio da página saiu a pedido da equipa).
      */
     public function preVisualizacao(Relatorio $relatorio): string
     {

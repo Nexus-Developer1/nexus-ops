@@ -18,7 +18,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 // «Pré-visualizar» no editor (set. 2026): grava o rascunho e abre o PDF gerado na hora — sem
-// guardar ficheiro, sem número, com a marca «PRÉ-VISUALIZAÇÃO». Só para rascunhos.
+// guardar ficheiro, sem número, marcado no cabeçalho e no rodapé. Só para rascunhos.
 class RelatorioPreVisualizarTest extends TestCase
 {
     use RefreshDatabase;
@@ -73,10 +73,12 @@ class RelatorioPreVisualizarTest extends TestCase
         $this->assertSame([], Storage::allFiles());
 
         $html = view('pdf.relatorio', app(GeradorRelatorio::class)->dadosDoPdf($relatorio) + ['preVisualizacao' => true])->render();
-        $this->assertStringContainsString('PRÉ-VISUALIZAÇÃO', $html);
+        // Sem marca de água a meio da página (tirada a pedido da equipa): diz-se no cabeçalho e no rodapé.
+        $this->assertStringNotContainsString('PRÉ-VISUALIZAÇÃO', $html);
         $this->assertStringContainsString('Rascunho · pré-visualização', $html);
-        // O PDF normal não leva a marca.
-        $this->assertStringNotContainsString('PRÉ-VISUALIZAÇÃO', view('pdf.relatorio', app(GeradorRelatorio::class)->dadosDoPdf($relatorio))->render());
+        $this->assertStringContainsString('não é o documento final', $html);
+        // O PDF normal não diz nada disto.
+        $this->assertStringNotContainsString('pré-visualização', view('pdf.relatorio', app(GeradorRelatorio::class)->dadosDoPdf($relatorio))->render());
     }
 
     public function test_relatorio_finalizado_nao_tem_o_botao_nem_pre_visualiza(): void
