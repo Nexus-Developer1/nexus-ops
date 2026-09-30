@@ -38,19 +38,20 @@ class OrdemCamposRelatorioTest extends TestCase
         $this->editor()
             ->assertSet('ordemCampos', Novo::CAMPOS)
             ->assertSee('Organizar campos')
-            ->assertSeeInOrder(['Tipo de relatório', 'Tipo de intervenção', 'Datas da intervenção', 'Horas', 'Técnicos', 'Encomendas de peças']);
+            ->assertSeeInOrder(['Tipo de relatório', 'Tipo de intervenção', 'Datas da intervenção', 'Horas', 'Técnicos', 'Encomendas de peças', 'Resumo da intervenção'])
+            ->assertDontSee('Constatações Técnicas'); // o cartão à parte saiu — o resumo é um dos campos
     }
 
     public function test_arrastar_guarda_a_ordem_no_utilizador_e_reabre_com_ela(): void
     {
-        $nova = ['tecnicos', 'datas', 'horas', 'modo', 'origem', 'tipo', 'encomendas'];
+        $nova = ['resumo', 'tecnicos', 'datas', 'horas', 'modo', 'origem', 'tipo', 'encomendas'];
 
         $this->editor()
             ->call('reordenarCampos', $nova)
             ->assertSet('ordemCampos.gerais', $nova)
             // Depois de um call() o HTML vem JSON-escapado (acentos → é), por isso confere-se
             // a ordem pelas wire:key dos blocos e não pelos rótulos.
-            ->assertSeeHtmlInOrder(['wire:key="campo-tecnicos"', 'wire:key="campo-datas"', 'wire:key="campo-horas"', 'wire:key="campo-modo"', 'wire:key="campo-origem"', 'wire:key="campo-tipo"', 'wire:key="campo-encomendas"']);
+            ->assertSeeHtmlInOrder(['wire:key="campo-resumo"', 'wire:key="campo-tecnicos"', 'wire:key="campo-datas"', 'wire:key="campo-horas"', 'wire:key="campo-modo"', 'wire:key="campo-origem"', 'wire:key="campo-tipo"', 'wire:key="campo-encomendas"']);
 
         $this->assertSame($nova, $this->tecnico->fresh()->preferencia(Novo::PREF_ORDEM_CAMPOS)['gerais']);
 
@@ -62,13 +63,13 @@ class OrdemCamposRelatorioTest extends TestCase
     {
         $this->editor()
             ->call('moverCampo', 'tecnicos', -1)
-            ->assertSet('ordemCampos.gerais', ['modo', 'origem', 'tipo', 'datas', 'tecnicos', 'horas', 'encomendas'])
+            ->assertSet('ordemCampos.gerais', ['modo', 'origem', 'tipo', 'datas', 'tecnicos', 'horas', 'encomendas', 'resumo'])
             ->call('moverCampo', 'modo', -1) // já é o primeiro — não mexe
-            ->assertSet('ordemCampos.gerais', ['modo', 'origem', 'tipo', 'datas', 'tecnicos', 'horas', 'encomendas'])
-            ->call('moverCampo', 'encomendas', 1) // já é o último
-            ->assertSet('ordemCampos.gerais', ['modo', 'origem', 'tipo', 'datas', 'tecnicos', 'horas', 'encomendas'])
+            ->assertSet('ordemCampos.gerais', ['modo', 'origem', 'tipo', 'datas', 'tecnicos', 'horas', 'encomendas', 'resumo'])
+            ->call('moverCampo', 'resumo', 1) // já é o último
+            ->assertSet('ordemCampos.gerais', ['modo', 'origem', 'tipo', 'datas', 'tecnicos', 'horas', 'encomendas', 'resumo'])
             ->call('moverCampo', 'inexistente', 1)
-            ->assertSet('ordemCampos.gerais', ['modo', 'origem', 'tipo', 'datas', 'tecnicos', 'horas', 'encomendas'])
+            ->assertSet('ordemCampos.gerais', ['modo', 'origem', 'tipo', 'datas', 'tecnicos', 'horas', 'encomendas', 'resumo'])
             ->call('reporOrdemCampos')
             ->assertSet('ordemCampos', Novo::CAMPOS);
 
@@ -80,7 +81,7 @@ class OrdemCamposRelatorioTest extends TestCase
         $this->editor()
             ->call('reordenarCampos', ['encomendas', '../../.env', 'encomendas', 42, 'tipo'])
             ->assertOk()
-            ->assertSet('ordemCampos.gerais', ['encomendas', 'tipo', 'modo', 'origem', 'datas', 'horas', 'tecnicos']);
+            ->assertSet('ordemCampos.gerais', ['encomendas', 'tipo', 'modo', 'origem', 'datas', 'horas', 'tecnicos', 'resumo']);
 
         // Preferência corrompida na BD também não rebenta o editor.
         $this->tecnico->guardarPreferencia(Novo::PREF_ORDEM_CAMPOS, 'lixo');
@@ -114,8 +115,20 @@ class OrdemCamposRelatorioTest extends TestCase
         $this->tecnico->guardarPreferencia(Novo::PREF_ORDEM_CAMPOS, ['horas', 'modo']);
 
         $this->editor()
-            ->assertSet('ordemCampos.gerais', ['horas', 'modo', 'origem', 'tipo', 'datas', 'tecnicos', 'encomendas'])
+            ->assertSet('ordemCampos.gerais', ['horas', 'modo', 'origem', 'tipo', 'datas', 'tecnicos', 'encomendas', 'resumo'])
             ->assertSet('ordemCampos.ficha_ups', Novo::CAMPOS['ficha_ups']);
+    }
+
+    // Quem já tinha organizado os campos antes de o resumo passar para aqui: a ordem dele fica, e o
+    // resumo aparece no fim (pode arrastá-lo para onde quiser).
+    public function test_ordem_guardada_antes_do_resumo_ganha_o_resumo_no_fim(): void
+    {
+        $this->tecnico->guardarPreferencia(Novo::PREF_ORDEM_CAMPOS, ['gerais' => ['tecnicos', 'datas', 'horas', 'modo', 'origem', 'tipo', 'encomendas']]);
+
+        $this->editor()
+            ->assertSet('ordemCampos.gerais', ['tecnicos', 'datas', 'horas', 'modo', 'origem', 'tipo', 'encomendas', 'resumo'])
+            ->set('resumo', 'Constatações escritas no campo reordenável')
+            ->assertSet('resumo', 'Constatações escritas no campo reordenável');
     }
 
     public function test_a_ordem_e_de_cada_utilizador(): void

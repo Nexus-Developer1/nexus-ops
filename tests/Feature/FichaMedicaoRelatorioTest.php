@@ -276,7 +276,7 @@ class FichaMedicaoRelatorioTest extends TestCase
             ->get(route('relatorios.novo'))
             ->assertOk()
             ->assertSee('Dados Gerais')
-            ->assertSee('Constatações Técnicas')
+            ->assertSee('Resumo da intervenção') // antes num cartão «Constatações Técnicas»; agora é um campo do cartão de cima
             ->assertDontSee('Checklist'); // checklist genérica foi removida (fichas em ambos os modos)
     }
 

@@ -98,12 +98,13 @@ class Novo extends Component
 
     // Ordem dos blocos do editor, por GRUPO — cada utilizador organiza os campos como preferir,
     // mediante a importância (pedido da equipa, set. 2026): 'gerais' é o cartão «Equipamento e
-    // Intervenção», 'ficha_ups' a ficha de medições de cada equipamento. Guardada nas
+    // Intervenção» (inclui o «resumo», que era o cartão «Constatações Técnicas» — set. 2026),
+    // 'ficha_ups' a ficha de medições de cada equipamento. Guardada nas
     // preferências do utilizador (BD). #[Locked]: a ordem é lida pelo JS ($wire.ordemCampos)
     // mas só muda pelas ações abaixo, que revalidam contra a whitelist CAMPOS — as vistas fazem
     // @include por chave, por isso nunca podem render uma chave forjada.
     public const CAMPOS = [
-        'gerais' => ['modo', 'origem', 'tipo', 'datas', 'horas', 'tecnicos', 'encomendas'],
+        'gerais' => ['modo', 'origem', 'tipo', 'datas', 'horas', 'tecnicos', 'encomendas', 'resumo'],
         'ficha_ups' => ['identificacao', 'configuracao', 'modulos', 'medicoes', 'verificacoes', 'descarga', 'conclusao', 'recomendacoes'],
     ];
 

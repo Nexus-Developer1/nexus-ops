@@ -164,24 +164,8 @@
                     </div>
                 </section>
 
-                {{-- Constatações Técnicas --}}
-                <section class="cartao" x-data="{ aberto: true }">
-                    <button @click="aberto=!aberto" class="cartao-cabecalho">
-                        <span class="flex items-center gap-3">
-                            <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></span>
-                            <span class="text-lg font-semibold text-texto-forte">Constatações Técnicas</span>
-                        </span>
-                        <svg :class="aberto && 'rotate-180'" class="h-5 w-5 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                    </button>
-                    <div x-show="aberto" x-transition class="px-6 pb-7">
-                        <label class="campo-label">Resumo da intervenção</label>
-                        {{-- Cresce com o texto (auto-resize): altura acompanha o conteúdo, sem scroll interno. --}}
-                        <textarea wire:model="resumo" rows="3"
-                            x-data="{ ajustar() { if (! this.$el.scrollHeight) return; this.$el.style.height = 'auto'; this.$el.style.height = this.$el.scrollHeight + 'px'; } }"
-                            x-init="ajustar()" @input="ajustar()"
-                            class="campo-input resize-none overflow-hidden" placeholder="Descreva as constatações técnicas observadas durante a intervenção…"></textarea>
-                    </div>
-                </section>
+                {{-- O «Resumo da intervenção» (antigo cartão «Constatações Técnicas») é agora um dos
+                     campos reordenáveis do cartão de cima — livewire/relatorios/campos/resumo. --}}
 
                 {{-- Recomendações + fotos passaram para CADA ficha de equipamento (abaixo). --}}
             </div>
