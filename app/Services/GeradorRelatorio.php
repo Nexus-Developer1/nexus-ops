@@ -92,6 +92,18 @@ class GeradorRelatorio
     }
 
     /**
+     * PRÉ-VISUALIZAÇÃO (pedido da equipa, set. 2026): o PDF tal como está o rascunho, para o ler
+     * antes de finalizar. Gerado na hora e devolvido — não fica guardado, não mexe no pdf_path
+     * nem dá número; leva a marca «PRÉ-VISUALIZAÇÃO» para nunca passar pelo documento final.
+     */
+    public function preVisualizacao(Relatorio $relatorio): string
+    {
+        return Pdf::loadView('pdf.relatorio', $this->dadosDoPdf($relatorio) + ['preVisualizacao' => true])
+            ->setPaper('a4')
+            ->output();
+    }
+
+    /**
      * Tudo o que a vista do PDF recebe: o relatório carregado sem scopes, as fotos (só as
      * marcadas «no relatório») agrupadas por equipamento e as assinaturas. Separado do
      * gerarPdf() para se poder verificar o conteúdo sem desenhar o PDF.

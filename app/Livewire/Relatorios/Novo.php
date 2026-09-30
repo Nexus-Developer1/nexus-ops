@@ -1201,6 +1201,55 @@ class Novo extends Component
         return $this->depoisDeGravar($relatorio, $finalizar, $eraNovo);
     }
 
+    // Estado do relatório GRAVADO, relido da BD (não confia nas props) — pelo relatório e pela
+    // intervenção (a gravação escreve pela intervencaoId); null = ainda não existe. O value()
+    // do Eloquent devolve o ENUM (cast): comparado com o texto 'rascunho', um rascunho nunca era
+    // rascunho e o autosave não gravava rascunhos já existentes (corrigido em set. 2026).
+    private function estadoGravado(): ?EstadoRelatorio
+    {
+        $estado = null;
+        if ($this->relatorioId !== null) {
+            $estado ??= Relatorio::whereKey($this->relatorioId)->value('estado');
+        }
+        if ($this->intervencaoId !== null) {
+            $estado ??= Relatorio::where('intervencao_id', $this->intervencaoId)->value('estado');
+        }
+
+        return $estado instanceof EstadoRelatorio ? $estado : EstadoRelatorio::tryFrom((string) $estado);
+    }
+
+    // PRÉ-VISUALIZAR (pedido da equipa, set. 2026): grava o rascunho (as mesmas regras do
+    // «Guardar rascunho», sem sair da página) e devolve o endereço do PDF de pré-visualização, que
+    // o editor abre noutro separador. Só para rascunhos — um finalizado/enviado já tem o PDF.
+    public function preVisualizar(GeradorRelatorio $gerador, SincronizadorAgenda $sincronizador): ?string
+    {
+        $estado = $this->estadoGravado();
+        if ($estado !== null && $estado !== EstadoRelatorio::Rascunho) {
+            return null;
+        }
+
+        $eraNovo = $this->relatorioId === null;
+
+        try {
+            $this->validarPara(false);
+        } catch (ValidationException $e) {
+            $this->dispatch('validacao-falhou');
+
+            throw $e;
+        }
+
+        $relatorio = $this->gravarTransacao($gerador, $sincronizador, finalizar: false);
+
+        // Relatório acabado de começar: o URL passa à edição (como no autosave). E o editor fica
+        // a saber que está tudo gravado.
+        if ($eraNovo) {
+            $this->dispatch('auto-gravado', url: route('relatorios.editar', $relatorio));
+        }
+        $this->dispatch('rascunho-guardado');
+
+        return route('relatorios.pre-visualizar', $relatorio);
+    }
+
     // Autosave de CAMPO (iPad): grava o rascunho em background sem nunca interromper o
     // técnico — sem erros visíveis, sem navegação, sem toasts do caminho manual. NUNCA toca
     // em relatórios finalizados/enviados (a gravação despromove-os a rascunho — isso é
@@ -1216,14 +1265,8 @@ class Novo extends Component
         // ficam intocados pelo autosave. Testa-se pelo relatório E pela intervenção (a
         // gravação escreve pela intervencaoId) — defesa em profundidade além do #[Locked]:
         // o autosave, sem o diálogo do guardar manual, nunca despromove um não-rascunho.
-        $estado = null;
-        if ($this->relatorioId !== null) {
-            $estado ??= Relatorio::whereKey($this->relatorioId)->value('estado');
-        }
-        if ($this->intervencaoId !== null) {
-            $estado ??= Relatorio::where('intervencao_id', $this->intervencaoId)->value('estado');
-        }
-        if ($estado !== null && $estado !== EstadoRelatorio::Rascunho->value) {
+        $estado = $this->estadoGravado();
+        if ($estado !== null && $estado !== EstadoRelatorio::Rascunho) {
             return;
         }
 

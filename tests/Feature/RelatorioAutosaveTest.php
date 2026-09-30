@@ -52,6 +52,33 @@ class RelatorioAutosaveTest extends TestCase
         $this->assertSame('Trabalho a meio, escrito em campo', $relatorio->intervencao->trabalho_realizado);
     }
 
+    // O caso de todos os dias: o rascunho JÁ EXISTE (reaberto pela listagem/agenda ou depois do
+    // 1.º autosave) e o técnico continua a escrever — o autosave tem de o gravar. Não gravava: o
+    // estado lido da BD vinha como enum e era comparado com o texto 'rascunho' (set. 2026).
+    public function test_autosave_grava_um_rascunho_que_ja_existe(): void
+    {
+        [$tecnico, $equip] = $this->cenario();
+        $comp = Livewire::actingAs($tecnico)->test(Novo::class)
+            ->set('equipamento_id', $equip->id)
+            ->set('data', now()->toDateString())
+            ->set('resumo', 'primeira versão')
+            ->call('autoGravar');
+        $relatorio = Relatorio::firstOrFail();
+
+        // Mesmo componente (relatorioId já definido): a alteração seguinte grava-se.
+        $comp->set('resumo', 'segunda versão, gravada pelo autosave')
+            ->call('autoGravar')
+            ->assertDispatched('auto-gravado');
+        $this->assertSame('segunda versão, gravada pelo autosave', $relatorio->fresh()->intervencao->trabalho_realizado);
+
+        // Rascunho reaberto pela rota de edição: idem.
+        Livewire::actingAs($tecnico)->test(Novo::class, ['relatorio' => $relatorio])
+            ->set('resumo', 'terceira versão, depois de reabrir')
+            ->call('autoGravar')
+            ->assertDispatched('auto-gravado');
+        $this->assertSame('terceira versão, depois de reabrir', $relatorio->fresh()->intervencao->trabalho_realizado);
+    }
+
     public function test_autosave_nao_toca_em_relatorio_finalizado(): void
     {
         [$tecnico, $equip] = $this->cenario();

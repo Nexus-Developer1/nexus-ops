@@ -11,6 +11,9 @@
         td, th { vertical-align: top; }
 
         /* Rodapé fixo em TODAS as páginas (o dompdf repete os position:fixed) com nº de página. */
+        /* Marca de água da pré-visualização (repete em todas as páginas; desenhada antes do
+           conteúdo, fica por trás). */
+        .marca-previa { position: fixed; top: 38%; left: -8%; width: 116%; text-align: center; font-size: 64px; font-weight: bold; letter-spacing: 6px; color: #E5E7EB; transform: rotate(-30deg); }
         .rodape-fixo { position: fixed; bottom: -11mm; left: 0; right: 0; height: 8mm; border-top: 2px solid #15803D; padding-top: 4px; font-size: 8px; color: #4B5563; }
         .rodape-fixo .pagina:after { content: counter(page); }
 
@@ -94,6 +97,9 @@
     </style>
 </head>
 <body>
+    @if ($preVisualizacao ?? false)
+        <div class="marca-previa">PRÉ-VISUALIZAÇÃO</div>
+    @endif
     @php($i = $relatorio->intervencao)
     @php($e = $i->equipamento)
     {{-- local pode ser null (equipamento "por associar" do PHC) — o PDF não pode rebentar. --}}
@@ -143,7 +149,7 @@
     <div class="rodape-fixo">
         <table>
             <tr>
-                <td>NEXUS SOLUTIONS OPERATIONS · Relatório {{ $relatorio->numero }}</td>
+                <td>NEXUS SOLUTIONS OPERATIONS · {{ ($preVisualizacao ?? false) ? 'Pré-visualização — não é o documento final' : 'Relatório '.$relatorio->numero }}</td>
                 <td align="right">Documento gerado em {{ now()->format('d/m/Y H:i') }} · Página <span class="pagina"></span></td>
             </tr>
         </table>
@@ -165,7 +171,7 @@
             <td align="right">
                 <div class="doc-titulo">Relatório de Intervenção Técnica</div>
                 {{-- Só o nº: a data e o tipo já estão na grelha de dados (Início/Término/Tipo). --}}
-                <div class="doc-num">Nº {{ $relatorio->numero }}</div>
+                <div class="doc-num">{{ ($preVisualizacao ?? false) && ! $relatorio->numero ? 'Rascunho · pré-visualização' : 'Nº '.$relatorio->numero }}</div>
             </td>
         </tr>
     </table>

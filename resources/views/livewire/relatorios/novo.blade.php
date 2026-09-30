@@ -10,6 +10,20 @@
     x-on:rascunho-guardado.window="gravado(null)">
     <x-topbar :breadcrumb="['Relatórios', $relatorioId ? 'Rascunho' : 'Novo']">
         <a href="{{ route('relatorios') }}" class="botao-secundario">Cancelar</a>
+        {{-- Pré-visualizar: grava o rascunho e abre o PDF noutro separador, para o ler antes de
+             finalizar. O separador abre-se JÁ no clique (senão o browser bloqueia-o como popup) e
+             recebe o endereço quando a gravação acaba; se a gravação falhar, fecha-se. --}}
+        @if (in_array($estadoInicial, [null, \App\Enums\EstadoRelatorio::Rascunho->value], true))
+            <button type="button" wire:loading.attr="disabled" wire:target="preVisualizar" class="botao-secundario"
+                @click="const aba = window.open('', '_blank');
+                        $wire.preVisualizar()
+                            .then(url => { if (url && aba) { aba.location.href = url } else if (aba) { aba.close() } })
+                            .catch(() => aba && aba.close())">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                <span wire:loading.remove wire:target="preVisualizar">Pré-visualizar</span>
+                <span wire:loading wire:target="preVisualizar">A preparar…</span>
+            </button>
+        @endif
         <button wire:click="guardarRascunho" wire:loading.attr="disabled" wire:target="guardarRascunho" class="botao-secundario">
             <span wire:loading.remove wire:target="guardarRascunho">Guardar rascunho</span>
             <span wire:loading wire:target="guardarRascunho">A guardar…</span>

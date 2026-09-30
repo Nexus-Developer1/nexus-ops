@@ -235,6 +235,12 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
     Route::get('/relatorios/{relatorio}/editar', App\Livewire\Relatorios\Novo::class)->name('relatorios.editar');
     Route::get('/relatorios/{relatorio}/enviar', Enviar::class)->name('relatorios.enviar');
     Route::get('/relatorios/{relatorio}/pdf', $servirPdf)->name('relatorios.pdf');
+    // Pré-visualizar o rascunho antes de finalizar: PDF gerado na hora, não guardado.
+    Route::get('/relatorios/{relatorio}/pre-visualizar', fn (Relatorio $relatorio, GeradorRelatorio $gerador) => response($gerador->preVisualizacao($relatorio))
+        ->header('Content-Type', 'application/pdf')
+        ->header('Content-Disposition', 'inline; filename="pre-visualizacao-relatorio-'.$relatorio->id.'.pdf"')
+        ->header('Cache-Control', 'no-store'))
+        ->name('relatorios.pre-visualizar');
 
     // Proxy aos anexos no object storage (evita expor o MinIO ao browser).
     Route::get('/anexos/{anexo}', [AnexoController::class, 'ver'])->name('anexos.ver');
