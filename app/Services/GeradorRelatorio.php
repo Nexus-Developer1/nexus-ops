@@ -85,7 +85,11 @@ class GeradorRelatorio
 
         $pdf = Pdf::loadView('pdf.relatorio', $dados)->setPaper('a4');
 
-        $caminho = 'relatorios/'.str_replace('/', '-', $dados['relatorio']->numero).'.pdf';
+        // Rascunho (ainda sem número) → ficheiro PRÓPRIO: antes iam todos para «relatorios/.pdf»
+        // e o PDF de um rascunho aparecia no de outro (27.ª revisão de segurança).
+        $caminho = filled($dados['relatorio']->numero)
+            ? 'relatorios/'.str_replace('/', '-', $dados['relatorio']->numero).'.pdf'
+            : 'relatorios/rascunho-'.$dados['relatorio']->id.'.pdf';
         Storage::disk()->put($caminho, $pdf->output());
 
         $dados['relatorio']->update(['pdf_path' => $caminho]);

@@ -429,6 +429,25 @@ class Editor extends Component
     }
 
     // + ImagemParaPdf: fora do JPEG, no máximo 25 megapíxeis (o PDF descodifica-os — 27.ª revisão).
+    /** Resumo do registo para a auditoria das alterações (o suficiente para ver o que mudou). */
+    private static function resumoParaAuditoria(RegistoDespesa $registo): array
+    {
+        return [
+            'total' => round($registo->total(), 2),
+            'matricula' => $registo->matricula,
+            'linhas' => $registo->linhasOrdenadas()->map(fn (Despesa $d) => [
+                'dia' => $d->data->toDateString(),
+                'descricao' => $d->descricao,
+                'categoria' => $d->categoria,
+                'valor' => (float) $d->valor,
+                'pago_por' => $d->pago_por,
+                'recibos' => $d->anexos->count(),
+            ])->values()->all(),
+            'levantamentos' => $registo->levantamentos()->withCount('anexos')->get()
+                ->map(fn ($l) => ['dia' => $l->data->toDateString(), 'valor' => (float) $l->valor, 'taloes' => $l->anexos_count])->values()->all(),
+        ];
+    }
+
     private static function regrasRecibo(): array
     {
         return ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000', new ImagemParaPdf];
@@ -662,9 +681,11 @@ class Editor extends Component
             'departamento' => trim($this->departamento) ?: null,
         ];
 
+        $antes = null;
         if ($this->registoId) {
             $registo = RegistoDespesa::findOrFail($this->registoId);
             abort_unless($registo->podeSerEditado(), 403, 'Despesa aprovada — não pode ser alterada.');
+            $antes = self::resumoParaAuditoria($registo);
             $registo->update($cabecalho);
         } else {
             $registo = RegistoDespesa::create($cabecalho + ['criado_por' => auth()->id()]);
@@ -737,6 +758,16 @@ class Editor extends Component
             }
             $removido->delete();
             Auditor::registar('levantamento_removido', $registo, ['levantamento_id' => $removido->id, 'valor' => (float) $removido->valor]);
+        }
+
+        // Alteração de um registo que já existia fica na AUDITORIA — quem, e o antes/depois (linhas,
+        // valores, quem pagou, levantamentos). Antes não ficava rasto nenhum: uma despesa pendente
+        // podia ser mudada depois de submetida sem ninguém saber (27.ª revisão de segurança).
+        if ($antes !== null) {
+            $depois = self::resumoParaAuditoria($registo->fresh());
+            if ($depois !== $antes) {
+                Auditor::registar('registo_despesas_alterado', $registo, ['estado' => $registo->fresh()->estado->value, 'antes' => $antes, 'depois' => $depois]);
+            }
         }
 
         // Processo de validação: registo novo → submete (pendente + email a quem criou, ao

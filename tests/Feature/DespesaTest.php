@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\PapelUtilizador;
 use App\Livewire\Despesas\Editor;
 use App\Livewire\Despesas\Listagem;
+use App\Models\Auditoria;
 use App\Models\Cliente;
 use App\Models\Despesa;
 use App\Models\RegistoDespesa;
@@ -142,6 +143,32 @@ class DespesaTest extends TestCase
         $this->assertSame([], $procurar('b'));           // 1 letra: nada
         $this->assertSame([], $procurar('%'));
         $this->assertSame([], $procurar('%%'));          // «%» é texto
+    }
+
+    // 27.ª revisão: alterar um registo que já existia fica na auditoria (quem + antes/depois);
+    // gravar sem mudar nada não regista nada.
+    public function test_alterar_um_registo_existente_fica_na_auditoria(): void
+    {
+        $tecnico = $this->tecnico();
+        Livewire::actingAs($tecnico)->test(Editor::class)
+            ->set('linhas.0.dia', '2026-08-04')->set('linhas.0.descricao', 'ACME')->set('linhas.0.categoria', 'Combustíveis')
+            ->set('linhas.0.pago_por', 'tecnico')->set('linhas.0.valor', '45')
+            ->set('recibosLinhaUpload.0', [UploadedFile::fake()->image('r.jpg', 800, 600)])
+            ->call('guardar')->assertHasNoErrors();
+        $registo = RegistoDespesa::firstOrFail();
+
+        Livewire::actingAs($tecnico)->test(Editor::class, ['registo' => $registo])->call('guardar')->assertHasNoErrors();
+        $this->assertSame(0, Auditoria::where('acao', 'registo_despesas_alterado')->count()); // nada mudou
+
+        $outro = User::create(['nome' => 'Fin', 'email' => 'f@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Financeiro, 'ativo' => true]);
+        Livewire::actingAs($outro)->test(Editor::class, ['registo' => $registo])
+            ->set('linhas.0.valor', '450')->call('guardar')->assertHasNoErrors();
+
+        $a = Auditoria::where('acao', 'registo_despesas_alterado')->firstOrFail();
+        $this->assertSame($outro->id, $a->user_id);
+        $this->assertSame(45.0, (float) $a->detalhe['antes']['total']);
+        $this->assertSame(450.0, (float) $a->detalhe['depois']['total']);
+        $this->assertSame('pendente', $a->detalhe['estado']);
     }
 
     // Dia: calendário SEM pré-seleção — nasce vazio e é obrigatório.

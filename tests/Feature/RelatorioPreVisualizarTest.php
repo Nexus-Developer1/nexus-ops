@@ -6,9 +6,11 @@ use App\Enums\EstadoRelatorio;
 use App\Enums\PapelUtilizador;
 use App\Livewire\Relatorios\Novo;
 use App\Models\Cliente;
+use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Models\Local;
+use App\Models\ModeloFaturacao;
 use App\Models\Relatorio;
 use App\Models\User;
 use App\Services\GeradorRelatorio;
@@ -122,6 +124,26 @@ class RelatorioPreVisualizarTest extends TestCase
         Livewire::actingAs($this->admin())->test(Novo::class)
             ->set('equipamento_id', $equip->id)
             ->assertSee('Recepção · Quadro elétrico sala de embalamento');
+    }
+
+    // 27.ª revisão: num relatório de contrato, o equipamento tem de ser do cliente DO CONTRATO —
+    // antes valia o cliente_id (prop pública) e um contrato de outro cliente passava.
+    public function test_contrato_de_outro_cliente_e_recusado(): void
+    {
+        $equipA = $this->equipamento(); // cliente ACME
+        $clienteB = Cliente::create(['nome' => 'Outro Cliente', 'ativo' => true]);
+        $contratoB = Contrato::create(['numero' => '2026/0900', 'cliente_id' => $clienteB->id,
+            'data_inicio' => now()->subMonth(), 'data_fim' => now()->addYear(), 'estado' => 'ativo', 'tipo' => 'preventiva',
+            'modelo_faturacao_id' => ModeloFaturacao::query()->value('id')]);
+
+        Livewire::actingAs($this->admin())->test(Novo::class)
+            ->set('cliente_id', $equipA->local->cliente_id)
+            ->call('selecionarContrato', $contratoB->id)
+            ->set('equipamento_id', $equipA->id)
+            ->call('guardarRascunho')
+            ->assertHasErrors('equipamento_id');
+
+        $this->assertSame(0, Relatorio::count());
     }
 
     public function test_cliente_do_portal_nao_acede(): void

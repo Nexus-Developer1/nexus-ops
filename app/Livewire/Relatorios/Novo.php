@@ -613,6 +613,11 @@ class Novo extends Component
     // individual, o do contrato no modo contrato, ou o do equipamento principal.
     private function clienteDoRelatorio(): ?Cliente
     {
+        // Modo contrato: manda SEMPRE o cliente do contrato — o cliente_id (prop pública) podia
+        // ser de outro e deixar juntar equipamentos que não são deste (27.ª revisão de segurança).
+        if ($this->modo === 'contrato' && $this->contrato_id) {
+            return Contrato::withoutGlobalScopes()->find($this->contrato_id)?->cliente;
+        }
         if ($this->cliente_id) {
             return Cliente::withoutGlobalScopes()->find($this->cliente_id);
         }
@@ -835,8 +840,13 @@ class Novo extends Component
     /** @return list<mixed> */
     protected function regraEquipamentoPrincipal(): array
     {
-        $clienteId = $this->cliente_id
-            ?: ($this->contrato_id ? Contrato::withoutGlobalScopes()->whereKey($this->contrato_id)->value('cliente_id') : null);
+        // Modo contrato: o equipamento tem de ser do cliente DO CONTRATO (antes valia o cliente_id,
+        // prop pública — um contrato de outro cliente passava e ia parar à faturação e ao PDF
+        // deste; 27.ª revisão de segurança). Modo individual: o cliente escolhido.
+        $doContrato = $this->contrato_id ? Contrato::withoutGlobalScopes()->whereKey($this->contrato_id)->value('cliente_id') : null;
+        $clienteId = $this->modo === 'contrato' && $doContrato
+            ? $doContrato
+            : ($this->cliente_id ?: $doContrato);
 
         return ['required', 'integer', $clienteId
             ? Rule::exists('equipamentos', 'id')->where(fn ($q) => $q->whereIn('local_id', Local::where('cliente_id', $clienteId)->select('id')))
@@ -1059,6 +1069,17 @@ class Novo extends Component
             ->find($id);
 
         $anexo?->update(['no_relatorio' => ! $anexo->no_relatorio]);
+        if ($anexo) {
+            $this->invalidarPdf();
+        }
+    }
+
+    // As fotos mudam sem passar pela gravação do formulário: o PDF guardado deixa de valer e é
+    // gerado de novo no próximo pedido (27.ª revisão de segurança — num relatório finalizado,
+    // tirar ou esconder uma foto e enviar sem refinalizar mandava o PDF antigo, com ela).
+    private function invalidarPdf(): void
+    {
+        Relatorio::where('intervencao_id', $this->intervencaoId)->update(['pdf_path' => null]);
     }
 
     public function removerAnexoExistente(int $id): void
@@ -1072,9 +1093,36 @@ class Novo extends Component
             ->find($id);
 
         if ($anexo) {
-            Storage::disk()->delete($anexo->storage_key);
+            $this->arquivarFicheiro($anexo->storage_key, 'foto_removida', ['anexo_id' => $anexo->id, 'ficheiro' => $anexo->nome_ficheiro]);
             $anexo->delete();
+            $this->invalidarPdf();
         }
+    }
+
+    /**
+     * Em vez de APAGAR fotos e assinaturas, ARQUIVA-as (27.ª revisão de segurança): o ficheiro
+     * passa para «arquivo/…» e fica na auditoria quem o tirou, de que relatório e porquê — são
+     * prova de presença/execução em disputas de SLA, e apagadas de vez perdiam-se sem rasto,
+     * mesmo em relatórios já enviados. Para quem usa, nada muda: sai do relatório e do PDF.
+     * Só se move DEPOIS do commit — se a gravação falhar, a BD continua a apontar para ele.
+     */
+    private function arquivarFicheiro(?string $key, string $motivo, array $contexto = []): void
+    {
+        if (blank($key)) {
+            return;
+        }
+        $intervencaoId = $this->intervencaoId;
+        $relatorioId = $this->relatorioId;
+
+        DB::afterCommit(function () use ($key, $motivo, $contexto, $intervencaoId, $relatorioId) {
+            $disco = Storage::disk();
+            $destino = 'arquivo/'.date('Y/m/').ltrim($key, '/');
+            if ($disco->exists($key)) {
+                $disco->move($key, $destino);
+            }
+            Auditor::registar('ficheiro_arquivado', $relatorioId ? Relatorio::find($relatorioId) : null,
+                ['motivo' => $motivo, 'original' => $key, 'arquivo' => $destino, 'intervencao_id' => $intervencaoId] + $contexto);
+        });
     }
 
     // Data/hora de término da intervenção a gravar: a data de término do formulário + hora de
@@ -1470,6 +1518,9 @@ class Novo extends Component
             // Relatório: garante o rascunho-base (ponto único, à prova de corrida) e ajusta.
             $relatorio = $intervencao->garantirRascunho();
             $relatorio->estado = $finalizar ? EstadoRelatorio::Finalizado : EstadoRelatorio::Rascunho;
+            // O conteúdo mudou: o PDF guardado deixa de valer — o próximo a pedi-lo (ver, enviar,
+            // o job do finalizar) gera-o de novo (27.ª revisão: saía o PDF antigo ao cliente).
+            $relatorio->pdf_path = null;
             // A data do relatório SEGUE a data da intervenção escrita no formulário (mudar a
             // data da intervenção passa a corrigir também a do relatório).
             if ($intervencao->data_inicio) {
@@ -1589,7 +1640,7 @@ class Novo extends Component
 
             if ($novo === 'limpar') {
                 if ($ficha->{$campoKey}) {
-                    Storage::disk()->delete($ficha->{$campoKey});
+                    $this->arquivarFicheiro($ficha->{$campoKey}, 'assinatura_limpa', ['equipamento_id' => $ficha->equipamento_id, 'quem' => $quem]);
                     $ficha->{$campoKey} = null;
                     $mudou = true;
                 }
@@ -1615,7 +1666,7 @@ class Novo extends Component
             $this->fichas[$ficha->equipamento_id]["assinatura_{$quem}"] = '';
 
             if ($antiga) {
-                Storage::disk()->delete($antiga);
+                $this->arquivarFicheiro($antiga, 'assinatura_substituida', ['equipamento_id' => $ficha->equipamento_id, 'quem' => $quem]);
             }
         }
 
@@ -1714,9 +1765,7 @@ class Novo extends Component
         }
 
         foreach ([$ficha->assinatura_cliente_key, $ficha->assinatura_tecnico_key] as $key) {
-            if ($key) {
-                Storage::disk()->delete($key);
-            }
+            $this->arquivarFicheiro($key, 'ficha_removida', ['equipamento_id' => $ficha->equipamento_id]);
         }
 
         $ficha->delete();
