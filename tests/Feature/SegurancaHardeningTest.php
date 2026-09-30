@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\PapelUtilizador;
 use App\Livewire\Agenda\Calendario;
 use App\Livewire\Concerns\AcessoDespesas;
+use App\Livewire\Concerns\ApenasCliente;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Livewire\Equipamentos\Novo as EquipamentoNovo;
 use App\Models\Cliente;
@@ -116,5 +117,23 @@ class SegurancaHardeningTest extends TestCase
         $resp->assertHeader('X-Content-Type-Options', 'nosniff');
         $resp->assertHeader('X-Frame-Options', 'SAMEORIGIN');
         $resp->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+        // 27.ª revisão: câmara e localização só para a própria aplicação; microfone e afins, ninguém.
+        $resp->assertHeader('Permissions-Policy', 'camera=(self), geolocation=(self), microphone=(), payment=(), usb=(), serial=(), bluetooth=()');
+    }
+
+    // 27.ª revisão: os componentes do PORTAL protegem-se a si próprios (ApenasCliente) — um
+    // componente novo do portal sem a guarda falha aqui.
+    public function test_todos_os_componentes_do_portal_usam_apenas_cliente(): void
+    {
+        $semGuarda = [];
+        foreach (glob(app_path('Livewire/Portal/*.php')) as $ficheiro) {
+            $classe = 'App\\Livewire\\Portal\\'.basename($ficheiro, '.php');
+            if (! in_array(ApenasCliente::class, class_uses_recursive($classe), true)) {
+                $semGuarda[] = $classe;
+            }
+        }
+
+        $this->assertNotEmpty(glob(app_path('Livewire/Portal/*.php')));
+        $this->assertSame([], $semGuarda, 'Componentes do portal sem ApenasCliente: '.implode(', ', $semGuarda));
     }
 }

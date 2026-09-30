@@ -10,6 +10,7 @@ use App\Models\Despesa;
 use App\Models\LevantamentoDespesa;
 use App\Models\MemoriaFornecedor;
 use App\Models\RegistoDespesa;
+use App\Rules\ImagemParaPdf;
 use App\Services\Auditor;
 use App\Services\Despesas\FluxoAprovacaoDespesas;
 use App\Services\Despesas\LeitorTalao;
@@ -267,7 +268,7 @@ class Editor extends Component
         }
         $ficheiros = $this->talaoLevantamentoUpload[$indice];
 
-        $this->validate(["talaoLevantamentoUpload.$indice" => ['array'], "talaoLevantamentoUpload.$indice.*" => self::REGRAS_RECIBO]);
+        $this->validate(["talaoLevantamentoUpload.$indice" => ['array'], "talaoLevantamentoUpload.$indice.*" => self::regrasRecibo()]);
 
         foreach ($ficheiros as $f) {
             $this->taloesPendentes[$indice][] = $f;
@@ -277,7 +278,7 @@ class Editor extends Component
 
     public function updatedTalaoDigitalizado(): void
     {
-        $this->validate(['talaoDigitalizado' => self::REGRAS_RECIBO]);
+        $this->validate(['talaoDigitalizado' => self::regrasRecibo()]);
         if ($this->levantamentos === []) {
             $this->talaoDigitalizado = null;
 
@@ -427,7 +428,11 @@ class Editor extends Component
         }
     }
 
-    private const REGRAS_RECIBO = ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'];
+    // + ImagemParaPdf: fora do JPEG, no máximo 25 megapíxeis (o PDF descodifica-os — 27.ª revisão).
+    private static function regrasRecibo(): array
+    {
+        return ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000', new ImagemParaPdf];
+    }
 
     // Câmara nativa / galeria de uma LINHA: valida e junta aos pendentes dessa linha.
     public function updatedRecibosLinhaUpload($valor, $chave): void
@@ -444,7 +449,7 @@ class Editor extends Component
         }
         $ficheiros = $this->recibosLinhaUpload[$linha];
 
-        $this->validate(["recibosLinhaUpload.$linha" => ['array'], "recibosLinhaUpload.$linha.*" => self::REGRAS_RECIBO]);
+        $this->validate(["recibosLinhaUpload.$linha" => ['array'], "recibosLinhaUpload.$linha.*" => self::regrasRecibo()]);
 
         foreach ($ficheiros as $f) {
             $this->recibosPendentes[$linha][] = $f;
@@ -455,7 +460,7 @@ class Editor extends Component
     // "Digitalizar" (scanner JS): a imagem chega já com o filtro; junta à linha ativa.
     public function updatedReciboDigitalizado(): void
     {
-        $this->validate(['reciboDigitalizado' => self::REGRAS_RECIBO]);
+        $this->validate(['reciboDigitalizado' => self::regrasRecibo()]);
         $linha = max(0, min($this->linhaDigitalizacao, count($this->linhas) - 1));
         $this->recibosPendentes[$linha][] = $this->reciboDigitalizado;
         $this->reciboDigitalizado = null;
@@ -496,10 +501,10 @@ class Editor extends Component
             // e gravado como recibo, e depois servido inline a quem o abrisse (stored XSS).
             'recibosPendentes' => ['array'],
             'recibosPendentes.*' => ['array'],
-            'recibosPendentes.*.*' => self::REGRAS_RECIBO,
+            'recibosPendentes.*.*' => self::regrasRecibo(),
             'taloesPendentes' => ['array'],
             'taloesPendentes.*' => ['array'],
-            'taloesPendentes.*.*' => self::REGRAS_RECIBO,
+            'taloesPendentes.*.*' => self::regrasRecibo(),
             'levantamentos' => ['array', 'max:10'],
             'levantamentos.*.dia' => ['nullable', 'date'],
             'levantamentos.*.valor' => ['nullable', 'numeric', 'min:0'],

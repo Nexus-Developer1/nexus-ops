@@ -23,6 +23,7 @@ use App\Models\Intervencao;
 use App\Models\Local;
 use App\Models\Relatorio;
 use App\Models\User;
+use App\Rules\ImagemParaPdf;
 use App\Services\Agenda\SincronizadorAgenda;
 use App\Services\Auditor;
 use App\Services\Encomendas\LigadorEncomendasManuais;
@@ -807,7 +808,7 @@ class Novo extends Component
             'tipo' => ['required', 'in:preventiva,corretiva,instalacao'],
             'pedido_em' => ['nullable', 'date', 'before_or_equal:now'],
             'data' => ['required', 'date'],
-            'fotosNovas.*.*' => ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'], // 20 MB (o PHP em produção aceita até 20M por ficheiro; ver 99-nexus-uploads.ini)
+            'fotosNovas.*.*' => ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000', new ImagemParaPdf], // 20 MB (o PHP em produção aceita até 20M por ficheiro; ver 99-nexus-uploads.ini)
             // Finalizar exige saber quem fez a intervenção (o PDF identifica os técnicos).
             'tecnicoIds' => ['required', 'array', 'min:1'],
         ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos() + $this->regrasCobertos()
@@ -1003,7 +1004,7 @@ class Novo extends Component
     public function updatedFotos($value, $key): void
     {
         $equipId = (int) $key;
-        $this->validate(["fotos.$key.*" => ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000']]);
+        $this->validate(["fotos.$key.*" => ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000', new ImagemParaPdf]]);
 
         $this->fotosNovas[$equipId] = array_merge($this->fotosNovas[$equipId] ?? [], $this->fotos[$key] ?? []);
         $this->fotos[$key] = [];
@@ -1101,7 +1102,7 @@ class Novo extends Component
 
         $this->validate([
             'equipamento_id' => $this->regraEquipamentoPrincipal(),
-            'fotosNovas.*.*' => ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000'],
+            'fotosNovas.*.*' => ['image', 'max:20480', 'dimensions:max_width=12000,max_height=12000', new ImagemParaPdf],
         ] + $this->regrasHoras() + $this->regrasContrato() + $this->regrasTecnicos() + $this->regrasCobertos()
             + $this->regrasEncomendas());
     }
@@ -1239,7 +1240,10 @@ class Novo extends Component
             throw $e;
         }
 
-        $relatorio = $this->gravarTransacao($gerador, $sincronizador, finalizar: false);
+        $relatorio = $this->gravarTransacao($gerador, $sincronizador, finalizar: false, soSeRascunho: true);
+        if (! $relatorio) {
+            return null; // entretanto finalizado/enviado
+        }
 
         // Relatório acabado de começar: o URL passa à edição (como no autosave). E o editor fica
         // a saber que está tudo gravado.
@@ -1283,7 +1287,10 @@ class Novo extends Component
             return;
         }
 
-        $relatorio = $this->gravarTransacao($gerador, $sincronizador, finalizar: false);
+        $relatorio = $this->gravarTransacao($gerador, $sincronizador, finalizar: false, soSeRascunho: true);
+        if (! $relatorio) {
+            return; // entretanto finalizado/enviado — o autosave não lhe toca
+        }
 
         // No 1.º autosave de um relatório novo, o editor troca o URL para a edição via
         // history.replaceState (sem recarregar) — um F5 a seguir retoma este rascunho.
@@ -1326,9 +1333,22 @@ class Novo extends Component
     }
 
     // Núcleo transacional da gravação — partilhado pelo guardar manual e pelo autosave.
-    private function gravarTransacao(GeradorRelatorio $gerador, SincronizadorAgenda $sincronizador, bool $finalizar): Relatorio
+    // $soSeRascunho (autosave e pré-visualizar): volta a confirmar DENTRO da transação, com o
+    // relatório trancado, que ainda é rascunho — o estado lido antes podia já não valer (alguém
+    // finalizou/enviou entretanto) e a gravação despromovia-o a rascunho sem auditoria (27.ª
+    // revisão de segurança). Nesse caso não grava e devolve null.
+    private function gravarTransacao(GeradorRelatorio $gerador, SincronizadorAgenda $sincronizador, bool $finalizar, bool $soSeRascunho = false): ?Relatorio
     {
-        return DB::transaction(function () use ($gerador, $sincronizador, $finalizar) {
+        return DB::transaction(function () use ($gerador, $sincronizador, $finalizar, $soSeRascunho) {
+            if ($soSeRascunho) {
+                $atual = $this->relatorioId !== null
+                    ? Relatorio::whereKey($this->relatorioId)->lockForUpdate()->first()
+                    : ($this->intervencaoId !== null ? Relatorio::where('intervencao_id', $this->intervencaoId)->lockForUpdate()->first() : null);
+                if ($atual && $atual->estado !== EstadoRelatorio::Rascunho) {
+                    return null;
+                }
+            }
+
             $dados = [
                 'equipamento_id' => $this->equipamento_id,
                 'contrato_id' => $this->modo === 'contrato' ? $this->contrato_id : null,

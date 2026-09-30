@@ -152,8 +152,8 @@ class GeradorIcs
     /** @param array<string, mixed> $e */
     private function comConvite(string $ics, string $metodo, string $organizador, User $tecnico, array $e = []): string
     {
-        $organizadorLinha = 'ORGANIZER;CN='.$this->escapar('Nexus Infra').':mailto:'.$organizador;
-        $attendee = 'ATTENDEE;CN='.$this->escapar($tecnico->nome).';ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:'.$tecnico->email;
+        $organizadorLinha = 'ORGANIZER;CN='.$this->escapar('Nexus Infra').':mailto:'.$this->semControlo($organizador);
+        $attendee = 'ATTENDEE;CN='.$this->escapar($tecnico->nome).';ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:'.$this->semControlo((string) $tecnico->email);
 
         $ics = preg_replace('/^VERSION:2\.0\r?\n/m', "VERSION:2.0\r\nMETHOD:{$metodo}\r\n", $ics, 1);
 
@@ -168,7 +168,9 @@ class GeradorIcs
         // Corpo em HTML para o Outlook (negrito nos técnicos). Vai antes do DESCRIPTION.
         if ($e !== []) {
             $alt = $this->dobrar('X-ALT-DESC;FMTTYPE=text/html:'.$this->escaparTexto($this->descricaoHtml($e)));
-            $ics = preg_replace('/^DESCRIPTION[;:]/m', $alt."\r\nDESCRIPTION:", $ics, 1);
+            // Callback, não string de substituição: um «$0» ou «\0» escrito nas notas/morada seria
+            // lido como referência pelo preg_replace (27.ª revisão de segurança).
+            $ics = preg_replace_callback('/^DESCRIPTION[;:]/m', fn () => $alt."\r\nDESCRIPTION:", $ics, 1);
         }
 
         return $ics;
@@ -188,8 +190,18 @@ class GeradorIcs
         return str_replace(['\\', ';', ',', "\n"], ['\\\\', '\\;', '\\,', '\\n'], $texto);
     }
 
+    // Valor de PARÂMETRO (o CN= dos nomes). Fora os caracteres de controlo (um CR/LF num nome
+    // abria uma linha nova no convite) e as aspas; com «;», «:» ou «,» o valor vai entre aspas,
+    // como manda o RFC 5545 — os nomes normais ficam como sempre (27.ª revisão de segurança).
     private function escapar(string $texto): string
     {
-        return str_replace([';', ',', '"'], ['\\;', '\\,', ''], $texto);
+        $texto = str_replace('"', '', $this->semControlo($texto));
+
+        return preg_match('/[;:,]/', $texto) ? '"'.$texto.'"' : $texto;
+    }
+
+    private function semControlo(string $texto): string
+    {
+        return (string) preg_replace('/[\x00-\x1F\x7F]/u', '', $texto);
     }
 }

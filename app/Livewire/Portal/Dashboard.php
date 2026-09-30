@@ -3,6 +3,7 @@
 namespace App\Livewire\Portal;
 
 use App\Enums\EstadoRelatorio;
+use App\Livewire\Concerns\ApenasCliente;
 use App\Models\Equipamento;
 use App\Models\EventoAgenda;
 use App\Models\Relatorio;
@@ -14,6 +15,8 @@ use Livewire\Component;
 #[Layout('components.layouts.portal', ['ativo' => 'inicio', 'titulo' => 'Início'])]
 class Dashboard extends Component
 {
+    use ApenasCliente;
+
     public function render()
     {
         return view('livewire.portal.dashboard', [

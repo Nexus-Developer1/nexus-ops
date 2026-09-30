@@ -42,6 +42,12 @@ class CabecalhosSeguranca
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+        // O que o browser deixa as páginas usar (27.ª revisão de segurança): câmara (scanner de
+        // recibos, fotos) e localização (prova de presença nas fotos) só para a própria aplicação;
+        // o resto — microfone, pagamentos, USB, série, Bluetooth — ninguém.
+        if (! $response->headers->has('Permissions-Policy')) {
+            $response->headers->set('Permissions-Policy', 'camera=(self), geolocation=(self), microphone=(), payment=(), usb=(), serial=(), bluetooth=()');
+        }
 
         return $response;
     }

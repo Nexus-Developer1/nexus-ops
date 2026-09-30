@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Portal;
 
+use App\Livewire\Concerns\ApenasCliente;
 use App\Models\Equipamento;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -12,6 +13,7 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.portal', ['ativo' => 'equipamentos', 'titulo' => 'Equipamentos'])]
 class Equipamentos extends Component
 {
+    use ApenasCliente;
     use WithPagination;
 
     #[Url]

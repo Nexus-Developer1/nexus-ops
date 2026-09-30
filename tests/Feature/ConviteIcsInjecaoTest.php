@@ -55,6 +55,33 @@ class ConviteIcsInjecaoTest extends TestCase
         $this->assertStringContainsString('mailto:p@nexus.pt', $convidados[0]);
     }
 
+    // 27.ª revisão: o NOME do técnico (parâmetro CN=) também não abre linhas, e com «;»/«:»/«,»
+    // vai entre aspas; um nome normal fica igual.
+    public function test_nome_com_quebra_de_linha_nao_abre_linha_nova(): void
+    {
+        $ics = app(GeradorIcs::class)->convite(
+            ['id' => 1, 'uid' => GeradorIcs::uid(1), 'sequence' => 0, 'titulo' => 'Serviço', 'motivo' => null, 'notas' => null,
+                'inicio' => '2026-09-20T09:00:00+01:00', 'fim' => '2026-09-20T10:00:00+01:00', 'segmentos' => [],
+                'tecnico_ids' => [], 'tecnicos_nomes' => 'X', 'cliente' => 'ACME', 'equipamento' => null, 'contrato' => null],
+            0,
+            new User(['nome' => "Paulo\r\nATTENDEE:mailto:intruso@x.pt;Bento", 'email' => "p@nexus.pt\r\nURL:https://x"]),
+        );
+
+        $linhas = preg_split("/\r\n/", preg_replace("/\r\n[ \t]/", '', $ics));
+        $this->assertCount(1, array_filter($linhas, fn ($l) => str_starts_with($l, 'ATTENDEE')));
+        $this->assertCount(0, array_filter($linhas, fn ($l) => str_starts_with($l, 'URL:https://x')));
+        $this->assertContains('ATTENDEE;CN="PauloATTENDEE:mailto:intruso@x.pt;Bento";ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:p@nexus.pturl:https://x', $linhas); // (o modelo põe o email em minúsculas)
+    }
+
+    // «$0» / «\0» nas notas ficam como texto (antes o preg_replace lia-os como referências).
+    public function test_cifrao_e_barra_nas_notas_ficam_como_escritos(): void
+    {
+        $ics = preg_replace("/\r\n[ \t]/", '', $this->ics(['notas' => 'Preço $0 e \\0 tal e qual']));
+
+        $this->assertStringContainsString('Preço $0 e \\\\0 tal e qual', $ics); // no X-ALT-DESC, com a barra escapada
+        $this->assertSame(1, substr_count($ics, "\r\nDESCRIPTION:"));
+    }
+
     public function test_quebras_normais_continuam_a_sair_como_mudanca_de_linha(): void
     {
         // Notas escritas à mão (Enter no textarea) chegam com CRLF ou LF: ficam como sempre —

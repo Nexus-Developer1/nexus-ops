@@ -193,7 +193,7 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
     // ficha (qualquer câmara o abre; o login é pedido se a sessão tiver caducado).
     Route::get('/equipamentos/{equipamento}/etiqueta', function (Equipamento $equipamento, GeradorQrEquipamento $qr) {
         $html = view('pdf.etiqueta-equipamento', ['equipamento' => $equipamento, 'qrPng' => $qr->pngDataUri($equipamento)])->render();
-        $dompdf = new Dompdf(['enable_remote' => false]);
+        $dompdf = new Dompdf(['enable_remote' => false, 'enable_javascript' => false]); // sem JS (27.ª revisão)
         $dompdf->loadHtml($html);
         $dompdf->setPaper([0, 0, 255.12, 141.73]); // 90 x 50 mm em pontos
         $dompdf->render();
@@ -235,12 +235,17 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
     Route::get('/relatorios/{relatorio}/editar', App\Livewire\Relatorios\Novo::class)->name('relatorios.editar');
     Route::get('/relatorios/{relatorio}/enviar', Enviar::class)->name('relatorios.enviar');
     Route::get('/relatorios/{relatorio}/pdf', $servirPdf)->name('relatorios.pdf');
-    // Pré-visualizar o rascunho antes de finalizar: PDF gerado na hora, não guardado.
-    Route::get('/relatorios/{relatorio}/pre-visualizar', fn (Relatorio $relatorio, GeradorRelatorio $gerador) => response($gerador->preVisualizacao($relatorio))
-        ->header('Content-Type', 'application/pdf')
-        ->header('Content-Disposition', 'inline; filename="pre-visualizacao-relatorio-'.$relatorio->id.'.pdf"')
-        ->header('Cache-Control', 'no-store'))
-        ->name('relatorios.pre-visualizar');
+    // Pré-visualizar o rascunho antes de finalizar: PDF gerado na hora, não guardado. Só rascunhos
+    // (um finalizado tem o PDF oficial) e no máximo 10 por minuto por utilizador — cada pedido
+    // corre o gerador de PDF no próprio pedido (27.ª revisão de segurança).
+    Route::get('/relatorios/{relatorio}/pre-visualizar', function (Relatorio $relatorio, GeradorRelatorio $gerador) {
+        abort_unless($relatorio->estado === EstadoRelatorio::Rascunho, 404);
+
+        return response($gerador->preVisualizacao($relatorio))
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="pre-visualizacao-relatorio-'.$relatorio->id.'.pdf"')
+            ->header('Cache-Control', 'no-store');
+    })->middleware('throttle:10,1')->name('relatorios.pre-visualizar');
 
     // Proxy aos anexos no object storage (evita expor o MinIO ao browser).
     Route::get('/anexos/{anexo}', [AnexoController::class, 'ver'])->name('anexos.ver');

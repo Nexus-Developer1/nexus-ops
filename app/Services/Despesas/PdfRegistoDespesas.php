@@ -45,7 +45,7 @@ class PdfRegistoDespesas
 
     public function gerar(RegistoDespesa $registo, string $parte = self::COMPLETO): string
     {
-        $dompdf = new Dompdf(['enable_remote' => false]);
+        $dompdf = new Dompdf(['enable_remote' => false, 'enable_javascript' => false]); // sem JS (27.ª revisão)
         $dompdf->loadHtml($this->html($registo, $parte));
         $dompdf->setPaper('a4', $this->orientacao($parte));
         $dompdf->render();

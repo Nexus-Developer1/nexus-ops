@@ -81,6 +81,23 @@ class RelatorioPreVisualizarTest extends TestCase
         $this->assertStringNotContainsString('pré-visualização', view('pdf.relatorio', app(GeradorRelatorio::class)->dadosDoPdf($relatorio))->render());
     }
 
+    // 27.ª revisão: a rota só serve rascunhos e tem limite (10 por minuto por utilizador) — cada
+    // pedido gera o PDF no próprio pedido.
+    public function test_rota_so_para_rascunhos_e_com_limite_por_minuto(): void
+    {
+        $admin = $this->admin();
+        $equip = $this->equipamento();
+        $finalizado = Relatorio::create(['intervencao_id' => Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'corretiva', 'estado' => 'concluida', 'data_inicio' => now()])->id,
+            'numero' => '2026/9401', 'data' => now(), 'estado' => EstadoRelatorio::Finalizado]);
+        $this->actingAs($admin)->get(route('relatorios.pre-visualizar', $finalizado))->assertNotFound();
+
+        $rascunho = Intervencao::create(['equipamento_id' => $equip->id, 'tipo' => 'corretiva', 'estado' => 'em_curso', 'data_inicio' => now()])->garantirRascunho();
+        for ($i = 0; $i < 9; $i++) { // o pedido acima já contou 1
+            $this->actingAs($admin)->get(route('relatorios.pre-visualizar', $rascunho))->assertOk();
+        }
+        $this->actingAs($admin)->get(route('relatorios.pre-visualizar', $rascunho))->assertStatus(429);
+    }
+
     public function test_relatorio_finalizado_nao_tem_o_botao_nem_pre_visualiza(): void
     {
         $admin = $this->admin();
