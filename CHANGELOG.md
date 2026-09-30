@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-30
+
+- 🎨 **Relatórios (PDF) — as notas finais das fichas de medição também no resumo.** As «Notas finais» escritas em cada ficha de medições só apareciam na página da ficha. Passam a aparecer também no resumo da 1.ª página, numa caixa «Notas finais» logo a seguir à tabela «Equipamentos verificados» e antes das «Anomalias detetadas» — o cliente lê o estado de cada equipamento sem ir às fichas técnicas. Com mais de um equipamento, cada nota leva o equipamento e o nº de série (como as recomendações). Continuam também na própria ficha. Sem notas, a caixa não aparece. Os relatórios já enviados não mudam (o PDF enviado fica guardado tal como foi). Verificado num PDF gerado. Requer `optimize`. +1 teste.
+
 ## 2026-09-29
 
 - 🐛 **Agenda — o botão Waze abre a app no telemóvel.** Testado pela equipa num Android com o Waze instalado: o link web do Waze (`waze.com/ul`) abria o site dentro do browser («Don't have Waze yet?») em vez da app — ao contrário do Google Maps, o Android não passa esse link para a app a partir do browser/PWA. No telemóvel o botão vai agora direto à app: no **Android** por «intent» (com o site do Waze como recurso se a app não estiver instalada) e no **iPhone** pelo esquema `waze://`; no **computador** continua o site, noutro separador. Verificado num browser a simular Android, iPhone e computador. O link do Waze no email aos técnicos continua o web (um email não corre código). Requer build e `optimize`.

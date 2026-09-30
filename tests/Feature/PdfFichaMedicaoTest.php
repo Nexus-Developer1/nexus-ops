@@ -222,6 +222,39 @@ class PdfFichaMedicaoTest extends TestCase
         $this->assertStringContainsString('Alta', $html);
     }
 
+    // As notas finais das fichas também vão para o RESUMO da 1.ª página (antes das anomalias), com
+    // o equipamento quando há mais do que um — e continuam na própria ficha. Sem notas, sem caixa.
+    public function test_notas_finais_aparecem_no_resumo(): void
+    {
+        [$contrato, , $e1, $e2] = $this->contexto();
+        $relatorio = $this->relatorioContrato($contrato, $e1);
+        $relatorio->intervencao->equipamentosCobertos()->attach($e2->id);
+
+        FichaMedicao::create([
+            'intervencao_id' => $relatorio->intervencao->id, 'equipamento_id' => $e1->id, 'tipo_equipamento' => 'ups',
+            'serie' => 'SN-1', 'notas_finais' => 'Sala com temperatura elevada; recomenda-se rever o AC.',
+            'verificacoes' => ['ventiladores' => ['estado' => 'nok', 'nota' => '']],
+        ]);
+        FichaMedicao::create([
+            'intervencao_id' => $relatorio->intervencao->id, 'equipamento_id' => $e2->id, 'tipo_equipamento' => 'ups',
+            'serie' => 'SN-2',
+        ]);
+
+        $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
+
+        $resumo = strpos($html, 'class="notas"');
+        $this->assertNotFalse($resumo);
+        $this->assertStringContainsString('Sala com temperatura elevada; recomenda-se rever o AC.', substr($html, $resumo, 600));
+        $this->assertStringContainsString('(UPS · SN-1)', substr($html, $resumo, 800));
+        $this->assertLessThan(strpos($html, 'Anomalias detetadas'), $resumo);                       // antes das anomalias
+        $this->assertSame(2, substr_count($html, 'Sala com temperatura elevada; recomenda-se rever o AC.')); // resumo + ficha
+
+        // Sem notas finais → sem a caixa.
+        FichaMedicao::query()->update(['notas_finais' => null]);
+        $html = view('pdf.relatorio', ['relatorio' => $relatorio->fresh(), 'fotos' => []])->render();
+        $this->assertStringNotContainsString('class="notas"', $html);
+    }
+
     // Ficha sem recomendação → a secção NÃO aparece (não força blocos vazios).
     public function test_pdf_sem_recomendacao_nao_mostra_seccao(): void
     {

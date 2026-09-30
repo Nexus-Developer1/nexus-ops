@@ -46,7 +46,10 @@
         .aviso .rot { color: #B91C1C; }
         .recom { border: 1px solid #15803D; border-left: 6px solid #15803D; padding: 7px 10px; margin: 8px 0; }
         .recom .rot { color: #15803D; }
-        .aviso .rot, .recom .rot { font-weight: bold; font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; }
+        .notas { border: 1px solid #374151; border-left: 6px solid #374151; padding: 7px 10px; margin: 8px 0; }
+        .notas .rot { color: #374151; }
+        .notas .lista-item { white-space: pre-line; }
+        .aviso .rot, .recom .rot, .notas .rot { font-weight: bold; font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; }
         .lista-item { padding: 2px 0; color: #111827; }
         .lista-item .quem { color: #4B5563; }
 
@@ -129,6 +132,7 @@
     @php($rotuloEq = fn ($f) => $f->tipo_equipamento === 'incendio' ? 'Deteção de incêndio' : ($f->equipamento?->tipo?->rotulo() ?? 'UPS'))
     @php($anomalias = $fichas->flatMap(fn ($f) => collect($f->anomalias())->map(fn ($a) => $a + ['quem' => trim($rotuloEq($f).' · '.($f->serie ?: ($f->equipamento?->numero_serie ?? '')), ' ·')])))
     @php($recomendacoes = $fichas->filter(fn ($f) => trim((string) $f->recomendacao) !== ''))
+    @php($notasFinais = $fichas->filter(fn ($f) => trim((string) $f->notas_finais) !== ''))
     {{-- Extras do equipamento (componentes sempre; cliente final / localização / também cobertos
          só sem fichas, porque com fichas já estão na tabela de resultados e em cada ficha). --}}
     @php($eCliFinal = trim((string) ($e->cliente_final ?? '')))
@@ -240,6 +244,17 @@
                 </tr>
             @endforeach
         </table>
+
+        {{-- Notas finais das fichas de medição também no resumo (pedido da equipa, set. 2026): o
+             cliente lê o estado de cada equipamento sem ir às fichas técnicas. Continuam na ficha. --}}
+        @if ($notasFinais->isNotEmpty())
+            <div class="notas">
+                <div class="rot">Notas finais</div>
+                @foreach ($notasFinais as $f)
+                    <div class="lista-item">{{ trim((string) $f->notas_finais) }}@if ($fichas->count() > 1) <span class="quem">({{ $rotuloEq($f) }} · {{ $f->serie ?: ($f->equipamento?->numero_serie ?? '—') }})</span>@endif</div>
+                @endforeach
+            </div>
+        @endif
 
         @if ($anomalias->isNotEmpty())
             <div class="aviso">
