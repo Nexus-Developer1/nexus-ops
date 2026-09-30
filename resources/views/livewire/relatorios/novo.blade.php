@@ -205,6 +205,14 @@
                                             <span class="truncate">{{ trim($e->fabricante . ' ' . $e->modelo) ?: $e->tipo->rotulo() }}</span>
                                         </h2>
                                         <p class="truncate text-sm text-texto-medio">{{ $e->numero_serie ?? '—' }}</p>
+                                        {{-- Onde está instalado (pedido da equipa, set. 2026): localização do equipamento →
+                                             morada do local → sede do cliente (Equipamento::localInstalacao). --}}
+                                        @if (($localInst = $e->localInstalacao()) !== '')
+                                            <p class="mt-0.5 flex items-center gap-1 text-sm text-texto-medio" title="Local de instalação">
+                                                <svg class="h-3.5 w-3.5 shrink-0 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                                <span class="truncate">{{ $localInst }}</span>
+                                            </p>
+                                        @endif
                                     </div>
                                 </div>
                                 <div class="flex shrink-0 items-center gap-4">

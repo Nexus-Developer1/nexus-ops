@@ -96,6 +96,17 @@ class RelatorioPreVisualizarTest extends TestCase
         $this->assertSame(EstadoRelatorio::Finalizado, $relatorio->fresh()->estado);
     }
 
+    // Cabeçalho da ficha de cada equipamento: marca/modelo, nº de série e o LOCAL DE INSTALAÇÃO.
+    public function test_ficha_do_equipamento_mostra_o_local_de_instalacao(): void
+    {
+        $equip = $this->equipamento();
+        $equip->update(['localizacao_instalacao' => 'Recepção · Quadro elétrico sala de embalamento']);
+
+        Livewire::actingAs($this->admin())->test(Novo::class)
+            ->set('equipamento_id', $equip->id)
+            ->assertSee('Recepção · Quadro elétrico sala de embalamento');
+    }
+
     public function test_cliente_do_portal_nao_acede(): void
     {
         $equip = $this->equipamento();
