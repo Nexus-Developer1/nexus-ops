@@ -54,7 +54,6 @@ class Listagem extends Component
     {
         $contratos = Contrato::query()
             ->with('cliente', 'modeloFaturacao')
-            ->withCount('equipamentos')
             ->when($this->estado === 'a_expirar', fn ($q) => $q->aExpirar())
             ->when($this->estado && $this->estado !== 'a_expirar', fn ($q) => $q->where('estado', $this->estado))
             ->when($this->pesquisa, function ($q) {
@@ -66,6 +65,9 @@ class Listagem extends Component
             })
             ->orderByDesc('data_inicio')
             ->paginate(10);
+        // Nº de equipamentos só dos contratos DESTA página (como nos equipamentos, set. 2026: com
+        // withCount a base de dados contava-o para todos os que salta até à página pedida).
+        $contratos->getCollection()->loadCount('equipamentos');
 
         // Contagem de contratos a expirar (para o banner de aviso).
         $aExpirar = Contrato::aExpirar()->count();
