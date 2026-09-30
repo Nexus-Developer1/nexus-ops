@@ -165,7 +165,6 @@ class Listagem extends Component
     {
         $equipamentos = Equipamento::query()
             ->with('local.cliente')
-            ->withCount('equipamentosAssociados')
             // (O combobox "1º filtrar por cliente" saiu a pedido da equipa: no PHC há faturas
             // sem a série associada ao cliente certo, e a navegação por cliente enganava.
             // A pesquisa de texto procura sempre em TODOS — série, modelo ou nome do cliente.)
@@ -203,6 +202,10 @@ class Listagem extends Component
 
         // 10 por página (pedido da equipa): mais do que isso obriga a um scroll enorme.
         $equipamentos = $equipamentos->paginate(10);
+        // Nº de bancos associados SÓ das 10 linhas da página. Com withCount na consulta, a base
+        // de dados contava-o para todos os equipamentos que salta até à página pedida — a última
+        // (1798) levava ~30 s e a página ficava «presa» (set. 2026). Assim, 40 ms.
+        $equipamentos->getCollection()->loadCount('equipamentosAssociados');
 
         // Famílias disponíveis (nomes distintos já presentes) para o dropdown do filtro.
         $familias = Equipamento::query()

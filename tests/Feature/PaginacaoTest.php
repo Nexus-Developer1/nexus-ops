@@ -15,6 +15,7 @@ use App\Models\Local;
 use App\Models\Relatorio;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -120,6 +121,31 @@ class PaginacaoTest extends TestCase
         }
 
         $this->assertCount(60, $vistos, 'Ficaram equipamentos por mostrar.');
+    }
+
+    // A contagem dos bancos associados («Banco ×N») faz-se só para as linhas da página — com ela
+    // dentro da consulta, a última página (1798 em produção) demorava ~30 s e ficava presa. Aqui
+    // confere-se que a contagem continua certa na última página e que a consulta não a leva.
+    public function test_ultima_pagina_mostra_os_bancos_sem_os_contar_na_consulta(): void
+    {
+        $this->equipamentos(25); // 3 páginas
+        $ups = Equipamento::where('numero_serie', 'SN-001')->firstOrFail();
+        $local = $ups->local_id;
+        foreach (['BAT-A', 'BAT-B'] as $s) {
+            Equipamento::create(['local_id' => $local, 'tipo' => 'diversos', 'estado' => 'operacional', 'numero_serie' => $s, 'equipamento_pai_id' => $ups->id]);
+        }
+
+        // Ordem «Nº de série (Z → A)»: o SN-001 cai na última página.
+        $componente = Livewire::actingAs($this->admin)->test(EquipamentosListagem::class)->set('ordenar', 'serie_desc');
+        DB::enableQueryLog();
+        $componente->call('gotoPage', 3);
+        $consultas = collect(DB::getQueryLog())->pluck('query');
+
+        $this->assertStringContainsString('SN-001', $componente->html());
+        $this->assertStringContainsString('Banco ×2', $componente->html());
+        $paginada = $consultas->first(fn ($q) => str_contains($q, 'from "equipamentos"') && str_contains($q, 'offset'));
+        $this->assertNotNull($paginada);
+        $this->assertStringNotContainsString('equipamentos_associados_count', $paginada);
     }
 
     public function test_os_clientes_tambem_paginam(): void
