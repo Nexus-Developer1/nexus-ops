@@ -23,6 +23,11 @@ class Painel extends Component
     #[Url]
     public bool $concluidos = false;
 
+    // Propostas de intervenção que ainda não venceram (out. 2026): o alerta dos 10 meses só
+    // aparece no dia; aqui vê-se o que vem a caminho — equipamento, última intervenção e data.
+    #[Url]
+    public bool $proximas = false;
+
     // Dar por concluído: sai do dashboard, do painel e do email diário até ser reaberto.
     public function concluir(string $chave, ServicoAlertas $servico): void
     {
@@ -54,6 +59,7 @@ class Painel extends Component
         return view('livewire.alertas.painel', [
             'alertas' => $alertas,
             'listaConcluidos' => $this->concluidos ? $servico->concluidos() : collect(),
+            'listaProximas' => $this->proximas ? $servico->proximasPropostas() : collect(),
             'equipa' => User::where('ativo', true)
                 ->whereNotNull('password')   // convite por aceitar → ainda não se atribui nada
                 ->whereIn('papel', [PapelUtilizador::Tecnico->value, PapelUtilizador::Admin->value])

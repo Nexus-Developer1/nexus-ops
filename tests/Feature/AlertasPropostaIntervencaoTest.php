@@ -8,6 +8,7 @@ use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Models\Local;
+use App\Models\Relatorio;
 use App\Models\User;
 use App\Services\Alertas\ServicoAlertas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -99,6 +100,36 @@ class AlertasPropostaIntervencaoTest extends TestCase
     {
         $this->intervencao($this->ups, 'preventiva', '2025-09-01')->delete(); // soft delete
         $this->assertCount(0, $this->propostas());
+    }
+
+    // As que ainda não venceram (out. 2026): lista à parte no painel, por ordem da data do aviso,
+    // com a última intervenção e o relatório dela. As já vencidas ficam só nos alertas.
+    public function test_proximas_propostas_mostram_o_que_vem_a_caminho(): void
+    {
+        $admin = User::create(['nome' => 'Admin', 'email' => 'a@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Admin, 'ativo' => true]);
+        $i = $this->intervencao($this->ups, 'preventiva', '2026-05-10');   // aviso a 10 mar 2027
+        Relatorio::create(['intervencao_id' => $i->id, 'numero' => '2026/0007', 'data' => '2026-05-10', 'estado' => 'enviado']);
+        $this->intervencao($this->outra, 'instalacao', '2026-02-01');     // aviso a 1 dez 2026 → primeiro
+        $this->intervencao($this->ups, 'corretiva', '2026-08-01');        // corretiva não conta
+
+        $p = app(ServicoAlertas::class)->proximasPropostas();
+        $this->assertSame([$this->outra->id, $this->ups->id], $p->pluck('equipamento.id')->all());
+        $this->assertSame('2026-12-01', $p[0]['aviso']->toDateString());
+        $this->assertSame('Instalação', $p[0]['tipo']);
+        $this->assertSame('2026-03-10', $p[1]['aviso']->copy()->subYear()->toDateString());
+        $this->assertSame('2026/0007', $p[1]['relatorio']->numero);
+
+        // Já vencida → sai das próximas (passa a alerta).
+        Carbon::setTestNow('2026-12-15 10:00:00');
+        $this->assertSame([$this->ups->id], app(ServicoAlertas::class)->proximasPropostas()->pluck('equipamento.id')->all());
+
+        Livewire::actingAs($admin)->test(Painel::class)
+            ->assertDontSee('Próximas propostas de intervenção</h2>', false)
+            ->set('proximas', true)
+            ->assertSee('Próximas propostas de intervenção')
+            ->assertSee('Riello NPW')
+            ->assertSee('relatório 2026/0007')
+            ->assertSee('Aviso a 10 mar 2027');
     }
 
     public function test_painel_mostra_o_tipo_e_concluir_cala_ate_haver_nova_intervencao(): void

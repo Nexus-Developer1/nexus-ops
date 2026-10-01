@@ -17,6 +17,7 @@ use App\Models\EventoAgenda;
 use App\Models\EventoAlerta;
 use App\Models\Intervencao;
 use App\Models\RegistoDespesa;
+use App\Models\Relatorio;
 use App\Models\User;
 use App\Services\Auditor;
 use Illuminate\Support\Carbon;
@@ -149,30 +150,10 @@ class ServicoAlertas
     // até ser concluído ou até haver nova intervenção (a chave leva a data da última).
     private function propostasDeIntervencao(): array
     {
-        $meses = max(1, (int) config('alertas.proposta_meses', 10));
+        $meses = $this->mesesProposta();
         $limite = now()->subMonths($meses);
 
-        // Só o scope do portal sai (é um cálculo de sistema, sem utilizador); o soft-delete
-        // fica — uma intervenção apagada não pode contar como "última preventiva".
-        $intervencoes = Intervencao::query()
-            ->withoutGlobalScope('cliente')
-            ->whereIn('tipo', [TipoIntervencao::Preventiva->value, TipoIntervencao::Instalacao->value])
-            ->where('estado', EstadoIntervencao::Concluida->value)
-            ->with('equipamentosCobertos:id')
-            ->get(['id', 'equipamento_id', 'tipo', 'data_inicio', 'data_fim', 'created_at']);
-
-        // Última instalação/preventiva por equipamento (principal OU coberto).
-        $ultimas = [];
-        foreach ($intervencoes as $i) {
-            $quando = $i->data_fim ?? $i->data_inicio ?? $i->created_at;
-            $ids = array_unique(array_filter(array_merge([$i->equipamento_id], $i->equipamentosCobertos->pluck('id')->all())));
-            foreach ($ids as $eqId) {
-                if (! isset($ultimas[$eqId]) || $quando->gt($ultimas[$eqId]['quando'])) {
-                    $ultimas[$eqId] = ['quando' => $quando, 'tipo' => $i->tipo];
-                }
-            }
-        }
-        $vencidos = array_filter($ultimas, fn ($u) => $u['quando']->lte($limite));
+        $vencidos = array_filter($this->ultimasPorEquipamento(), fn ($u) => $u['quando']->lte($limite));
         if ($vencidos === []) {
             return [];
         }
@@ -200,6 +181,76 @@ class ServicoAlertas
             ->sortBy('data')
             ->values()
             ->all();
+    }
+
+    /**
+     * Propostas de intervenção AINDA POR VENCER (pedido da equipa, out. 2026): o alerta só
+     * aparece no dia em que chega aos meses configurados, e até lá não havia onde ver o que vem
+     * a caminho. Mesma regra do alerta (última instalação/preventiva concluída por equipamento),
+     * mas só as que ainda não venceram — por ordem da data do aviso.
+     *
+     * @return Collection<int, array{equipamento: Equipamento, quando: Carbon, tipo: string, aviso: Carbon, relatorio: ?Relatorio}>
+     */
+    public function proximasPropostas(): Collection
+    {
+        $limite = now()->subMonths($meses = $this->mesesProposta());
+        $porVencer = array_filter($this->ultimasPorEquipamento(), fn ($u) => $u['quando']->gt($limite));
+        if ($porVencer === []) {
+            return collect();
+        }
+
+        // Relatório da intervenção que conta (para abrir direto a partir da lista).
+        $relatorios = Relatorio::query()
+            ->withoutGlobalScope('cliente')
+            ->whereIn('intervencao_id', array_unique(array_column($porVencer, 'intervencao_id')))
+            ->get(['id', 'intervencao_id', 'numero'])
+            ->keyBy('intervencao_id');
+
+        return Equipamento::query()
+            ->whereIn('id', array_keys($porVencer))
+            ->with('local.cliente')
+            ->get()
+            ->map(fn (Equipamento $e) => [
+                'equipamento' => $e,
+                'quando' => $porVencer[$e->id]['quando'],
+                'tipo' => $porVencer[$e->id]['tipo'] === TipoIntervencao::Instalacao ? 'Instalação' : 'Manutenção preventiva',
+                'aviso' => $porVencer[$e->id]['quando']->copy()->addMonths($meses),
+                'relatorio' => $relatorios->get($porVencer[$e->id]['intervencao_id']),
+            ])
+            ->sortBy(fn ($p) => $p['aviso']->timestamp)
+            ->values();
+    }
+
+    private function mesesProposta(): int
+    {
+        return max(1, (int) config('alertas.proposta_meses', 10));
+    }
+
+    // Última instalação/preventiva CONCLUÍDA por equipamento (principal OU «também coberto»).
+    // Só o scope do portal sai (é um cálculo de sistema, sem utilizador); o soft-delete fica —
+    // uma intervenção apagada não pode contar como "última preventiva".
+    /** @return array<int, array{quando: Carbon, tipo: TipoIntervencao, intervencao_id: int}> */
+    private function ultimasPorEquipamento(): array
+    {
+        $intervencoes = Intervencao::query()
+            ->withoutGlobalScope('cliente')
+            ->whereIn('tipo', [TipoIntervencao::Preventiva->value, TipoIntervencao::Instalacao->value])
+            ->where('estado', EstadoIntervencao::Concluida->value)
+            ->with('equipamentosCobertos:id')
+            ->get(['id', 'equipamento_id', 'tipo', 'data_inicio', 'data_fim', 'created_at']);
+
+        $ultimas = [];
+        foreach ($intervencoes as $i) {
+            $quando = $i->data_fim ?? $i->data_inicio ?? $i->created_at;
+            $ids = array_unique(array_filter(array_merge([$i->equipamento_id], $i->equipamentosCobertos->pluck('id')->all())));
+            foreach ($ids as $eqId) {
+                if (! isset($ultimas[$eqId]) || $quando->gt($ultimas[$eqId]['quando'])) {
+                    $ultimas[$eqId] = ['quando' => $quando, 'tipo' => $i->tipo, 'intervencao_id' => $i->id];
+                }
+            }
+        }
+
+        return $ultimas;
     }
 
     // Vigia de backups (opt-in por config): o scripts/backup.sh toca um marcador no fim de
