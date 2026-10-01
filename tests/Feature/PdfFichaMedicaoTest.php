@@ -222,8 +222,9 @@ class PdfFichaMedicaoTest extends TestCase
         $this->assertStringContainsString('Alta', $html);
     }
 
-    // As notas finais das fichas também vão para o RESUMO da 1.ª página (antes das anomalias), com
-    // o equipamento quando há mais do que um — e continuam na própria ficha. Sem notas, sem caixa.
+    // As notas finais das fichas também vão para o RESUMO da 1.ª página, DEBAIXO do equipamento a
+    // que pertencem (out. 2026 — antes numa caixa solta, com o nº de série entre parênteses), antes
+    // das anomalias dele — e continuam na própria ficha. Sem notas, sem a linha.
     public function test_notas_finais_aparecem_no_resumo(): void
     {
         [$contrato, , $e1, $e2] = $this->contexto();
@@ -242,17 +243,19 @@ class PdfFichaMedicaoTest extends TestCase
 
         $html = view('pdf.relatorio', ['relatorio' => $relatorio, 'fotos' => []])->render();
 
-        $resumo = strpos($html, 'class="notas"');
-        $this->assertNotFalse($resumo);
-        $this->assertStringContainsString('Sala com temperatura elevada; recomenda-se rever o AC.', substr($html, $resumo, 600));
-        $this->assertStringContainsString('(UPS · SN-1)', substr($html, $resumo, 800));
-        $this->assertLessThan(strpos($html, 'Anomalias detetadas'), $resumo);                       // antes das anomalias
+        $eq1 = strpos($html, 'S/N SN-1');
+        $eq2 = strpos($html, 'S/N SN-2');
+        $notas = strpos($html, 'Sala com temperatura elevada; recomenda-se rever o AC.');
+        $this->assertNotFalse($eq1);
+        $this->assertTrue($eq1 < $notas && $notas < $eq2);                                          // debaixo do SN-1, antes do SN-2
+        $this->assertTrue($notas < strpos($html, 'Anomalias detetadas'));                           // antes das anomalias
+        $this->assertStringNotContainsString('(UPS · SN-1)', $html);                                // sem nº de série para procurar
         $this->assertSame(2, substr_count($html, 'Sala com temperatura elevada; recomenda-se rever o AC.')); // resumo + ficha
 
-        // Sem notas finais → sem a caixa.
+        // Sem notas finais → sem a linha no resumo.
         FichaMedicao::query()->update(['notas_finais' => null]);
         $html = view('pdf.relatorio', ['relatorio' => $relatorio->fresh(), 'fotos' => []])->render();
-        $this->assertStringNotContainsString('class="notas"', $html);
+        $this->assertStringNotContainsString('class="o-rot">Notas finais', $html);
     }
 
     // «Teste de descarga de baterias»: a tabela tem o cabeçalho Item / OK / NOK, como as outras.

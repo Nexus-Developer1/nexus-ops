@@ -42,16 +42,18 @@
         .tab th { background-color: #374151; color: #ffffff; font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.6px; text-align: left; padding: 5px 8px; }
         .tab td { padding: 6px 8px; border: 1px solid #D1D5DB; font-size: 10.5px; }
         .tab .mini { color: #4B5563; font-size: 8.5px; }
-        .aviso { border: 1px solid #B91C1C; border-left: 6px solid #B91C1C; padding: 7px 10px; margin: 8px 0; }
-        .aviso .rot { color: #B91C1C; }
-        .recom { border: 1px solid #15803D; border-left: 6px solid #15803D; padding: 7px 10px; margin: 8px 0; }
-        .recom .rot { color: #15803D; }
-        .notas { border: 1px solid #374151; border-left: 6px solid #374151; padding: 7px 10px; margin: 8px 0; }
-        .notas .rot { color: #374151; }
-        .notas .lista-item { white-space: pre-line; }
-        .aviso .rot, .recom .rot, .notas .rot { font-weight: bold; font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; }
-        .lista-item { padding: 2px 0; color: #111827; }
-        .lista-item .quem { color: #4B5563; }
+        /* Notas, anomalias e recomendações DEBAIXO de cada equipamento do resumo (pedido da equipa,
+           out. 2026): antes eram caixas soltas, com o nº de série entre parênteses para procurar. */
+        .tab td.eq-com-obs { border-bottom: none; }
+        .tab td.eq-obs { border-top: none; padding: 0 8px 7px 8px; }
+        .tab table.obs { width: 100%; border-collapse: collapse; }
+        .tab table.obs td { border: none; padding: 3px 6px; font-size: 10px; vertical-align: top; }
+        .tab table.obs td.o-rot { width: 22%; font-weight: bold; font-size: 8px; text-transform: uppercase; letter-spacing: 0.6px; padding-top: 4px; }
+        .tab table.obs .o-n td.o-rot { border-left: 4px solid #374151; color: #374151; }
+        .tab table.obs .o-a td.o-rot { border-left: 4px solid #B91C1C; color: #B91C1C; }
+        .tab table.obs .o-r td.o-rot { border-left: 4px solid #15803D; color: #15803D; }
+        .tab table.obs .o-n td.o-txt { white-space: pre-line; }
+        .tab table.obs .o-a td.o-txt div { padding: 1px 0; }
 
         /* ---- Fotos (grelha em tabela, 3/linha — ver pdf/_fotos.blade.php) ---------- */
         .fotos-tab { width: 100%; border-collapse: separate; border-spacing: 0 0; margin-bottom: 6px; }
@@ -130,9 +132,6 @@
          KO fica visível na caixa "Anomalias detetadas" e nas próprias fichas. --}}
     @php($marca = fn ($v, $alvo) => ($v ?? null) === $alvo ? (in_array($alvo, ['ko', 'nok'], true) ? '✗' : ($alvo === 'na' ? '–' : '✓')) : '')
     @php($rotuloEq = fn ($f) => $f->tipo_equipamento === 'incendio' ? 'Deteção de incêndio' : ($f->equipamento?->tipo?->rotulo() ?? 'UPS'))
-    @php($anomalias = $fichas->flatMap(fn ($f) => collect($f->anomalias())->map(fn ($a) => $a + ['quem' => trim($rotuloEq($f).' · '.($f->serie ?: ($f->equipamento?->numero_serie ?? '')), ' ·')])))
-    @php($recomendacoes = $fichas->filter(fn ($f) => trim((string) $f->recomendacao) !== ''))
-    @php($notasFinais = $fichas->filter(fn ($f) => trim((string) $f->notas_finais) !== ''))
     {{-- Extras do equipamento (componentes sempre; cliente final / localização / também cobertos
          só sem fichas, porque com fichas já estão na tabela de resultados e em cada ficha). --}}
     @php($eCliFinal = trim((string) ($e->cliente_final ?? '')))
@@ -236,47 +235,39 @@
                 @php($feq = $f->equipamento)
                 @php($nomeEq = trim(($f->marca ?: $feq?->fabricante ?? '').' '.($f->modelo ?: $feq?->modelo ?? '')))
                 @php($locEq = trim((string) ($feq?->localizacao_instalacao ?? '')) ?: (trim((string) ($feq?->local?->morada ?? '')) ?: '—'))
+                {{-- O que o técnico escreveu/marcou NESTE equipamento fica logo debaixo dele (pedido
+                     da equipa, out. 2026): notas finais, anomalias (KO/NOK) e a recomendação. Antes
+                     eram caixas soltas por baixo da tabela, com o nº de série entre parênteses — o
+                     cliente tinha de o procurar. Continuam também na ficha de cada equipamento. --}}
+                @php($fNotas = trim((string) $f->notas_finais))
+                @php($fAnomalias = $f->anomalias())
+                @php($fRecom = trim((string) $f->recomendacao))
+                @php($comObs = $fNotas !== '' || $fAnomalias !== [] || $fRecom !== '')
                 <tr>
-                    <td><b>{{ $rotuloEq($f) }}</b>@if ($nomeEq !== '') · {{ $nomeEq }}@endif<div class="mini">S/N {{ $f->serie ?: ($feq?->numero_serie ?? '—') }}</div>
+                    <td @class(['eq-com-obs' => $comObs])><b>{{ $rotuloEq($f) }}</b>@if ($nomeEq !== '') · {{ $nomeEq }}@endif<div class="mini">S/N {{ $f->serie ?: ($feq?->numero_serie ?? '—') }}</div>
                         @foreach ($bancosDe($feq) as $banco)<div class="mini">+ {{ $banco }}</div>@endforeach
                     </td>
-                    <td>{{ $locEq }}</td>
+                    <td @class(['eq-com-obs' => $comObs])>{{ $locEq }}</td>
                 </tr>
+                @if ($comObs)
+                    <tr>
+                        <td colspan="2" class="eq-obs">
+                            <table class="obs">
+                                @if ($fNotas !== '')
+                                    <tr class="o-n"><td class="o-rot">Notas finais</td><td class="o-txt">{{ $fNotas }}</td></tr>
+                                @endif
+                                @if ($fAnomalias !== [])
+                                    <tr class="o-a"><td class="o-rot">Anomalias detetadas ({{ count($fAnomalias) }})</td><td class="o-txt">@foreach ($fAnomalias as $a)<div>✗ {{ $a['item'] }}@if ($a['nota'] !== '') — {{ $a['nota'] }}@endif</div>@endforeach</td></tr>
+                                @endif
+                                @if ($fRecom !== '')
+                                    <tr class="o-r"><td class="o-rot">Recomendações e próximos passos</td><td class="o-txt">{{ $fRecom }}@if ($f->tipo_equipamento !== 'incendio' && $f->prioridade) <span class="mini">· Prioridade {{ strtolower($f->prioridade) }}</span>@endif</td></tr>
+                                @endif
+                            </table>
+                        </td>
+                    </tr>
+                @endif
             @endforeach
         </table>
-
-        {{-- Notas finais das fichas de medição também no resumo (pedido da equipa, set. 2026): o
-             cliente lê o estado de cada equipamento sem ir às fichas técnicas. Continuam na ficha. --}}
-        @if ($notasFinais->isNotEmpty())
-            <div class="notas">
-                <div class="rot">Notas finais</div>
-                @foreach ($notasFinais as $f)
-                    <div class="lista-item">{{ trim((string) $f->notas_finais) }}@if ($fichas->count() > 1) <span class="quem">({{ $rotuloEq($f) }} · {{ $f->serie ?: ($f->equipamento?->numero_serie ?? '—') }})</span>@endif</div>
-                @endforeach
-            </div>
-        @endif
-
-        @if ($anomalias->isNotEmpty())
-            <div class="aviso">
-                <div class="rot">Anomalias detetadas ({{ $anomalias->count() }})</div>
-                @foreach ($anomalias as $a)
-                    <div class="lista-item">✗ {{ $a['item'] }}@if ($a['nota'] !== '') — {{ $a['nota'] }}@endif <span class="quem">({{ $a['quem'] }})</span></div>
-                @endforeach
-            </div>
-        @endif
-
-        @if ($recomendacoes->isNotEmpty())
-            <div class="recom">
-                <div class="rot">Recomendações e próximos passos</div>
-                @foreach ($recomendacoes as $f)
-                    <div class="lista-item">
-                        {{ $f->recomendacao }}
-                        @if ($f->tipo_equipamento !== 'incendio' && $f->prioridade)<span class="quem">· Prioridade {{ strtolower($f->prioridade) }}</span>@endif
-                        @if ($fichas->count() > 1)<span class="quem">({{ $rotuloEq($f) }} · {{ $f->serie ?: ($f->equipamento?->numero_serie ?? '—') }})</span>@endif
-                    </div>
-                @endforeach
-            </div>
-        @endif
     @endif
 
     {{-- ---- Equipamentos (sem fichas) e componentes do sistema ------------------------- --}}

@@ -98,13 +98,19 @@ class PdfRelatorioDesignTest extends TestCase
         $this->assertStringContainsString('<b>Deteção de incêndio</b>', $html);
         $this->assertStringContainsString('Sala técnica', $html);               // local de instalação
 
-        // Anomalias e recomendações listadas, com o equipamento a que pertencem.
+        // Anomalias e recomendações listadas DEBAIXO do equipamento a que pertencem (out. 2026),
+        // antes do equipamento seguinte.
         $this->assertStringContainsString('Anomalias detetadas (1)', $html);
         $this->assertStringContainsString('✗ Ventiladores — Ruído anómalo', $html);
-        $this->assertStringContainsString('UPS · SN-UPS-1', $html);
         $this->assertStringContainsString('Recomendações e próximos passos', $html);
         $this->assertStringContainsString('Substituir ventiladores', $html);
         $this->assertStringContainsString('Prioridade alta', $html);
+        $ups = strpos($html, 'S/N SN-UPS-1');
+        $inc = strpos($html, 'S/N SN-INC-1');
+        foreach (['✗ Ventiladores — Ruído anómalo', 'Substituir ventiladores'] as $texto) {
+            $pos = strpos($html, $texto);
+            $this->assertTrue($ups < $pos && $pos < $inc, $texto);
+        }
 
         // Com fichas, os extras do equipamento (localização, "também cobertos") não se repetem.
         $this->assertStringNotContainsString('Localização da instalação', $html);
