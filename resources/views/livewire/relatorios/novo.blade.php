@@ -101,15 +101,15 @@
                 <button @click="tab='gerais'" :class="tab==='gerais' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">Dados Gerais</button>
 
                 @if ($equipamentoPrincipal || $cobertosSelecionados->isNotEmpty())
-                    <span class="mx-1 h-4 w-px bg-borda" aria-hidden="true"></span>
+                    <span class="mx-1 hidden h-4 w-px bg-borda sm:block" aria-hidden="true"></span>
                     @if ($equipamentoPrincipal)
-                        <button wire:key="tab-btn-{{ $equipamentoPrincipal->id }}" @click="tab='equip-{{ $equipamentoPrincipal->id }}'" :class="tab==='equip-{{ $equipamentoPrincipal->id }}' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">
+                        <button wire:key="tab-btn-{{ $equipamentoPrincipal->id }}" @click="tab='equip-{{ $equipamentoPrincipal->id }}'" :class="tab==='equip-{{ $equipamentoPrincipal->id }}' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px max-w-full truncate border-b-2 pb-3 text-left text-sm transition" title="{{ trim($equipamentoPrincipal->fabricante . ' ' . $equipamentoPrincipal->modelo) }}">
                             {{-- Marca + modelo em destaque (série só como fallback) — pedido da equipa. --}}
                             {{ trim($equipamentoPrincipal->fabricante . ' ' . $equipamentoPrincipal->modelo) ?: ($equipamentoPrincipal->numero_serie ?? '—') }}
                         </button>
                     @endif
                     @foreach ($cobertosSelecionados as $e)
-                        <button wire:key="tab-btn-{{ $e->id }}" @click="tab='equip-{{ $e->id }}'" :class="tab==='equip-{{ $e->id }}' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px border-b-2 pb-3 text-sm transition">
+                        <button wire:key="tab-btn-{{ $e->id }}" @click="tab='equip-{{ $e->id }}'" :class="tab==='equip-{{ $e->id }}' ? 'border-verde-500 text-verde-600 font-semibold' : 'border-transparent text-texto-medio font-medium hover:text-texto-forte'" class="-mb-px max-w-full truncate border-b-2 pb-3 text-left text-sm transition" title="{{ trim($e->fabricante . ' ' . $e->modelo) }}">
                             {{ trim($e->fabricante . ' ' . $e->modelo) ?: ($e->numero_serie ?? '—') }}
                         </button>
                     @endforeach
@@ -180,26 +180,28 @@
                     @php($e = $item['e'])
                     <div x-show="tab==='equip-{{ $e->id }}'" x-cloak class="space-y-5" wire:key="tab-ficha-{{ $e->id }}">
                         <section class="cartao mt-7" x-data="{ organizar: false, arrastado: null }">
-                            <div class="flex items-center justify-between gap-3 px-6 py-5">
+                            {{-- No telemóvel o nome fica em cima, inteiro (com as linhas que precisar), e os
+                                 botões descem para uma linha própria — ao lado espremiam o nome a uma letra. --}}
+                            <div class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
                                 <div class="flex min-w-0 items-center gap-3">
                                     <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
                                     <div class="min-w-0">
                                         {{-- Marca + modelo em destaque, série no subtítulo (pedido da equipa; fallback pelo TIPO real). --}}
                                         <h2 class="flex items-center gap-2 text-lg font-semibold text-texto-forte">
-                                            <span class="truncate">{{ trim($e->fabricante . ' ' . $e->modelo) ?: $e->tipo->rotulo() }}</span>
+                                            <span class="min-w-0 break-words sm:truncate">{{ trim($e->fabricante . ' ' . $e->modelo) ?: $e->tipo->rotulo() }}</span>
                                         </h2>
-                                        <p class="truncate text-sm text-texto-medio">{{ $e->numero_serie ?? '—' }}</p>
+                                        <p class="break-all text-sm text-texto-medio sm:truncate">{{ $e->numero_serie ?? '—' }}</p>
                                         {{-- Onde está instalado (pedido da equipa, set. 2026): localização do equipamento →
                                              morada do local → sede do cliente (Equipamento::localInstalacao). --}}
                                         @if (($localInst = $e->localInstalacao()) !== '')
                                             <p class="mt-0.5 flex items-center gap-1 text-sm text-texto-medio" title="Local de instalação">
                                                 <svg class="h-3.5 w-3.5 shrink-0 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                                <span class="truncate">{{ $localInst }}</span>
+                                                <span class="break-words sm:truncate">{{ $localInst }}</span>
                                             </p>
                                         @endif
                                     </div>
                                 </div>
-                                <div class="flex shrink-0 items-center gap-4">
+                                <div class="flex shrink-0 flex-wrap items-center justify-end gap-x-4 gap-y-2">
                                     {{-- Organizar os blocos da ficha (só UPS; a SADEI espelha a folha oficial). --}}
                                     @unless ($e->tipo === \App\Enums\TipoEquipamento::Incendio)
                                         <button type="button" x-show="organizar" x-cloak wire:click="reporOrdemCampos('ficha_ups')" class="text-xs font-medium text-texto-medio hover:text-texto-forte hover:underline">Repor ordem de fábrica</button>
@@ -215,7 +217,7 @@
                                 </button>
                                 </div>
                             </div>
-                            <div class="border-t border-borda px-6 py-6">
+                            <div class="border-t border-borda px-4 py-5 sm:px-6 sm:py-6">
                                 {{-- Equipamentos de incêndio têm ficha técnica própria (SADEI); os restantes usam a de medições UPS. --}}
                                 @if ($e->tipo === \App\Enums\TipoEquipamento::Incendio)
                                     <x-relatorios.ficha-incendio :prefixo="'fichas.' . $e->id" :equip-id="$e->id"
@@ -227,7 +229,7 @@
                             </div>
 
                             {{-- Fotografias DESTE equipamento (aparecem junto das medições no PDF). --}}
-                            <div class="border-t border-borda px-6 py-6">
+                            <div class="border-t border-borda px-4 py-5 sm:px-6 sm:py-6">
                                 <p class="mb-3 text-sm font-semibold text-texto-forte">Fotografias</p>
                                 {{-- Duas entradas para a MESMA propriedade: "Tirar foto" abre a câmara
                                      (capture) e "Galeria" abre o seletor de ficheiros/álbum. Em
