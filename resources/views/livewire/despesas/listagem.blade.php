@@ -96,7 +96,7 @@
                                     · {{ $r->colaborador?->nome ?? '—' }} · {{ $r->despesas->count() }} {{ \Illuminate\Support\Str::plural('lançamento', $r->despesas->count()) }}
                                 </p>
                             </div>
-                            <span class="shrink-0 text-base font-semibold text-texto-forte">{{ number_format((float) $r->despesas->sum('valor'), 2, ',', ' ') }} €</span>
+                            <span class="shrink-0 text-right text-base font-semibold text-texto-forte">{{ number_format((float) $r->despesas->where('recusada', false)->sum('valor'), 2, ',', ' ') }} €@if ($r->estado === \App\Enums\EstadoDespesa::AprovadaParcialmente)<span class="block text-xs font-normal text-texto-fraco">de {{ number_format((float) $r->despesas->sum('valor'), 2, ',', ' ') }} €</span>@endif</span>
                         </div>
                         <div class="mt-3 flex items-center gap-4 border-t border-borda pt-3">
                             <a href="{{ route('despesas.registo.ficha', $r) }}" wire:navigate class="text-sm font-medium text-verde-600">Ver</a>
@@ -146,7 +146,8 @@
                                 <td class="px-6 py-3.5 text-texto-medio">{{ $r->colaborador?->nome ?? '—' }}</td>
                                 <td class="px-6 py-3.5"><span class="etiqueta {{ $r->estado->classesEtiqueta() }}">{{ $r->estado->rotulo() }}</span></td>
                                 <td class="px-6 py-3.5 text-texto-medio">{{ $r->despesas->count() }}</td>
-                                <td class="whitespace-nowrap px-6 py-3.5 text-right font-medium text-texto-forte">{{ number_format((float) $r->despesas->sum('valor'), 2, ',', ' ') }} €</td>
+                                {{-- Aprovada parcialmente (out. 2026): o valor é o APROVADO; por baixo, o total pedido. --}}
+                                <td class="whitespace-nowrap px-6 py-3.5 text-right font-medium text-texto-forte">{{ number_format((float) $r->despesas->where('recusada', false)->sum('valor'), 2, ',', ' ') }} €@if ($r->estado === \App\Enums\EstadoDespesa::AprovadaParcialmente)<div class="text-xs font-normal text-texto-fraco">de {{ number_format((float) $r->despesas->sum('valor'), 2, ',', ' ') }} €</div>@endif</td>
                                 <td class="whitespace-nowrap px-6 py-3.5 text-right">
                                     <a href="{{ route('despesas.registo.ficha', $r) }}" wire:navigate class="text-sm font-medium text-verde-600 hover:underline">Ver</a>
                                     @if ($r->podeSerEditado())<a href="{{ route('despesas.registo.editar', $r) }}" wire:navigate class="ml-3 text-sm font-medium text-texto-medio hover:text-texto-forte">Editar</a>@endif

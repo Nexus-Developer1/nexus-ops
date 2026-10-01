@@ -13,12 +13,16 @@
 @php
     $aplicacao = \App\Services\Despesas\FluxoAprovacaoDespesas::APLICACAO;
     $variante = $variante ?? '';
-    $aprovada = ($r['estado'] ?? '') === 'aprovada';
+    // Aprovada PARCIALMENTE (out. 2026) conta como aprovada (mesma cor, segue para a contabilidade).
+    $parcial = ($r['estado'] ?? '') === 'aprovada_parcial';
+    $aprovada = in_array($r['estado'] ?? '', ['aprovada', 'aprovada_parcial'], true);
+    $soAprovadas = (bool) ($r['so_aprovadas'] ?? false); // versão da contabilidade: só as aprovadas
     $rejeitada = ($r['estado'] ?? '') === 'rejeitada';
     $cor = $modo === 'decidida' ? ($aprovada ? '#16a34a' : '#dc2626') : '#a16207';
     $total = number_format($r['total'], 2, ',', ' ').' €';
+    $totalAprovado = number_format($r['total_aprovado'] ?? $r['total'], 2, ',', ' ').' €';
     $titulo = $modo === 'decidida'
-        ? 'Despesa nº '.$r['id'].' '.($aprovada ? 'aprovada' : 'rejeitada')
+        ? 'Despesa nº '.$r['id'].' '.($parcial ? 'aprovada parcialmente' : ($aprovada ? 'aprovada' : 'rejeitada'))
         : ($reenvio ? 'Despesa nº '.$r['id'].' corrigida — volta a aguardar aprovação' : 'Nova despesa aguarda aprovação');
 @endphp
 <body style="margin:0; padding:0; background-color:#f3f4f6; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -53,8 +57,12 @@
                             <p style="margin:0 0 18px; font-size:15px; line-height:1.6; color:#374151;">
                                 @if ($modo === 'decidida')
                                     A despesa nº {{ $r['id'] }} de <strong style="color:#111827;">{{ $r['colaborador'] }}</strong> ({{ $total }}) foi
-                                    <strong style="color:{{ $cor }};">{{ $aprovada ? 'APROVADA' : 'REJEITADA' }}</strong>
+                                    <strong style="color:{{ $cor }};">{{ $parcial ? 'APROVADA PARCIALMENTE' : ($aprovada ? 'APROVADA' : 'REJEITADA') }}</strong>
                                     por <strong style="color:#111827;">{{ $r['decisor'] ?? '—' }}</strong>@if ($r['decidido_em']) em {{ $r['decidido_em'] }}@endif.
+                                    @if ($parcial)
+                                        <br>Aprovado <strong style="color:#111827;">{{ $totalAprovado }}</strong> de {{ $total }}.
+                                        {{ $soAprovadas ? 'Seguem só as linhas aprovadas.' : 'As linhas recusadas vão assinaladas abaixo, com o motivo.' }}
+                                    @endif
                                 @elseif ($variante === 'criador')
                                     A sua despesa {{ $reenvio ? 'foi corrigida e reenviada' : 'foi submetida' }} e <strong style="color:#111827;">aguarda aprovação</strong>.
                                     Será avisado(a) por email assim que for aprovada ou rejeitada — não precisa de fazer mais nada.
@@ -79,14 +87,16 @@
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; margin:0 0 18px;">
                                 <tr><td style="padding:14px 16px 6px; font-size:17px; font-weight:700; color:#111827;">Despesa nº {{ $r['id'] }} · {{ $total }}</td></tr>
                                 <tr><td style="padding:0 16px 4px; font-size:14px; color:#374151;"><span style="color:#6b7280;">Colaborador:</span> <strong>{{ $r['colaborador'] }}</strong></td></tr>
-                                <tr><td style="padding:0 16px 10px; font-size:14px; color:#374151;"><span style="color:#6b7280;">Estado:</span> {{ $modo === 'decidida' ? ($aprovada ? 'Aprovada' : 'Rejeitada') : 'Pendente de aprovação' }}</td></tr>
+                                <tr><td style="padding:0 16px 10px; font-size:14px; color:#374151;"><span style="color:#6b7280;">Estado:</span> {{ $modo === 'decidida' ? ($parcial ? 'Aprovada parcialmente — '.$totalAprovado.' aprovados' : ($aprovada ? 'Aprovada' : 'Rejeitada')) : 'Pendente de aprovação' }}</td></tr>
                                 <tr><td style="padding:0 16px 12px;">
                                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px; color:#374151; border-top:1px solid #e5e7eb;">
                                         @foreach (array_slice($r['linhas'], 0, 15) as $l)
                                             <tr>
                                                 <td style="padding:6px 0; width:78px; color:#6b7280; vertical-align:top; border-bottom:1px solid #f3f4f6;">{{ $l['data'] }}</td>
-                                                <td style="padding:6px 8px; vertical-align:top; border-bottom:1px solid #f3f4f6;"><span style="color:#6b7280;">{{ $l['categoria'] }}</span> · {{ $l['descricao'] }}</td>
-                                                <td style="padding:6px 0; text-align:right; white-space:nowrap; font-weight:600; color:#111827; vertical-align:top; border-bottom:1px solid #f3f4f6;">{{ number_format($l['valor'], 2, ',', ' ') }} €</td>
+                                                <td style="padding:6px 8px; vertical-align:top; border-bottom:1px solid #f3f4f6;"><span style="color:#6b7280;">{{ $l['categoria'] }}</span> · {{ $l['descricao'] }}
+                                                    @if (! empty($l['recusada']))<div style="font-size:12px; color:#b91c1c; margin-top:2px;"><strong>Recusada:</strong> {{ $l['motivo_recusa'] ?: '—' }}</div>@endif
+                                                </td>
+                                                <td style="padding:6px 0; text-align:right; white-space:nowrap; font-weight:600; vertical-align:top; border-bottom:1px solid #f3f4f6; {{ ! empty($l['recusada']) ? 'color:#9ca3af; text-decoration:line-through;' : 'color:#111827;' }}">{{ number_format($l['valor'], 2, ',', ' ') }} €</td>
                                             </tr>
                                         @endforeach
                                         @if (count($r['linhas']) > 15)

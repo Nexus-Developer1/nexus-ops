@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-10-01
+
+- 🧰 **Despesas — aprovação parcial.** A pedido da equipa: o aprovador pode aprovar só parte de uma despesa. Na ficha de uma despesa pendente, cada linha tem a caixa **«Aprovar»** (nascem todas marcadas); desmarcar uma pede o **motivo** e o botão passa a **«Aprovar parcialmente (X € de Y €)»**. «Rejeitar…» continua para recusar tudo (a despesa volta ao colaborador para corrigir); recusar todas as linhas pela aprovação parcial é recusado com esse aviso. Decisões da equipa: **por linha** e as recusadas **ficam recusadas** — o registo fecha como **«Aprovada parcialmente»** (estado novo), fechado como uma aprovada (ninguém edita; só o aprovador elimina). Emails os da aprovação (colaborador, aprovador, financeiro e contabilidade), com «APROVADA PARCIALMENTE» e o valor aprovado no assunto; o colaborador e os outros veem as linhas recusadas riscadas, com o motivo; **a contabilidade recebe só as linhas aprovadas**. Na ficha: «Aprovado X € de Y €» em destaque, linhas recusadas riscadas com «Recusada: motivo», e «Aprovado» no rodapé da tabela; na listagem o total é o aprovado («de Y €» por baixo); no PDF a linha recusada fica riscada e com o motivo, fora dos totais por coluna, e o resumo mostra «Total pedido» e «Total aprovado». Fica na auditoria (`despesa_aprovada_parcialmente`, com as linhas e os motivos). **Migração**: `despesas.recusada` e `despesas.motivo_recusa`. Verificado num browser (escolha, ficha decidida, listagem) e no PDF. `migrate` + build + `optimize` + `queue:restart` (os emails vão pela fila). +3 testes.
+
 ## 2026-09-30
 
 - 🔒 **27.ª revisão de segurança — dos achados médios, o que não muda nada para quem usa.** (O resto dos médios — bloquear a aprovação de uma despesa alterada, confirmação ao remover fotos em finalizados, limites ao arrastar na agenda — fica para decisão da equipa.)

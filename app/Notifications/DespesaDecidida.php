@@ -27,11 +27,13 @@ class DespesaDecidida extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         $r = $this->registo;
+        $parcial = $r['estado'] === 'aprovada_parcial';
         $aprovada = $r['estado'] === 'aprovada';
-        $total = number_format($r['total'], 2, ',', ' ').' €';
+        // Parcial: o valor do assunto é o APROVADO (o que a contabilidade vai tratar).
+        $total = number_format($parcial ? ($r['total_aprovado'] ?? $r['total']) : $r['total'], 2, ',', ' ').' €';
 
         return (new MailMessage)
-            ->subject('['.FluxoAprovacaoDespesas::APLICACAO.'] Despesa nº '.$r['id'].' · '.$r['colaborador'].' · '.$total.' — '.($aprovada ? 'APROVADA' : 'REJEITADA'))
+            ->subject('['.FluxoAprovacaoDespesas::APLICACAO.'] Despesa nº '.$r['id'].' · '.$r['colaborador'].' · '.$total.' — '.($parcial ? 'APROVADA PARCIALMENTE' : ($aprovada ? 'APROVADA' : 'REJEITADA')))
             ->view('emails.despesa', [
                 'modo' => 'decidida',
                 'r' => $r,

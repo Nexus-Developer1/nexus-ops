@@ -55,6 +55,8 @@ class Despesa extends Model
         'detalhe', // "o que realmente é" (ex.: Portagem A1, Almoço com cliente)
         'refeicao_tipo', // 'A' (almoço) | 'J' (jantar) — só nas despesas de Refeições (nota a) da folha)
         'pago_por', // chave de PAGO_POR — quem pagou a despesa
+        'recusada', // linha recusada numa aprovação parcial (out. 2026)
+        'motivo_recusa',
     ];
 
     /** @return array<string, string> */
@@ -64,6 +66,7 @@ class Despesa extends Model
             'data' => 'date',
             'valor' => 'decimal:2',
             'faturavel' => 'boolean',
+            'recusada' => 'boolean',
         ];
     }
 

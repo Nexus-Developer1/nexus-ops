@@ -31,8 +31,11 @@
     @php($colunas = \App\Models\Despesa::CATEGORIAS)
     @php($linhas = $registo->linhasOrdenadas())
     @php($totais = array_fill(0, count($colunas), 0.0))
-    @php($linhas->each(function ($d) use (&$totais, $colunas) { $i = array_search($d->categoria, $colunas, true); $totais[$i === false ? count($colunas) - 1 : $i] += (float) $d->valor; }))
+    {{-- Linhas RECUSADAS numa aprovação parcial (out. 2026) ficam na folha, riscadas e com o
+         motivo, mas fora dos totais por coluna — os totais são o que é para pagar. --}}
+    @php($linhas->each(function ($d) use (&$totais, $colunas) { if ($d->recusada) { return; } $i = array_search($d->categoria, $colunas, true); $totais[$i === false ? count($colunas) - 1 : $i] += (float) $d->valor; }))
     @php($total = array_sum($totais))
+    @php($totalPedido = (float) $linhas->sum('valor'))
     @php($eur = fn ($v) => is_numeric($v) && (float) $v > 0 ? number_format((float) $v, 2, ',', ' ') . ' €' : '')
 
     @unless ($apenasRecibos ?? false)
@@ -94,9 +97,10 @@
                 {{-- Descrição (local · serviço) + "o que é" quando preenchido; por baixo, a
                      negrito, quem pagou (set. 2026). Fica dentro da célula para não mexer nas
                      colunas da folha da empresa. --}}
-                <td>{{ $d->descricao }}{{ $d->detalhe ? ' — ' . $d->detalhe : '' }}@if ($d->pagoPorRotulo())<br><strong>{{ $d->pagoPorRotulo() }}</strong>@endif</td>
+                <td>{{ $d->descricao }}{{ $d->detalhe ? ' — ' . $d->detalhe : '' }}@if ($d->pagoPorRotulo())<br><strong>{{ $d->pagoPorRotulo() }}</strong>@endif
+                    @if ($d->recusada)<br><span style="color: #B91C1C;"><strong>RECUSADA:</strong> {{ $d->motivo_recusa ?: '—' }}</span>@endif</td>
                 @foreach ($colunas as $i => $c)
-                    <td class="num">{{ $i === $indiceCol ? $eur($d->valor) . ($d->refeicao_tipo ? ' (' . $d->refeicao_tipo . ')' : '') : '' }}</td>
+                    <td class="num" @if ($d->recusada && $i === $indiceCol) style="text-decoration: line-through; color: #9CA3AF;" @endif>{{ $i === $indiceCol ? $eur($d->valor) . ($d->refeicao_tipo ? ' (' . $d->refeicao_tipo . ')' : '') : '' }}</td>
                 @endforeach
             </tr>
         @endforeach
@@ -110,7 +114,12 @@
 
     {{-- Resumo (rodapé da folha). --}}
     <table class="resumo" style="width: 42%; margin-left: 58%; margin-top: 8px;">
-        <tr><td class="rot">Total despesas</td><td class="num">{{ number_format($total, 2, ',', ' ') }} €</td></tr>
+        @if ($registo->estado === \App\Enums\EstadoDespesa::AprovadaParcialmente)
+            <tr><td class="rot">Total pedido</td><td class="num">{{ number_format($totalPedido, 2, ',', ' ') }} €</td></tr>
+            <tr><td class="rot">Total aprovado</td><td class="num">{{ number_format($total, 2, ',', ' ') }} €</td></tr>
+        @else
+            <tr><td class="rot">Total despesas</td><td class="num">{{ number_format($total, 2, ',', ' ') }} €</td></tr>
+        @endif
     </table>
 
     {{-- Dinheiro levantado do cartão (set. 2026): os levantamentos e as contas. --}}

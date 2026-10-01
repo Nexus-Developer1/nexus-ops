@@ -43,7 +43,9 @@ class RegistoDespesa extends Model
     // rejeitada editam-se (a rejeitada volta a pendente ao guardar).
     public function podeSerEditado(): bool
     {
-        return $this->estado !== EstadoDespesa::Aprovada;
+        // Aprovada ou aprovada parcialmente = fechada. (Sem estado em memória — acabado de criar,
+        // a BD põe «pendente» — conta como aberto, como antes.)
+        return ! ($this->estado?->aprovada() ?? false);
     }
 
     // Eliminar: pendente e rejeitada, qualquer pessoa das despesas (como sempre); APROVADA, só
@@ -101,6 +103,13 @@ class RegistoDespesa extends Model
     public function total(): float
     {
         return (float) $this->despesas()->sum('valor');
+    }
+
+    // Total APROVADO: sem as linhas recusadas numa aprovação parcial (num registo inteiramente
+    // aprovado ou ainda pendente é igual ao total).
+    public function totalAprovado(): float
+    {
+        return (float) $this->despesas()->where('recusada', false)->sum('valor');
     }
 
     // Linhas do registo: 1:1 com as despesas, por ordem cronológica (cada linha = dia,

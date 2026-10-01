@@ -10,6 +10,7 @@ use App\Notifications\DespesaSubmetida;
 use App\Services\Auditor;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification as Notificador;
 
 // Processo de validação das despesas (pedido da equipa):
@@ -18,6 +19,9 @@ use Illuminate\Support\Facades\Notification as Notificador;
 //   aprovador aprova/rejeita → email de decisão IGUAL para os três; na APROVAÇÃO também à
 //   contabilidade (despesas.notificar_aprovacao), que só trata do que está aprovado
 //   rejeitada e corrigida → volta a PENDENTE (novos emails); aprovada = fechada, ninguém edita.
+//   APROVAÇÃO PARCIAL (out. 2026): o aprovador recusa algumas linhas (com motivo) e aprova as
+//   outras → «Aprovada parcialmente», fechada como uma aprovada. Os emails são os da aprovação;
+//   a contabilidade recebe SÓ as linhas aprovadas, os outros veem também as recusadas e porquê.
 class FluxoAprovacaoDespesas
 {
     // Nome da aplicação nos emails das despesas. O Nexus Suporte (Tempos) também tem despesas
@@ -104,10 +108,65 @@ class FluxoAprovacaoDespesas
         $this->notificarDecisao($registo, new DespesaDecidida($this->instantaneo($registo->fresh())), $aprovar);
     }
 
+    /**
+     * Aprovação PARCIAL: recusa as linhas indicadas (id da despesa => motivo) e aprova as
+     * restantes. Tem de ficar pelo menos uma de cada lado — tudo aprovado é «Aprovar», tudo
+     * recusado é «Rejeitar» (que devolve o registo ao colaborador para corrigir).
+     *
+     * @param  array<int, string>  $recusadas
+     *
+     * @throws AuthorizationException
+     */
+    public function decidirParcial(RegistoDespesa $registo, User $quem, array $recusadas): void
+    {
+        if (! self::podeAprovar($quem)) {
+            throw new AuthorizationException('Sem permissão para aprovar despesas.');
+        }
+        if ($registo->estado !== EstadoDespesa::Pendente) {
+            throw new \LogicException('Só despesas pendentes podem ser aprovadas ou rejeitadas.');
+        }
+
+        $ids = $registo->despesas()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $recusadas = collect($recusadas)->mapWithKeys(fn ($motivo, $id) => [(int) $id => trim((string) $motivo)]);
+        if ($recusadas->isEmpty() || $recusadas->keys()->diff($ids)->isNotEmpty() || $recusadas->count() >= count($ids)) {
+            throw new \InvalidArgumentException('A aprovação parcial tem de recusar algumas linhas deste registo e aprovar outras.');
+        }
+        if ($recusadas->contains(fn ($motivo) => $motivo === '')) {
+            throw new \InvalidArgumentException('Cada linha recusada precisa do motivo.');
+        }
+
+        DB::transaction(function () use ($registo, $quem, $recusadas) {
+            foreach ($recusadas as $id => $motivo) {
+                $registo->despesas()->whereKey($id)->update(['recusada' => true, 'motivo_recusa' => mb_substr($motivo, 0, 500)]);
+            }
+            $registo->update([
+                'estado' => EstadoDespesa::AprovadaParcialmente,
+                'decidido_por' => $quem->id,
+                'decidido_em' => now(),
+                'motivo_rejeicao' => null,
+            ]);
+        });
+
+        $registo = $registo->fresh();
+        Auditor::registar('despesa_aprovada_parcialmente', $registo, [
+            'total' => $registo->total(),
+            'aprovado' => $registo->totalAprovado(),
+            'recusadas' => $recusadas->all(),
+        ]);
+
+        $this->notificarDecisao(
+            $registo,
+            new DespesaDecidida($this->instantaneo($registo)),
+            aprovada: true,
+            // A contabilidade trata do que é para pagar: recebe só as linhas aprovadas.
+            paraContabilidade: new DespesaDecidida($this->instantaneo($registo, soAprovadas: true)),
+        );
+    }
+
     // Decisão: o MESMO email para quem criou, aprovador e financeiro — e, se foi aprovada, a
     // contabilidade —, sem duplicar quando o criador é um deles. Emails de config com conta
     // ativa notificam a conta; os restantes vão por notificação "on demand".
-    private function notificarDecisao(RegistoDespesa $registo, Notification $notificacao, bool $aprovada): void
+    private function notificarDecisao(RegistoDespesa $registo, Notification $notificacao, bool $aprovada, ?Notification $paraContabilidade = null): void
     {
         $registo->loadMissing('colaborador');
         $criador = $registo->colaborador;
@@ -124,12 +183,17 @@ class FluxoAprovacaoDespesas
             $aprovada ? config('despesas.notificar_aprovacao', []) : [],
         );
 
+        $contabilidade = $aprovada ? array_map('strtolower', config('despesas.notificar_aprovacao', [])) : [];
         foreach (array_unique($destinatarios) as $email) {
             if ($email === '' || in_array($email, $enviados, true)) {
                 continue;
             }
+            // Contabilidade (só contabilidade — não é também aprovador/financeiro): a versão própria.
+            $paraEste = $paraContabilidade && in_array(strtolower($email), $contabilidade, true)
+                && ! in_array(strtolower($email), array_map('strtolower', array_merge(config('despesas.aprovadores', []), config('despesas.notificar', []))), true)
+                ? $paraContabilidade : $notificacao;
             $conta = $this->contaAtiva($email);
-            $conta ? $conta->notify($notificacao) : Notificador::route('mail', $email)->notify($notificacao);
+            $conta ? $conta->notify($paraEste) : Notificador::route('mail', $email)->notify($paraEste);
             $enviados[] = $email;
         }
     }
@@ -141,23 +205,30 @@ class FluxoAprovacaoDespesas
 
     // Instantâneo do registo para o email (vai pela fila — não depende do modelo existir).
     /** @return array<string, mixed> */
-    private function instantaneo(RegistoDespesa $registo): array
+    // $soAprovadas: a versão da contabilidade numa aprovação parcial — sem as linhas recusadas.
+    private function instantaneo(RegistoDespesa $registo, bool $soAprovadas = false): array
     {
         $registo->loadMissing(['colaborador', 'despesas', 'decisor']);
+        $linhas = $registo->despesas->sortBy('data')->values()
+            ->when($soAprovadas, fn ($c) => $c->reject(fn ($d) => $d->recusada)->values());
 
         return [
             'id' => $registo->id,
             'colaborador' => $registo->colaborador?->nome ?? '—',
             'total' => (float) $registo->despesas->sum('valor'),
+            'total_aprovado' => (float) $registo->despesas->where('recusada', false)->sum('valor'),
+            'so_aprovadas' => $soAprovadas,
             'estado' => $registo->estado->value,
             'motivo' => $registo->motivo_rejeicao,
             'decisor' => $registo->decisor?->nome,
             'decidido_em' => $registo->decidido_em?->format('d/m/Y H:i'),
-            'linhas' => $registo->despesas->sortBy('data')->values()->map(fn ($d) => [
+            'linhas' => $linhas->map(fn ($d) => [
                 'data' => $d->data->format('d/m/Y'),
                 'categoria' => $d->categoria,
                 'descricao' => trim($d->descricao.($d->detalhe ? ' — '.$d->detalhe : '')),
                 'valor' => (float) $d->valor,
+                'recusada' => (bool) $d->recusada,
+                'motivo_recusa' => $d->motivo_recusa,
             ])->all(),
             'dinheiro' => $registo->contasDoDinheiro(), // levantado / gasto / saldo, ou null
             'url' => route('despesas.registo.ficha', $registo),
