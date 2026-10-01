@@ -123,12 +123,14 @@
                 <section class="cartao mt-7" x-data="{ aberto: true, organizar: false, arrastado: null }">
                     {{-- Cabeçalho com o botão «Organizar campos» ao lado da seta (set. 2026): dentro do corpo
                          do cartão ocupava uma linha inteira e deixava um vazio por cima dos campos. --}}
-                    <div class="cartao-cabecalho gap-3">
+                    {{-- No telemóvel: título + seta numa linha, «Organizar campos» na linha de baixo
+                         (ao lado espremia o título em três linhas). --}}
+                    <div class="cartao-cabecalho flex-wrap gap-x-3 gap-y-2 px-4 sm:flex-nowrap sm:px-6">
                         <button type="button" @click="aberto=!aberto" class="flex min-w-0 flex-1 items-center gap-3 text-left">
                             <span class="cartao-icone"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3m6-14h1m-1 4h1m4-4h1m-1 4h1m-5 8v-4a1 1 0 011-1h2a1 1 0 011 1v4"/></svg></span>
-                            <span class="text-lg font-semibold text-texto-forte">Equipamento e Intervenção</span>
+                            <span class="text-base font-semibold text-texto-forte sm:text-lg">Equipamento e Intervenção</span>
                         </button>
-                        <div class="flex shrink-0 items-center gap-3 text-xs" x-show="aberto">
+                        <div class="order-last flex w-full shrink-0 items-center justify-end gap-3 text-xs sm:order-none sm:w-auto" x-show="aberto">
                             <button type="button" x-show="organizar" x-cloak wire:click="reporOrdemCampos('gerais')" class="font-medium text-texto-medio hover:text-texto-forte hover:underline">Repor ordem de fábrica</button>
                             <button type="button" @click="organizar = !organizar; arrastado = null" class="inline-flex items-center gap-1.5 rounded-lg border border-borda px-3 py-1.5 font-medium text-texto-medio transition hover:bg-fundo hover:text-texto-forte" :class="organizar && 'border-verde-300 bg-verde-50 text-verde-700'">
                                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
@@ -137,7 +139,7 @@
                         </div>
                         <button type="button" @click="aberto=!aberto" aria-label="Mostrar ou esconder" class="shrink-0"><svg :class="aberto && 'rotate-180'" class="h-5 w-5 text-texto-fraco transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></button>
                     </div>
-                    <div x-show="aberto" x-transition class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 px-6 pb-7">
+                    <div x-show="aberto" x-transition class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 px-4 pb-7 sm:px-6">
                         {{-- Campos REORDENÁVEIS (pedido da equipa, set. 2026): cada utilizador organiza estes blocos
                              como preferir, mediante a importância. Modo «Organizar campos» → arrastar (desktop) ou
                              setas ▲▼ (telemóvel); o botão está no cabeçalho do cartão. A ordem fica nas preferências do utilizador; a whitelist é
