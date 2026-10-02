@@ -36,6 +36,16 @@ class Listagem extends Component
     #[Session]
     public string $phc = '';
 
+    // A página também fica na sessão, como os filtros (pedido da equipa, out. 2026): abrir uma
+    // proposta na página 13 e carregar em «Voltar» (que vem sem ?page) levava à página 1. Um
+    // ?page explícito no endereço manda sempre.
+    public function mount(): void
+    {
+        if (! request()->has('page') && ($pagina = (int) session('encomendas.pagina', 1)) > 1) {
+            $this->setPage($pagina);
+        }
+    }
+
     public function updatingPesquisa(): void
     {
         $this->resetPage();
@@ -83,6 +93,14 @@ class Listagem extends Component
             ->orderByDesc('obrano')
             ->orderByDesc('id')
             ->paginate(10); // 10 por página (pedido da equipa)
+
+        // Página fora do fim (os filtros mudaram entretanto ou o PHC apagou dossiês) → a última.
+        if ($dossiers->isEmpty() && $dossiers->currentPage() > 1) {
+            $this->setPage($dossiers->lastPage());
+
+            return $this->render($phc);
+        }
+        session(['encomendas.pagina' => $dossiers->currentPage()]);
 
         // Totais AO VIVO das linhas desta página, numa só leitura ao PHC: o guardado é o da
         // última sincronização (8h/13h/19h) e um dossiê alterado depois dela aparecia com o

@@ -34,6 +34,32 @@ class EncomendasListagemTest extends TestCase
         ], $extra));
     }
 
+    // Abrir um dossiê na página 3 e voltar (sem ?page) regressa à página 3, não à 1; mudar um
+    // filtro volta à 1; uma página que deixou de existir cai na última.
+    public function test_voltar_regressa_a_pagina_onde_se_estava(): void
+    {
+        for ($n = 1; $n <= 25; $n++) {
+            $this->dossier(['obrano' => $n, 'nome' => sprintf('DOSSIE-%02d', $n)]);
+        }
+        $admin = $this->admin();
+
+        Livewire::actingAs($admin)->test(Listagem::class)
+            ->call('gotoPage', 3)
+            ->assertSee('DOSSIE-05');                     // 25..16 | 15..6 | 5..1
+
+        Livewire::actingAs($admin)->test(Listagem::class) // «Voltar»: sem ?page
+            ->assertSee('DOSSIE-05')
+            ->assertDontSee('DOSSIE-25')
+            ->set('pesquisa', 'DOSSIE-2')                 // filtro → página 1
+            ->assertSee('DOSSIE-25');
+        $this->assertSame(1, session('encomendas.pagina'));
+
+        session(['encomendas.pagina' => 9]);              // já não existe (a pesquisa ficou: 1 página) → a última
+        Livewire::actingAs($admin)->test(Listagem::class)
+            ->assertSee('DOSSIE-25')
+            ->assertSee('DOSSIE-20');
+    }
+
     public function test_lista_e_filtra_por_tipo(): void
     {
         $this->dossier(['ndos' => 3, 'nmdos' => 'Proposta', 'nome' => 'PROPOSTA-ACME']);

@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-10-02
 
+- 🧰 **Dossiers PHC — «Voltar» regressa à página onde se estava.** Abrir uma proposta na página 13 e carregar em «Voltar» levava à página 1. A listagem passa a guardar a página na sessão, como já guardava os filtros: ao voltar continua-se na mesma página. Mudar um filtro ou a pesquisa volta à 1, como antes; se a página deixou de existir (os filtros mudaram, ou o PHC apagou dossiês), cai na última. Um `?page=` no endereço manda sempre. +1 teste. `optimize`.
 - 🎨 **Relatórios — «Tipo de intervenção» alinhado com as datas.** A caixa do tipo ficava mais acima (as datas têm o sub-rótulo «Data de início / Data de fim») e 2 px mais baixa. Ganha o espaço do sub-rótulo quando está lado a lado (no telemóvel não muda) e os campos de data/hora passam a ter a mesma altura das outras caixas (46 px — no Chrome ficavam com 48), em toda a aplicação. Verificado num browser: mesmo topo e mesma altura. Build.
 - 🧰 **Despesas — o que está por aprovar aparece sempre.** O aviso em cima da listagem dizia «1 despesa pendente de aprovação» e a lista vinha vazia: a despesa era de outro mês e o filtro de período escondia-a. Agora um registo **pendente de aprovação aparece seja qual for o filtro** (período, categoria, estado, colaborador ou pesquisa) e **em primeiro lugar** na lista, para não ficar perdido entre as já decididas. Os restantes registos continuam a obedecer aos filtros como antes. Requer `optimize`; sem migração. +4 testes, 2 atualizados (876 no total). `353960a`
 
