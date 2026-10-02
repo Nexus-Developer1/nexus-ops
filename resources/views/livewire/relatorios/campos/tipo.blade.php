@@ -1,5 +1,8 @@
 <div>
     <label class="campo-label">Tipo de intervenção <span class="text-perigo-500">*</span></label>
+    {{-- Espaço do sub-rótulo («Data de início», «Hora de início») dos campos ao lado: sem ele, a
+         caixa ficava mais acima do que as das datas/horas. Só lado a lado (sm+). --}}
+    <span class="mb-1 hidden text-xs sm:block" aria-hidden="true">&nbsp;</span>
     <select wire:model.live="tipo" class="campo-select">
         @foreach ($tipos as $t)
             <option value="{{ $t->value }}">{{ $t->rotulo() }}</option>

@@ -89,6 +89,10 @@
         -webkit-appearance: none;
         appearance: none;
         min-height: 2.875rem; /* = py-3 + text-sm + borda, a altura dos outros campos */
+        /* No Chrome o campo de data/hora tem 2px a mais por dentro (48px em vez de 46) e não
+           alinhava com uma caixa de escolha ao lado — tira-se 1px de folga em cima e em baixo. */
+        padding-top: 0.6875rem;
+        padding-bottom: 0.6875rem;
         padding-left: 0.75rem;  /* um pouco menos que os outros (1rem): em metade de um */
         padding-right: 0.75rem; /* ecrã estreito, a data e o ícone precisam da folga */
     }
