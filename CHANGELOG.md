@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-10-02
 
-- 🧰 **Despesas — o que está por aprovar aparece sempre.** O aviso em cima da listagem dizia «1 despesa pendente de aprovação» e a lista vinha vazia: a despesa era de outro mês e o filtro de período escondia-a. Agora um registo **pendente de aprovação aparece seja qual for o filtro** (período, categoria, estado, colaborador ou pesquisa) e **em primeiro lugar** na lista, para não ficar perdido entre as já decididas. Os restantes registos continuam a obedecer aos filtros como antes. Requer `optimize`; sem migração. +4 testes, 2 atualizados (876 no total). `hash`
+- 🧰 **Despesas — o que está por aprovar aparece sempre.** O aviso em cima da listagem dizia «1 despesa pendente de aprovação» e a lista vinha vazia: a despesa era de outro mês e o filtro de período escondia-a. Agora um registo **pendente de aprovação aparece seja qual for o filtro** (período, categoria, estado, colaborador ou pesquisa) e **em primeiro lugar** na lista, para não ficar perdido entre as já decididas. Os restantes registos continuam a obedecer aos filtros como antes. Requer `optimize`; sem migração. +4 testes, 2 atualizados (876 no total). `353960a`
 
 ## 2026-10-01
 
