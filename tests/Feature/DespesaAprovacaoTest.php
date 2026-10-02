@@ -422,6 +422,10 @@ class DespesaAprovacaoTest extends TestCase
         $c->assertSee('GASOLEO-JOAO')->assertSee('ALMOCO-RUI')->assertSee('Pendente')->assertSee('Aprovada');
 
         $c->set('estado', 'pendente')->assertSee('GASOLEO-JOAO')->assertDontSee('ALMOCO-RUI');
+
+        // Filtro por colaborador: com as duas já decididas. Enquanto está PENDENTE, um registo
+        // aparece seja qual for o filtro — é de propósito (ver DespesaPendentesSempreVisiveisTest).
+        $rJoao->update(['estado' => EstadoDespesa::Aprovada]);
         $c->set('estado', '')->set('colaborador', (string) $rui->id)->assertSee('ALMOCO-RUI')->assertDontSee('GASOLEO-JOAO');
     }
 

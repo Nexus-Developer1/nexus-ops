@@ -111,12 +111,20 @@ class Listagem extends Component
     {
         // A listagem mostra REGISTOS (uma entrada por documento); os filtros aplicam-se às
         // linhas (despesas) — um registo aparece se alguma linha lhe corresponder.
+        //
+        // EXCEÇÃO: o que está PENDENTE DE APROVAÇÃO aparece sempre, seja qual for o filtro, e
+        // em primeiro lugar. O aviso em cima diz que há despesas por aprovar; se o período ou a
+        // categoria as escondessem, a pessoa via o aviso e uma lista vazia (out. 2026).
+        $pendente = EstadoDespesa::Pendente->value;
         $registos = RegistoDespesa::query()
             ->with(['colaborador', 'despesas'])
-            ->whereHas('despesas', function ($q) {
-                $filtrada = $this->base();
-                $q->whereIn('id', $filtrada->select('id'));
-            })
+            ->where(fn ($q) => $q
+                ->whereHas('despesas', function ($q) {
+                    $filtrada = $this->base();
+                    $q->whereIn('id', $filtrada->select('id'));
+                })
+                ->orWhere('estado', $pendente))
+            ->orderByRaw('case when estado = ? then 0 else 1 end', [$pendente])
             ->orderByDesc('id')
             ->paginate(12);
         // Quantas linhas trazem digitalizações (decide o link "Recibo"), numa só consulta e só

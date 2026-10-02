@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-10-02
+
+- 🧰 **Despesas — o que está por aprovar aparece sempre.** O aviso em cima da listagem dizia «1 despesa pendente de aprovação» e a lista vinha vazia: a despesa era de outro mês e o filtro de período escondia-a. Agora um registo **pendente de aprovação aparece seja qual for o filtro** (período, categoria, estado, colaborador ou pesquisa) e **em primeiro lugar** na lista, para não ficar perdido entre as já decididas. Os restantes registos continuam a obedecer aos filtros como antes. Requer `optimize`; sem migração. +4 testes, 2 atualizados (876 no total). `hash`
+
 ## 2026-10-01
 
 - 🧰 **Alertas — «Próximas propostas de intervenção».** O alerta «Propor nova intervenção» (10 meses depois da última instalação ou manutenção preventiva concluída de cada equipamento) só aparecia no dia em que vencia — e como os relatórios são todos recentes, ainda nenhum venceu e não havia onde ver os que vêm a caminho. Na página **Alertas**, a nova caixa **«Próximas propostas de intervenção»** mostra, por ordem, cada equipamento (marca/modelo e nº de série), o cliente, a última instalação/preventiva e o **relatório** dela, e a data em que o alerta vai disparar («Aviso a 27 jun 2027 · em 8 meses»), com ligações para o relatório e para o equipamento. Quando vence, sai daqui e entra nos alertas, como antes. Mesma regra do alerta (corretivas não contam; os «também cobertos» contam). Também no telemóvel: a lista de alertas deixa de espremer o título numa coluna estreita — as ações («Alta», «Ver», «Concluir») descem para a linha de baixo. Verificado num browser a 1450 px e a 390 px. +1 teste. Build + `optimize`.

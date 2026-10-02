@@ -380,7 +380,9 @@ class DespesaTest extends TestCase
         $rui = User::create(['nome' => 'Rui Costa', 'email' => 'rui@nexus.pt', 'password' => 'x', 'papel' => PapelUtilizador::Tecnico, 'ativo' => true]);
         $rJoao = RegistoDespesa::create(['criado_por' => $joao->id]);
         $rJoao->despesas()->create(['data' => now(), 'categoria' => 'Combustíveis', 'descricao' => 'GASOLEO-A1', 'valor' => 40, 'faturavel' => false]);
-        $rRui = RegistoDespesa::create(['criado_por' => $rui->id]);
+        // Já decidida: enquanto está pendente, um registo aparece seja qual for o filtro
+        // (ver DespesaPendentesSempreVisiveisTest) e não serviria para testar a pesquisa.
+        $rRui = RegistoDespesa::create(['criado_por' => $rui->id, 'estado' => 'aprovada']);
         $rRui->despesas()->create(['data' => now(), 'categoria' => 'Refeições', 'descricao' => 'ALMOCO-BRAGA', 'valor' => 12, 'faturavel' => false]);
 
         // Pesquisar pelo colaborador (não por cliente — estas despesas não têm cliente).
