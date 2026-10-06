@@ -19,7 +19,7 @@
                     @php($ativo = $s->id === $separadorId)
                     <div wire:key="sep-{{ $s->id }}" data-id="{{ $s->id }}" class="relative flex shrink-0 items-stretch rounded-t-lg"
                         :class="sobre === {{ $s->id }} && arrastado !== {{ $s->id }} && 'ring-2 ring-verde-500'"
-                        x-data="{ menu: false }"
+                        x-data="{ menu: false, x: 0, y: 0 }"
                         x-on:dragover.prevent="if (arrastado) sobre = {{ $s->id }}"
                         x-on:dragleave="if (sobre === {{ $s->id }}) sobre = null"
                         x-on:drop.prevent="if (arrastado && arrastado !== {{ $s->id }}) { $wire.reordenarSeparadores(window.reordenar(ids($el), arrastado, {{ $s->id }})) } arrastado = null; sobre = null">
@@ -33,8 +33,10 @@
                             <span class="text-xs opacity-60">{{ $s->paginas_count }}</span>
                         </button>
                         @if ($ativo)
-                            <button type="button" @click="menu = !menu" class="rounded-tr-lg px-1.5 text-sm" style="background-color: {{ $fundo }}; color: {{ $tinta }};" aria-label="Opções do separador">⋯</button>
-                            <div x-show="menu" x-cloak @click.outside="menu = false" class="absolute left-0 top-full z-30 mt-1 w-56 rounded-lg border border-borda bg-white p-3 shadow-lg">
+                            {{-- O menu é «fixed»: a barra das abas tem scroll horizontal e cortava um menu absoluto. --}}
+                            <button type="button" @click="const r = $el.getBoundingClientRect(); x = Math.min(r.left, window.innerWidth - 240); y = r.bottom + 4; menu = !menu" class="rounded-tr-lg px-1.5 text-sm" style="background-color: {{ $fundo }}; color: {{ $tinta }};" aria-label="Opções do separador">⋯</button>
+                            <div x-show="menu" x-cloak @click.outside="menu = false" @scroll.window="menu = false" @resize.window="menu = false" @keydown.escape.window="menu = false"
+                                :style="`left: ${x}px; top: ${y}px`" class="fixed z-40 w-56 rounded-lg border border-borda bg-white p-3 shadow-lg">
                                 <div x-data="{ nome: @js($s->nome) }">
                                     <label class="campo-label" for="ren-{{ $s->id }}">Nome</label>
                                     <input id="ren-{{ $s->id }}" x-model="nome" @keydown.enter.prevent="$wire.renomearSeparador({{ $s->id }}, nome); menu = false" class="campo-input py-1.5 text-sm" maxlength="120">
