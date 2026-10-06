@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-10-06
 
-- 🎨 **Caderno — a lista de páginas mostra o equipamento ligado.** Em vez de só «· equipamento», cada página ligada a um equipamento mostra por baixo do título a **marca, o modelo e o nº de série** (ex.: «Riello S3T 20 · S/N AC38UT887690001»), com um ícone; a data da última alteração passa para a linha seguinte. O mesmo texto é usado no campo «Equipamento» da página. `optimize`. +1 verificação no teste. `hash`
+- 🎨 **Caderno — a lista de páginas mostra o equipamento ligado.** Em vez de só «· equipamento», cada página ligada a um equipamento mostra por baixo do título a **marca, o modelo e o nº de série** (ex.: «Riello S3T 20 · S/N AC38UT887690001»), com um ícone; a data da última alteração passa para a linha seguinte. O mesmo texto é usado no campo «Equipamento» da página. `optimize`. +1 verificação no teste. `71b5b31`
 
 - 🎨 **Caderno — o menu «⋯» do separador ficava escondido.** O menu (mudar o nome, a cor, **apagar separador**) abria dentro da barra das abas, que tem scroll horizontal, e ficava cortado — não se conseguia apagar um separador. Agora abre por cima da página, logo abaixo do «⋯»; fecha com Esc, ao clicar fora ou ao fazer scroll. Verificado num Chrome (abrir o menu, apagar com confirmação). Build. `d0aad95`
 
