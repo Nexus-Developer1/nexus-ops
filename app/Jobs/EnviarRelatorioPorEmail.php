@@ -6,8 +6,10 @@ use App\Enums\EstadoEvento;
 use App\Enums\EstadoRelatorio;
 use App\Mail\FalhaEnvioRelatorio;
 use App\Mail\RelatorioParaCliente;
+use App\Mail\ServicoParaFaturar;
 use App\Models\EventoAgenda;
 use App\Models\Relatorio;
+use App\Models\User;
 use App\Services\Auditor;
 use App\Services\GeradorRelatorio;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -35,6 +37,9 @@ class EnviarRelatorioPorEmail implements ShouldQueue
         // agendamento. Na hora, só envia se o relatório ainda tiver ESTE token — cancelar ou
         // reagendar troca/apaga o token e o job antigo sai sem fazer nada. Null = imediato.
         public ?string $token = null,
+        // Comercial a avisar de que o serviço pode ser faturado (out. 2026) — «a@x.pt; b@y.pt»
+        // ou null. Sai à mesma hora que o relatório (também nos agendados).
+        public ?string $comercial = null,
     ) {}
 
     // UMA tentativa (22.ª revisão de segurança): o worker corre com --tries=3, e se o email
@@ -162,6 +167,40 @@ class EnviarRelatorioPorEmail implements ShouldQueue
         // Auditoria de envios de relatórios (CLAUDE.md §11). Sem o destinatário no log — já
         // está na auditoria (relatorio_enviado) e não se repete PII nos ficheiros de log.
         Log::info('Relatório enviado ao cliente.', ['relatorio' => $this->relatorio->numero]);
+
+        $this->avisarComercial($conteudo);
+    }
+
+    // Aviso ao comercial (out. 2026), DEPOIS de o relatório já ter chegado ao cliente. Uma falha
+    // aqui não pode deitar abaixo o job: o cliente já recebeu, e com $tries = 1 o failed() ia
+    // dizer a quem enviou que o relatório não saiu. Fica no log e na auditoria.
+    private function avisarComercial(string $pdf): void
+    {
+        $emails = array_values(array_filter(array_map('trim', explode(';', (string) $this->comercial))));
+        if ($emails === []) {
+            return;
+        }
+
+        try {
+            $this->relatorio->loadMissing(['intervencao.equipamento.local.cliente', 'intervencao.contrato', 'intervencao.tecnico', 'intervencao.tecnicos']);
+            $encomendas = $this->relatorio->intervencao?->rotulosEncomendas() ?? [];
+            $enviadoPor = $this->cc ? User::whereRaw('lower(email) = ?', [mb_strtolower($this->cc)])->value('nome') : null;
+
+            Mail::to($emails)->send(new ServicoParaFaturar($this->relatorio, $encomendas, $enviadoPor, $pdf));
+
+            Auditor::registar('relatorio_comercial_avisado', $this->relatorio, [
+                'numero' => $this->relatorio->numero,
+                'comercial' => implode('; ', $emails),
+                'encomendas' => $encomendas,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Aviso ao comercial falhou (o relatório foi enviado ao cliente).', ['relatorio' => $this->relatorio->numero, 'erro' => $e->getMessage()]);
+            Auditor::registar('relatorio_comercial_falhou', $this->relatorio, [
+                'numero' => $this->relatorio->numero,
+                'comercial' => implode('; ', $emails),
+                'erro' => mb_substr($e->getMessage(), 0, 500),
+            ]);
+        }
     }
 
     // Um envio agendado que não chega a sair (cancelado pelo estado, ou falhou) deixa de

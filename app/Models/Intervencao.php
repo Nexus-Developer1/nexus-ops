@@ -131,6 +131,21 @@ class Intervencao extends Model
         return $nomes->isEmpty() ? null : $nomes->implode(', ');
     }
 
+    /**
+     * Encomendas de peças desta intervenção, para mostrar e enviar ao comercial (out. 2026):
+     * as do PHC ("Encomenda Peças 123/2026") e as escritas à mão, ainda por chegar do PHC.
+     *
+     * @return list<string>
+     */
+    public function rotulosEncomendas(): array
+    {
+        return array_values(array_merge(
+            $this->encomendas()->orderBy('ano')->orderBy('obrano')->get()
+                ->map(fn (Dossier $d) => $d->tipoRotulo().' '.$d->obrano.'/'.$d->ano)->all(),
+            $this->encomendasManuais->map(fn (EncomendaManual $m) => 'Encomenda Peças '.$m->obrano.'/'.$m->ano.' (ainda por chegar do PHC)')->all(),
+        ));
+    }
+
     public function contrato(): BelongsTo
     {
         return $this->belongsTo(Contrato::class);

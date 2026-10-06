@@ -65,6 +65,38 @@
                         @error('quando') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
 
+                    {{-- Aviso ao comercial (out. 2026): o serviço pode ser faturado + nº da encomenda de
+                         peças. Sai à mesma hora que o relatório (também se for agendado). --}}
+                    <div class="rounded-lg border border-borda px-4 py-3">
+                        <label class="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-texto-forte">
+                            <input type="checkbox" wire:model.live="avisarComercial" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-600">
+                            Avisar o comercial de que o serviço pode ser faturado
+                        </label>
+                        @if ($avisarComercial)
+                            <div class="mt-3">
+                                <label class="campo-label" for="comercial">Comercial <span class="text-perigo-500">*</span></label>
+                                <input id="comercial" wire:model="comercial" type="text" list="lista-comerciais" class="campo-input" placeholder="comercial@nxs.pt" autocomplete="off">
+                                <datalist id="lista-comerciais">
+                                    @foreach ($comerciais as $email)
+                                        <option value="{{ $email }}"></option>
+                                    @endforeach
+                                </datalist>
+                                @error('comercial') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                                @if ($vendedorPhc)
+                                    <p class="mt-1.5 text-xs text-texto-fraco">Vendedor deste cliente no PHC: {{ $vendedorPhc }}</p>
+                                @endif
+                                <p class="mt-2 text-sm text-texto-medio">
+                                    Encomenda de peças:
+                                    @if ($encomendas === [])
+                                        <span class="text-texto-fraco">sem encomenda associada</span>
+                                    @else
+                                        <span class="font-medium text-texto-forte">{{ implode(' · ', $encomendas) }}</span>
+                                    @endif
+                                </p>
+                            </div>
+                        @endif
+                    </div>
+
                     {{-- Anexo (PDF do relatório) --}}
                     <div class="flex items-center gap-2 rounded-lg border border-borda bg-fundo/60 px-3 py-2.5 text-sm text-texto-medio">
                         <svg class="h-4 w-4 shrink-0 text-verde-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>

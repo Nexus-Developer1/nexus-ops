@@ -5,6 +5,7 @@ namespace App\Livewire\Relatorios;
 use App\Enums\EstadoRelatorio;
 use App\Jobs\EnviarRelatorioPorEmail;
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Models\Comercial;
 use App\Models\Relatorio;
 use App\Services\Auditor;
 use Illuminate\Support\Str;
@@ -39,6 +40,13 @@ class Enviar extends Component
 
     public string $quando = 'agora';
 
+    // Avisar o COMERCIAL de que o serviço pode ser faturado (out. 2026): email escrito à mão ou
+    // escolhido da lista (comerciais já usados). Vem preenchido com o comercial já usado para o
+    // vendedor deste cliente (código do PHC), quando o há.
+    public bool $avisarComercial = false;
+
+    public string $comercial = '';
+
     public function mount(Relatorio $relatorio): void
     {
         abort_if(auth()->user()->ehCliente(), 403);
@@ -53,6 +61,7 @@ class Enviar extends Component
         }
 
         $cliente = $this->relatorio->intervencao?->equipamento?->local?->cliente;
+        $this->comercial = Comercial::doVendedor($cliente?->vendedor) ?? '';
 
         // Pré-preenche (tudo editável).
         $this->para = $cliente?->email ?? '';
@@ -95,6 +104,32 @@ class Enviar extends Component
             }
         }
 
+        // Comercial: só conta com a opção ligada; aí é obrigatório e cada email tem de ser válido.
+        $comercial = null;
+        if ($this->avisarComercial) {
+            $this->comercial = self::normalizarDestinatarios($this->comercial);
+            if ($this->comercial === '') {
+                $this->addError('comercial', 'Indique o email do comercial.');
+
+                return;
+            }
+            if (mb_strlen($this->comercial) > 1000) {
+                $this->addError('comercial', 'Demasiados endereços.');
+
+                return;
+            }
+            foreach (self::destinatarios($this->comercial) as $email) {
+                if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $this->addError('comercial', "«{$email}» não é um email válido.");
+
+                    return;
+                }
+            }
+            $comercial = $this->comercial;
+            // Fica na lista e ligado ao vendedor do cliente — da próxima vez vem preenchido.
+            Comercial::aprender(self::destinatarios($comercial), $this->relatorio->intervencao?->equipamento?->local?->cliente?->vendedor);
+        }
+
         // Quem envia recebe sempre cópia (pedido da equipa, set. 2026): fica com o mesmo email
         // que o cliente recebeu, com o PDF, na própria caixa.
         $cc = auth()->user()->email ?: null;
@@ -111,13 +146,14 @@ class Enviar extends Component
                 'envio_agendado_destino' => $this->para,
             ]);
 
-            EnviarRelatorioPorEmail::dispatch($this->relatorio, $this->para, trim($this->assunto), $this->mensagem, $cc, $token)
+            EnviarRelatorioPorEmail::dispatch($this->relatorio, $this->para, trim($this->assunto), $this->mensagem, $cc, $token, $comercial)
                 ->delay($hora);
 
             Auditor::registar('relatorio_envio_agendado', $this->relatorio, [
                 'numero' => $this->relatorio->numero,
                 'para' => $this->para,
                 'cc' => $cc,
+                'comercial' => $comercial,
                 'agendado_para' => $hora->toIso8601String(),
             ]);
 
@@ -137,6 +173,8 @@ class Enviar extends Component
             trim($this->assunto),
             $this->mensagem,
             $cc,
+            null,
+            $comercial,
         );
 
         // Auditoria: emissão de documento oficial ao cliente (CLAUDE.md §11).
@@ -144,6 +182,7 @@ class Enviar extends Component
             'numero' => $this->relatorio->numero,
             'para' => $this->para,
             'cc' => $cc,
+            'comercial' => $comercial,
         ]);
 
         session()->flash('sucesso', "Relatório {$this->relatorio->numero} em envio para {$this->para}.");
@@ -190,6 +229,14 @@ class Enviar extends Component
 
     public function render()
     {
-        return view('livewire.relatorios.enviar', ['opcoesEnvio' => self::OPCOES_ENVIO]);
+        return view('livewire.relatorios.enviar', [
+            'opcoesEnvio' => self::OPCOES_ENVIO,
+            // Sugestões do campo do comercial: os já usados, os mais recentes primeiro.
+            'comerciais' => Comercial::orderByDesc('ultimo_uso_em')->limit(50)->pluck('email'),
+            // O que vai no aviso — mostra-se antes de enviar.
+            'encomendas' => $this->avisarComercial ? ($this->relatorio->intervencao?->rotulosEncomendas() ?? []) : [],
+            // Nome do vendedor do cliente no PHC (cl.vendnm) — ajuda a escolher o comercial certo.
+            'vendedorPhc' => $this->relatorio->intervencao?->equipamento?->local?->cliente?->vendnm,
+        ]);
     }
 }
