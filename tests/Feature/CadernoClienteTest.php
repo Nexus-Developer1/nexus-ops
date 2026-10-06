@@ -113,8 +113,8 @@ class CadernoClienteTest extends TestCase
         $p = CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'SPI'])->paginas()->create(['titulo' => 'Chapa']);
 
         $this->caderno()
-            ->set('imagem', UploadedFile::fake()->image('chapa.jpg', 1200, 800))
-            ->call('guardarImagem', $p->id)
+            ->set('ficheiro', UploadedFile::fake()->image('chapa.jpg', 1200, 800))
+            ->call('guardarAnexo', $p->id)
             ->assertReturned(fn ($r) => $r['ok'] === true && preg_match('#^/anexos/\d+$#', $r['url']));
 
         $anexo = Anexo::firstOrFail();
@@ -124,17 +124,98 @@ class CadernoClienteTest extends TestCase
         Storage::disk()->assertExists($anexo->storage_key);
     }
 
-    public function test_ficheiro_que_nao_e_imagem_e_recusado(): void
+    public function test_pdf_e_manuais_entram_como_anexo(): void
+    {
+        Storage::fake();
+        $p = CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'SPI'])->paginas()->create(['titulo' => 'Manuais']);
+
+        $this->caderno()
+            ->set('ficheiro', UploadedFile::fake()->create('manual S3T.pdf', 300, 'application/pdf'))
+            ->call('guardarAnexo', $p->id)
+            ->assertReturned(fn ($r) => $r['ok'] === true && preg_match('#^/anexos/\d+$#', $r['url']));
+
+        $anexo = Anexo::firstOrFail();
+        $this->assertSame('manual S3T.pdf', $anexo->nome_ficheiro);
+        $this->assertSame($p->id, $anexo->anexavel_id);
+    }
+
+    public function test_ficheiro_na_pagina_fica_so_com_dados_limpos(): void
+    {
+        $p = CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'SPI'])->paginas()->create(['titulo' => 'Manuais']);
+
+        // A página guarda o ficheiro como o Trix o escreve: <figure> com os dados do anexo.
+        $html = '<figure data-trix-attachment="{&quot;contentType&quot;:&quot;application/pdf&quot;,&quot;filename&quot;:&quot;manual.pdf&quot;,&quot;filesize&quot;:300,&quot;href&quot;:&quot;/anexos/41&quot;,&quot;url&quot;:&quot;/anexos/41&quot;,&quot;onclick&quot;:&quot;x&quot;}" class="attachment"><a href="/anexos/41"><figcaption>manual.pdf</figcaption></a></figure>'
+            .'<figure data-trix-attachment="{&quot;href&quot;:&quot;https://espiao.example/f.pdf&quot;}"><a href="/logout">sair</a></figure>';
+        $this->caderno()->call('guardarConteudo', $p->id, $html, 0);
+        $conteudo = $p->fresh()->conteudo;
+
+        $this->assertStringContainsString('href="/anexos/41"', $conteudo);
+        $this->assertStringContainsString('&quot;filename&quot;:&quot;manual.pdf&quot;', $conteudo);
+        foreach (['onclick', 'espiao.example', '/logout', 'class='] as $mau) {
+            $this->assertStringNotContainsString($mau, $conteudo, "Ficou {$mau} no HTML.");
+        }
+    }
+
+    public function test_ficheiro_perigoso_e_recusado(): void
     {
         Storage::fake();
         $p = CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'SPI'])->paginas()->create(['titulo' => 'X']);
 
         $this->caderno()
-            ->set('imagem', UploadedFile::fake()->create('virus.html', 10, 'text/html'))
-            ->call('guardarImagem', $p->id)
-            ->assertHasErrors('imagem');
+            ->set('ficheiro', UploadedFile::fake()->create('virus.html', 10, 'text/html'))
+            ->call('guardarAnexo', $p->id)
+            ->assertHasErrors('ficheiro');
 
         $this->assertSame(0, Anexo::count());
+    }
+
+    public function test_reordena_separadores_e_paginas_por_arrastar(): void
+    {
+        $a = CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'A', 'ordem' => 0]);
+        $b = CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'B', 'ordem' => 1]);
+        $c = CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'C', 'ordem' => 2]);
+        $alheio = CadernoSeparador::create(['cliente_id' => Cliente::create(['nome' => 'Outro', 'ativo' => true])->id, 'nome' => 'Z', 'ordem' => 7]);
+        $p1 = $a->paginas()->create(['titulo' => 'P1', 'ordem' => 0]);
+        $p2 = $a->paginas()->create(['titulo' => 'P2', 'ordem' => 1]);
+        $p3 = $a->paginas()->create(['titulo' => 'P3', 'ordem' => 2]);
+        $deOutro = $b->paginas()->create(['titulo' => 'Fora', 'ordem' => 5]);
+
+        $this->caderno()
+            ->call('reordenarSeparadores', [$c->id, $a->id, $alheio->id]) // B não veio: vai para o fim
+            ->call('selecionarSeparador', $a->id)
+            ->call('reordenarPaginas', [$p3->id, $p1->id, $p2->id, $deOutro->id]);
+
+        $this->assertSame(['C', 'A', 'B'], $this->bbs->cadernoSeparadores()->pluck('nome')->all());
+        $this->assertSame(7, (int) $alheio->fresh()->ordem);   // de outro cliente: intocado
+        $this->assertSame(['P3', 'P1', 'P2'], $a->paginas()->pluck('titulo')->all());
+        $this->assertSame(5, (int) $deOutro->fresh()->ordem);  // de outro separador: intocada
+    }
+
+    public function test_liga_a_pagina_a_um_equipamento_do_cliente(): void
+    {
+        $local = Local::create(['cliente_id' => $this->bbs->id, 'designacao' => 'Sede']);
+        $ups = Equipamento::create(['local_id' => $local->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'AC38UT887690001', 'fabricante' => 'Riello', 'modelo' => 'S3T 20']);
+        $outroLocal = Local::create(['cliente_id' => Cliente::create(['nome' => 'Outro', 'ativo' => true])->id, 'designacao' => 'X']);
+        $alheio = Equipamento::create(['local_id' => $outroLocal->id, 'tipo' => 'ups', 'estado' => 'operacional', 'numero_serie' => 'ALHEIO-1']);
+        $s = CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'Graphicleader']);
+        $p = $s->paginas()->create(['titulo' => 'UPS S3T 20']);
+
+        $this->caderno()
+            ->call('selecionarPagina', $p->id)
+            ->assertSee('Riello S3T 20 · S/N AC38UT887690001')->assertDontSee('ALHEIO-1')
+            ->call('ligarEquipamento', $p->id, $alheio->id); // de outro cliente: ignorado
+        $this->assertNull($p->fresh()->equipamento_id);
+
+        $this->caderno()->call('ligarEquipamento', $p->id, $ups->id)->assertSee('Abrir ficha');
+        $this->assertSame($ups->id, $p->fresh()->equipamento_id);
+
+        // A ficha do equipamento mostra a página, com ligação para ela no caderno.
+        $this->actingAs($this->rui)->get(route('equipamentos.ficha', $ups))
+            ->assertOk()->assertSee('UPS S3T 20')->assertSee('Graphicleader')
+            ->assertSee(e(route('clientes.caderno', ['cliente' => $this->bbs->id, 's' => $s->id, 'p' => $p->id])), false);
+
+        $this->caderno()->call('ligarEquipamento', $p->id, null);
+        $this->assertNull($p->fresh()->equipamento_id);
     }
 
     public function test_ids_de_outro_cliente_sao_ignorados(): void

@@ -1,7 +1,8 @@
 // CADERNO do cliente (out. 2026) — editor Trix com:
 //  · autosave (1,2 s depois de parar de escrever), e grava antes de mudar de página/separador;
-//  · imagens coladas/arrastadas: comprimidas no browser se forem grandes e guardadas como
-//    ANEXOS da página (object storage); o <img> aponta para /anexos/{id};
+//  · imagens e ficheiros (PDF, manuais, Office, zip) colados/arrastados: as imagens grandes são
+//    comprimidas no browser; tudo fica como ANEXO da página (object storage) e a página aponta
+//    para /anexos/{id} (clicar no ficheiro abre-o noutro separador);
 //  · aviso se outra pessoa gravou a mesma página entretanto (versão) — nunca se escreve por cima.
 // O Trix só é descarregado na página do caderno (import dinâmico → ficheiro à parte).
 
@@ -15,7 +16,7 @@ const carregarTrix = () => {
         const Trix = m.default ?? window.Trix;
         // Barra em português — antes de criar o primeiro editor (a barra lê isto ao nascer).
         Object.assign(Trix.config.lang, {
-            attachFiles: 'Inserir imagem',
+            attachFiles: 'Anexar imagem ou ficheiro',
             bold: 'Negrito',
             bullets: 'Lista',
             byte: 'Byte',
@@ -44,10 +45,15 @@ const carregarTrix = () => {
     return trixPronto;
 };
 
+// O mesmo que o servidor aceita (Caderno::TIPOS_ANEXO, até 20 MB).
+const TIPOS_ANEXO = ['jpeg', 'jpg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip'];
+const MAX_ANEXO = 20 * 1024 * 1024;
+const extensao = (nome) => (String(nome || '').match(/\.([a-z0-9]+)$/i)?.[1] ?? '').toLowerCase();
+
 // Fotos grandes (telemóvel: 3–6 MB) → 1920px em JPEG. Capturas de ecrã pequenas ficam como
 // estão (o texto nelas perdia nitidez em JPEG).
 const comprimirImagem = (ficheiro, maxLado = 1920, qualidade = 0.85) => new Promise((resolve) => {
-    if (ficheiro.size < 1_500_000) return resolve(ficheiro);
+    if (ficheiro.size < 1_500_000 || !/^image\/(jpeg|png|webp)$/.test(ficheiro.type)) return resolve(ficheiro);
     const url = URL.createObjectURL(ficheiro);
     const img = new Image();
     img.onload = () => {
@@ -75,6 +81,7 @@ document.addEventListener('alpine:init', () => {
         gravadas: 0,
         aGuardar: false,
         pronto: false,
+        ficheiros: [],
         editor: null,
         _t: null,
         _fila: Promise.resolve(),
@@ -93,17 +100,51 @@ document.addEventListener('alpine:init', () => {
             ed.setAttribute('input', 'caderno-conteudo-' + paginaId);
             ed.className = 'trix-content caderno-editor';
             // Só conta como alteração depois de o editor carregar o conteúdo gravado.
-            ed.addEventListener('trix-initialize', () => setTimeout(() => { this.pronto = true; }, 0));
-            ed.addEventListener('trix-change', () => this.mudou());
+            ed.addEventListener('trix-initialize', () => setTimeout(() => { this.pronto = true; this.listarFicheiros(); }, 0));
+            ed.addEventListener('trix-change', () => { this.listarFicheiros(); this.mudou(); });
             ed.addEventListener('trix-file-accept', (e) => {
-                if (!e.file.type.startsWith('image/')) {
+                // Imagem colada sem nome (captura de ecrã) vem como image/png "image.png".
+                const ext = extensao(e.file.name) || (e.file.type.split('/')[1] ?? '');
+                if (!TIPOS_ANEXO.includes(ext)) {
                     e.preventDefault();
-                    this.erro = 'Nas páginas só entram imagens.';
+                    this.erro = 'Esse tipo de ficheiro não entra (só imagens, PDF, Word, Excel, PowerPoint, txt, csv ou zip).';
+                } else if (e.file.size > MAX_ANEXO) {
+                    e.preventDefault();
+                    this.erro = 'O ficheiro tem mais de 20 MB.';
                 }
             });
-            ed.addEventListener('trix-attachment-add', (e) => this.enviarImagem(e.attachment));
+            ed.addEventListener('trix-attachment-add', (e) => this.enviarAnexo(e.attachment));
+            // Dentro do editor um clique só seleciona o anexo; duplo clique abre-o noutro
+            // separador (PDF no browser; os outros descarregam). Há também a lista por baixo.
+            ed.addEventListener('dblclick', (e) => {
+                const href = this.hrefDoAnexo(e.target);
+                if (href) {
+                    e.preventDefault();
+                    window.open(href, '_blank', 'noopener');
+                }
+            });
             this.$refs.lugar.appendChild(ed);
             this.editor = ed;
+        },
+
+        // Ficheiros (não imagens) já gravados nesta página — lista de atalhos por baixo do editor.
+        listarFicheiros() {
+            const doc = this.editor?.editor?.getDocument();
+            if (!doc) return;
+            this.ficheiros = doc.getAttachments()
+                .filter((a) => !a.isPreviewable() && /^\/anexos\/\d+$/.test(a.getHref() || ''))
+                .map((a) => ({ href: a.getHref(), nome: a.getFilename() || 'ficheiro', tamanho: a.getFormattedFilesize() }));
+        },
+
+        hrefDoAnexo(alvo) {
+            const fig = alvo.closest('figure[data-trix-attachment]');
+            if (!fig) return null;
+            try {
+                const href = JSON.parse(fig.dataset.trixAttachment).href;
+                return /^\/anexos\/\d+$/.test(href || '') ? href : null;
+            } catch (e) {
+                return null;
+            }
         },
 
         destroy() {
@@ -155,30 +196,34 @@ document.addEventListener('alpine:init', () => {
             await this.gravarJa();
         },
 
-        // Uma imagem de cada vez (o upload usa uma só propriedade no componente).
-        enviarImagem(anexo) {
-            if (!anexo.file) return; // imagem que já estava na página
+        // Um ficheiro de cada vez (o upload usa uma só propriedade no componente).
+        enviarAnexo(anexo) {
+            if (!anexo.file) return; // anexo que já estava na página
             this._fila = this._fila.then(() => this.subir(anexo)).catch(() => {});
         },
 
         async subir(anexo) {
             const ficheiro = await comprimirImagem(anexo.file);
             await new Promise((resolve) => {
-                this.$wire.upload('imagem', ficheiro,
+                this.$wire.upload('ficheiro', ficheiro,
                     async () => {
                         try {
-                            const r = await this.$wire.guardarImagem(paginaId);
+                            const r = await this.$wire.guardarAnexo(paginaId);
                             if (r && r.ok) {
                                 anexo.setAttributes({ url: r.url, href: r.url });
+                                this.erro = '';
                             } else {
                                 anexo.remove();
-                                this.erro = r?.motivo ?? 'A imagem não é válida (JPEG, PNG, GIF ou WebP, até 20 MB).';
+                                this.erro = r?.motivo ?? 'O ficheiro não é válido (imagem, PDF, Office, txt, csv ou zip, até 20 MB).';
                             }
+                        } catch (e) {
+                            anexo.remove();
+                            this.erro = 'O ficheiro não é válido (imagem, PDF, Office, txt, csv ou zip, até 20 MB).';
                         } finally {
                             resolve();
                         }
                     },
-                    () => { anexo.remove(); this.erro = 'A imagem não subiu — tente outra vez.'; resolve(); },
+                    () => { anexo.remove(); this.erro = 'O ficheiro não subiu — tente outra vez.'; resolve(); },
                     (ev) => anexo.setUploadProgress(ev.detail.progress),
                 );
             });

@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 // Página do caderno do cliente ("Equipamento 1", "Dados CCTV"…). O conteúdo é HTML já limpo
-// (LimpezaHtmlCaderno); as imagens são anexos desta página, servidos por /anexos/{id}.
+// (LimpezaHtmlCaderno); as imagens e os ficheiros (PDF, manuais…) são anexos desta página,
+// servidos por /anexos/{id}.
 class CadernoPagina extends Model
 {
     use SoftDeletes;
@@ -16,7 +17,7 @@ class CadernoPagina extends Model
     protected $table = 'caderno_paginas';
 
     /** @var list<string> */
-    protected $fillable = ['separador_id', 'titulo', 'conteudo', 'versao', 'ordem', 'criado_por', 'atualizado_por'];
+    protected $fillable = ['separador_id', 'equipamento_id', 'titulo', 'conteudo', 'versao', 'ordem', 'criado_por', 'atualizado_por'];
 
     /** @return array<string, string> */
     protected function casts(): array
@@ -27,6 +28,12 @@ class CadernoPagina extends Model
     public function separador(): BelongsTo
     {
         return $this->belongsTo(CadernoSeparador::class, 'separador_id');
+    }
+
+    // Equipamento de que a página trata (opcional) — aparece também na ficha do equipamento.
+    public function equipamento(): BelongsTo
+    {
+        return $this->belongsTo(Equipamento::class);
     }
 
     public function anexos(): MorphMany

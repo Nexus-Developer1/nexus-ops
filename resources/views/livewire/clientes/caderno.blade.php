@@ -10,13 +10,22 @@
         <div class="mx-auto max-w-screen-2xl">
             <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">Caderno</h1>
 
-            {{-- SEPARADORES (como os do OneNote): um por cliente final, cor à escolha. --}}
-            <div class="mt-6 flex items-end gap-1 overflow-x-auto border-b-2 border-borda">
+            {{-- SEPARADORES (como os do OneNote): um por cliente final, cor à escolha; arrastar
+                 uma aba para o sítio de outra muda a ordem. --}}
+            <div class="mt-6 flex items-end gap-1 overflow-x-auto border-b-2 border-borda"
+                data-lista x-data="{ arrastado: null, sobre: null, ids(el) { return [...el.closest('[data-lista]').querySelectorAll(':scope > [data-id]')].map((e) => Number(e.dataset.id)) } }">
                 @foreach ($separadores as $s)
                     @php([$fundo, $tinta] = $s->cores())
                     @php($ativo = $s->id === $separadorId)
-                    <div wire:key="sep-{{ $s->id }}" class="relative flex shrink-0 items-stretch" x-data="{ menu: false }">
-                        <button type="button"
+                    <div wire:key="sep-{{ $s->id }}" data-id="{{ $s->id }}" class="relative flex shrink-0 items-stretch rounded-t-lg"
+                        :class="sobre === {{ $s->id }} && arrastado !== {{ $s->id }} && 'ring-2 ring-verde-500'"
+                        x-data="{ menu: false }"
+                        x-on:dragover.prevent="if (arrastado) sobre = {{ $s->id }}"
+                        x-on:dragleave="if (sobre === {{ $s->id }}) sobre = null"
+                        x-on:drop.prevent="if (arrastado && arrastado !== {{ $s->id }}) { $wire.reordenarSeparadores(window.reordenar(ids($el), arrastado, {{ $s->id }})) } arrastado = null; sobre = null">
+                        <button type="button" draggable="true" title="Arraste para mudar a ordem"
+                            x-on:dragstart="arrastado = {{ $s->id }}; $event.dataTransfer.effectAllowed = 'move'"
+                            x-on:dragend="arrastado = null; sobre = null"
                             @click="window.cadernoMudar(() => $wire.selecionarSeparador({{ $s->id }}))"
                             class="flex items-center gap-2 rounded-t-lg px-4 text-sm font-medium transition {{ $ativo ? 'py-2.5 shadow-sm' : 'py-2 opacity-80 hover:opacity-100' }}"
                             style="background-color: {{ $fundo }}; color: {{ $tinta }};">
@@ -82,6 +91,24 @@
                                 </button>
                             </div>
 
+                            {{-- Equipamento de que a página trata (opcional) — a ficha dele mostra esta página. --}}
+                            <div class="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                                <label for="pag-equip" class="text-texto-fraco">Equipamento</label>
+                                <select id="pag-equip" wire:key="pag-equip-{{ $pagina->id }}"
+                                    x-on:change="$wire.ligarEquipamento({{ $pagina->id }}, $event.target.value ? Number($event.target.value) : null)"
+                                    class="campo-input w-auto max-w-md py-1 text-sm">
+                                    <option value="">—</option>
+                                    @foreach ($equipamentos as $e)
+                                        <option value="{{ $e->id }}" @selected($pagina->equipamento_id === $e->id)>
+                                            {{ trim(($e->cliente_final ? $e->cliente_final.' · ' : '').$e->fabricante.' '.$e->modelo) ?: 'Equipamento' }}{{ $e->numero_serie ? ' · S/N '.$e->numero_serie : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @if ($pagina->equipamento)
+                                    <a href="{{ route('equipamentos.ficha', $pagina->equipamento) }}" wire:navigate class="font-medium text-verde-600 hover:text-verde-500">Abrir ficha</a>
+                                @endif
+                            </div>
+
                             <div wire:ignore wire:key="editor-{{ $pagina->id }}" x-data="cadernoEditor({{ $pagina->id }}, {{ $pagina->versao }})" class="mt-1">
                                 <p class="mb-3 text-xs text-texto-fraco">
                                     Alterada {{ $pagina->updated_at->diffForHumans() }}{{ $pagina->autorAlteracao ? ' por '.$pagina->autorAlteracao->nome : '' }}
@@ -91,6 +118,19 @@
                                 {{-- O <trix-editor> é criado pelo JS (caderno.js) depois de a barra estar em português. --}}
                                 <div x-ref="lugar"></div>
                                 <p x-show="erro" x-cloak x-text="erro" class="mt-2 text-sm text-perigo-500"></p>
+                                <div x-show="ficheiros.length" x-cloak class="mt-4 border-t border-borda pt-3">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">Ficheiros nesta página</p>
+                                    <ul class="mt-2 space-y-1">
+                                        <template x-for="f in ficheiros" :key="f.href">
+                                            <li>
+                                                <a :href="f.href" target="_blank" rel="noopener" class="text-sm font-medium text-verde-600 hover:text-verde-500">
+                                                    <span x-text="f.nome"></span>
+                                                </a>
+                                                <span class="text-xs text-texto-fraco" x-text="f.tamanho"></span>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </div>
                             </div>
                         @else
                             <div class="py-16 text-center">
@@ -118,13 +158,20 @@
                             </ul>
                         @else
                             <button type="button" @click="window.cadernoMudar(() => $wire.criarPagina())" class="mt-3 w-full rounded-lg border border-dashed border-borda px-3 py-2 text-sm font-medium text-verde-600 hover:bg-verde-50">+ Página</button>
-                            <ul class="mt-2 space-y-0.5">
+                            {{-- Arrastar uma página para o sítio de outra muda a ordem. --}}
+                            <ul class="mt-2 space-y-0.5" data-lista x-data="{ arrastado: null, sobre: null, ids(el) { return [...el.closest('[data-lista]').querySelectorAll(':scope > [data-id]')].map((e) => Number(e.dataset.id)) } }">
                                 @foreach ($paginas as $p)
-                                    <li wire:key="pag-{{ $p->id }}">
+                                    <li wire:key="pag-{{ $p->id }}" data-id="{{ $p->id }}" draggable="true" class="rounded-lg"
+                                        :class="sobre === {{ $p->id }} && arrastado !== {{ $p->id }} && 'ring-2 ring-verde-500'"
+                                        x-on:dragstart="arrastado = {{ $p->id }}; $event.dataTransfer.effectAllowed = 'move'"
+                                        x-on:dragend="arrastado = null; sobre = null"
+                                        x-on:dragover.prevent="if (arrastado) sobre = {{ $p->id }}"
+                                        x-on:dragleave="if (sobre === {{ $p->id }}) sobre = null"
+                                        x-on:drop.prevent="if (arrastado && arrastado !== {{ $p->id }}) { $wire.reordenarPaginas(window.reordenar(ids($el), arrastado, {{ $p->id }})) } arrastado = null; sobre = null">
                                         <button type="button" @click="window.cadernoMudar(() => $wire.selecionarPagina({{ $p->id }}))"
                                             class="w-full rounded-lg px-3 py-2 text-left text-sm transition {{ $p->id === $paginaId ? 'bg-verde-50 font-semibold text-verde-700' : 'text-texto-forte hover:bg-fundo' }}">
                                             {{ $p->titulo }}
-                                            <span class="block text-xs font-normal text-texto-fraco">{{ $p->updated_at->format('d/m/Y H:i') }}</span>
+                                            <span class="block text-xs font-normal text-texto-fraco">{{ $p->updated_at->format('d/m/Y H:i') }}{{ $p->equipamento_id ? ' · equipamento' : '' }}</span>
                                         </button>
                                     </li>
                                 @endforeach

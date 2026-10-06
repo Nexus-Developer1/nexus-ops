@@ -335,6 +335,32 @@
                         </div>
                     </section>
 
+                    {{-- Caderno do cliente: páginas ligadas a este equipamento --}}
+                    @if ($paginasCaderno->isNotEmpty())
+                        <section class="cartao">
+                            <div class="flex items-center justify-between px-6 py-5">
+                                <h2 class="text-lg font-semibold text-texto-forte">Caderno</h2>
+                                <span class="text-sm text-texto-fraco">{{ $paginasCaderno->count() }}</span>
+                            </div>
+                            <ul class="divide-y divide-borda border-t border-borda">
+                                @foreach ($paginasCaderno as $pc)
+                                    @if ($pc->separador)
+                                        <li wire:key="cad-{{ $pc->id }}">
+                                            <a href="{{ route('clientes.caderno', ['cliente' => $pc->separador->cliente_id, 's' => $pc->separador_id, 'p' => $pc->id]) }}" wire:navigate
+                                                class="flex items-center justify-between gap-3 px-6 py-3 text-sm hover:bg-fundo">
+                                                <span>
+                                                    <span class="font-medium text-texto-forte">{{ $pc->titulo }}</span>
+                                                    <span class="ml-2 rounded-full px-2 py-0.5 text-xs" style="background-color: {{ $pc->separador->cores()[0] }}; color: {{ $pc->separador->cores()[1] }};">{{ $pc->separador->nome }}</span>
+                                                </span>
+                                                <span class="text-xs text-texto-fraco">{{ $pc->updated_at->format('d/m/Y') }}</span>
+                                            </a>
+                                        </li>
+                                    @endif
+                                @endforeach
+                            </ul>
+                        </section>
+                    @endif
+
                     {{-- Notas --}}
                     <section class="cartao">
                         <div class="flex items-center gap-3 px-6 py-5">

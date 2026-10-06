@@ -10,6 +10,7 @@ use App\Models\Cliente;
 use App\Models\Equipamento;
 use App\Services\Auditor;
 use App\Services\Caderno\LimpezaHtmlCaderno;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -17,8 +18,9 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 // CADERNO do cliente (out. 2026) — o OneNote da equipa dentro da aplicação: SEPARADORES
-// (normalmente um por cliente final) e, em cada um, PÁGINAS com texto rico e imagens coladas
-// ("Equipamento 1", "Dados CCTV"…), criados à medida que fazem falta. Só a equipa (o grupo de
+// (normalmente um por cliente final) e, em cada um, PÁGINAS com texto rico, imagens coladas e
+// ficheiros anexados (PDF, manuais…) — "Equipamento 1", "Dados CCTV"… —, criados à medida que
+// fazem falta, reordenados por arrastar e, se for caso disso, ligados a um equipamento. Só a equipa (o grupo de
 // rotas já barra o portal; ApenasEquipa reforça em cada pedido).
 //
 // Os ids de separador/página vêm do browser: cada ação confirma que pertencem a ESTE cliente
@@ -44,8 +46,12 @@ class Caderno extends Component
 
     public string $novoSeparador = '';
 
-    // Imagem colada/arrastada no editor (sobe por $wire.upload e grava em guardarImagem).
-    public $imagem = null;
+    // Imagem ou ficheiro colado/arrastado no editor (sobe por $wire.upload e grava em guardarAnexo).
+    public $ficheiro = null;
+
+    // Imagens e documentos que se podem anexar a uma página (o resto fica de fora; só imagens
+    // e PDF abrem no browser — os outros são sempre download).
+    public const TIPOS_ANEXO = 'jpeg,jpg,png,gif,webp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,csv,zip';
 
     public function mount(Cliente $cliente): void
     {
@@ -119,6 +125,17 @@ class Caderno extends Component
         }
     }
 
+    /**
+     * Nova ordem dos separadores (arrastados nas abas). Só conta os ids deste cliente; os que
+     * faltarem na lista ficam no fim, pela ordem que tinham.
+     *
+     * @param  list<int|string>  $ids
+     */
+    public function reordenarSeparadores(array $ids): void
+    {
+        $this->reordenar($this->cliente->cadernoSeparadores()->get(['id', 'ordem']), $ids);
+    }
+
     // Apaga (soft delete) o separador e as páginas dele — recuperável na BD.
     public function apagarSeparador(int $id): void
     {
@@ -166,6 +183,32 @@ class Caderno extends Component
         $this->abrirPagina($pagina);
     }
 
+    /**
+     * Nova ordem das páginas do separador aberto (arrastadas na lista).
+     *
+     * @param  list<int|string>  $ids
+     */
+    public function reordenarPaginas(array $ids): void
+    {
+        $separador = $this->separadorId ? $this->separadorDoCliente($this->separadorId) : null;
+        if ($separador) {
+            $this->reordenar($separador->paginas()->get(['id', 'ordem']), $ids);
+        }
+    }
+
+    // Liga a página a um equipamento DESTE cliente (ou desliga, com null).
+    public function ligarEquipamento(int $paginaId, ?int $equipamentoId): void
+    {
+        $pagina = $this->paginaDoCliente($paginaId);
+        if (! $pagina) {
+            return;
+        }
+        if ($equipamentoId && ! $this->equipamentosDoCliente()->whereKey($equipamentoId)->exists()) {
+            return;
+        }
+        $pagina->update(['equipamento_id' => $equipamentoId ?: null, 'atualizado_por' => auth()->id()]);
+    }
+
     public function updatedTitulo(): void
     {
         $pagina = $this->paginaId ? $this->paginaDoCliente($this->paginaId) : null;
@@ -208,30 +251,31 @@ class Caderno extends Component
     }
 
     /**
-     * Imagem colada/arrastada no editor: vai para o object storage como ANEXO da página e
-     * devolve o URL que o editor põe no <img> (/anexos/{id}, servido só à equipa).
+     * Imagem ou ficheiro (PDF, manual…) colado/arrastado no editor: vai para o object storage
+     * como ANEXO da página e devolve o URL que o editor põe na página (/anexos/{id}, servido
+     * só à equipa).
      *
      * @return array{ok: bool, url?: string, motivo?: string}
      */
-    public function guardarImagem(int $paginaId): array
+    public function guardarAnexo(int $paginaId): array
     {
         $pagina = $this->paginaDoCliente($paginaId);
-        if (! $pagina || ! $this->imagem) {
-            return ['ok' => false, 'motivo' => 'Não foi possível guardar a imagem.'];
+        if (! $pagina || ! $this->ficheiro) {
+            return ['ok' => false, 'motivo' => 'Não foi possível guardar o ficheiro.'];
         }
 
-        $this->validate(['imagem' => ['image', 'mimes:jpeg,png,gif,webp', 'max:20480']]);
+        $this->validate(['ficheiro' => ['file', 'mimes:'.self::TIPOS_ANEXO, 'max:20480']]);
 
-        $ficheiro = $this->imagem;
+        $ficheiro = $this->ficheiro;
         $key = $ficheiro->store('anexos/caderno/'.$pagina->id);
         $anexo = $pagina->anexos()->create([
-            'nome_ficheiro' => $ficheiro->getClientOriginalName() ?: 'imagem.jpg',
+            'nome_ficheiro' => mb_substr($ficheiro->getClientOriginalName() ?: 'ficheiro', 0, 200),
             'storage_key' => $key,
             'mime' => $ficheiro->getMimeType(),
             'tamanho' => $ficheiro->getSize(),
             'criado_por' => auth()->id(),
         ]);
-        $this->imagem = null;
+        $this->ficheiro = null;
 
         return ['ok' => true, 'url' => route('anexos.ver', $anexo, false)];
     }
@@ -262,6 +306,27 @@ class Caderno extends Component
         return CadernoPagina::whereHas('separador', fn ($q) => $q->where('cliente_id', $this->cliente->id))->find($id);
     }
 
+    // Grava a nova ordem: primeiro os ids recebidos (só os que existem na coleção), depois os
+    // restantes. Só escreve nas linhas cuja ordem mudou.
+    private function reordenar(Collection $itens, array $ids): void
+    {
+        $porId = $itens->keyBy('id');
+        $ordenados = collect($ids)->map(fn ($id) => (int) $id)->unique()
+            ->filter(fn ($id) => $porId->has($id))->values();
+        $ordenados = $ordenados->merge($itens->pluck('id')->diff($ordenados))->values();
+
+        foreach ($ordenados as $posicao => $id) {
+            if ((int) $porId[$id]->ordem !== $posicao) {
+                $porId[$id]->update(['ordem' => $posicao]);
+            }
+        }
+    }
+
+    private function equipamentosDoCliente(): Builder
+    {
+        return Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente->id));
+    }
+
     private function abrirPagina(?CadernoPagina $pagina): void
     {
         $this->paginaId = $pagina?->id;
@@ -281,7 +346,7 @@ class Caderno extends Component
     {
         $existentes = $separadores->pluck('nome')->map(fn ($n) => mb_strtolower(trim($n)))->all();
 
-        return Equipamento::whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente->id))
+        return $this->equipamentosDoCliente()
             ->whereNotNull('cliente_final')->where('cliente_final', '!=', '')
             ->distinct()->orderBy('cliente_final')->limit(30)->pluck('cliente_final')
             ->map(fn ($n) => trim($n))
@@ -293,7 +358,7 @@ class Caderno extends Component
     {
         $separadores = $this->cliente->cadernoSeparadores()->withCount('paginas')->get();
         $separador = $separadores->firstWhere('id', $this->separadorId);
-        $pagina = $this->paginaId ? CadernoPagina::with('autorAlteracao')->find($this->paginaId) : null;
+        $pagina = $this->paginaId ? CadernoPagina::with(['autorAlteracao', 'equipamento'])->find($this->paginaId) : null;
 
         $resultados = collect();
         $termo = trim($this->pesquisa);
@@ -308,11 +373,17 @@ class Caderno extends Component
         return view('livewire.clientes.caderno', [
             'separadores' => $separadores,
             'separador' => $separador,
-            'paginas' => $separador ? $separador->paginas()->get(['id', 'titulo', 'updated_at']) : collect(),
+            'paginas' => $separador ? $separador->paginas()->get(['id', 'titulo', 'equipamento_id', 'updated_at']) : collect(),
             'pagina' => $pagina,
             'resultados' => $resultados,
             'sugestoes' => $this->sugestoes($separadores),
             'cores' => CadernoSeparador::CORES,
+            // Para ligar a página a um equipamento (só os deste cliente).
+            'equipamentos' => $pagina
+                ? $this->equipamentosDoCliente()->orderBy('cliente_final')->orderBy('fabricante')->orderBy('modelo')
+                    ->get(['id', 'fabricante', 'modelo', 'numero_serie', 'cliente_final'])
+                : collect(),
+            'tiposAnexo' => self::TIPOS_ANEXO,
         ]);
     }
 }

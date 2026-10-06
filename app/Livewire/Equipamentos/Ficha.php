@@ -475,6 +475,8 @@ class Ficha extends Component
                 ->orderBy('nome')->get(['id', 'nome']),
             'intervencoes' => $intervencoes,
             'contratos' => $contratos,
+            // Páginas do caderno do cliente ligadas a este equipamento.
+            'paginasCaderno' => $this->equipamento->cadernoPaginas()->whereHas('separador')->with('separador')->get(['id', 'separador_id', 'titulo', 'updated_at']),
             // Bancos/kits associados a este equipamento e (se for um banco) o UPS pai.
             'bancosAssociados' => $this->equipamento->equipamentosAssociados()->with('local.cliente')->orderBy('numero_serie')->get(),
             'equipamentoPai' => $this->equipamento->equipamentoPai()->with('local.cliente')->first(),

@@ -71,8 +71,10 @@ return [
         // Só os tipos que a aplicação usa (fotos/recibos como imagem; registo do teste de
         // descarga como txt/csv/log). Sem isto, QUALQUER ficheiro entrava na pasta temporária
         // e a validação de tipo ficava toda a cargo de cada componente (22.ª revisão). SVG de
-        // fora: passa na regra `image` do Laravel mas pode conter scripts.
-        'rules' => ['required', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,bmp,webp,txt,csv,log'],
+        // fora: passa na regra `image` do Laravel mas pode conter scripts. Os documentos (PDF,
+        // Office, zip) são para os anexos do caderno do cliente — fora o PDF, servidos sempre
+        // como download (AnexoController@ver).
+        'rules' => ['required', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,bmp,webp,txt,csv,log,pdf,doc,docx,xls,xlsx,ppt,pptx,zip'],
         'directory' => null,   // Example: 'tmp'                      | Default: 'livewire-tmp'
         'middleware' => null,  // Example: 'throttle:5,1'             | Default: 'throttle:60,1'
         'preview_mimes' => [   // Supported file types for temporary pre-signed file URLs...

@@ -144,6 +144,12 @@ class Equipamento extends Model
         return $this->hasMany(Intervencao::class);
     }
 
+    // Páginas do caderno do cliente ligadas a este equipamento (só a equipa as vê).
+    public function cadernoPaginas(): HasMany
+    {
+        return $this->hasMany(CadernoPagina::class)->orderBy('titulo');
+    }
+
     // Alertas de manutenção programados (data + texto editável) — geridos na ficha.
     public function alertasManutencao(): HasMany
     {
