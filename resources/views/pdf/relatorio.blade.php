@@ -471,6 +471,10 @@
                 <table class="ficha-tab">
                     <tr><th>Item</th><th class="cel-ok">OK</th><th class="cel-nok">NOK</th><th style="width:40%;">Nota</th></tr>
                     @foreach (\App\Models\FichaMedicao::VERIFICACOES as $chave => $rotulo)
+                        {{-- Item acrescentado à lista depois de a ficha ter sido gravada (ex.: os
+                             condensadores, out. 2026): não aparece — um relatório antigo, se for
+                             regenerado, sai como foi emitido. Fichas novas gravam todos os itens. --}}
+                        @continue(! empty($ficha->verificacoes) && ! array_key_exists($chave, $ficha->verificacoes))
                         @php($v = $ficha->verificacoes[$chave] ?? [])
                         @php($estado = $v['estado'] ?? null)
                         <tr>

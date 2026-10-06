@@ -8,6 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-10-06
 
+- 🧰 **Ficha UPS — verificações «Condensadores DC» e «Condensadores AC».** Duas linhas novas nas Verificações, logo a seguir a «Aperto/estado das ligações», com OK/NOK e observação como as restantes. Vão ao PDF e um NOK entra nas anomalias do resumo. Uma ficha gravada antes destas linhas existirem não as mostra no PDF — um relatório antigo, se for regenerado, sai como foi emitido. Sem migração (as verificações são JSON); `optimize`. +4 testes (885 no total). `hash`
+
 - 🧰 **Dossiers PHC — ordenar pelo total (TEMPORÁRIO).** A pedido da equipa, «para depois tirarmos»: novo filtro **«Ordenar»** — «Mais recentes» (a ordem de sempre), «Total: maior primeiro» e «Total: menor primeiro», abertos e fechados juntos (combina com os outros filtros). Ordena pelo total guardado na última sincronização com o PHC; dossiês sem total ficam no fim. Para tirar: o select em `encomendas/listagem.blade.php`, a propriedade `$ordem` e as duas linhas `orderByRaw` em `Encomendas/Listagem.php`, e o teste `test_ordena_pelo_total` (todos marcados «TEMPORÁRIO»). +1 teste. Build + `optimize`.
 
 ## 2026-10-02

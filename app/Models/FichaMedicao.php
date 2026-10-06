@@ -125,6 +125,8 @@ class FichaMedicao extends Model
         'limpeza' => 'Limpeza ao equipamento',
         'ventiladores' => 'Ventiladores',
         'ligacoes' => 'Aperto/estado das ligações',
+        'condensadores_dc' => 'Condensadores DC', // out. 2026
+        'condensadores_ac' => 'Condensadores AC', // out. 2026
         'tensao_entrada_saida' => 'Tensão de entrada e saída',
         'simulacao_falha_rede' => 'Simulação de falha de rede',
         'teste_baterias' => 'Teste às baterias',
