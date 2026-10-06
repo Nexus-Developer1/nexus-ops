@@ -31,6 +31,10 @@ class EnviarRelatorioPorEmail implements ShouldQueue
         public string $assunto,
         public string $mensagem,
         public ?string $cc = null, // quem envia recebe cópia (set. 2026)
+        // Envio AGENDADO (out. 2026): o job vai para a fila com atraso e leva o token do
+        // agendamento. Na hora, só envia se o relatório ainda tiver ESTE token — cancelar ou
+        // reagendar troca/apaga o token e o job antigo sai sem fazer nada. Null = imediato.
+        public ?string $token = null,
     ) {}
 
     // UMA tentativa (22.ª revisão de segurança): o worker corre com --tries=3, e se o email
@@ -72,8 +76,17 @@ class EnviarRelatorioPorEmail implements ShouldQueue
         // O estado é verificado na composição, mas entre o clique e a fila o relatório pode
         // ter sido reaberto (voltou a rascunho) — um rascunho nunca sai para o cliente.
         $this->relatorio->refresh();
+
+        // Agendado e entretanto cancelado ou substituído por outro envio: não é este que vale.
+        if ($this->token !== null && $this->relatorio->envio_agendado_token !== $this->token) {
+            Log::info('Envio agendado ignorado: foi cancelado ou substituído.', ['relatorio' => $this->relatorio->numero]);
+
+            return;
+        }
+
         if ($this->relatorio->estado === EstadoRelatorio::Rascunho) {
             Log::warning('Envio de relatório cancelado: voltou a rascunho antes de sair.', ['relatorio' => $this->relatorio->numero]);
+            $this->largarAgendamento();
 
             return;
         }
@@ -84,6 +97,7 @@ class EnviarRelatorioPorEmail implements ShouldQueue
         // aplicação nunca sai para o cliente (relatório externo de 21/09).
         if ($this->relatorio->trashed()) {
             Log::warning('Envio de relatório cancelado: foi eliminado antes de sair.', ['relatorio' => $this->relatorio->numero]);
+            $this->largarAgendamento();
 
             return;
         }
@@ -125,7 +139,7 @@ class EnviarRelatorioPorEmail implements ShouldQueue
             'pdf_enviado_path' => $caminho,
             'pdf_enviado_sha256' => $sha256,
             'enviado_versao' => $versao,
-        ]);
+        ] + ($this->token !== null ? Relatorio::SEM_AGENDAMENTO : []));
 
         // Auditoria da emissão: o hash prova, mais tarde, que o ficheiro não mudou.
         Auditor::registar('relatorio_pdf_congelado', $this->relatorio, [
@@ -150,10 +164,24 @@ class EnviarRelatorioPorEmail implements ShouldQueue
         Log::info('Relatório enviado ao cliente.', ['relatorio' => $this->relatorio->numero]);
     }
 
+    // Um envio agendado que não chega a sair (cancelado pelo estado, ou falhou) deixa de
+    // aparecer como agendado — só se o agendamento ainda for este (outro pode tê-lo substituído).
+    private function largarAgendamento(): void
+    {
+        if ($this->token === null) {
+            return;
+        }
+        Relatorio::withTrashed()->whereKey($this->relatorio->getKey())
+            ->where('envio_agendado_token', $this->token)
+            ->update(Relatorio::SEM_AGENDAMENTO);
+    }
+
     // Falha definitiva (exceção, timeout ou crash do worker): fica na auditoria e quem enviou
     // recebe um aviso — antes ficava só em failed_jobs e o técnico julgava o relatório enviado.
     public function failed(?Throwable $e): void
     {
+        $this->largarAgendamento();
+
         Log::error('Envio de relatório falhou.', ['relatorio' => $this->relatorio->numero, 'erro' => $e?->getMessage()]);
 
         Auditor::registar('relatorio_envio_falhou', $this->relatorio, [

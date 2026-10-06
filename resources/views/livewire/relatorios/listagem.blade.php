@@ -94,7 +94,15 @@
                                 {{-- TODOS os técnicos da intervenção (principal + colaboradores), não só quem redigiu. --}}
                                 <td class="max-w-[11rem] px-4 py-4 text-texto-medio lg:px-6">{{ $r->intervencao->tecnicosLabel() ?? '—' }}</td>
                                 <td class="px-4 py-4 lg:px-6 text-texto-medio">{{ $r->data->translatedFormat('d M Y') }}</td>
-                                <td class="px-4 py-4 lg:px-6"><span class="etiqueta {{ $r->estado->classesEtiqueta() }}">{{ $r->estado->rotulo() }}</span></td>
+                                <td class="px-4 py-4 lg:px-6">
+                                    <span class="etiqueta {{ $r->estado->classesEtiqueta() }}">{{ $r->estado->rotulo() }}</span>
+                                    {{-- Envio agendado à espera (out. 2026). --}}
+                                    @if ($r->temEnvioAgendado())
+                                        <span class="etiqueta mt-1 border border-aviso-200 bg-aviso-100 text-aviso-500" title="Envio agendado para {{ $r->envio_agendado_destino }}">
+                                            Agendado {{ $r->envio_agendado_em->isToday() ? $r->envio_agendado_em->format('H:i') : $r->envio_agendado_em->format('d/m H:i') }}
+                                        </span>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-4 lg:px-6">
                                     <div class="flex items-center justify-end gap-1">
                                         @if ($r->estado === \App\Enums\EstadoRelatorio::Rascunho)

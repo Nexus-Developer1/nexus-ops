@@ -7,6 +7,7 @@ use App\Jobs\EnviarRelatorioPorEmail;
 use App\Livewire\Concerns\ApenasEquipa;
 use App\Models\Relatorio;
 use App\Services\Auditor;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -24,6 +25,19 @@ class Enviar extends Component
     public string $assunto = '';
 
     public string $mensagem = '';
+
+    // Quando sai o email (out. 2026): já, ou daqui a N minutos. A chave é o atraso em minutos.
+    public const OPCOES_ENVIO = [
+        'agora' => 'Imediato',
+        '30' => 'Daqui a 30 min',
+        '60' => 'Daqui a 1 h',
+        '120' => 'Daqui a 2 h',
+        '240' => 'Daqui a 4 h',
+        '480' => 'Daqui a 8 h',
+        '1440' => 'Daqui a 24 h',
+    ];
+
+    public string $quando = 'agora';
 
     public function mount(Relatorio $relatorio): void
     {
@@ -71,6 +85,7 @@ class Enviar extends Component
             'para' => ['required', 'string', 'max:1000'],
             'assunto' => ['required', 'string', 'max:255'],
             'mensagem' => ['required', 'string', 'max:5000'],
+            'quando' => ['required', 'in:'.implode(',', array_keys(self::OPCOES_ENVIO))],
         ]);
         foreach (self::destinatarios($this->para) as $email) {
             if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -83,6 +98,38 @@ class Enviar extends Component
         // Quem envia recebe sempre cópia (pedido da equipa, set. 2026): fica com o mesmo email
         // que o cliente recebeu, com o PDF, na própria caixa.
         $cc = auth()->user()->email ?: null;
+
+        // ENVIO AGENDADO (out. 2026): o job vai para a fila com atraso e leva um token novo,
+        // que fica no relatório. Um agendamento que já lá estivesse deixa de valer (o token
+        // muda) — o cliente nunca recebe duas vezes o mesmo envio.
+        if ($this->quando !== 'agora') {
+            $hora = now()->addMinutes((int) $this->quando);
+            $token = (string) Str::uuid();
+            $this->relatorio->update([
+                'envio_agendado_em' => $hora,
+                'envio_agendado_token' => $token,
+                'envio_agendado_destino' => $this->para,
+            ]);
+
+            EnviarRelatorioPorEmail::dispatch($this->relatorio, $this->para, trim($this->assunto), $this->mensagem, $cc, $token)
+                ->delay($hora);
+
+            Auditor::registar('relatorio_envio_agendado', $this->relatorio, [
+                'numero' => $this->relatorio->numero,
+                'para' => $this->para,
+                'cc' => $cc,
+                'agendado_para' => $hora->toIso8601String(),
+            ]);
+
+            session()->flash('sucesso', "Relatório {$this->relatorio->numero} agendado para {$hora->format('d/m')} às {$hora->format('H:i')}, para {$this->para}.");
+
+            return redirect()->route('relatorios');
+        }
+
+        // Envio imediato: se havia um agendado à espera, deixa de valer (senão saíam dois).
+        if ($this->relatorio->temEnvioAgendado()) {
+            $this->relatorio->update(Relatorio::SEM_AGENDAMENTO);
+        }
 
         EnviarRelatorioPorEmail::dispatch(
             $this->relatorio,
@@ -104,6 +151,29 @@ class Enviar extends Component
         return redirect()->route('relatorios');
     }
 
+    // Cancela o envio agendado: o job continua na fila, mas sem o token certo não envia nada.
+    public function cancelarAgendamento()
+    {
+        abort_if(auth()->user()->ehCliente(), 403);
+
+        $this->relatorio->refresh();
+        if (! $this->relatorio->temEnvioAgendado()) {
+            return null;
+        }
+
+        $hora = $this->relatorio->envio_agendado_em;
+        $this->relatorio->update(Relatorio::SEM_AGENDAMENTO);
+
+        Auditor::registar('relatorio_envio_agendado_cancelado', $this->relatorio, [
+            'numero' => $this->relatorio->numero,
+            'agendado_para' => $hora?->toIso8601String(),
+        ]);
+
+        session()->flash('sucesso', "Envio agendado do relatório {$this->relatorio->numero} cancelado — nada foi enviado ao cliente.");
+
+        return redirect()->route('relatorios');
+    }
+
     /** «a@x.pt;  b@y.pt , c@z.pt» → «a@x.pt; b@y.pt; c@z.pt» (sem repetidos, sem vazios). */
     public static function normalizarDestinatarios(string $texto): string
     {
@@ -120,6 +190,6 @@ class Enviar extends Component
 
     public function render()
     {
-        return view('livewire.relatorios.enviar');
+        return view('livewire.relatorios.enviar', ['opcoesEnvio' => self::OPCOES_ENVIO]);
     }
 }

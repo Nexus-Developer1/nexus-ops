@@ -2,8 +2,8 @@
     <x-topbar :breadcrumb="['Relatórios', 'Enviar ' . $relatorio->numero]">
         <a href="{{ route('relatorios') }}" class="botao-secundario">Cancelar</a>
         <button wire:click="enviar" wire:loading.attr="disabled" wire:target="enviar" class="botao-primario">
-            <span wire:loading.remove wire:target="enviar">Enviar email</span>
-            <span wire:loading wire:target="enviar">A enviar…</span>
+            <span wire:loading.remove wire:target="enviar">{{ $quando === 'agora' ? 'Enviar email' : 'Agendar envio' }}</span>
+            <span wire:loading wire:target="enviar">{{ $quando === 'agora' ? 'A enviar…' : 'A agendar…' }}</span>
         </button>
     </x-topbar>
 
@@ -19,6 +19,16 @@
                     <span class="etiqueta {{ \App\Enums\EstadoRelatorio::Enviado->classesEtiqueta() }} uppercase tracking-wide">Reenvio</span>
                 @endif
             </div>
+
+            {{-- Envio agendado à espera (out. 2026): vê-se e cancela-se aqui. Enviar ou agendar de
+                 novo substitui-o — o cliente nunca recebe duas vezes. --}}
+            @if ($relatorio->temEnvioAgendado())
+                <div class="mt-6 flex flex-wrap items-center gap-3 rounded-lg border border-aviso-200 bg-aviso-100 px-4 py-3 text-sm text-aviso-500">
+                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span class="flex-1">Envio agendado para <strong>{{ $relatorio->envio_agendado_em->format('d/m') }} às {{ $relatorio->envio_agendado_em->format('H:i') }}</strong>, para {{ $relatorio->envio_agendado_destino }}.</span>
+                    <button type="button" wire:click="cancelarAgendamento" wire:confirm="Cancelar o envio agendado? Nada será enviado ao cliente." class="font-medium underline hover:no-underline">Cancelar envio agendado</button>
+                </div>
+            @endif
 
             <section class="cartao mt-7">
                 <div class="space-y-5 px-6 py-6">
@@ -43,6 +53,16 @@
                         <label class="campo-label" for="mensagem">Mensagem <span class="text-perigo-500">*</span></label>
                         <textarea id="mensagem" wire:model="mensagem" rows="10" class="campo-input resize-y" placeholder="Escreva a mensagem para o cliente…"></textarea>
                         @error('mensagem') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div class="sm:max-w-xs">
+                        <label class="campo-label" for="quando">Envio <span class="text-perigo-500">*</span></label>
+                        <select id="quando" wire:model.live="quando" class="campo-select">
+                            @foreach ($opcoesEnvio as $valor => $rotulo)
+                                <option value="{{ $valor }}">{{ $rotulo }}</option>
+                            @endforeach
+                        </select>
+                        @error('quando') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                     </div>
 
                     {{-- Anexo (PDF do relatório) --}}

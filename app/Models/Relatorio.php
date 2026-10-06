@@ -35,6 +35,10 @@ class Relatorio extends Model
         'enviado_versao',
         'enviado_em',
         'enviado_para',
+        // Envio agendado (out. 2026) — ver EnviarRelatorioPorEmail e Relatorios\Enviar.
+        'envio_agendado_em',
+        'envio_agendado_token',
+        'envio_agendado_destino',
     ];
 
     /** @return array<string, string> */
@@ -44,6 +48,7 @@ class Relatorio extends Model
             'data' => 'date',
             'estado' => EstadoRelatorio::class,
             'enviado_em' => 'datetime',
+            'envio_agendado_em' => 'datetime',
         ];
     }
 
@@ -57,6 +62,15 @@ class Relatorio extends Model
             || $this->enviado_em !== null
             || filled($this->pdf_enviado_path);
     }
+
+    // Há um envio agendado à espera? (o job atrasado está na fila com este token.)
+    public function temEnvioAgendado(): bool
+    {
+        return $this->envio_agendado_em !== null && filled($this->envio_agendado_token);
+    }
+
+    // Os três campos do agendamento a null: o job que ainda está na fila deixa de valer.
+    public const SEM_AGENDAMENTO = ['envio_agendado_em' => null, 'envio_agendado_token' => null, 'envio_agendado_destino' => null];
 
     public function intervencao(): BelongsTo
     {
