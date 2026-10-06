@@ -102,7 +102,7 @@
                                     <option value="">—</option>
                                     @foreach ($equipamentos as $e)
                                         <option value="{{ $e->id }}" @selected($pagina->equipamento_id === $e->id)>
-                                            {{ trim(($e->cliente_final ? $e->cliente_final.' · ' : '').$e->fabricante.' '.$e->modelo) ?: 'Equipamento' }}{{ $e->numero_serie ? ' · S/N '.$e->numero_serie : '' }}
+                                            {{ ($e->cliente_final ? $e->cliente_final.' · ' : '').$e->rotuloCaderno() }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -173,7 +173,13 @@
                                         <button type="button" @click="window.cadernoMudar(() => $wire.selecionarPagina({{ $p->id }}))"
                                             class="w-full rounded-lg px-3 py-2 text-left text-sm transition {{ $p->id === $paginaId ? 'bg-verde-50 font-semibold text-verde-700' : 'text-texto-forte hover:bg-fundo' }}">
                                             {{ $p->titulo }}
-                                            <span class="block text-xs font-normal text-texto-fraco">{{ $p->updated_at->format('d/m/Y H:i') }}{{ $p->equipamento_id ? ' · equipamento' : '' }}</span>
+                                            @if ($p->equipamento)
+                                                <span class="mt-0.5 flex items-start gap-1 text-xs font-normal text-texto-medio">
+                                                    <svg class="mt-px h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+                                                    <span>{{ $p->equipamento->rotuloCaderno() }}</span>
+                                                </span>
+                                            @endif
+                                            <span class="block text-xs font-normal text-texto-fraco">{{ $p->updated_at->format('d/m/Y H:i') }}</span>
                                         </button>
                                     </li>
                                 @endforeach

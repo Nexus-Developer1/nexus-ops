@@ -144,6 +144,14 @@ class Equipamento extends Model
         return $this->hasMany(Intervencao::class);
     }
 
+    // «Riello S3T 20 · S/N AC38UT887690001» — como o equipamento aparece no caderno do cliente.
+    public function rotuloCaderno(): string
+    {
+        $nome = trim($this->fabricante.' '.$this->modelo) ?: 'Equipamento';
+
+        return $nome.($this->numero_serie ? ' · S/N '.$this->numero_serie : '');
+    }
+
     // Páginas do caderno do cliente ligadas a este equipamento (só a equipa as vê).
     public function cadernoPaginas(): HasMany
     {

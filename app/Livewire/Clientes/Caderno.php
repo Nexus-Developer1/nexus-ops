@@ -373,7 +373,9 @@ class Caderno extends Component
         return view('livewire.clientes.caderno', [
             'separadores' => $separadores,
             'separador' => $separador,
-            'paginas' => $separador ? $separador->paginas()->get(['id', 'titulo', 'equipamento_id', 'updated_at']) : collect(),
+            'paginas' => $separador
+                ? $separador->paginas()->with('equipamento:id,fabricante,modelo,numero_serie,cliente_final')->get(['id', 'titulo', 'equipamento_id', 'updated_at'])
+                : collect(),
             'pagina' => $pagina,
             'resultados' => $resultados,
             'sugestoes' => $this->sugestoes($separadores),

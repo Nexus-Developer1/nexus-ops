@@ -206,7 +206,8 @@ class CadernoClienteTest extends TestCase
             ->call('ligarEquipamento', $p->id, $alheio->id); // de outro cliente: ignorado
         $this->assertNull($p->fresh()->equipamento_id);
 
-        $this->caderno()->call('ligarEquipamento', $p->id, $ups->id)->assertSee('Abrir ficha');
+        $this->caderno()->call('ligarEquipamento', $p->id, $ups->id)->assertSee('Abrir ficha')
+            ->assertSeeHtml('<span>Riello S3T 20 · S/N AC38UT887690001</span>'); // na lista de páginas
         $this->assertSame($ups->id, $p->fresh()->equipamento_id);
 
         // A ficha do equipamento mostra a página, com ligação para ela no caderno.
