@@ -60,6 +60,22 @@ class EncomendasListagemTest extends TestCase
             ->assertSee('DOSSIE-20');
     }
 
+    // TEMPORÁRIO (out. 2026): ordenar pelo total, abertos e fechados juntos; sem total no fim.
+    public function test_ordena_pelo_total(): void
+    {
+        $this->dossier(['obrano' => 1, 'nome' => 'MEDIO-ABERTO', 'total_debito' => 500, 'fechada' => false]);
+        $this->dossier(['obrano' => 2, 'nome' => 'GRANDE-FECHADO', 'total_debito' => 9000, 'fechada' => true]);
+        $this->dossier(['obrano' => 3, 'nome' => 'PEQUENO-ABERTO', 'total_debito' => 10, 'fechada' => false]);
+        $this->dossier(['obrano' => 4, 'nome' => 'SEM-TOTAL', 'total_debito' => null]);
+
+        Livewire::actingAs($this->admin())->test(Listagem::class)
+            ->assertSeeInOrder(['SEM-TOTAL', 'PEQUENO-ABERTO', 'GRANDE-FECHADO', 'MEDIO-ABERTO']) // mais recentes
+            ->set('ordem', 'total_desc')
+            ->assertSeeInOrder(['GRANDE-FECHADO', 'MEDIO-ABERTO', 'PEQUENO-ABERTO', 'SEM-TOTAL'])
+            ->set('ordem', 'total_asc')
+            ->assertSeeInOrder(['PEQUENO-ABERTO', 'MEDIO-ABERTO', 'GRANDE-FECHADO', 'SEM-TOTAL']);
+    }
+
     public function test_lista_e_filtra_por_tipo(): void
     {
         $this->dossier(['ndos' => 3, 'nmdos' => 'Proposta', 'nome' => 'PROPOSTA-ACME']);

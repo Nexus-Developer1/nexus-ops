@@ -36,6 +36,11 @@ class Listagem extends Component
     #[Session]
     public string $phc = '';
 
+    // TEMPORÁRIO (pedido da equipa, out. 2026 — «depois tiramos»): ordenar pelo total do
+    // dossiê, a subir ou a descer, aberto ou fechado. '' = mais recentes (a ordem normal).
+    #[Session]
+    public string $ordem = ''; // '' | 'total_asc' | 'total_desc'
+
     // A página também fica na sessão, como os filtros (pedido da equipa, out. 2026): abrir uma
     // proposta na página 13 e carregar em «Voltar» (que vem sem ?page) levava à página 1. Um
     // ?page explícito no endereço manda sempre.
@@ -71,6 +76,11 @@ class Listagem extends Component
         $this->resetPage();
     }
 
+    public function updatingOrdem(): void
+    {
+        $this->resetPage();
+    }
+
     public function render(LeituraErpAoVivo $phc)
     {
         $dossiers = Dossier::query()
@@ -88,6 +98,9 @@ class Listagem extends Component
                         ->orWhere('cliente_no', 'ilike', $termo);
                 });
             })
+            // TEMPORÁRIO: pelo total (o guardado na última sincronização; sem total vão para o fim).
+            ->when($this->ordem === 'total_asc', fn ($q) => $q->orderByRaw('total_debito asc nulls last'))
+            ->when($this->ordem === 'total_desc', fn ($q) => $q->orderByRaw('total_debito desc nulls last'))
             // Mais recentes primeiro (ano desc, depois nº do dossiê desc); id desestabiliza empates.
             ->orderByDesc('ano')
             ->orderByDesc('obrano')

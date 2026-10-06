@@ -54,6 +54,16 @@
                             @endforeach
                         </select>
                     </div>
+
+                    {{-- TEMPORÁRIO (pedido da equipa, out. 2026 — «depois tiramos»). --}}
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="dos-ordem" class="campo-label">Ordenar</label>
+                        <select id="dos-ordem" wire:model.live="ordem" class="campo-select">
+                            <option value="">Mais recentes</option>
+                            <option value="total_desc">Total: maior primeiro</option>
+                            <option value="total_asc">Total: menor primeiro</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
