@@ -4,6 +4,7 @@ use App\Enums\EstadoRelatorio;
 use App\Http\Controllers\AnexoController;
 use App\Livewire\Agenda\Calendario;
 use App\Livewire\Alertas\Painel;
+use App\Livewire\Clientes\Caderno;
 use App\Livewire\Clientes\Contratos;
 use App\Livewire\Clientes\Detalhe;
 use App\Livewire\Clientes\Equipamentos;
@@ -178,6 +179,8 @@ Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () use ($serv
     Route::get('/clientes', Index::class)->name('clientes');
     Route::get('/clientes/{cliente}', Detalhe::class)->name('clientes.detalhe');
     Route::get('/clientes/{cliente}/equipamentos', Equipamentos::class)->name('clientes.equipamentos');
+    // Caderno do cliente (out. 2026): separadores e páginas com texto e imagens — só a equipa.
+    Route::get('/clientes/{cliente}/caderno', Caderno::class)->name('clientes.caderno');
     Route::get('/clientes/{cliente}/contratos', Contratos::class)->name('clientes.contratos');
     Route::get('/clientes/{cliente}/relatorios', Relatorios::class)->name('clientes.relatorios');
     Route::get('/clientes/{cliente}/faturacao', Faturacao::class)->name('clientes.faturacao');

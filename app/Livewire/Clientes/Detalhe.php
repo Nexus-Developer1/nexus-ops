@@ -70,6 +70,8 @@ class Detalhe extends Component
             'encomendas' => (clone $encomendas)->orderByDesc('ano')->orderByDesc('obrano')->limit(self::LIMITE)->get(),
             'encomendasTotal' => (clone $encomendas)->count(),
             'limite' => self::LIMITE,
+            // Caderno do cliente (out. 2026): separadores com o nº de páginas de cada um.
+            'caderno' => $this->cliente->cadernoSeparadores()->withCount('paginas')->get(),
         ]);
     }
 }

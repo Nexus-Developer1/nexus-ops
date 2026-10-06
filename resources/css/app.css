@@ -18,6 +18,31 @@
 }
 
 /* ---- Ajustes do FullCalendar aos tokens do design system ---- */
+/* Caderno do cliente (Trix) — out. 2026. */
+trix-editor.caderno-editor {
+    min-height: 26rem;
+    border: 1px solid theme('colors.borda');
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+}
+trix-editor.caderno-editor:focus {
+    outline: none;
+    border-color: theme('colors.verde.500');
+    box-shadow: 0 0 0 3px theme('colors.verde.100');
+}
+trix-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #fff;
+    padding-bottom: 0.25rem;
+}
+trix-toolbar .trix-button-row { flex-wrap: wrap; row-gap: 0.25rem; }
+.trix-content img { max-width: 100%; height: auto; border-radius: 0.375rem; }
+.trix-content h1 { font-size: 1.25rem; font-weight: 600; margin: 0.75rem 0 0.25rem; }
+
 .fc {
     --fc-border-color: theme('colors.borda');
     --fc-today-bg-color: theme('colors.verde.50');

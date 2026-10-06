@@ -3,6 +3,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import ptLocale from '@fullcalendar/core/locales/pt';
+import './caderno';
 
 // Ações que não devem mexer na posição da página (tirar/remover fotos): sem isto, o
 // re-render do Livewire — que remove do DOM o botão em foco — devolvia o técnico ao topo,

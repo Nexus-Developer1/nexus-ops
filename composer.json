@@ -13,7 +13,8 @@
         "laravel/tinker": "^2.10.1",
         "league/flysystem-aws-s3-v3": "^3.34",
         "livewire/livewire": "^3.0",
-        "spatie/icalendar-generator": "^3.3"
+        "spatie/icalendar-generator": "^3.3",
+        "symfony/html-sanitizer": "^7.4"
     },
     "require-dev": {
         "laravel/pail": "^1.2.2",

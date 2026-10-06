@@ -27,6 +27,26 @@
                 </dl>
             </section>
 
+            {{-- Caderno (out. 2026): o "OneNote" do cliente — separadores e páginas. --}}
+            <section class="cartao mt-5 p-6">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <h2 class="text-sm font-semibold text-texto-forte">Caderno <span class="text-texto-fraco">({{ $caderno->sum('paginas_count') }} {{ $caderno->sum('paginas_count') === 1 ? 'página' : 'páginas' }})</span></h2>
+                    <a href="{{ route('clientes.caderno', $cliente) }}" wire:navigate class="botao-secundario">Abrir caderno</a>
+                </div>
+                @if ($caderno->isNotEmpty())
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        @foreach ($caderno as $s)
+                            <a href="{{ route('clientes.caderno', ['cliente' => $cliente, 's' => $s->id]) }}" wire:navigate wire:key="cad-{{ $s->id }}"
+                                class="rounded-lg px-3 py-1.5 text-sm font-medium" style="background-color: {{ $s->cores()[0] }}; color: {{ $s->cores()[1] }};">
+                                {{ $s->nome }} <span class="text-xs opacity-60">{{ $s->paginas_count }}</span>
+                            </a>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="mt-3 text-sm text-texto-medio">Sem páginas.</p>
+                @endif
+            </section>
+
             {{-- Contratos --}}
             <section class="cartao mt-5 p-6">
                 <div class="flex items-center justify-between">
