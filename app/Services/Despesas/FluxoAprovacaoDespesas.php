@@ -89,16 +89,15 @@ class FluxoAprovacaoDespesas
         if (! self::podeAprovar($quem)) {
             throw new AuthorizationException('Sem permissão para aprovar despesas.');
         }
-        if ($registo->estado !== EstadoDespesa::Pendente) {
-            throw new \LogicException('Só despesas pendentes podem ser aprovadas ou rejeitadas.');
-        }
-
-        $registo->update([
-            'estado' => $aprovar ? EstadoDespesa::Aprovada : EstadoDespesa::Rejeitada,
-            'decidido_por' => $quem->id,
-            'decidido_em' => now(),
-            'motivo_rejeicao' => $aprovar ? null : trim((string) $motivo),
-        ]);
+        DB::transaction(function () use ($registo, $quem, $aprovar, $motivo) {
+            $this->trancarPendente($registo);
+            $registo->update([
+                'estado' => $aprovar ? EstadoDespesa::Aprovada : EstadoDespesa::Rejeitada,
+                'decidido_por' => $quem->id,
+                'decidido_em' => now(),
+                'motivo_rejeicao' => $aprovar ? null : trim((string) $motivo),
+            ]);
+        });
 
         Auditor::registar($aprovar ? 'despesa_aprovada' : 'despesa_rejeitada', $registo, array_filter([
             'total' => $registo->total(),
@@ -122,9 +121,7 @@ class FluxoAprovacaoDespesas
         if (! self::podeAprovar($quem)) {
             throw new AuthorizationException('Sem permissão para aprovar despesas.');
         }
-        if ($registo->estado !== EstadoDespesa::Pendente) {
-            throw new \LogicException('Só despesas pendentes podem ser aprovadas ou rejeitadas.');
-        }
+        $this->trancarPendente($registo, trancar: false); // falha cedo; a verificação que conta é a da transação
 
         $ids = $registo->despesas()->pluck('id')->map(fn ($id) => (int) $id)->all();
         $recusadas = collect($recusadas)->mapWithKeys(fn ($motivo, $id) => [(int) $id => trim((string) $motivo)]);
@@ -136,6 +133,7 @@ class FluxoAprovacaoDespesas
         }
 
         DB::transaction(function () use ($registo, $quem, $recusadas) {
+            $this->trancarPendente($registo);
             foreach ($recusadas as $id => $motivo) {
                 $registo->despesas()->whereKey($id)->update(['recusada' => true, 'motivo_recusa' => mb_substr($motivo, 0, 500)]);
             }
@@ -161,6 +159,23 @@ class FluxoAprovacaoDespesas
             // A contabilidade trata do que é para pagar: recebe só as linhas aprovadas.
             paraContabilidade: new DespesaDecidida($this->instantaneo($registo, soAprovadas: true)),
         );
+    }
+
+    /**
+     * Só se decide o que ainda está PENDENTE na BD — relido e trancado (FOR UPDATE) dentro da
+     * transação da decisão. Antes conferia-se o estado em memória: dois aprovadores ao mesmo
+     * tempo (ou dois cliques) decidiam os dois, com emails a dobrar, e uma aprovação total por
+     * cima de uma parcial deixava «Aprovada» com linhas recusadas (28.ª revisão de segurança).
+     *
+     * @throws \LogicException
+     */
+    private function trancarPendente(RegistoDespesa $registo, bool $trancar = true): void
+    {
+        $consulta = RegistoDespesa::whereKey($registo->getKey())->toBase(); // texto da BD, sem cast
+        $estado = ($trancar ? $consulta->lockForUpdate() : $consulta)->value('estado');
+        if ($estado !== EstadoDespesa::Pendente->value) {
+            throw new \LogicException('Só despesas pendentes podem ser aprovadas ou rejeitadas.');
+        }
     }
 
     // Decisão: o MESMO email para quem criou, aprovador e financeiro — e, se foi aprovada, a

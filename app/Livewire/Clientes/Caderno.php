@@ -235,19 +235,23 @@ class Caderno extends Component
         if (strlen($html) > LimpezaHtmlCaderno::MAX_BYTES) {
             return ['ok' => false, 'motivo' => 'A página tem texto demais — divida-a em duas.'];
         }
-        if ($pagina->versao !== $versao) {
-            $quem = $pagina->autorAlteracao?->nome ?? 'outra pessoa';
+        // A versão confere-se NA gravação (UPDATE … WHERE versao = ?), não antes: duas gravações
+        // ao mesmo tempo sobre a mesma versão passavam as duas na verificação e a segunda
+        // escrevia por cima da primeira (28.ª revisão de segurança). Só uma acerta.
+        $gravou = $pagina->versao === $versao && CadernoPagina::whereKey($pagina->id)->where('versao', $versao)->update([
+            'conteudo' => app(LimpezaHtmlCaderno::class)->limpar($html),
+            'versao' => $versao + 1,
+            'atualizado_por' => auth()->id(),
+            'updated_at' => now(),
+        ]) === 1;
+
+        if (! $gravou) {
+            $quem = $pagina->fresh()?->autorAlteracao?->nome ?? 'outra pessoa';
 
             return ['ok' => false, 'motivo' => "Esta página foi alterada por {$quem} entretanto. Recarregue para ver a versão mais recente — o que escreveu agora não foi gravado."];
         }
 
-        $pagina->update([
-            'conteudo' => app(LimpezaHtmlCaderno::class)->limpar($html),
-            'versao' => $pagina->versao + 1,
-            'atualizado_por' => auth()->id(),
-        ]);
-
-        return ['ok' => true, 'versao' => $pagina->versao];
+        return ['ok' => true, 'versao' => $versao + 1];
     }
 
     /**

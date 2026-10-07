@@ -69,11 +69,14 @@ class Ficha extends Component
         }
 
         try {
-            $fluxo->decidirParcial($this->registo, auth()->user(),
-                $recusadas->mapWithKeys(fn ($id) => [$id => (string) $this->motivosRecusa[$id]])->all());
+            $decidiu = $this->decidirOuAvisar(fn () => $fluxo->decidirParcial($this->registo, auth()->user(),
+                $recusadas->mapWithKeys(fn ($id) => [$id => (string) $this->motivosRecusa[$id]])->all()));
         } catch (\InvalidArgumentException $e) {
             $this->addError('aprovarLinha', $e->getMessage());
 
+            return;
+        }
+        if (! $decidiu) {
             return;
         }
 
@@ -91,7 +94,9 @@ class Ficha extends Component
             return;
         }
 
-        $fluxo->decidir($this->registo, auth()->user(), aprovar: true);
+        if (! $this->decidirOuAvisar(fn () => $fluxo->decidir($this->registo, auth()->user(), aprovar: true))) {
+            return;
+        }
         $this->registo->refresh();
         session()->flash('sucesso', 'Despesa aprovada — o colaborador, o financeiro e a contabilidade foram avisados por email.');
     }
@@ -111,10 +116,31 @@ class Ficha extends Component
             return;
         }
 
-        $fluxo->decidir($this->registo, auth()->user(), aprovar: false, motivo: $this->motivo);
+        if (! $this->decidirOuAvisar(fn () => $fluxo->decidir($this->registo, auth()->user(), aprovar: false, motivo: $this->motivo))) {
+            return;
+        }
         $this->registo->refresh();
         $this->motivo = '';
         session()->flash('sucesso', 'Despesa rejeitada — o colaborador e o financeiro foram avisados por email.');
+    }
+
+    // Outra pessoa decidiu no mesmo instante: o fluxo recusa (o registo já não está pendente)
+    // e aqui mostra-se o aviso em vez de um erro.
+    private function decidirOuAvisar(\Closure $decisao): bool
+    {
+        try {
+            $decisao();
+
+            return true;
+        } catch (\LogicException $e) {
+            if ($e instanceof \InvalidArgumentException) {
+                throw $e;
+            }
+            $this->registo->refresh();
+            session()->flash('erro', 'Esta despesa já foi decidida.');
+
+            return false;
+        }
     }
 
     public function render()
