@@ -78,13 +78,14 @@ class RelatorioDataIntervencaoTest extends TestCase
         $this->assertMatchesRegularExpression('/Documento gerado em 31\/08\/2026/', $html);
     }
 
-    public function test_relatorio_criado_pelo_gerador_leva_a_data_da_intervencao(): void
+    public function test_relatorio_numerado_leva_a_data_da_intervencao(): void
     {
         Carbon::setTestNow('2026-08-31 10:00:00');
         $i = Intervencao::create(['equipamento_id' => $this->equipamento()->id, 'tipo' => 'preventiva',
             'estado' => 'concluida', 'data_inicio' => '2026-09-02', 'data_fim' => '2026-09-02']);
 
-        $r = app(GeradorRelatorio::class)->criarParaIntervencao($i);
+        $r = $i->garantirRascunho();
+        app(GeradorRelatorio::class)->atribuirNumeroEGravar($r);
 
         $this->assertSame('2026-09-02', $r->data->toDateString());
         $this->assertNotNull($r->numero);

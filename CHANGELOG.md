@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-10-07
+
+- 🧹 **Limpeza de código morto.** Varredura à aplicação inteira (classes, vistas, métodos, constantes, propriedades, JS, CSS, rotas, configuração e dependências). Saiu: `GeradorRelatorio::criarParaIntervencao()` (nada o chamava — o relatório nasce no editor com `garantirRascunho()` e é numerado com `atribuirNumeroEGravar()`; os testes da numeração passam a usar esse caminho real e o teste que só servia o método saiu), `FeriadosPortugal::eFeriado()` (só um teste o usava), as credenciais de exemplo do Laravel para Postmark, Resend, SES e Slack em `config/services.php` (o email sai pelo Microsoft Graph; o MinIO continua a ler as `AWS_*` no `filesystems.php`) e os comentários que ainda descreviam o feed ICS de subscrição, removido a 2026-09-04. Ficou de propósito o que parecia morto mas não é: comandos chamados pela assinatura (`mail:teste` é ferramenta de diagnóstico), as partes da ficha UPS incluídas dinamicamente, os redirecionamentos de caminhos antigos (`/ativos/…` das etiquetas QR já coladas, links de emails e favoritos) e os casos dos enums guardados na BD. Sem alterações de comportamento. `optimize`. `hash`
+
 ## 2026-10-06
 
 - 🎨 **Caderno — a lista de páginas mostra o equipamento ligado.** Em vez de só «· equipamento», cada página ligada a um equipamento mostra por baixo do título a **marca, o modelo e o nº de série** (ex.: «Riello S3T 20 · S/N AC38UT887690001»), com um ícone; a data da última alteração passa para a linha seguinte. O mesmo texto é usado no campo «Equipamento» da página. `optimize`. +1 verificação no teste. `71b5b31`

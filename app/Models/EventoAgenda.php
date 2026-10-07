@@ -188,8 +188,8 @@ class EventoAgenda extends Model
     }
 
     // Nomes a mostrar: principal (conta ligada ou nome em texto livre) + adicionais.
-    // Resumo do evento como aparece no BLOCO do calendário e no TÍTULO no Outlook (feed,
-    // convites, calendário partilhado): "tipo · cliente · técnicos" — quem olha para a
+    // Resumo do evento como aparece no BLOCO do calendário e no TÍTULO no Outlook
+    // (convites, calendário partilhado): "tipo · cliente · técnicos" — quem olha para a
     // semana vê logo o quê, para quem e quem vai (pedido da equipa, set. 2026).
     public function resumoCompleto(): string
     {
@@ -222,7 +222,7 @@ class EventoAgenda extends Model
         return $siglas->isEmpty() ? null : $siglas->implode('/');
     }
 
-    // Título no Outlook (convites, feed e calendário partilhado): as SIGLAS à frente —
+    // Título no Outlook (convites e calendário partilhado): as SIGLAS à frente —
     // "PB · serviço · cliente · técnicos".
     public function resumoOutlook(): string
     {

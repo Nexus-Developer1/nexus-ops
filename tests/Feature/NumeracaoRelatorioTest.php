@@ -68,21 +68,11 @@ class NumeracaoRelatorioTest extends TestCase
         }
 
         $interv = Intervencao::create(['equipamento_id' => $this->equip->id, 'tipo' => 'preventiva', 'estado' => 'concluida', 'data_inicio' => now()]);
-        $relatorio = app(GeradorRelatorio::class)->criarParaIntervencao($interv);
+        $relatorio = $interv->garantirRascunho();
+        $relatorio->estado = EstadoRelatorio::Finalizado;
+        app(GeradorRelatorio::class)->atribuirNumeroEGravar($relatorio);
 
         $this->assertTrue($relatorio->exists);                          // gravou sem rebentar
         $this->assertSame(sprintf('%d/0011', $ano), $relatorio->numero); // acima de tudo o que existe
-    }
-
-    public function test_relatorio_existente_nao_regenera_numero(): void
-    {
-        $ano = now()->year;
-        $existente = $this->relatorioComNumero(sprintf('%d/0005', $ano));
-        $interv = $existente->intervencao;
-
-        // Chamar de novo para a mesma intervenção devolve o mesmo relatório/número.
-        $r = app(GeradorRelatorio::class)->criarParaIntervencao($interv);
-        $this->assertSame($existente->id, $r->id);
-        $this->assertSame(sprintf('%d/0005', $ano), $r->numero);
     }
 }

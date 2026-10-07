@@ -2,37 +2,16 @@
 
 namespace App\Services;
 
-use App\Enums\EstadoRelatorio;
-use App\Models\Intervencao;
 use App\Models\Relatorio;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
-// Cria o relatório de uma intervenção e gera o respetivo PDF no object storage.
+// Numeração dos relatórios e geração do PDF no object storage. O relatório nasce no editor
+// (Intervencao::garantirRascunho) e é numerado aqui ao finalizar.
 class GeradorRelatorio
 {
-    // Cria (ou reutiliza) o relatório da intervenção com numeração sequencial.
-    public function criarParaIntervencao(Intervencao $intervencao): Relatorio
-    {
-        // Já existe (qualquer estado) → devolve tal como está (não regenera).
-        if ($existente = $intervencao->relatorio()->first()) {
-            return $existente;
-        }
-
-        // Nenhum → cria a base (ponto único, à prova de corrida) e finaliza com número.
-        $relatorio = $intervencao->garantirRascunho();
-        if (filled($relatorio->numero)) {
-            return $relatorio; // a corrida já finalizou entretanto
-        }
-
-        $relatorio->estado = EstadoRelatorio::Finalizado;
-        $this->atribuirNumeroEGravar($relatorio);
-
-        return $relatorio;
-    }
-
     // Numeração sequencial por ano (ex.: 2026/0042). Usa o MAIOR número já usado no ano
     // — INCLUINDO soft-deleted — e soma 1. Nunca reutiliza um número, mesmo após eliminações
     // (um número "queimado" não volta; lacunas são aceitáveis). Global — ignora os global

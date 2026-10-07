@@ -18,9 +18,8 @@
                         @endforeach
                     </select>
 
-                    {{-- Manda para o PRÓPRIO (o email da conta com sessão iniciada) o endereço de
-                         subscrição da agenda no Outlook. Nunca pergunta o destinatário: o URL é o
-                         segredo do feed. --}}
+                    {{-- Manda para o PRÓPRIO (o email da conta com sessão iniciada) o convite de
+                         partilha do calendário no Outlook. Nunca pergunta o destinatário. --}}
                     <button type="button" wire:click="enviarAcessoOutlook" wire:loading.attr="disabled" wire:target="enviarAcessoOutlook"
                             class="botao-secundario w-full sm:w-auto"
                             title="Enviar para o seu email o acesso a esta agenda no Outlook">
@@ -344,7 +343,7 @@
                             </div>
 
                             {{-- Notas livres: morada, contactos no local, indicações de acesso, o que levar…
-                                 Vão no detalhe, no email/convite aos técnicos, no feed e no calendário partilhado. --}}
+                                 Vão no detalhe, no email/convite aos técnicos e no calendário partilhado. --}}
                             <div>
                                 <label class="campo-label" for="notas-evento">Notas</label>
                                 <textarea id="notas-evento" wire:model="formNotas" rows="3" class="campo-input" placeholder="Contactos, indicações de acesso…"></textarea>
@@ -376,7 +375,7 @@
                             </div>
 
                             {{-- Técnicos: CONTAS de utilizador (mesma lista do relatório), 1 ou mais. Ligar
-                                 a conta ativa o feed iCal e as notificações. --}}
+                                 a conta ativa os convites e as notificações. --}}
                             <div>
                                 <label class="campo-label">Técnicos <span class="text-perigo-500">*</span></label>
                                 <div class="space-y-1 rounded-lg border border-borda px-4 py-3">

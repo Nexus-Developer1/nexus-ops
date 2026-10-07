@@ -158,8 +158,8 @@ class Calendario extends Component
 
     // Técnicos do evento: CONTAS de utilizador (mesma lista do relatório) — um evento pode ter
     // 1 ou mais. O 1.º (por ordem alfabética) fica como principal em tecnico_id (cor do evento);
-    // os restantes vão para a pivot evento_tecnicos. Todos contam para conflitos,
-    // feed iCal.
+    // os restantes vão para a pivot evento_tecnicos. Todos contam para conflitos e recebem
+    // o convite por email.
     /** @var list<int|string> */
     public array $formTecnicoIds = [];
 

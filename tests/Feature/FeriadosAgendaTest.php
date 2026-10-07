@@ -76,7 +76,6 @@ class FeriadosAgendaTest extends TestCase
 
         $this->assertNull($this->feriados()->nome($carnaval));                 // não é feriado
         $this->assertSame('Carnaval (tolerância)', $this->feriados()->nome($carnaval, incluirTolerancia: true));
-        $this->assertFalse($this->feriados()->eFeriado($carnaval));
 
         $this->criarEvento($carnaval)->assertHasNoErrors();
         $this->assertSame(1, EventoAgenda::count());

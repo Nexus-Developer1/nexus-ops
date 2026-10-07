@@ -163,8 +163,8 @@ Route::middleware(['auth', 'papel:admin,tecnico,financeiro'])->group(function ()
 
 // ---- Gestão de utilizadores ----
 // Já não há ecrã local: quem manda nas permissões é o PORTAL, e é ele que decide o que
-// cada pessoa pode ver quando lá chega. Aqui só fica o encaminhamento (favoritos antigos
-// e o nome da rota, que ainda é usado), aberto a admins e técnicos.
+// cada pessoa pode ver quando lá chega. Aqui só fica o encaminhamento (favoritos antigos),
+// aberto a admins e técnicos.
 Route::middleware(['auth', 'papel:admin,tecnico'])->group(function () {
     Route::get('/utilizadores/adicionar', fn () => redirect()->away(
         rtrim(config('app.portal_url'), '/').'/gestao/utilizadores'

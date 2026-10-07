@@ -20,11 +20,6 @@ use Spatie\IcalendarGenerator\Enums\EventStatus;
 //  (Suporte@nxs.pt), ATTENDEE = o técnico. Datas SEMPRE com TZID Europe/Lisbon (nada de horas
 //  flutuantes nem UTC "Z" — o Outlook mostra a hora certa em qualquer PC).
 //
-//  FEED (METHOD:PUBLISH) — subscrito no Outlook, só leitura, refresh lento: janela [-30, +90]
-//  dias, eventos apagados há menos de 30 dias como STATUS:CANCELLED (o Outlook risca-os em vez
-//  de os deixar órfãos), e SEM os eventos em que o próprio subscritor é convidado (esses já lhe
-//  chegam por convite — senão via-os a dobrar). Campos filtrados: só o essencial.
-//
 // O VEVENT/VCALENDAR é do spatie/icalendar-generator. O pacote não fala METHOD/ORGANIZER/
 // ATTENDEE (é feito para feeds), por isso o convite acrescenta essas três propriedades ao
 // calendário gerado — em vez de montar o ficheiro inteiro à mão.
@@ -49,7 +44,7 @@ class GeradorIcs
     {
         $tz = new DateTimeZone(self::TZ);
 
-        // Mesmo título do feed/calendário partilhado: siglas · tipo · cliente · técnicos.
+        // Mesmo título do calendário partilhado: siglas · tipo · cliente · técnicos.
         $titulo = implode(' · ', array_filter([
             EventoAgenda::siglas($e['tecnicos_nomes'] ?? null),
             trim((string) $e['titulo']),

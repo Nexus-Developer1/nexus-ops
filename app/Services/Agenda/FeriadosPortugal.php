@@ -89,11 +89,6 @@ class FeriadosPortugal
         return $registo['nome'];
     }
 
-    public function eFeriado(Carbon|string $data): bool
-    {
-        return $this->nome($data) !== null;
-    }
-
     /**
      * Feriados no intervalo pedido (fim exclusivo, como o calendário pede as coisas).
      *
