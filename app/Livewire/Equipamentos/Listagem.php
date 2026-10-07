@@ -5,6 +5,7 @@ namespace App\Livewire\Equipamentos;
 use App\Enums\EstadoEquipamento;
 use App\Enums\TipoEquipamento;
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\LembraPagina;
 use App\Models\Equipamento;
 use App\Services\Auditor;
 use Illuminate\Database\Query\Builder;
@@ -18,6 +19,7 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use ApenasEquipa;
+    use LembraPagina;
     use WithPagination;
 
     // Filtros e pesquisa vivem na SESSÃO (não no URL): entrar numa ficha e voltar à lista
@@ -201,7 +203,7 @@ class Listagem extends Component
         };
 
         // 10 por página (pedido da equipa): mais do que isso obriga a um scroll enorme.
-        $equipamentos = $equipamentos->paginate(10);
+        $equipamentos = $this->paginarLembrando($equipamentos, 10);
         // Nº de bancos associados SÓ das 10 linhas da página. Com withCount na consulta, a base
         // de dados contava-o para todos os equipamentos que salta até à página pedida — a última
         // (1798) levava ~30 s e a página ficava «presa» (set. 2026). Assim, 40 ms.

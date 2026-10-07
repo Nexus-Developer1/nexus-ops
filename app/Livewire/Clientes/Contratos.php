@@ -3,6 +3,7 @@
 namespace App\Livewire\Clientes;
 
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\LembraPagina;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use Livewire\Attributes\Layout;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 class Contratos extends Component
 {
     use ApenasEquipa;
+    use LembraPagina;
     use WithPagination;
 
     public Cliente $cliente;
@@ -34,12 +36,12 @@ class Contratos extends Component
 
     public function render()
     {
-        $contratos = Contrato::query()
+        $consulta = Contrato::query()
             ->where('cliente_id', $this->cliente->id)
             ->with('modeloFaturacao')
             ->when($this->pesquisa, fn ($q) => $q->where('numero', 'ilike', '%'.$this->pesquisa.'%'))
-            ->orderByDesc('data_inicio')
-            ->paginate(20);
+            ->orderByDesc('data_inicio');
+        $contratos = $this->paginarLembrando($consulta, 20);
 
         return view('livewire.clientes.contratos', [
             'contratos' => $contratos,

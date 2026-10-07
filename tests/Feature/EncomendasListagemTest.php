@@ -52,9 +52,9 @@ class EncomendasListagemTest extends TestCase
             ->assertDontSee('DOSSIE-25')
             ->set('pesquisa', 'DOSSIE-2')                 // filtro → página 1
             ->assertSee('DOSSIE-25');
-        $this->assertSame(1, session('encomendas.pagina'));
+        $this->assertSame(1, session('pagina.'.Listagem::class));
 
-        session(['encomendas.pagina' => 9]);              // já não existe (a pesquisa ficou: 1 página) → a última
+        session(['pagina.'.Listagem::class => 9]);              // já não existe (a pesquisa ficou: 1 página) → a última
         Livewire::actingAs($admin)->test(Listagem::class)
             ->assertSee('DOSSIE-25')
             ->assertSee('DOSSIE-20');

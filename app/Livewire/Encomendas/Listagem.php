@@ -3,6 +3,7 @@
 namespace App\Livewire\Encomendas;
 
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\LembraPagina;
 use App\Models\Dossier;
 use App\Services\Erp\LeituraErpAoVivo;
 use Livewire\Attributes\Layout;
@@ -17,6 +18,7 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use ApenasEquipa;
+    use LembraPagina;
     use WithPagination;
 
     #[Session]
@@ -40,16 +42,6 @@ class Listagem extends Component
     // dossiê, a subir ou a descer, aberto ou fechado. '' = mais recentes (a ordem normal).
     #[Session]
     public string $ordem = ''; // '' | 'total_asc' | 'total_desc'
-
-    // A página também fica na sessão, como os filtros (pedido da equipa, out. 2026): abrir uma
-    // proposta na página 13 e carregar em «Voltar» (que vem sem ?page) levava à página 1. Um
-    // ?page explícito no endereço manda sempre.
-    public function mount(): void
-    {
-        if (! request()->has('page') && ($pagina = (int) session('encomendas.pagina', 1)) > 1) {
-            $this->setPage($pagina);
-        }
-    }
 
     public function updatingPesquisa(): void
     {
@@ -83,7 +75,7 @@ class Listagem extends Component
 
     public function render(LeituraErpAoVivo $phc)
     {
-        $dossiers = Dossier::query()
+        $consulta = Dossier::query()
             ->when($this->tipo !== '', fn ($q) => $q->where('ndos', (int) $this->tipo))
             ->when($this->estado === 'aberta', fn ($q) => $q->where('fechada', false))
             ->when($this->estado === 'fechada', fn ($q) => $q->where('fechada', true))
@@ -104,16 +96,8 @@ class Listagem extends Component
             // Mais recentes primeiro (ano desc, depois nº do dossiê desc); id desestabiliza empates.
             ->orderByDesc('ano')
             ->orderByDesc('obrano')
-            ->orderByDesc('id')
-            ->paginate(10); // 10 por página (pedido da equipa)
-
-        // Página fora do fim (os filtros mudaram entretanto ou o PHC apagou dossiês) → a última.
-        if ($dossiers->isEmpty() && $dossiers->currentPage() > 1) {
-            $this->setPage($dossiers->lastPage());
-
-            return $this->render($phc);
-        }
-        session(['encomendas.pagina' => $dossiers->currentPage()]);
+            ->orderByDesc('id');
+        $dossiers = $this->paginarLembrando($consulta, 10); // 10 por página (pedido da equipa)
 
         // Totais AO VIVO das linhas desta página, numa só leitura ao PHC: o guardado é o da
         // última sincronização (8h/13h/19h) e um dossiê alterado depois dela aparecia com o

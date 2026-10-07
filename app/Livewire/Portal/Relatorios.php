@@ -4,6 +4,7 @@ namespace App\Livewire\Portal;
 
 use App\Enums\EstadoRelatorio;
 use App\Livewire\Concerns\ApenasCliente;
+use App\Livewire\Concerns\LembraPagina;
 use App\Models\Relatorio;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -17,15 +18,16 @@ use Livewire\WithPagination;
 class Relatorios extends Component
 {
     use ApenasCliente;
+    use LembraPagina;
     use WithPagination;
 
     public function render()
     {
-        $relatorios = Relatorio::query()
+        $consulta = Relatorio::query()
             ->where('estado', EstadoRelatorio::Enviado)
             ->with('intervencao.equipamento.local')
-            ->orderByDesc('data')
-            ->paginate(10);
+            ->orderByDesc('data');
+        $relatorios = $this->paginarLembrando($consulta, 10);
 
         return view('livewire.portal.relatorios', ['relatorios' => $relatorios]);
     }

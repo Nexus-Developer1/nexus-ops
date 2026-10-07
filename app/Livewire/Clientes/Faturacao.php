@@ -3,6 +3,7 @@
 namespace App\Livewire\Clientes;
 
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\LembraPagina;
 use App\Models\Cliente;
 use App\Models\LinhaFatura;
 use Livewire\Attributes\Layout;
@@ -16,6 +17,7 @@ use Livewire\WithPagination;
 class Faturacao extends Component
 {
     use ApenasEquipa;
+    use LembraPagina;
     use WithPagination;
 
     public Cliente $cliente;
@@ -35,7 +37,7 @@ class Faturacao extends Component
 
     public function render()
     {
-        $linhas = LinhaFatura::query()
+        $consulta = LinhaFatura::query()
             ->where('cliente_no', $this->cliente->id_erp)
             ->when($this->pesquisa, function ($q) {
                 $termo = '%'.$this->pesquisa.'%';
@@ -45,8 +47,8 @@ class Faturacao extends Component
                         ->orWhere('series', 'ilike', $termo);
                 });
             })
-            ->orderByDesc('data')
-            ->paginate(25);
+            ->orderByDesc('data');
+        $linhas = $this->paginarLembrando($consulta, 25);
 
         return view('livewire.clientes.faturacao', [
             'linhas' => $linhas,

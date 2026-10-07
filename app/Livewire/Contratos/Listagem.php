@@ -4,6 +4,7 @@ namespace App\Livewire\Contratos;
 
 use App\Enums\EstadoContrato;
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\LembraPagina;
 use App\Models\Contrato;
 use App\Services\Auditor;
 use Livewire\Attributes\Layout;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use ApenasEquipa;
+    use LembraPagina;
     use WithPagination;
 
     #[Session]
@@ -52,7 +54,7 @@ class Listagem extends Component
 
     public function render()
     {
-        $contratos = Contrato::query()
+        $consulta = Contrato::query()
             ->with('cliente', 'modeloFaturacao')
             ->when($this->estado === 'a_expirar', fn ($q) => $q->aExpirar())
             ->when($this->estado && $this->estado !== 'a_expirar', fn ($q) => $q->where('estado', $this->estado))
@@ -63,8 +65,8 @@ class Listagem extends Component
                         ->orWhereHas('cliente', fn ($q) => $q->where('nome', 'ilike', $termo));
                 });
             })
-            ->orderByDesc('data_inicio')
-            ->paginate(10);
+            ->orderByDesc('data_inicio');
+        $contratos = $this->paginarLembrando($consulta, 10);
         // Nº de equipamentos só dos contratos DESTA página (como nos equipamentos, set. 2026: com
         // withCount a base de dados contava-o para todos os que salta até à página pedida).
         $contratos->getCollection()->loadCount('equipamentos');

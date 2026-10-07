@@ -3,6 +3,7 @@
 namespace App\Livewire\Clientes;
 
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\LembraPagina;
 use App\Models\Cliente;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Session;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 class Index extends Component
 {
     use ApenasEquipa;
+    use LembraPagina;
     use WithPagination;
 
     // Expressão pura (sem extensão) para ordenar por nome ignorando acentos, maiúsculas e espaços.
@@ -69,7 +71,7 @@ class Index extends Component
 
     public function render()
     {
-        $clientes = Cliente::query()
+        $consulta = Cliente::query()
             ->when($this->pesquisa, function ($q) {
                 $termo = '%'.$this->pesquisa.'%';
                 // Pesquisa parcial e case-insensitive por nome, NIF e email.
@@ -80,8 +82,8 @@ class Index extends Component
                 });
             })
             ->orderByRaw($this->clausulaOrdenacao())
-            ->orderBy('id') // desempate estável (paginação consistente)
-            ->paginate(10); // 10 por página (pedido da equipa)
+            ->orderBy('id'); // desempate estável (paginação consistente)
+        $clientes = $this->paginarLembrando($consulta, 10); // 10 por página (pedido da equipa)
 
         return view('livewire.clientes.index', [
             'clientes' => $clientes,

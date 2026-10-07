@@ -130,7 +130,16 @@ class CadernoClienteTest extends TestCase
         $p = CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'SPI'])->paginas()->create(['titulo' => 'Manuais']);
 
         $this->caderno()
-            ->set('ficheiro', UploadedFile::fake()->create('manual S3T.pdf', 300, 'application/pdf'))
+            // Com conteúdo de PDF a sério: o mimes:pdf olha para o conteúdo, e um ficheiro falso
+            // vazio não passa por PDF (falhava conforme a versão do fileinfo).
+            ->set('ficheiro', UploadedFile::fake()->createWithContent('manual S3T.pdf', "%PDF-1.4
+1 0 obj
+<<>>
+endobj
+trailer
+<<>>
+%%EOF
+"))
             ->call('guardarAnexo', $p->id)
             ->assertReturned(fn ($r) => $r['ok'] === true && preg_match('#^/anexos/\d+$#', $r['url']));
 

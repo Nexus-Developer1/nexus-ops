@@ -3,6 +3,7 @@
 namespace App\Livewire\Clientes;
 
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\LembraPagina;
 use App\Models\Cliente;
 use App\Models\Relatorio;
 use Livewire\Attributes\Layout;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 class Relatorios extends Component
 {
     use ApenasEquipa;
+    use LembraPagina;
     use WithPagination;
 
     public Cliente $cliente;
@@ -35,12 +37,12 @@ class Relatorios extends Component
     public function render()
     {
         // Cadeia relatorio -> intervencao -> equipamento -> local -> cliente.
-        $relatorios = Relatorio::query()
+        $consulta = Relatorio::query()
             ->whereHas('intervencao.equipamento.local', fn ($q) => $q->where('cliente_id', $this->cliente->id))
             ->with('intervencao.equipamento')
             ->when($this->pesquisa, fn ($q) => $q->where('numero', 'ilike', '%'.$this->pesquisa.'%'))
-            ->orderByDesc('data')
-            ->paginate(20);
+            ->orderByDesc('data');
+        $relatorios = $this->paginarLembrando($consulta, 20);
 
         return view('livewire.clientes.relatorios', [
             'relatorios' => $relatorios,

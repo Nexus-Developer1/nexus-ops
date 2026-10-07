@@ -3,6 +3,7 @@
 namespace App\Livewire\Clientes;
 
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\LembraPagina;
 use App\Models\Cliente;
 use App\Models\Equipamento;
 use Livewire\Attributes\Layout;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 class Equipamentos extends Component
 {
     use ApenasEquipa;
+    use LembraPagina;
     use WithPagination;
 
     public Cliente $cliente;
@@ -44,7 +46,7 @@ class Equipamentos extends Component
 
     public function render()
     {
-        $equipamentos = Equipamento::query()
+        $consulta = Equipamento::query()
             ->whereHas('local', fn ($q) => $q->where('cliente_id', $this->cliente->id))
             ->with('local')
             ->when($this->familia !== '', fn ($q) => $q->where('familia', $this->familia))
@@ -56,8 +58,8 @@ class Equipamentos extends Component
                         ->orWhere('fabricante', 'ilike', $termo);
                 });
             })
-            ->orderBy('id')
-            ->paginate(20);
+            ->orderBy('id');
+        $equipamentos = $this->paginarLembrando($consulta, 20);
 
         // Chips das famílias que ESTE cliente tem (código → nome PHC + contagem), por nome.
         $familias = Equipamento::query()

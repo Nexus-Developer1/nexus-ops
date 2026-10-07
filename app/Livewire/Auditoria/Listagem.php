@@ -3,6 +3,7 @@
 namespace App\Livewire\Auditoria;
 
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\LembraPagina;
 use App\Models\Auditoria;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -16,6 +17,7 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use ApenasEquipa;
+    use LembraPagina;
     use WithPagination;
 
     #[Url]
@@ -44,7 +46,7 @@ class Listagem extends Component
         // Repetido em cada render (não só no mount): cobre também as ações Livewire.
         abort_unless((bool) auth()->user()?->ehAdmin(), 403);
 
-        $registos = Auditoria::query()
+        $consulta = Auditoria::query()
             ->with('utilizador')
             ->when($this->acao, fn ($q) => $q->where('acao', $this->acao))
             ->when($this->pesquisa, function ($q) {
@@ -57,8 +59,8 @@ class Listagem extends Component
                     ->orWhere('entidade_tipo', 'ilike', $termo)
                     ->when(ctype_digit($numero), fn ($q) => $q->orWhere('entidade_id', (int) $numero)));
             })
-            ->orderByDesc('id')
-            ->paginate(25);
+            ->orderByDesc('id');
+        $registos = $this->paginarLembrando($consulta, 25);
 
         // Ações distintas existentes (para o filtro).
         $acoes = Auditoria::query()->distinct()->orderBy('acao')->pluck('acao');

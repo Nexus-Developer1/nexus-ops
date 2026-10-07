@@ -3,6 +3,7 @@
 namespace App\Livewire\Portal;
 
 use App\Livewire\Concerns\ApenasCliente;
+use App\Livewire\Concerns\LembraPagina;
 use App\Models\Equipamento;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -14,6 +15,7 @@ use Livewire\WithPagination;
 class Equipamentos extends Component
 {
     use ApenasCliente;
+    use LembraPagina;
     use WithPagination;
 
     #[Url]
@@ -26,14 +28,14 @@ class Equipamentos extends Component
 
     public function render()
     {
-        $equipamentos = Equipamento::query()
+        $consulta = Equipamento::query()
             ->with('local')
             ->when($this->pesquisa, function ($q) {
                 $termo = '%'.$this->pesquisa.'%';
                 $q->where(fn ($q) => $q->where('numero_serie', 'ilike', $termo)->orWhere('modelo', 'ilike', $termo));
             })
-            ->orderBy('id')
-            ->paginate(10);
+            ->orderBy('id');
+        $equipamentos = $this->paginarLembrando($consulta, 10);
 
         return view('livewire.portal.equipamentos', ['equipamentos' => $equipamentos]);
     }

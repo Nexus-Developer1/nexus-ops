@@ -4,6 +4,7 @@ namespace App\Livewire\Relatorios;
 
 use App\Enums\EstadoRelatorio;
 use App\Livewire\Concerns\ApenasEquipa;
+use App\Livewire\Concerns\LembraPagina;
 use App\Models\Relatorio;
 use App\Services\Auditor;
 use Illuminate\Database\Query\Builder;
@@ -17,6 +18,7 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use ApenasEquipa;
+    use LembraPagina;
     use WithPagination;
 
     // Expressão pura para ordenar pelo nome do cliente ignorando acentos/maiúsculas/espaços
@@ -147,7 +149,7 @@ class Listagem extends Component
         };
 
         return view('livewire.relatorios.listagem', [
-            'relatorios' => $query->paginate(10),
+            'relatorios' => $this->paginarLembrando($query, 10),
             'estados' => EstadoRelatorio::cases(),
             'ordenacoes' => $this->ordenacoes(),
         ]);

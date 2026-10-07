@@ -4,6 +4,7 @@ namespace App\Livewire\Despesas;
 
 use App\Enums\EstadoDespesa;
 use App\Livewire\Concerns\AcessoDespesas;
+use App\Livewire\Concerns\LembraPagina;
 use App\Models\Despesa;
 use App\Models\RegistoDespesa;
 use App\Models\User;
@@ -17,6 +18,7 @@ use Livewire\WithPagination;
 class Listagem extends Component
 {
     use AcessoDespesas;
+    use LembraPagina;
     use WithPagination;
 
     #[Session]
@@ -116,7 +118,7 @@ class Listagem extends Component
         // em primeiro lugar. O aviso em cima diz que há despesas por aprovar; se o período ou a
         // categoria as escondessem, a pessoa via o aviso e uma lista vazia (out. 2026).
         $pendente = EstadoDespesa::Pendente->value;
-        $registos = RegistoDespesa::query()
+        $consulta = RegistoDespesa::query()
             ->with(['colaborador', 'despesas'])
             ->where(fn ($q) => $q
                 ->whereHas('despesas', function ($q) {
@@ -125,8 +127,8 @@ class Listagem extends Component
                 })
                 ->orWhere('estado', $pendente))
             ->orderByRaw('case when estado = ? then 0 else 1 end', [$pendente])
-            ->orderByDesc('id')
-            ->paginate(12);
+            ->orderByDesc('id');
+        $registos = $this->paginarLembrando($consulta, 12);
         // Quantas linhas trazem digitalizações (decide o link "Recibo"), numa só consulta e só
         // para os registos DESTA página — como nos equipamentos (set. 2026).
         $registos->getCollection()->loadCount(['despesas as linhas_com_recibos_count' => fn ($q) => $q->has('anexos')]);
