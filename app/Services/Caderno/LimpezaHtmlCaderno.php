@@ -5,17 +5,22 @@ namespace App\Services\Caderno;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizer;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
 
-// Limpa o HTML das páginas do caderno ANTES de gravar (e de mostrar). O conteúdo vem do
-// browser — um pedido feito à mão pode trazer o que quiser —, por isso fica só o que o editor
-// (Trix) produz: blocos, negrito/itálico/riscado, títulos, citações, código, listas, ligações
-// http(s)/mailto e IMAGENS/FICHEIROS SÓ DOS ANEXOS desta aplicação (/anexos/{id}). Sem scripts,
-// estilos, eventos (onerror…), iframes, nem imagens de fora (que serviam para seguir quem abre a
-// página). Os dados de cada anexo que o Trix guarda na <figure> (data-trix-attachment: nome,
-// tamanho, tipo, endereço) são refeitos aqui só com os campos conhecidos e endereços /anexos/{id}.
+// Limpa o HTML das páginas do caderno ANTES de gravar. O conteúdo vem do browser — um pedido
+// feito à mão pode trazer o que quiser —, por isso fica só o que o editor (Tiptap) produz:
+// parágrafos, títulos, negrito/itálico/sublinhado/riscado, cor do texto e realce, listas e
+// listas de tarefas, tabelas, citações, código, linhas, ligações http(s)/mailto e IMAGENS/
+// FICHEIROS SÓ DOS ANEXOS desta aplicação (/anexos/{id}). Sem scripts, eventos (onerror…),
+// iframes, imagens de fora (que serviam para seguir quem abre a página) nem CSS livre: dos
+// estilos só ficam cores, alinhamento e larguras das tabelas, com valores verificados.
+//
+// Também aceita o HTML do editor anterior (Trix, out. 2026): as páginas antigas continuam a
+// abrir e passam ao formato novo na primeira gravação.
 class LimpezaHtmlCaderno
 {
     // Teto do HTML de uma página (as imagens não contam — são anexos).
     public const MAX_BYTES = 500_000;
+
+    private const ANEXO = '#^/anexos/\d+$#';
 
     private ?HtmlSanitizer $sanitizador = null;
 
@@ -34,14 +39,82 @@ class LimpezaHtmlCaderno
         // Ligações relativas: só para os anexos (as de fora são http/https/mailto).
         $limpo = (string) preg_replace('#(<a\b[^>]*?)\s+href="(?!https?:|mailto:|/anexos/\d+")[^"]*"#i', '$1', $limpo);
 
-        // Dados dos anexos na <figure>: refeitos campo a campo (ou retirados).
+        // Caixas das listas de tarefas: só checkbox.
+        $limpo = (string) preg_replace('#<input\b(?![^>]*\btype="checkbox")[^>]*>#i', '', $limpo);
+
+        // Estilos: só as propriedades e os valores que o editor usa.
+        $limpo = (string) preg_replace_callback('#\s+style="([^"]*)"#i', fn ($m) => self::estilo($m[1]), $limpo);
+
+        // Atributos com valor: cor do realce, largura das colunas, dados do ficheiro.
+        $limpo = (string) preg_replace_callback('#\s+(data-color|colwidth|data-tamanho)="([^"]*)"#i', function ($m) {
+            $valor = html_entity_decode($m[2], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $ok = match (strtolower($m[1])) {
+                'data-color' => self::cor($valor),
+                'colwidth' => preg_match('/^\d{1,4}(,\d{1,4})*$/', $valor) === 1,
+                'data-tamanho' => preg_match('/^\d{1,12}$/', $valor) === 1,
+            };
+
+            return $ok ? $m[0] : '';
+        }, $limpo);
+        $limpo = (string) preg_replace_callback('#\s+data-tipo="([^"]*)"#i',
+            fn ($m) => preg_match('#^[\w.+-]+/[\w.+-]+$#', html_entity_decode($m[1])) ? $m[0] : '', $limpo);
+        $limpo = (string) preg_replace_callback('#\s+data-(type|checked)="([^"]*)"#i', function ($m) {
+            $ok = strtolower($m[1]) === 'type' ? in_array($m[2], ['taskList', 'taskItem'], true) : in_array($m[2], ['true', 'false'], true);
+
+            return $ok ? $m[0] : '';
+        }, $limpo);
+
+        // Ficheiro anexado (bloco do editor): só se a ligação for para um anexo desta aplicação.
+        $limpo = (string) preg_replace('#<div\b(?=[^>]*\bdata-ficheiro)(?![^>]*\bdata-href="/anexos/\d+")[^>]*>.*?</div>#is', '', $limpo);
+
+        // Dados dos anexos do editor antigo (Trix) na <figure>: refeitos campo a campo.
         $limpo = (string) preg_replace_callback('#\s+data-trix-(attachment|attributes)="([^"]*)"#i',
             fn ($m) => self::dadosTrix(strtolower($m[1]), $m[2]), $limpo);
 
         return $limpo;
     }
 
-    // data-trix-attachment / data-trix-attributes → JSON só com o que o editor usa.
+    // Texto simples da página (pesquisa e pré-visualização).
+    public static function texto(?string $html): string
+    {
+        $html = (string) preg_replace('#</(div|p|li|h[1-6]|td|th|tr|blockquote|pre)>|<br\s*/?>#i', ' ', (string) $html);
+        $texto = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return trim((string) preg_replace('/\s+/u', ' ', $texto));
+    }
+
+    // Cor aceite: #rgb/#rrggbb(aa) ou rgb()/rgba() com números.
+    private static function cor(string $valor): bool
+    {
+        return preg_match('/^(#[0-9a-f]{3,8}|rgba?\(\s*[\d.]+%?\s*(,\s*[\d.]+%?\s*){2,3}\))$/i', trim($valor)) === 1;
+    }
+
+    // style="…" → só color, background-color, text-align, width e min-width, com valores certos.
+    private static function estilo(string $css): string
+    {
+        $css = html_entity_decode($css, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $fica = [];
+        foreach (explode(';', $css) as $regra) {
+            if (! str_contains($regra, ':')) {
+                continue;
+            }
+            [$prop, $valor] = array_map('trim', explode(':', $regra, 2));
+            $prop = strtolower($prop);
+            $ok = match ($prop) {
+                'color', 'background-color' => self::cor($valor) || strtolower($valor) === 'inherit',
+                'text-align' => in_array(strtolower($valor), ['left', 'center', 'right', 'justify'], true),
+                'width', 'min-width' => preg_match('/^\d{1,5}(\.\d+)?px$/', $valor) === 1,
+                default => false,
+            };
+            if ($ok) {
+                $fica[] = $prop.': '.$valor;
+            }
+        }
+
+        return $fica === [] ? '' : ' style="'.htmlspecialchars(implode('; ', $fica), ENT_QUOTES, 'UTF-8').'"';
+    }
+
+    // data-trix-attachment / data-trix-attributes (editor antigo) → JSON só com o que o editor usa.
     private static function dadosTrix(string $qual, string $valor): string
     {
         $dados = json_decode(html_entity_decode($valor, ENT_QUOTES | ENT_HTML5, 'UTF-8'), true);
@@ -53,7 +126,7 @@ class LimpezaHtmlCaderno
         if ($qual === 'attachment') {
             foreach (['href', 'url'] as $k) {
                 if (isset($dados[$k])) {
-                    if (! is_string($dados[$k]) || ! preg_match('#^/anexos/\d+$#', $dados[$k])) {
+                    if (! is_string($dados[$k]) || ! preg_match(self::ANEXO, $dados[$k])) {
                         return ''; // anexo que não é desta aplicação
                     }
                     $limpo[$k] = $dados[$k];
@@ -88,49 +161,37 @@ class LimpezaHtmlCaderno
         return ' data-trix-'.$qual.'="'.htmlspecialchars((string) json_encode($limpo, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8').'"';
     }
 
-    // Texto simples da página (pesquisa e pré-visualização).
-    public static function texto(?string $html): string
-    {
-        $texto = html_entity_decode(strip_tags(str_replace(['</div>', '<br>', '</p>', '</li>'], ' ', (string) $html)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-        return trim((string) preg_replace('/\s+/u', ' ', $texto));
-    }
-
     private function sanitizador(): HtmlSanitizer
     {
-        return $this->sanitizador ??= new HtmlSanitizer(
-            (new HtmlSanitizerConfig)
-                ->allowElement('div')
-                ->allowElement('p')
-                ->allowElement('br')
-                ->allowElement('strong')
-                ->allowElement('b')
-                ->allowElement('em')
-                ->allowElement('i')
-                ->allowElement('del')
-                ->allowElement('s')
-                ->allowElement('u')
-                ->allowElement('span')
-                ->allowElement('h1')
-                ->allowElement('h2')
-                ->allowElement('h3')
-                ->allowElement('blockquote')
-                ->allowElement('pre')
-                ->allowElement('code')
-                ->allowElement('ul')
-                ->allowElement('ol')
-                ->allowElement('li')
-                ->allowElement('figure', ['data-trix-attachment', 'data-trix-attributes'])
-                ->allowElement('figcaption')
-                ->allowElement('a', ['href'])
-                ->allowElement('img', ['src', 'alt', 'width', 'height'])
-                ->allowLinkSchemes(['http', 'https', 'mailto'])
-                ->allowRelativeLinks(true) // só /anexos/{id} sobrevive (ver limpar())
-                ->allowMediaSchemes([])
-                ->allowRelativeMedias(true)
-                ->forceAttribute('a', 'rel', 'noopener noreferrer nofollow')
-                ->forceAttribute('a', 'target', '_blank')
-                ->withMaxInputLength(self::MAX_BYTES)
-        );
+        $config = new HtmlSanitizerConfig;
+        foreach (['p', 'br', 'strong', 'b', 'em', 'i', 'del', 's', 'u', 'h1', 'h2', 'h3', 'blockquote', 'pre', 'code',
+            'hr', 'tbody', 'thead', 'tr', 'figcaption', 'label', 'colgroup'] as $tag) {
+            $config = $config->allowElement($tag);
+        }
+
+        $config = $config
+            ->allowElement('div', ['data-ficheiro', 'data-href', 'data-nome', 'data-tamanho', 'data-tipo'])
+            ->allowElement('span', ['style'])
+            ->allowElement('mark', ['style', 'data-color'])
+            ->allowElement('ol', ['start'])
+            ->allowElement('ul', ['data-type'])
+            ->allowElement('li', ['data-type', 'data-checked'])
+            ->allowElement('input', ['type', 'checked'])
+            ->allowElement('table', ['style'])
+            ->allowElement('col', ['style'])
+            ->allowElement('th', ['colspan', 'rowspan', 'colwidth', 'style'])
+            ->allowElement('td', ['colspan', 'rowspan', 'colwidth', 'style'])
+            ->allowElement('figure', ['data-trix-attachment', 'data-trix-attributes'])
+            ->allowElement('a', ['href'])
+            ->allowElement('img', ['src', 'alt', 'width', 'height'])
+            ->allowLinkSchemes(['http', 'https', 'mailto'])
+            ->allowRelativeLinks(true) // só /anexos/{id} sobrevive (ver limpar())
+            ->allowMediaSchemes([])
+            ->allowRelativeMedias(true)
+            ->forceAttribute('a', 'rel', 'noopener noreferrer nofollow')
+            ->forceAttribute('a', 'target', '_blank')
+            ->withMaxInputLength(self::MAX_BYTES);
+
+        return $this->sanitizador ??= new HtmlSanitizer($config);
     }
 }

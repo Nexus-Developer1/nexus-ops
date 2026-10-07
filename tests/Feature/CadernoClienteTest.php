@@ -207,7 +207,7 @@ class CadernoClienteTest extends TestCase
         $this->assertNull($p->fresh()->equipamento_id);
 
         $this->caderno()->call('ligarEquipamento', $p->id, $ups->id)->assertSee('Abrir ficha')
-            ->assertSeeHtml('<span>Riello S3T 20 · S/N AC38UT887690001</span>'); // na lista de páginas
+            ->assertSeeHtml('<span class="truncate">Riello S3T 20 · S/N AC38UT887690001</span>'); // na lista de páginas
         $this->assertSame($ups->id, $p->fresh()->equipamento_id);
 
         // A ficha do equipamento mostra a página, com ligação para ela no caderno.
@@ -260,9 +260,10 @@ class CadernoClienteTest extends TestCase
         $s->paginas()->create(['titulo' => 'UPS S3T 20', 'conteudo' => '<div>S/N AC38UT887690001</div>']);
         $s->paginas()->create(['titulo' => 'Dados CCTV', 'conteudo' => '<div>NVR na sala técnica</div>']);
 
+        $titulos = fn ($r) => $r->pluck('titulo')->all();
         $this->caderno()
-            ->set('pesquisa', 'AC38UT')->assertSee('UPS S3T 20')->assertDontSee('Dados CCTV')
-            ->set('pesquisa', 'cctv')->assertSee('Dados CCTV');
+            ->set('pesquisa', 'AC38UT')->assertViewHas('resultados', fn ($r) => $titulos($r) === ['UPS S3T 20'])
+            ->set('pesquisa', 'cctv')->assertViewHas('resultados', fn ($r) => $titulos($r) === ['Dados CCTV']);
     }
 
     public function test_sugere_os_clientes_finais_dos_equipamentos(): void
@@ -300,6 +301,106 @@ class CadernoClienteTest extends TestCase
 
         Livewire::actingAs($this->rui)->test(Detalhe::class, ['cliente' => $this->bbs])
             ->assertSee('Caderno')->assertSee('Graphicleader')->assertSee('Abrir caderno');
+    }
+
+    public function test_conteudo_do_editor_novo_tabelas_tarefas_cores_e_ficheiros(): void
+    {
+        $p = CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'SPI'])->paginas()->create(['titulo' => 'CCTV']);
+
+        $html = '<h2>Rede</h2><p><span style="color: #dc2626; position: fixed">vermelho</span> <mark data-color="#fef08a" style="background-color: #fef08a; color: inherit">realce</mark> <mark data-color="x" style="background: url(https://espiao.example/p.gif)">mau</mark></p>'
+            .'<ul data-type="taskList"><li data-type="taskItem" data-checked="true"><label><input type="checkbox" checked="checked"><span></span></label><div><p>Feito</p></div></li></ul>'
+            .'<input type="text" value="phishing">'
+            .'<table style="min-width: 75px"><colgroup><col style="width: 120px"></colgroup><tbody><tr><th colspan="1" rowspan="1" colwidth="120"><p>IP</p></th><td style="text-align: center" colwidth="1;x"><p>192.168.1.10</p></td></tr></tbody></table>'
+            .'<div data-ficheiro="" data-href="/anexos/7" data-nome="Manual.pdf" data-tamanho="1258291" data-tipo="application/pdf"><a href="/anexos/7">Manual.pdf</a></div>'
+            .'<div data-ficheiro="" data-href="https://espiao.example/x.exe" data-nome="x"><a href="https://espiao.example/x.exe">x.exe</a></div>';
+
+        $this->caderno()->call('guardarConteudo', $p->id, $html, 0);
+        $c = $p->fresh()->conteudo;
+
+        foreach (['<h2>Rede</h2>', 'style="color: #dc2626"', 'data-color="#fef08a"', 'data-type="taskItem" data-checked="true"', 'type="checkbox"',
+            '<th colspan="1" rowspan="1" colwidth="120">', 'style="text-align: center"', 'style="width: 120px"', 'data-href="/anexos/7"', 'data-tamanho="1258291"'] as $fica) {
+            $this->assertStringContainsString($fica, $c, "Faltou {$fica}.");
+        }
+        foreach (['position', 'url(', 'espiao.example', 'type="text"', 'phishing', 'colwidth="1;x"', 'x.exe'] as $mau) {
+            $this->assertStringNotContainsString($mau, $c, "Ficou {$mau} no HTML.");
+        }
+    }
+
+    public function test_subpaginas_mover_ordenar_e_promover(): void
+    {
+        $graphic = CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'Graphicleader', 'ordem' => 0]);
+        $oocl = CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'OOCL', 'ordem' => 1]);
+        $a = $graphic->paginas()->create(['titulo' => 'A', 'ordem' => 0]);
+        $b = $graphic->paginas()->create(['titulo' => 'B', 'ordem' => 1]);
+        $c = $graphic->paginas()->create(['titulo' => 'C', 'ordem' => 2]);
+
+        $cad = $this->caderno()->call('selecionarSeparador', $graphic->id);
+
+        // B passa a subpágina de A (a de cima); a primeira não pode (não há nada acima).
+        $cad->call('tornarSubpagina', $b->id)->call('tornarSubpagina', $a->id);
+        $this->assertSame($a->id, $b->fresh()->pai_id);
+        $this->assertNull($a->fresh()->pai_id);
+
+        // Subpágina nova de A; não se faz subpágina de uma subpágina (um só nível).
+        $cad->call('criarPagina', $a->id);
+        $nova = CadernoPagina::latest('id')->first();
+        $this->assertSame($a->id, $nova->pai_id);
+        $cad->call('criarPagina', $b->id);
+        $this->assertNull(CadernoPagina::latest('id')->first()->pai_id);
+
+        // A árvore: A (com B e a nova), C, e a página solta criada em cima.
+        $cad->assertViewHas('arvore', fn ($arv) => $arv[0]['pagina']->id === $a->id && count($arv[0]['filhas']) === 2);
+
+        // ↑/↓ entre as irmãs (a alternativa a arrastar no telemóvel).
+        $cad->call('moverPagina', $c->id, -1);
+        $topo = fn () => CadernoPagina::where('separador_id', $graphic->id)->whereNull('pai_id')->orderBy('ordem')->orderBy('id')->pluck('titulo')->all();
+        $this->assertSame('C', $topo()[0]);
+
+        // Passar B a página: fica logo a seguir a A.
+        $cad->call('promoverPagina', $b->id);
+        $this->assertNull($b->fresh()->pai_id);
+        $lista = $topo();
+        $this->assertSame(array_search('A', $lista, true) + 1, array_search('B', $lista, true));
+
+        // Mover A (com as subpáginas) para o OOCL.
+        $cad->call('moverParaSeparador', $a->id, $oocl->id)->assertSet('separadorId', $oocl->id)->assertSet('paginaId', $a->id);
+        $this->assertSame($oocl->id, $a->fresh()->separador_id);
+        $this->assertSame($oocl->id, $nova->fresh()->separador_id);
+        $this->assertSame($a->id, $nova->fresh()->pai_id);
+
+        // Apagar A: a subpágina não vai com ela — sobe para o lugar dela.
+        $cad->call('apagarPagina', $a->id);
+        $this->assertSoftDeleted($a);
+        $this->assertNull($nova->fresh()->pai_id);
+        $this->assertNull($nova->fresh()->deleted_at);
+    }
+
+    public function test_separadores_mudam_de_lugar_com_os_botoes(): void
+    {
+        $x = CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'X', 'ordem' => 0]);
+        CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'Y', 'ordem' => 1]);
+
+        $this->caderno()->call('moverSeparador', $x->id, 1)->call('moverSeparador', $x->id, 1); // o 2.º não faz nada
+        $this->assertSame(['Y', 'X'], $this->bbs->cadernoSeparadores()->pluck('nome')->all());
+    }
+
+    public function test_nao_mexe_em_paginas_ou_separadores_de_outro_cliente(): void
+    {
+        $outro = Cliente::create(['nome' => 'Outro', 'ativo' => true]);
+        $alheio = CadernoSeparador::create(['cliente_id' => $outro->id, 'nome' => 'Segredo']);
+        $paginaAlheia = $alheio->paginas()->create(['titulo' => 'Passwords']);
+        $meu = CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'SPI']);
+        $minha = $meu->paginas()->create(['titulo' => 'CCTV']);
+
+        $this->caderno()
+            ->call('moverParaSeparador', $minha->id, $alheio->id)      // para o caderno de outro: não
+            ->call('moverParaSeparador', $paginaAlheia->id, $meu->id)  // trazer a do outro: não
+            ->call('tornarSubpagina', $paginaAlheia->id)
+            ->call('criarPagina', $paginaAlheia->id);
+
+        $this->assertSame($meu->id, $minha->fresh()->separador_id);
+        $this->assertSame($alheio->id, $paginaAlheia->fresh()->separador_id);
+        $this->assertNull(CadernoPagina::where('pai_id', $paginaAlheia->id)->first());
     }
 
     public function test_texto_simples_para_pesquisa(): void
