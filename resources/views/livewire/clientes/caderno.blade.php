@@ -15,6 +15,7 @@
                 </div>
 
                 {{-- Pesquisa no caderno inteiro (título e texto de todas as páginas). --}}
+                @if ($separadores->isNotEmpty())
                 <div class="relative w-full sm:w-80" x-data="{ aberta: false }" @click.outside="aberta = false">
                     <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/></svg>
                     <input wire:model.live.debounce.300ms="pesquisa" type="search" placeholder="Pesquisar no caderno…" @focus="aberta = true" @input="aberta = true"
@@ -37,8 +38,10 @@
                         </div>
                     @endif
                 </div>
+                @endif
             </div>
 
+            @if ($separadores->isNotEmpty())
             {{-- SEPARADORES (como os do OneNote): um por cliente final, cor à escolha; arrastar
                  uma aba para o sítio de outra muda a ordem (no telemóvel: menu ⋯ → mover). --}}
             <div class="mt-6 flex items-end gap-1 overflow-x-auto" data-lista
@@ -94,7 +97,7 @@
                 @endforeach
 
                 {{-- wire:key com o nº de separadores: depois de criar um, a caixa volta fechada. --}}
-                <div wire:key="novo-sep-{{ $separadores->count() }}" x-data="{ aberto: @js($separadores->isEmpty()) }" class="flex shrink-0 items-center pb-1 pl-1">
+                <div wire:key="novo-sep-{{ $separadores->count() }}" x-data="{ aberto: false }" class="flex shrink-0 items-center pb-1 pl-1">
                     <button type="button" x-show="!aberto" @click="aberto = true; $nextTick(() => $refs.nome.focus())" class="rounded-lg px-3 py-1.5 text-sm font-medium text-verde-600 hover:bg-verde-50">+ Separador</button>
                     <form x-show="aberto" x-cloak wire:submit="criarSeparador" class="flex items-center gap-2">
                         <input x-ref="nome" wire:model="novoSeparador" type="text" maxlength="120" placeholder="Nome (ex.: o cliente final)" class="campo-input w-56 py-1.5 text-sm">
@@ -103,6 +106,7 @@
                 </div>
             </div>
             @error('novoSeparador') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+            @endif
 
             @if ($separador)
                 @php([$fundoAtivo, $tintaAtiva] = $separador->cores())
@@ -329,13 +333,48 @@
                     </section>
                 </div>
             @elseif ($separadores->isEmpty())
-                <div class="cartao mt-5 py-16 text-center">
-                    <p class="text-sm text-texto-medio">Ainda não há separadores.</p>
+                {{-- CADERNO VAZIO: o primeiro separador — escrito, ou com um clique num cliente final
+                     dos equipamentos (ou num dos habituais, se não houver clientes finais). --}}
+                <div class="cartao mt-6 overflow-hidden">
+                    {{-- Abas de enfeite: dá logo a ideia de caderno com separadores. --}}
+                    <div class="flex items-end gap-1 border-b-[3px] border-verde-600 bg-fundo/60 px-6 pt-4" aria-hidden="true">
+                        @foreach (array_slice($cores, 0, 4) as [$f, $t])
+                            <span class="h-6 rounded-t-md {{ $loop->first ? 'w-24' : 'w-16 opacity-70' }}" style="background-color: {{ $loop->first ? $t : $f }};"></span>
+                        @endforeach
+                    </div>
+                    <div class="mx-auto flex max-w-xl flex-col items-center px-6 py-12 text-center">
+                        <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-verde-50 text-verde-600">
+                            <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                        </span>
+                        <h2 class="mt-4 text-xl font-semibold text-texto-forte">Ainda não há separadores</h2>
+                        <p class="mt-2 text-sm leading-relaxed text-texto-medio">
+                            Um separador por cliente final ou por tema; dentro de cada um, páginas com notas, tabelas, fotos e manuais deste cliente.
+                        </p>
+
+                        <form wire:submit="criarSeparador" class="mt-6 flex w-full flex-col gap-2 sm:flex-row">
+                            <input wire:model="novoSeparador" type="text" maxlength="120" placeholder="Nome do primeiro separador" aria-label="Nome do separador"
+                                class="campo-input flex-1 py-2.5 text-sm" autofocus>
+                            <button type="submit" class="botao-primario justify-center whitespace-nowrap px-5 py-2.5 text-sm">Criar separador</button>
+                        </form>
+                        @error('novoSeparador') <p class="mt-2 text-xs text-perigo-500">{{ $message }}</p> @enderror
+
+                        <div class="mt-6 w-full border-t border-borda pt-5">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-texto-fraco">{{ $sugestoes !== [] ? 'Clientes finais deste cliente' : 'Ou comece por' }}</p>
+                            <div class="mt-3 flex flex-wrap justify-center gap-2">
+                                @foreach ($sugestoes !== [] ? $sugestoes : ['Geral', 'Acessos e contactos', 'Equipamentos', 'Rede / CCTV'] as $nome)
+                                    @php($corChip = array_values($cores)[$loop->index % count($cores)])
+                                    <button type="button" wire:click="criarSeparador(@js($nome))" wire:key="sug-{{ md5($nome) }}"
+                                        class="rounded-full border px-3.5 py-1.5 text-sm font-medium transition hover:shadow-sm"
+                                        style="background-color: {{ $corChip[0] }}; color: {{ $corChip[1] }}; border-color: {{ $corChip[0] }};">+ {{ $nome }}</button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
                 </div>
             @endif
 
             {{-- Atalhos: os clientes finais dos equipamentos deste cliente que ainda não têm separador. --}}
-            @if ($sugestoes !== [])
+            @if ($sugestoes !== [] && $separadores->isNotEmpty())
                 <div class="mt-4 flex flex-wrap items-center gap-2 text-sm">
                     <span class="text-texto-fraco">Criar separador para:</span>
                     @foreach ($sugestoes as $nome)

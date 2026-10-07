@@ -46,7 +46,7 @@ class CadernoClienteTest extends TestCase
     public function test_cria_separadores_e_paginas_como_no_onenote(): void
     {
         $c = $this->caderno()
-            ->assertSee('Ainda não há separadores.')
+            ->assertSee('Ainda não há separadores')->assertSee('+ Geral')
             ->set('novoSeparador', 'Graphicleader')->call('criarSeparador')
             ->assertSee('Graphicleader')
             ->call('criarSeparador', 'OOCL');
