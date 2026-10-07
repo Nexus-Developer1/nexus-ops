@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-10-07
 
-- 🎨 **Caderno — o caderno vazio tem outro aspeto.** Em vez de um campo solto e de um cartão só com «Ainda não há separadores.», um cartão de boas-vindas: abas de enfeite em cima (dá logo a ideia de caderno), ícone, título, uma frase do que o caderno guarda, o campo do primeiro separador com «Criar separador», e atalhos coloridos de um clique — os clientes finais dos equipamentos deste cliente ou, se não houver, «Geral», «Acessos e contactos», «Equipamentos» e «Rede / CCTV». A pesquisa e a barra das abas só aparecem quando já há separadores. Verificado num browser a 1440 px e a 390 px. Build. `hash`
+- 🎨 **Caderno — o caderno vazio tem outro aspeto.** Em vez de um campo solto e de um cartão só com «Ainda não há separadores.», um cartão de boas-vindas: abas de enfeite em cima (dá logo a ideia de caderno), ícone, título, uma frase do que o caderno guarda, o campo do primeiro separador com «Criar separador», e atalhos coloridos de um clique — os clientes finais dos equipamentos deste cliente ou, se não houver, «Geral», «Acessos e contactos», «Equipamentos» e «Rede / CCTV». A pesquisa e a barra das abas só aparecem quando já há separadores. Verificado num browser a 1440 px e a 390 px. Build. `c38b51d`
 
 - 🎨 **Caderno — o separador aberto volta a ser uma aba só.** O nome e o «⋯» eram duas peças, cada uma com os seus cantos e a sua barra de cor, e via-se um degrau entre elas. Agora a cor, os cantos arredondados e a barra de cima são da aba inteira, e o «⋯» é um botão dentro dela. Verificado num browser (abas ativa e inativa, menu aberto). Build. `166fb2c`
 
