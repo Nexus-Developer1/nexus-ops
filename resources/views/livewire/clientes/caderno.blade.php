@@ -46,7 +46,10 @@
                 @foreach ($separadores as $s)
                     @php([$fundo, $tinta] = $s->cores())
                     @php($ativo = $s->id === $separadorId)
-                    <div wire:key="sep-{{ $s->id }}" data-id="{{ $s->id }}" class="relative flex shrink-0 items-stretch rounded-t-lg"
+                    {{-- Uma aba só (nome + ⋯): a cor, os cantos e a barra de cima são do conjunto. --}}
+                    <div wire:key="sep-{{ $s->id }}" data-id="{{ $s->id }}"
+                        class="relative flex shrink-0 items-stretch rounded-t-lg border-t-[3px] transition {{ $ativo ? '' : 'opacity-75 hover:opacity-100' }}"
+                        style="background-color: {{ $fundo }}; color: {{ $tinta }}; border-top-color: {{ $ativo ? $tinta : $fundo }};"
                         :class="sobre === {{ $s->id }} && arrastado !== {{ $s->id }} && 'caderno-alvo'"
                         x-data="{ menu: false, x: 0, y: 0 }"
                         x-on:dragover.prevent="if (arrastado) sobre = {{ $s->id }}"
@@ -56,15 +59,14 @@
                             x-on:dragstart="arrastado = {{ $s->id }}; $event.dataTransfer.effectAllowed = 'move'"
                             x-on:dragend="arrastado = null; sobre = null"
                             @click="window.cadernoMudar(() => $wire.selecionarSeparador({{ $s->id }}))"
-                            class="flex items-center gap-2 rounded-t-lg border-t-[3px] px-4 text-sm font-semibold transition {{ $ativo ? 'pb-2.5 pt-2' : 'pb-1.5 pt-1.5 opacity-75 hover:opacity-100' }}"
-                            style="background-color: {{ $fundo }}; color: {{ $tinta }}; border-top-color: {{ $ativo ? $tinta : $fundo }};">
+                            class="flex items-center gap-2 text-sm font-semibold {{ $ativo ? 'pb-2.5 pl-4 pr-2 pt-2' : 'px-4 py-1.5' }}">
                             {{ $s->nome }}
                             <span class="rounded-full bg-white/70 px-1.5 text-[11px] font-medium">{{ $s->paginas_count }}</span>
                         </button>
                         @if ($ativo)
                             {{-- O menu é «fixed»: a barra das abas tem scroll horizontal e cortava um menu absoluto. --}}
                             <button type="button" @click="const r = $el.getBoundingClientRect(); x = Math.min(r.left, window.innerWidth - 240); y = r.bottom + 4; menu = !menu"
-                                class="rounded-tr-lg border-t-[3px] px-1.5 text-sm" style="background-color: {{ $fundo }}; color: {{ $tinta }}; border-top-color: {{ $tinta }};" aria-label="Opções do separador">⋯</button>
+                                class="my-1 mr-1 rounded-md px-1.5 text-sm hover:bg-white/60" aria-label="Opções do separador">⋯</button>
                             <div x-show="menu" x-cloak @click.outside="menu = false" @scroll.window="menu = false" @resize.window="menu = false" @keydown.escape.window="menu = false"
                                 :style="`left: ${x}px; top: ${y}px`" class="fixed z-40 w-60 rounded-lg border border-borda bg-white p-3 shadow-lg">
                                 <div x-data="{ nome: @js($s->nome) }">
