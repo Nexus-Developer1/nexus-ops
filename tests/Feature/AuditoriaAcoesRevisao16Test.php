@@ -197,7 +197,8 @@ class AuditoriaAcoesRevisao16Test extends TestCase
         $this->app->detectEnvironment(fn () => 'production');
         $this->assertTrue(app()->isProduction());
 
-        $this->seed(DatabaseSeeder::class);
+        // Em produção o db:seed pede confirmação; --force, como num deploy a sério.
+        $this->artisan('db:seed', ['--class' => DatabaseSeeder::class, '--force' => true]);
 
         $this->assertSame(0, User::where('email', DatabaseSeeder::EMAIL_ADMIN)->count()); // recusou
     }

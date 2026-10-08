@@ -1500,7 +1500,8 @@ class Novo extends Component
                 $equipId = in_array((int) $equipId, array_map('intval', $idsValidos), true) ? (int) $equipId : null;
 
                 foreach ($fotosDoEquipamento as $foto) {
-                    $storageKey = $foto->store('anexos/intervencoes/'.$intervencao->id);
+                    // No disco da APLICAÇÃO: sem 'disk', o Livewire grava no disco temporário do upload.
+                    $storageKey = $foto->store('anexos/intervencoes/'.$intervencao->id, ['disk' => config('filesystems.default')]);
                     $intervencao->anexos()->create([
                         'equipamento_id' => $equipId,
                         'nome_ficheiro' => $foto->getClientOriginalName(),

@@ -714,7 +714,8 @@ class Editor extends Component
 
             // Recibos pendentes desta linha → object storage + metadados na despesa da linha.
             foreach ($this->recibosPendentes[$n] ?? [] as $ficheiro) {
-                $key = $ficheiro->store('anexos/despesas/'.$despesa->id);
+                // No disco da APLICAÇÃO: sem 'disk', o Livewire grava no disco temporário do upload.
+                $key = $ficheiro->store('anexos/despesas/'.$despesa->id, ['disk' => config('filesystems.default')]);
                 $despesa->anexos()->create([
                     'nome_ficheiro' => $ficheiro->getClientOriginalName() ?: 'recibo.jpg',
                     'storage_key' => $key,
@@ -743,7 +744,7 @@ class Editor extends Component
             foreach ($this->taloesPendentes[$i] ?? [] as $ficheiro) {
                 $levantamento->anexos()->create([
                     'nome_ficheiro' => $ficheiro->getClientOriginalName() ?: 'talao.jpg',
-                    'storage_key' => $ficheiro->store('anexos/levantamentos/'.$levantamento->id),
+                    'storage_key' => $ficheiro->store('anexos/levantamentos/'.$levantamento->id, ['disk' => config('filesystems.default')]), // (disco: ver os recibos acima)
                     'mime' => $ficheiro->getMimeType(),
                     'tamanho' => $ficheiro->getSize(),
                     'criado_por' => auth()->id(),

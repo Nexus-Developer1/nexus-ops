@@ -358,7 +358,8 @@ class Caderno extends Component
         $this->validate(['ficheiro' => ['file', 'mimes:'.self::TIPOS_ANEXO, 'max:20480']]);
 
         $ficheiro = $this->ficheiro;
-        $key = $ficheiro->store('anexos/caderno/'.$pagina->id);
+        // No disco da APLICAÇÃO: sem 'disk', o Livewire grava no disco temporário do upload.
+        $key = $ficheiro->store('anexos/caderno/'.$pagina->id, ['disk' => config('filesystems.default')]);
         $anexo = $pagina->anexos()->create([
             'nome_ficheiro' => mb_substr($ficheiro->getClientOriginalName() ?: 'ficheiro', 0, 200),
             'storage_key' => $key,
