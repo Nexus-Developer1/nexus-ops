@@ -261,6 +261,9 @@ class Caderno extends Component
             return; // não há página acima
         }
         $pai = $irmas[$posicao - 1];
+        if (! CadernoPagina::whereKey($pai)->whereNull('pai_id')->exists()) {
+            return; // entretanto passou a subpágina — não se fazem dois níveis
+        }
         $pagina->update(['pai_id' => $pai, 'ordem' => CadernoPagina::where('pai_id', $pai)->count()]);
     }
 
@@ -495,10 +498,15 @@ class Caderno extends Component
             ->get()
             ->each(fn ($p) => $p->resumo = mb_strimwidth(LimpezaHtmlCaderno::texto($p->inicio), 0, 90, '…'));
 
+        // De cima: sem página de cima (ou com ela fora deste separador). Subpáginas: só as de uma
+        // página de cima — uma «subpágina de subpágina» (só por corrida; o caderno tem um nível)
+        // fica à vista em cima, em vez de desaparecer da lista.
         $ids = $paginas->pluck('id')->all();
-        $filhas = $paginas->filter(fn ($p) => $p->pai_id && in_array($p->pai_id, $ids, true))->groupBy('pai_id');
+        $idsTopo = $paginas->filter(fn ($p) => ! $p->pai_id || ! in_array($p->pai_id, $ids, true))->pluck('id')->all();
+        $eFilha = fn ($p) => $p->pai_id && in_array($p->pai_id, $idsTopo, true);
+        $filhas = $paginas->filter($eFilha)->groupBy('pai_id');
 
-        return $paginas->reject(fn ($p) => $p->pai_id && in_array($p->pai_id, $ids, true))
+        return $paginas->reject($eFilha)
             ->map(fn ($p) => ['pagina' => $p, 'filhas' => ($filhas[$p->id] ?? collect())->values()->all()])
             ->values()->all();
     }
@@ -507,7 +515,9 @@ class Caderno extends Component
     {
         $separadores = $this->cliente->cadernoSeparadores()->withCount('paginas')->get();
         $separador = $separadores->firstWhere('id', $this->separadorId);
-        $pagina = $this->paginaId ? CadernoPagina::with(['autorAlteracao', 'equipamento'])->find($this->paginaId) : null;
+        // paginaId é público (vem do endereço e o browser pode mudá-lo): só se mostra se for
+        // deste cliente — como em todas as ações (29.ª revisão de segurança).
+        $pagina = $this->paginaId ? $this->paginaDoCliente($this->paginaId)?->load(['autorAlteracao', 'equipamento']) : null;
 
         $resultados = collect();
         $termo = trim($this->pesquisa);

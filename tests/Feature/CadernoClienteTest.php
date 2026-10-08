@@ -132,14 +132,14 @@ class CadernoClienteTest extends TestCase
         $this->caderno()
             // Com conteúdo de PDF a sério: o mimes:pdf olha para o conteúdo, e um ficheiro falso
             // vazio não passa por PDF (falhava conforme a versão do fileinfo).
-            ->set('ficheiro', UploadedFile::fake()->createWithContent('manual S3T.pdf', "%PDF-1.4
+            ->set('ficheiro', UploadedFile::fake()->createWithContent('manual S3T.pdf', '%PDF-1.4
 1 0 obj
 <<>>
 endobj
 trailer
 <<>>
 %%EOF
-"))
+'))
             ->call('guardarAnexo', $p->id)
             ->assertReturned(fn ($r) => $r['ok'] === true && preg_match('#^/anexos/\d+$#', $r['url']));
 
