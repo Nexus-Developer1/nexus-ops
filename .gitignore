@@ -34,3 +34,12 @@ datas_clientes.csv
 
 locais_riello.csv
 tests/js/saida/
+
+# No servidor o HOME do utilizador app-nexus é a pasta da aplicação: as pastas dele (incluindo
+# a chave de deploy em .ssh/) nunca vão para o git.
+/.cache/
+/.config/
+/.local/
+/.npm/
+/.ssh/
+/.lesshst
