@@ -75,7 +75,7 @@ class CadernoClienteTest extends TestCase
             .'<img src="https://espiao.example/pixel.gif">'
             .'<a href="javascript:alert(3)">mau</a>'
             .'<a href="https://riello-ups.com">manual</a>'
-            .'<figure><img src="/anexos/12" width="800" height="600" onload="x()"><figcaption>chapa</figcaption></figure>';
+            .'<img src="/anexos/12" width="800" height="600" onload="x()">';
 
         $r = $this->caderno()->call('guardarConteudo', $p->id, $html, 0)->get('pagina'); // (sem retorno útil no get)
         $p->refresh();
@@ -146,23 +146,6 @@ trailer
         $anexo = Anexo::firstOrFail();
         $this->assertSame('manual S3T.pdf', $anexo->nome_ficheiro);
         $this->assertSame($p->id, $anexo->anexavel_id);
-    }
-
-    public function test_ficheiro_na_pagina_fica_so_com_dados_limpos(): void
-    {
-        $p = CadernoSeparador::create(['cliente_id' => $this->bbs->id, 'nome' => 'SPI'])->paginas()->create(['titulo' => 'Manuais']);
-
-        // A página guarda o ficheiro como o Trix o escreve: <figure> com os dados do anexo.
-        $html = '<figure data-trix-attachment="{&quot;contentType&quot;:&quot;application/pdf&quot;,&quot;filename&quot;:&quot;manual.pdf&quot;,&quot;filesize&quot;:300,&quot;href&quot;:&quot;/anexos/41&quot;,&quot;url&quot;:&quot;/anexos/41&quot;,&quot;onclick&quot;:&quot;x&quot;}" class="attachment"><a href="/anexos/41"><figcaption>manual.pdf</figcaption></a></figure>'
-            .'<figure data-trix-attachment="{&quot;href&quot;:&quot;https://espiao.example/f.pdf&quot;}"><a href="/logout">sair</a></figure>';
-        $this->caderno()->call('guardarConteudo', $p->id, $html, 0);
-        $conteudo = $p->fresh()->conteudo;
-
-        $this->assertStringContainsString('href="/anexos/41"', $conteudo);
-        $this->assertStringContainsString('&quot;filename&quot;:&quot;manual.pdf&quot;', $conteudo);
-        foreach (['onclick', 'espiao.example', '/logout', 'class='] as $mau) {
-            $this->assertStringNotContainsString($mau, $conteudo, "Ficou {$mau} no HTML.");
-        }
     }
 
     public function test_ficheiro_perigoso_e_recusado(): void

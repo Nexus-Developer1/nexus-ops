@@ -31,12 +31,6 @@ class CadernoPagina extends Model
         return $this->belongsTo(CadernoSeparador::class, 'separador_id');
     }
 
-    // Página de cima, quando esta é uma subpágina.
-    public function pai(): BelongsTo
-    {
-        return $this->belongsTo(self::class, 'pai_id');
-    }
-
     public function subpaginas(): HasMany
     {
         return $this->hasMany(self::class, 'pai_id')->orderBy('ordem')->orderBy('id');

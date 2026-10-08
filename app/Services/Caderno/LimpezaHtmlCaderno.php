@@ -12,15 +12,12 @@ use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
 // FICHEIROS SÓ DOS ANEXOS desta aplicação (/anexos/{id}). Sem scripts, eventos (onerror…),
 // iframes, imagens de fora (que serviam para seguir quem abre a página) nem CSS livre: dos
 // estilos só ficam cores, alinhamento e larguras das tabelas, com valores verificados.
-//
-// Também aceita o HTML do editor anterior (Trix, out. 2026): as páginas antigas continuam a
-// abrir e passam ao formato novo na primeira gravação.
+// (As páginas gravadas pelo editor anterior, o Trix, são convertidas pelo próprio editor ao
+// abrir — caderno-editor.js — e chegam aqui já no formato novo.)
 class LimpezaHtmlCaderno
 {
     // Teto do HTML de uma página (as imagens não contam — são anexos).
     public const MAX_BYTES = 500_000;
-
-    private const ANEXO = '#^/anexos/\d+$#';
 
     private ?HtmlSanitizer $sanitizador = null;
 
@@ -65,13 +62,7 @@ class LimpezaHtmlCaderno
         }, $limpo);
 
         // Ficheiro anexado (bloco do editor): só se a ligação for para um anexo desta aplicação.
-        $limpo = (string) preg_replace('#<div\b(?=[^>]*\bdata-ficheiro)(?![^>]*\bdata-href="/anexos/\d+")[^>]*>.*?</div>#is', '', $limpo);
-
-        // Dados dos anexos do editor antigo (Trix) na <figure>: refeitos campo a campo.
-        $limpo = (string) preg_replace_callback('#\s+data-trix-(attachment|attributes)="([^"]*)"#i',
-            fn ($m) => self::dadosTrix(strtolower($m[1]), $m[2]), $limpo);
-
-        return $limpo;
+        return (string) preg_replace('#<div\b(?=[^>]*\bdata-ficheiro)(?![^>]*\bdata-href="/anexos/\d+")[^>]*>.*?</div>#is', '', $limpo);
     }
 
     // Texto simples da página (pesquisa e pré-visualização).
@@ -114,58 +105,15 @@ class LimpezaHtmlCaderno
         return $fica === [] ? '' : ' style="'.htmlspecialchars(implode('; ', $fica), ENT_QUOTES, 'UTF-8').'"';
     }
 
-    // data-trix-attachment / data-trix-attributes (editor antigo) → JSON só com o que o editor usa.
-    private static function dadosTrix(string $qual, string $valor): string
-    {
-        $dados = json_decode(html_entity_decode($valor, ENT_QUOTES | ENT_HTML5, 'UTF-8'), true);
-        if (! is_array($dados)) {
-            return '';
-        }
-
-        $limpo = [];
-        if ($qual === 'attachment') {
-            foreach (['href', 'url'] as $k) {
-                if (isset($dados[$k])) {
-                    if (! is_string($dados[$k]) || ! preg_match(self::ANEXO, $dados[$k])) {
-                        return ''; // anexo que não é desta aplicação
-                    }
-                    $limpo[$k] = $dados[$k];
-                }
-            }
-            if ($limpo === []) {
-                return '';
-            }
-            if (is_string($dados['contentType'] ?? null) && preg_match('#^[\w.+-]+/[\w.+-]+$#', $dados['contentType'])) {
-                $limpo['contentType'] = $dados['contentType'];
-            }
-            if (is_string($dados['filename'] ?? null)) {
-                $limpo['filename'] = mb_substr($dados['filename'], 0, 200);
-            }
-            foreach (['filesize', 'width', 'height'] as $k) {
-                if (is_int($dados[$k] ?? null) && $dados[$k] >= 0) {
-                    $limpo[$k] = $dados[$k];
-                }
-            }
-        } else {
-            if (($dados['presentation'] ?? null) === 'gallery') {
-                $limpo['presentation'] = 'gallery';
-            }
-            if (is_string($dados['caption'] ?? null)) {
-                $limpo['caption'] = mb_substr($dados['caption'], 0, 500);
-            }
-            if ($limpo === []) {
-                return '';
-            }
-        }
-
-        return ' data-trix-'.$qual.'="'.htmlspecialchars((string) json_encode($limpo, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8').'"';
-    }
-
     private function sanitizador(): HtmlSanitizer
     {
+        if ($this->sanitizador) {
+            return $this->sanitizador;
+        }
+
         $config = new HtmlSanitizerConfig;
-        foreach (['p', 'br', 'strong', 'b', 'em', 'i', 'del', 's', 'u', 'h1', 'h2', 'h3', 'blockquote', 'pre', 'code',
-            'hr', 'tbody', 'thead', 'tr', 'figcaption', 'label', 'colgroup'] as $tag) {
+        foreach (['p', 'br', 'strong', 'em', 's', 'u', 'h1', 'h2', 'h3', 'blockquote', 'pre', 'code',
+            'hr', 'tbody', 'tr', 'label', 'colgroup'] as $tag) {
             $config = $config->allowElement($tag);
         }
 
@@ -181,7 +129,6 @@ class LimpezaHtmlCaderno
             ->allowElement('col', ['style'])
             ->allowElement('th', ['colspan', 'rowspan', 'colwidth', 'style'])
             ->allowElement('td', ['colspan', 'rowspan', 'colwidth', 'style'])
-            ->allowElement('figure', ['data-trix-attachment', 'data-trix-attributes'])
             ->allowElement('a', ['href'])
             ->allowElement('img', ['src', 'alt', 'width', 'height'])
             ->allowLinkSchemes(['http', 'https', 'mailto'])
@@ -192,6 +139,6 @@ class LimpezaHtmlCaderno
             ->forceAttribute('a', 'target', '_blank')
             ->withMaxInputLength(self::MAX_BYTES);
 
-        return $this->sanitizador ??= new HtmlSanitizer($config);
+        return $this->sanitizador = new HtmlSanitizer($config);
     }
 }
