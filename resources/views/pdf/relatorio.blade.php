@@ -110,7 +110,8 @@
         if (! $eq) {
             return collect();
         }
-        $filhos = $eq->equipamentosAssociados->map(fn ($b) => trim(trim(($b->modelo ?: $b->tipo?->rotulo() ?? '')).($b->numero_serie ? ' · S/N '.$b->numero_serie : '')));
+        // toBase(): sem associados, o map ficava uma coleção do Eloquent vazia e juntar-lhe texto rebentava (relatório 38).
+        $filhos = $eq->equipamentosAssociados->toBase()->map(fn ($b) => trim(trim(($b->modelo ?: $b->tipo?->rotulo() ?? '')).($b->numero_serie ? ' · S/N '.$b->numero_serie : '')));
         $proprios = collect($eq->bancosParaFormulario())->map(fn ($b) => trim(implode(' · ', array_filter([
             trim('Banco de baterias '.$b['modelo']),
             $b['capacidade'] !== '' ? $b['capacidade'] : null,

@@ -8,6 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-10-09
 
+- 🐛 **Relatórios — PDF e pré-visualização davam erro 500 com UPS só com bancos próprios.** No relatório 38, «Pré-visualizar» (e o PDF) davam **500 Server Error**. A lista dos bancos de baterias de cada equipamento junta os bancos **associados** (outros equipamentos ligados à UPS) e os **próprios** (escritos na ficha da UPS); com bancos próprios mas **nenhum associado**, a primeira lista era uma coleção vazia de modelos e juntar-lhe texto rebentava (`getKey() on string`). Passa a ser uma lista simples — o PDF sai como devia, com os bancos próprios. Vinha da tabela de equipamentos de 14/09; os testes só tinham UPS com as duas coisas ao mesmo tempo. +1 teste (falha com o código antigo). `optimize`. `hash`
+
 - 🧹 **SAT e Produção fora das listas de técnicos.** Pedido do utilizador («retira a Produção e o SAT»). São contas só da Knowledgebase, mas nasceram com papel técnico na conta e apareciam como técnicos na agenda, na legenda e nas escolhas de técnicos (relatórios, painel). As listas de técnicos (`User::fazServicos()`, e com ele o `selecionavel()`) passam a exigir também a Nexus IFE no portal — o mesmo critério do `SessaoValida` à entrada; sem as tabelas do portal (testes) não se aplica. Em produção só saem estas duas contas. `TecnicosComAcessoTest`.
 
 - 🐛 **Despesas — valores dos talões que ficavam errados.** Reportado pela equipa («ao tirar foto ao talão, alguns valores saem errados»). A leitura em si estava certa (o valor vem do QR da fatura, campo «O» — total com IVA), mas havia três casos em que a linha ficava com o valor errado:

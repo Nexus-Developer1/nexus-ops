@@ -194,6 +194,22 @@ class PdfRelatorioDesignTest extends TestCase
         $this->assertStringContainsString('Bancos de baterias / equipamentos associados', $html);
     }
 
+    // Relatório 38 (out. 2026): UPS só com bancos na própria ficha (atributos.bancos) e NENHUM
+    // equipamento associado — o PDF e a pré-visualização davam erro 500 (juntar texto a uma
+    // coleção vazia de modelos).
+    public function test_ups_so_com_bancos_proprios_sem_associados(): void
+    {
+        [$r, $i, $ups] = $this->cenario();
+        $ups->update(['atributos' => ['bancos' => [['modelo' => 'BB-40', 'capacidade' => '7Ah', 'num_baterias' => 40, 'numero_serie' => 'BB-1']]]]);
+
+        $html = view('pdf.relatorio', app(GeradorRelatorio::class)->dadosDoPdf($r))->render();
+        $this->assertStringContainsString('+ Banco de baterias BB-40 · 7Ah · 40 baterias · S/N BB-1', $html);
+
+        FichaMedicao::create(['intervencao_id' => $i->id, 'equipamento_id' => $ups->id, 'tipo_equipamento' => 'ups', 'serie' => 'SN-UPS-1']);
+        $html = view('pdf.relatorio', app(GeradorRelatorio::class)->dadosDoPdf($r))->render();
+        $this->assertStringContainsString('+ Banco de baterias BB-40 · 7Ah · 40 baterias · S/N BB-1', $html);
+    }
+
     public function test_sem_fichas_nao_ha_resumo(): void
     {
         [$r] = $this->cenario();
