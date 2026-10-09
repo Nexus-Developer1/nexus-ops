@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PapelUtilizador;
+use App\Http\Middleware\SessaoValida;
 use App\Services\Agenda\FonteCalendario;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -137,7 +138,16 @@ class User extends Authenticatable
     public function scopeFazServicos(Builder $q): Builder
     {
         return $q->where(fn (Builder $w) => $w->where('papel', PapelUtilizador::Tecnico)
-            ->orWhere(fn (Builder $a) => $a->where('papel', PapelUtilizador::Admin)->where('faz_servicos', true)));
+            ->orWhere(fn (Builder $a) => $a->where('papel', PapelUtilizador::Admin)->where('faz_servicos', true)))
+            // E só quem tem a Nexus IFE no portal. O perfil fica na conta mesmo para quem só entra
+            // noutras aplicações: as contas da Knowledgebase (SAT, Produção) nascem com papel técnico e
+            // apareciam como técnicos na agenda e nas escolhas (out. 2026). O mesmo critério do
+            // SessaoValida — sem as tabelas do portal (testes, instalação sem portal) não se aplica.
+            ->when(SessaoValida::portalPresente(), fn (Builder $q) => $q->whereExists(fn ($e) => $e->selectRaw('1')
+                ->from('acessos')
+                ->join('aplicacoes', 'aplicacoes.id', '=', 'acessos.aplicacao_id')
+                ->whereColumn('acessos.utilizador_id', 'utilizadores.id')
+                ->where('aplicacoes.chave', SessaoValida::MODULO)));
     }
 
     /**

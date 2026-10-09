@@ -8,6 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-10-09
 
+- 🧹 **SAT e Produção fora das listas de técnicos.** Pedido do utilizador («retira a Produção e o SAT»). São contas só da Knowledgebase, mas nasceram com papel técnico na conta e apareciam como técnicos na agenda, na legenda e nas escolhas de técnicos (relatórios, painel). As listas de técnicos (`User::fazServicos()`, e com ele o `selecionavel()`) passam a exigir também a Nexus IFE no portal — o mesmo critério do `SessaoValida` à entrada; sem as tabelas do portal (testes) não se aplica. Em produção só saem estas duas contas. `TecnicosComAcessoTest`.
+
 - 🐛 **Despesas — valores dos talões que ficavam errados.** Reportado pela equipa («ao tirar foto ao talão, alguns valores saem errados»). A leitura em si estava certa (o valor vem do QR da fatura, campo «O» — total com IVA), mas havia três casos em que a linha ficava com o valor errado:
   - **Foto do recibo errado, apagada, foto do certo → ficava o valor do errado.** O QR só preenche campos vazios, e apagar o recibo não tirava o valor e o dia que ele lá pôs. Agora, o valor e o dia que o QR pôs (e a pessoa não mexeu) saem com o recibo, e a foto seguinte preenche-os.
   - **Dois talões na mesma linha → ficava só o do primeiro.** Agora **somam-se** («QR dos 2 recibos: 79,00 € + 12,50 € = 91,50 €») e o dia é o do mais antigo. O mesmo talão fotografado outra vez não conta a dobrar (pelo ATCUD).
