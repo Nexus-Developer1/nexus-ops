@@ -29,7 +29,7 @@ class DespesaQrTest extends TestCase
     public function test_le_a_fatura_do_exemplo(): void
     {
         $this->assertSame(
-            ['data' => '2026-09-21', 'total' => '79.00', 'nif' => '516520741', 'serie' => 'FR COVILHA26', 'intermedia' => false],
+            ['data' => '2026-09-21', 'total' => '79.00', 'nif' => '516520741', 'serie' => 'FR COVILHA26', 'intermedia' => false, 'documento' => 'J6M3CZ6D-41625'],
             QrFatura::ler(self::EXEMPLO),
         );
     }
@@ -141,6 +141,68 @@ class DespesaQrTest extends TestCase
             ->set('recibosLinhaUpload.0', UploadedFile::fake()->create('notas.txt', 1, 'text/plain'))
             ->assertHasErrors('recibosLinhaUpload.0.0')
             ->assertSet('recibosPendentes', []);
+    }
+
+    // Outro talão (a mesma loja, outro documento e outro dia), para os ensaios com vários recibos.
+    private const OUTRO = 'A:516520741*F:20260920*G:FR COVILHA26/41600*H:J6M3CZ6D-41600*O:12.50';
+
+    // Dois recibos na mesma linha (out. 2026): o valor é a SOMA e o dia o do mais antigo — antes
+    // ficava o do primeiro. O mesmo talão lido outra vez não conta a dobrar.
+    public function test_varios_recibos_na_mesma_linha_somam(): void
+    {
+        Livewire::actingAs($this->admin())->test(Editor::class)
+            ->call('lerQr', 0, self::EXEMPLO)
+            ->call('lerQr', 0, self::OUTRO)
+            ->assertSet('linhas.0.valor', '91.50')
+            ->assertSet('linhas.0.dia', '2026-09-20')
+            ->assertSee('QR dos 2 recibos: 79,00 € + 12,50 € = 91,50 €')
+            ->assertDontSee('diferente do que está na linha')
+            ->call('lerQr', 0, self::EXEMPLO)                 // o mesmo outra vez
+            ->assertSet('linhas.0.valor', '91.50')
+            ->call('lerQr', 0, '')                            // uma foto sem QR não apaga nada
+            ->assertSet('linhas.0.valor', '91.50')
+            ->assertSee('QR dos 2 recibos');
+    }
+
+    // Com um valor escrito pela pessoa, o segundo recibo também não o troca — só avisa.
+    public function test_soma_nao_passa_por_cima_do_que_a_pessoa_escreveu(): void
+    {
+        Livewire::actingAs($this->admin())->test(Editor::class)
+            ->call('lerQr', 0, self::EXEMPLO)
+            ->set('linhas.0.valor', '80')
+            ->call('lerQr', 0, self::OUTRO)
+            ->assertSet('linhas.0.valor', '80')
+            ->assertSee('diferente do que está na linha');
+    }
+
+    // O caso reportado (out. 2026): foto do recibo errado, apaga-se, tira-se a certa — a linha
+    // ficava com o valor e o dia do errado, porque o QR só preenchia campos vazios.
+    public function test_apagar_o_recibo_errado_deixa_a_foto_certa_preencher(): void
+    {
+        Livewire::actingAs($this->admin())->test(Editor::class)
+            ->set('recibosLinhaUpload.0', UploadedFile::fake()->image('errado.jpg', 800, 600))
+            ->call('lerQr', 0, self::OUTRO)
+            ->assertSet('linhas.0.valor', '12.50')
+            ->call('removerReciboPendente', 0, 0)
+            ->assertSet('linhas.0.valor', '')
+            ->assertSet('linhas.0.dia', '')
+            ->assertSet('qrLido', [])
+            ->set('recibosLinhaUpload.0', UploadedFile::fake()->image('certo.jpg', 800, 600))
+            ->call('lerQr', 0, self::EXEMPLO)
+            ->assertSet('linhas.0.valor', '79.00')
+            ->assertSet('linhas.0.dia', '2026-09-21');
+    }
+
+    // O que a pessoa escreveu fica, mesmo apagando o recibo.
+    public function test_apagar_o_recibo_nao_apaga_o_que_a_pessoa_escreveu(): void
+    {
+        Livewire::actingAs($this->admin())->test(Editor::class)
+            ->set('recibosLinhaUpload.0', UploadedFile::fake()->image('r.jpg', 800, 600))
+            ->call('lerQr', 0, self::EXEMPLO)
+            ->set('linhas.0.valor', '75')
+            ->call('removerReciboPendente', 0, 0)
+            ->assertSet('linhas.0.valor', '75')
+            ->assertSet('linhas.0.dia', ''); // o dia, esse, era só do QR
     }
 
     // Remover uma linha puxa as seguintes uma casa para trás, com os recibos e o QR delas.

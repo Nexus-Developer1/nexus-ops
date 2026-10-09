@@ -25,7 +25,12 @@
     @if ($qr['estado'] === 'lido')
         @php($difere = ($linha['dia'] ?? '') !== $qr['data'] || (float) ($linha['valor'] ?? 0) != (float) $qr['total'])
         <p class="mt-1.5 text-xs {{ $difere ? 'text-aviso-500' : 'text-verde-700' }}">
-            QR do recibo: {{ \Illuminate\Support\Carbon::parse($qr['data'])->format('d/m/Y') }} · {{ number_format((float) $qr['total'], 2, ',', ' ') }} €@if ($difere) — diferente do que está na linha @endif
+            @php($leituras = $qr['leituras'] ?? [$qr])
+            @if (count($leituras) > 1)
+                QR dos {{ count($leituras) }} recibos: {{ collect($leituras)->map(fn ($l) => number_format((float) $l['total'], 2, ',', ' ').' €')->implode(' + ') }} = {{ number_format((float) $qr['total'], 2, ',', ' ') }} €@if ($difere) — diferente do que está na linha @endif
+            @else
+                QR do recibo: {{ \Illuminate\Support\Carbon::parse($qr['data'])->format('d/m/Y') }} · {{ number_format((float) $qr['total'], 2, ',', ' ') }} €@if ($difere) — diferente do que está na linha @endif
+            @endif
         </p>
     @else
         <p class="mt-1.5 text-xs text-texto-fraco">

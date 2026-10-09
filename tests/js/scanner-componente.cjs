@@ -221,7 +221,7 @@ const comTempo = async (promessa, ms) => {
     ok(chamadas.length === 1 && chamadas[0][1] === '', 'mandou texto vazio: ' + JSON.stringify(chamadas));
   });
 
-  await ensaio('QR code: foto da galeria com várias imagens — vale a primeira que tiver QR', { comImageCapture: false }, async ({ componente }) => {
+  await ensaio('QR code: foto da galeria com várias imagens — manda o QR de TODAS as que o têm (o servidor soma)', { comImageCapture: false }, async ({ componente }) => {
     const chamadas = [];
     const lidas = [];
     componente.$wire.lerQr = async (linha, texto) => { chamadas.push([linha, texto]); };
@@ -230,11 +230,11 @@ const comTempo = async (promessa, ms) => {
     const evento = { target: { files: [
       { tela: { nome: 'sem-qr' } },
       { tela: { nome: 'com-qr', qr: QR } },
-      { tela: { nome: 'terceira', qr: 'nao-devia-chegar-aqui' } },
+      { tela: { nome: 'terceira', qr: 'OUTRO-QR' } },
     ] } };
     await componente.lerQrDoFicheiro(evento, 1);
-    ok(chamadas.length === 1 && chamadas[0][0] === 1 && chamadas[0][1] === QR, 'mandou o QR da linha 1: ' + JSON.stringify(chamadas));
-    ok(lidas.join(',') === 'sem-qr,com-qr', 'parou na primeira com QR (leu: ' + lidas.join(',') + ')');
+    ok(JSON.stringify(chamadas) === JSON.stringify([[1, QR], [1, 'OUTRO-QR']]), 'mandou os dois QR, da linha 1: ' + JSON.stringify(chamadas));
+    ok(lidas.join(',') === 'sem-qr,com-qr,terceira', 'leu todas (leu: ' + lidas.join(',') + ')');
   });
 
   // ---- Texto do talão (OCR): depois do QR, o texto vai para lerTalao, da mesma linha ----

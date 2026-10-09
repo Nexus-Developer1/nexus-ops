@@ -85,7 +85,9 @@ class Editor extends Component
 
     // O que o QR code do recibo de cada linha deu — só para mostrar por baixo do recibo, não se
     // grava. #[Locked]: escreve-o apenas o servidor, no lerQr().
-    /** @var array<int, array{estado: string, data?: string, total?: string, nif?: string, serie?: ?string, intermedia?: bool}> */
+    // Com vários recibos na mesma linha, «leituras» guarda cada um (total = a soma; data = a do
+    // mais antigo); nif/série/intermédia são os do primeiro.
+    /** @var array<int, array{estado: string, data?: string, total?: string, nif?: string, serie?: ?string, intermedia?: bool, documento?: ?string, leituras?: list<array<string, mixed>>}> */
     #[\Livewire\Attributes\Locked]
     public array $qrLido = [];
 
@@ -360,22 +362,37 @@ class Editor extends Component
         }
 
         $lido = QrFatura::ler($texto);
+        $anteriores = ($this->qrLido[$linha]['estado'] ?? null) === 'lido' ? ($this->qrLido[$linha]['leituras'] ?? []) : [];
         if ($lido === null) {
-            $this->qrLido[$linha] = ['estado' => trim($texto) === '' ? 'sem_qr' : 'invalido'];
+            // Um recibo sem QR não apaga o que os outros recibos da linha já deram.
+            if ($anteriores === []) {
+                $this->qrLido[$linha] = ['estado' => trim($texto) === '' ? 'sem_qr' : 'invalido'];
+            }
 
             return;
         }
 
-        if (trim((string) ($this->linhas[$linha]['dia'] ?? '')) === '') {
-            $this->linhas[$linha]['dia'] = $lido['data'];
+        // O mesmo talão fotografado outra vez não conta duas vezes.
+        if ($lido['documento'] !== null && in_array($lido['documento'], array_column($anteriores, 'documento'), true)) {
+            return;
         }
 
+        // Vários recibos na mesma linha (out. 2026): o valor é a SOMA de todos e o dia o do mais
+        // antigo. Antes ficava o do primeiro e os outros só davam o aviso «diferente».
+        $leituras = [...$anteriores, $lido];
+        $total = number_format(array_sum(array_map(fn ($l) => (float) $l['total'], $leituras)), 2, '.', '');
+        $dia = min(array_column($leituras, 'data'));
+
+        $this->preencher($linha, 'dia', $dia);
+        // O valor: vazio ou a zero, ou ainda o que o QR lá pôs (a pessoa não lhe mexeu).
         $valor = trim((string) ($this->linhas[$linha]['valor'] ?? ''));
-        if (($valor === '' || (float) $valor == 0.0) && (float) $lido['total'] > 0) {
-            $this->linhas[$linha]['valor'] = $lido['total'];
+        $posto = $this->autoPreenchido[$linha]['valor'] ?? null;
+        if (($valor === '' || (float) $valor == 0.0 || ($posto !== null && (float) $valor == (float) $posto)) && (float) $total > 0) {
+            $this->linhas[$linha]['valor'] = $total;
+            $this->autoPreenchido[$linha]['valor'] = $total;
         }
 
-        $this->qrLido[$linha] = ['estado' => 'lido'] + $lido;
+        $this->qrLido[$linha] = ['estado' => 'lido', 'leituras' => $leituras, 'data' => $dia, 'total' => $total] + $leituras[0];
         $this->sugerir($linha);
     }
 
@@ -489,6 +506,25 @@ class Editor extends Component
     {
         unset($this->recibosPendentes[$linha][$indice]);
         $this->recibosPendentes[$linha] = array_values($this->recibosPendentes[$linha] ?? []);
+        $this->esquecerQr($linha);
+    }
+
+    // Tirar um recibo da linha (out. 2026): o dia e o valor que o QR lá pôs ficavam, e a foto
+    // certa tirada a seguir já não os trocava (só preenche campos vazios) — a linha ficava com o
+    // valor do recibo errado. Agora, o que o QR pôs e a pessoa não mexeu sai com o recibo, e as
+    // leituras da linha esquecem-se: os recibos que ficam leem-se outra vez ao fotografá-los, ou
+    // escreve-se o valor à mão. O que a pessoa escreveu nunca se toca.
+    private function esquecerQr(int $linha): void
+    {
+        foreach (['dia', 'valor'] as $campo) {
+            $posto = $this->autoPreenchido[$linha][$campo] ?? null;
+            $atual = (string) ($this->linhas[$linha][$campo] ?? '');
+            if ($posto !== null && ($campo === 'valor' ? $atual !== '' && (float) $atual == (float) $posto : $atual === $posto)) {
+                $this->linhas[$linha][$campo] = '';
+            }
+            unset($this->autoPreenchido[$linha][$campo]);
+        }
+        unset($this->qrLido[$linha]);
     }
 
     // Remove um recibo JÁ GRAVADO (da despesa da linha) — apaga o ficheiro e os metadados.
@@ -506,6 +542,11 @@ class Editor extends Component
             ->firstOrFail();
         Storage::disk()->delete($anexo->storage_key);
         $anexo->delete();
+
+        $linha = array_search($anexo->anexavel_id, array_map(fn ($l) => (int) ($l['despesa_id'] ?? 0), $this->linhas), true);
+        if ($linha !== false) {
+            $this->esquecerQr($linha);
+        }
 
         // O ficheiro do recibo desaparece de vez — fica quem o apagou e de que despesa (revisão de 16/09).
         Auditor::registar('recibo_removido', $registo, ['despesa_id' => $anexo->anexavel_id, 'ficheiro' => $anexo->nome_ficheiro]);
@@ -707,8 +748,11 @@ class Editor extends Component
 
             // Memória de fornecedores: o que ficou nesta linha é o que se sugere da próxima vez
             // que aparecer um talão deste vendedor (NIF e série vêm do QR lido nesta edição).
+            // Com recibos de vendedores diferentes na mesma linha não se aprende nada (não se sabe
+            // a qual deles pertence o «o que é» que ficou).
             $qr = $this->qrLido[$n] ?? [];
-            if (($qr['estado'] ?? null) === 'lido' && isset($qr['nif'])) {
+            if (($qr['estado'] ?? null) === 'lido' && isset($qr['nif'])
+                && count(array_unique(array_column($qr['leituras'] ?? [$qr], 'nif'))) === 1) {
                 MemoriaFornecedor::aprender($qr['nif'], $qr['serie'] ?? null, trim((string) $lancamento['detalhe']) ?: null, $lancamento['categoria']);
             }
 

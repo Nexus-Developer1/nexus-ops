@@ -6,6 +6,14 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-10-09
+
+- 🐛 **Despesas — valores dos talões que ficavam errados.** Reportado pela equipa («ao tirar foto ao talão, alguns valores saem errados»). A leitura em si estava certa (o valor vem do QR da fatura, campo «O» — total com IVA), mas havia três casos em que a linha ficava com o valor errado:
+  - **Foto do recibo errado, apagada, foto do certo → ficava o valor do errado.** O QR só preenche campos vazios, e apagar o recibo não tirava o valor e o dia que ele lá pôs. Agora, o valor e o dia que o QR pôs (e a pessoa não mexeu) saem com o recibo, e a foto seguinte preenche-os.
+  - **Dois talões na mesma linha → ficava só o do primeiro.** Agora **somam-se** («QR dos 2 recibos: 79,00 € + 12,50 € = 91,50 €») e o dia é o do mais antigo. O mesmo talão fotografado outra vez não conta a dobrar (pelo ATCUD).
+  - **Várias fotos da galeria de uma vez → só se lia a primeira.** Agora lê-se o QR de todas.
+  O que a pessoa escreveu à mão nunca é trocado — continua só o aviso «diferente do que está na linha». Com talões de vendedores diferentes na mesma linha, a memória de fornecedores não aprende dessa linha. +4 testes, 2 ajustados (PHP e o ensaio do scanner). Build + `optimize`.
+
 ## 2026-10-08
 
 - 🔒 **`.gitignore`: as pastas do utilizador da aplicação no servidor.** O `HOME` do `app-nexus` é a pasta da aplicação, e as pastas dele (`.ssh/` com a chave de deploy, `.cache/`, `.config/`, `.local/`, `.npm/`, `.lesshst`) apareciam como ficheiros por versionar — um `git add -A` no servidor metia a chave no repositório. Passam a ser ignoradas. (Não são servidas pela web: o site só serve `public/`.) `7eef2d4`

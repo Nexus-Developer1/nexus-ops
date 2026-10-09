@@ -1208,24 +1208,32 @@ document.addEventListener('alpine:init', () => {
         },
 
         // «Tirar foto» e «Galeria»: o ficheiro segue para o servidor pelo wire:model, à parte;
-        // aqui só se lê o recibo. Com várias fotografias, vale a primeira que tiver QR.
+        // aqui só se lê o recibo. Com várias fotografias, lê-se o QR de TODAS (o servidor soma
+        // os valores — out. 2026; antes valia só a primeira); o texto do talão é o da primeira
+        // que tiver QR.
         async lerQrDoFicheiro(evento, linha) {
             const ficheiros = [...(evento.target.files ?? [])]; // já, antes de qualquer await
-            let texto = null;
+            const textos = [];
             let talao = null;
+            let semQr = null;
             try {
                 for (const ficheiro of ficheiros) {
                     const tela = await this.telaDoFicheiro(ficheiro);
-                    talao ??= tela;
-                    if (tela && (texto = await this.textoDaTela(tela))) {
-                        talao = tela;
-                        break;
+                    if (!tela) continue;
+                    const texto = await this.textoDaTela(tela);
+                    if (texto) {
+                        textos.push(texto);
+                        talao ??= tela;
+                    } else {
+                        semQr ??= tela;
                     }
                 }
-                await this.$wire.lerQr(linha, texto ?? '');
+                if (textos.length === 0) await this.$wire.lerQr(linha, '');
+                for (const texto of textos) await this.$wire.lerQr(linha, texto);
             } catch (e) {
                 // idem
             }
+            talao ??= semQr;
             if (talao) await this.lerTalao(talao, linha);
         },
 

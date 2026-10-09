@@ -31,9 +31,11 @@ class QrFatura
     public const TAMANHO_MAXIMO = 1024;
 
     /**
-     * data em Y-m-d; total com duas casas e ponto; nif do vendedor; série de faturação (ou null).
+     * data em Y-m-d; total com duas casas e ponto; nif do vendedor; série de faturação (ou null);
+     * documento — o ATCUD (H) ou, sem ele, o «TIPO SÉRIE/NÚMERO» (G): identifica ESTE talão, para
+     * o mesmo não contar duas vezes quando se fotografa outra vez (ou null).
      *
-     * @return array{data: string, total: string, nif: string, serie: ?string, intermedia: bool}|null
+     * @return array{data: string, total: string, nif: string, serie: ?string, intermedia: bool, documento: ?string}|null
      */
     public static function ler(string $texto): ?array
     {
@@ -86,6 +88,7 @@ class QrFatura
             'nif' => $campos['A'],
             'serie' => $serie,
             'intermedia' => $intermedia,
+            'documento' => mb_substr(($campos['H'] ?? '') !== '' && $campos['H'] !== '0' ? $campos['H'] : ($campos['G'] ?? ''), 0, 80) ?: null,
         ];
     }
 }
